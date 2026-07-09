@@ -1,19 +1,19 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ScrollService } from './services/scroll.service';
+import { Navigation } from './navigation/navigation';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule],
+  imports: [CommonModule, Navigation],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
 export class App {
+  private scrollService = inject(ScrollService);
   currentYear = new Date().getFullYear();
 
   scrollTo(sectionId: string): void {
-    const el = document.getElementById(sectionId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+    this.scrollService.scrollTo(sectionId);
   }
 }
