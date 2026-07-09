@@ -3,7 +3,26 @@
   min-height: calc(100vh - 60px);
   display: flex;
   align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Parallax background layer */
+.hero-background {
+  position: absolute;
+  top: -50px;
+  left: 0;
+  right: 0;
+  bottom: -50px;
   background: linear-gradient(160deg, var(--color-bg) 60%, color-mix(in srgb, var(--color-gold) 15%, var(--color-bg)));
+  will-change: transform;
+  z-index: 0;
+}
+
+/* Content stays on top */
+.hero-content {
+  position: relative;
+  z-index: 1;
 }
 
 .section {
