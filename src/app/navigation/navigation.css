@@ -33,9 +33,28 @@
   text-decoration: none;
   font-size: 0.875rem;
   color: var(--color-text-secondary);
-  transition: color 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
 .nav-links a:hover {
   color: var(--color-gold);
+  text-shadow: 0 0 8px rgba(157, 34, 53, 0.4);
+  transform: translateY(-1px);
+}
+
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-gold);
+  box-shadow: 0 0 4px var(--color-gold);
+  transition: width 0.3s ease;
+}
+
+.nav-links a:hover::after {
+  width: 100%;
 }

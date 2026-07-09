@@ -70,11 +70,18 @@
   background: var(--color-bg);
   color: var(--color-text);
   box-sizing: border-box;
+  transition: all 0.3s ease;
 }
 
 .form-control:focus {
   outline: none;
   border-color: var(--color-gold);
+  box-shadow: 0 0 0 3px rgba(157, 34, 53, 0.1), 0 0 12px rgba(157, 34, 53, 0.2);
+  transform: translateY(-1px);
+}
+
+.form-control:hover:not(:focus) {
+  border-color: color-mix(in srgb, var(--color-gold) 50%, var(--color-border));
 }
 
 .form-group {
@@ -116,6 +123,14 @@
   border-radius: 6px;
   overflow: hidden;
   background: var(--color-surface);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.room-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(157, 34, 53, 0.2);
+  border-color: var(--color-gold);
 }
 
 .section-alt .room-card {
@@ -125,6 +140,11 @@
 .room-img-placeholder {
   height: 140px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--color-gold) 30%, var(--color-border)), var(--color-border));
+  transition: all 0.3s ease;
+}
+
+.room-card:hover .room-img-placeholder {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-gold) 50%, var(--color-border)), color-mix(in srgb, var(--color-gold) 20%, var(--color-border)));
 }
 
 .room-info {
@@ -165,8 +185,28 @@
   font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  transition: all 0.3s ease;
   line-height: 1.4;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.btn:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 .btn-primary {
@@ -178,6 +218,8 @@
 .btn-primary:hover {
   background: var(--color-gold-dark);
   border-color: var(--color-gold-dark);
+  box-shadow: 0 4px 20px rgba(157, 34, 53, 0.4), 0 0 20px rgba(157, 34, 53, 0.2);
+  transform: translateY(-2px);
 }
 
 .btn-outline {
@@ -187,7 +229,9 @@
 }
 
 .btn-outline:hover {
-  background: color-mix(in srgb, var(--color-gold) 10%, transparent);
+  background: color-mix(in srgb, var(--color-gold) 15%, transparent);
+  box-shadow: 0 0 15px rgba(157, 34, 53, 0.3);
+  transform: translateY(-2px);
 }
 
 .btn-sm {

@@ -100,6 +100,15 @@
   padding: 0.3rem 0.75rem;
   border-radius: 20px;
   border: 1px solid color-mix(in srgb, var(--color-gold) 35%, transparent);
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.skill-tag:hover {
+  background: color-mix(in srgb, var(--color-gold) 30%, transparent);
+  border-color: var(--color-gold);
+  box-shadow: 0 2px 8px rgba(157, 34, 53, 0.3);
+  transform: translateY(-2px);
 }
 
 .contact-list {
