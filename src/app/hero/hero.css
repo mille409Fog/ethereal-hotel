@@ -1,0 +1,81 @@
+/* ----- Hero (Home) Styles ----- */
+.section-home {
+  min-height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  background: linear-gradient(160deg, var(--color-bg) 60%, color-mix(in srgb, var(--color-gold) 15%, var(--color-bg)));
+}
+
+.section {
+  padding: 5rem 2rem;
+  background: var(--color-bg);
+}
+
+.section-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: var(--color-gold);
+  margin: 0 0 1.5rem;
+  letter-spacing: 0.02em;
+}
+
+.hero-bio {
+  max-width: 560px;
+  color: var(--color-text-secondary);
+  line-height: 1.75;
+  margin: 0 0 2.5rem;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Buttons used in hero */
+.btn {
+  display: inline-block;
+  padding: 0.625rem 1.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  line-height: 1.4;
+}
+
+.btn-primary {
+  background: var(--color-gold);
+  color: #faf9f7;
+  border-color: var(--color-gold);
+}
+
+.btn-primary:hover {
+  background: var(--color-gold-dark);
+  border-color: var(--color-gold-dark);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-gold);
+  border-color: var(--color-gold);
+}
+
+.btn-outline:hover {
+  background: color-mix(in srgb, var(--color-gold) 10%, transparent);
+}
+

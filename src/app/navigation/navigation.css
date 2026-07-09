@@ -1,0 +1,41 @@
+/* ----- Navigation Styles ----- */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 60px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.nav-brand {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-gold);
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 1.75rem;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links a {
+  text-decoration: none;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  transition: color 0.2s;
+}
+
+.nav-links a:hover {
+  color: var(--color-gold);
+}
