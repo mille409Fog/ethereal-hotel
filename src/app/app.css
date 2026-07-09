@@ -22,7 +22,7 @@
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--color-gold);
+  color: var(--color-blood);
 }
 
 .nav-links {
@@ -41,7 +41,7 @@
 }
 
 .nav-links a:hover {
-  color: var(--color-gold);
+  color: var(--color-blood);
 }
 
 /* ----- Sections ----- */
@@ -69,7 +69,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-gold);
+  color: var(--color-blood);
   margin-bottom: 0.5rem;
 }
 
@@ -100,7 +100,7 @@
   min-height: calc(100vh - 60px);
   display: flex;
   align-items: center;
-  background: linear-gradient(160deg, var(--color-bg) 60%, color-mix(in srgb, var(--color-gold) 15%, var(--color-bg)));
+  background: linear-gradient(160deg, var(--color-bg) 60%, color-mix(in srgb, var(--color-blood) 15%, var(--color-bg)));
 }
 
 .hero-title {
@@ -114,7 +114,7 @@
 
 .hero-subtitle {
   font-size: 1.1rem;
-  color: var(--color-gold);
+  color: var(--color-blood);
   margin: 0 0 1.5rem;
   letter-spacing: 0.02em;
 }
@@ -146,24 +146,24 @@
 }
 
 .btn-primary {
-  background: var(--color-gold);
+  background: var(--color-blood);
   color: #faf9f7;
-  border-color: var(--color-gold);
+  border-color: var(--color-blood);
 }
 
 .btn-primary:hover {
-  background: var(--color-gold-dark);
-  border-color: var(--color-gold-dark);
+  background: var(--color-blood-dark);
+  border-color: var(--color-blood-dark);
 }
 
 .btn-outline {
   background: transparent;
-  color: var(--color-gold);
-  border-color: var(--color-gold);
+  color: var(--color-blood);
+  border-color: var(--color-blood);
 }
 
 .btn-outline:hover {
-  background: color-mix(in srgb, var(--color-gold) 10%, transparent);
+  background: color-mix(in srgb, var(--color-blood) 10%, transparent);
 }
 
 .btn-sm {
@@ -198,7 +198,7 @@
 
 .form-control:focus {
   outline: none;
-  border-color: var(--color-gold);
+  border-color: var(--color-blood);
 }
 
 .form-group {
@@ -249,7 +249,7 @@
 
 .room-img-placeholder {
   height: 140px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-gold) 30%, var(--color-border)), var(--color-border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-blood) 30%, var(--color-border)), var(--color-border));
 }
 
 .room-info {
@@ -262,8 +262,8 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-gold);
-  background: color-mix(in srgb, var(--color-gold) 18%, transparent);
+  color: var(--color-blood);
+  background: color-mix(in srgb, var(--color-blood) 18%, transparent);
   padding: 0.2rem 0.5rem;
   border-radius: 3px;
   margin-bottom: 0.5rem;
@@ -339,7 +339,7 @@
 
 .tier-diamond  { background: #1a2a3a; color: #6fa8d8; }
 .tier-platinum { background: #2a2537; color: #9a8ab8; }
-.tier-gold     { background: color-mix(in srgb, var(--color-gold) 22%, transparent); color: #d88894; }
+.tier-gold     { background: color-mix(in srgb, var(--color-blood) 22%, transparent); color: #d88894; }
 .tier-silver   { background: #2a2a2a; color: #999; }
 
 .status-active      { background: #1a2a1f; color: #6fb880; }
@@ -464,7 +464,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-gold);
+  color: var(--color-blood);
   margin: 0 0 1rem;
   padding-bottom: 0.4rem;
   border-bottom: 1px solid var(--color-border);
@@ -509,13 +509,13 @@
 }
 
 .skill-tag {
-  background: color-mix(in srgb, var(--color-gold) 18%, transparent);
+  background: color-mix(in srgb, var(--color-blood) 18%, transparent);
   color: #d88894;
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.3rem 0.75rem;
   border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--color-gold) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-blood) 35%, transparent);
 }
 
 .contact-list {

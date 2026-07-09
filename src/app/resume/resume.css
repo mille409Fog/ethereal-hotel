@@ -19,7 +19,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-gold);
+  color: var(--color-blood);
   margin-bottom: 0.5rem;
 }
 
@@ -48,7 +48,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-gold);
+  color: var(--color-blood);
   margin: 0 0 1rem;
   padding-bottom: 0.4rem;
   border-bottom: 1px solid var(--color-border);
@@ -93,20 +93,20 @@
 }
 
 .skill-tag {
-  background: color-mix(in srgb, var(--color-gold) 18%, transparent);
+  background: color-mix(in srgb, var(--color-blood) 18%, transparent);
   color: #d88894;
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.3rem 0.75rem;
   border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--color-gold) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-blood) 35%, transparent);
   transition: all 0.3s ease;
   cursor: default;
 }
 
 .skill-tag:hover {
-  background: color-mix(in srgb, var(--color-gold) 30%, transparent);
-  border-color: var(--color-gold);
+  background: color-mix(in srgb, var(--color-blood) 30%, transparent);
+  border-color: var(--color-blood);
   box-shadow: 0 2px 8px rgba(157, 34, 53, 0.3);
   transform: translateY(-2px);
 }

@@ -23,7 +23,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-gold);
+  color: var(--color-blood);
   margin-bottom: 0.5rem;
 }
 
@@ -84,7 +84,7 @@
 .stat-chip:hover {
   transform: scale(1.08);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  border-color: var(--color-gold);
+  border-color: var(--color-blood);
 }
 
 .section .stat-chip {
@@ -126,7 +126,7 @@
 .queue-item:hover {
   transform: translateX(4px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), -3px 0 12px rgba(157, 34, 53, 0.2);
-  border-color: var(--color-gold);
+  border-color: var(--color-blood);
 }
 
 .section .queue-item {

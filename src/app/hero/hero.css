@@ -14,7 +14,7 @@
   left: 0;
   right: 0;
   bottom: -50px;
-  background: linear-gradient(160deg, var(--color-bg) 60%, color-mix(in srgb, var(--color-gold) 15%, var(--color-bg)));
+  background: linear-gradient(160deg, var(--color-bg) 60%, color-mix(in srgb, var(--color-blood) 15%, var(--color-bg)));
   will-change: transform;
   z-index: 0;
 }
@@ -46,7 +46,7 @@
 
 .hero-subtitle {
   font-size: 1.1rem;
-  color: var(--color-gold);
+  color: var(--color-blood);
   margin: 0 0 1.5rem;
   letter-spacing: 0.02em;
 }
@@ -98,14 +98,14 @@
 }
 
 .btn-primary {
-  background: var(--color-gold);
+  background: var(--color-blood);
   color: #faf9f7;
-  border-color: var(--color-gold);
+  border-color: var(--color-blood);
 }
 
 .btn-primary:hover {
-  background: var(--color-gold-dark);
-  border-color: var(--color-gold-dark);
+  background: var(--color-blood-dark);
+  border-color: var(--color-blood-dark);
   box-shadow: 0 4px 20px rgba(157, 34, 53, 0.4), 0 0 20px rgba(157, 34, 53, 0.2);
   transform: translateY(-2px);
 }
@@ -117,12 +117,12 @@
 
 .btn-outline {
   background: transparent;
-  color: var(--color-gold);
-  border-color: var(--color-gold);
+  color: var(--color-blood);
+  border-color: var(--color-blood);
 }
 
 .btn-outline:hover {
-  background: color-mix(in srgb, var(--color-gold) 15%, transparent);
+  background: color-mix(in srgb, var(--color-blood) 15%, transparent);
   box-shadow: 0 0 15px rgba(157, 34, 53, 0.3);
   transform: translateY(-2px);
 }

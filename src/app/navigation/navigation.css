@@ -18,7 +18,7 @@
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--color-gold);
+  color: var(--color-blood);
 }
 
 .nav-links {
@@ -38,7 +38,7 @@
 }
 
 .nav-links a:hover {
-  color: var(--color-gold);
+  color: var(--color-blood);
   text-shadow: 0 0 8px rgba(157, 34, 53, 0.4);
   transform: translateY(-1px);
 }
@@ -50,8 +50,8 @@
   left: 0;
   width: 0;
   height: 1px;
-  background: var(--color-gold);
-  box-shadow: 0 0 4px var(--color-gold);
+  background: var(--color-blood);
+  box-shadow: 0 0 4px var(--color-blood);
   transition: width 0.3s ease;
 }
 

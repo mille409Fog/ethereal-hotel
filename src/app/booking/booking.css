@@ -23,7 +23,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-gold);
+  color: var(--color-blood);
   margin-bottom: 0.5rem;
 }
 
@@ -75,13 +75,13 @@
 
 .form-control:focus {
   outline: none;
-  border-color: var(--color-gold);
+  border-color: var(--color-blood);
   box-shadow: 0 0 0 3px rgba(157, 34, 53, 0.1), 0 0 12px rgba(157, 34, 53, 0.2);
   transform: translateY(-1px);
 }
 
 .form-control:hover:not(:focus) {
-  border-color: color-mix(in srgb, var(--color-gold) 50%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-blood) 50%, var(--color-border));
 }
 
 .form-group {
@@ -130,7 +130,7 @@
 .room-card:hover {
   transform: translateY(-8px) scale(1.02);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(157, 34, 53, 0.2);
-  border-color: var(--color-gold);
+  border-color: var(--color-blood);
 }
 
 .section-alt .room-card {
@@ -139,12 +139,12 @@
 
 .room-img-placeholder {
   height: 140px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-gold) 30%, var(--color-border)), var(--color-border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-blood) 30%, var(--color-border)), var(--color-border));
   transition: all 0.3s ease;
 }
 
 .room-card:hover .room-img-placeholder {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-gold) 50%, var(--color-border)), color-mix(in srgb, var(--color-gold) 20%, var(--color-border)));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-blood) 50%, var(--color-border)), color-mix(in srgb, var(--color-blood) 20%, var(--color-border)));
 }
 
 .room-info {
@@ -157,8 +157,8 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-gold);
-  background: color-mix(in srgb, var(--color-gold) 18%, transparent);
+  color: var(--color-blood);
+  background: color-mix(in srgb, var(--color-blood) 18%, transparent);
   padding: 0.2rem 0.5rem;
   border-radius: 3px;
   margin-bottom: 0.5rem;
@@ -210,26 +210,26 @@
 }
 
 .btn-primary {
-  background: var(--color-gold);
+  background: var(--color-blood);
   color: #faf9f7;
-  border-color: var(--color-gold);
+  border-color: var(--color-blood);
 }
 
 .btn-primary:hover {
-  background: var(--color-gold-dark);
-  border-color: var(--color-gold-dark);
+  background: var(--color-blood-dark);
+  border-color: var(--color-blood-dark);
   box-shadow: 0 4px 20px rgba(157, 34, 53, 0.4), 0 0 20px rgba(157, 34, 53, 0.2);
   transform: translateY(-2px);
 }
 
 .btn-outline {
   background: transparent;
-  color: var(--color-gold);
-  border-color: var(--color-gold);
+  color: var(--color-blood);
+  border-color: var(--color-blood);
 }
 
 .btn-outline:hover {
-  background: color-mix(in srgb, var(--color-gold) 15%, transparent);
+  background: color-mix(in srgb, var(--color-blood) 15%, transparent);
   box-shadow: 0 0 15px rgba(157, 34, 53, 0.3);
   transform: translateY(-2px);
 }

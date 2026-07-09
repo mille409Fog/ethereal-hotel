@@ -13,8 +13,8 @@
   --color-text:          #e8dfe3;
   --color-text-secondary:#b8a8ae;
   --color-text-muted:    #7a6a70;
-  --color-gold:          #9d2235;
-  --color-gold-dark:     #7a1827;
+  --color-blood:         #9d2235;
+  --color-blood-dark:    #7a1827;
 
   /* Typography */
   --font-sans:  'Crimson Pro', Georgia, serif;
@@ -134,4 +134,131 @@ strong {
   .section-header {
     margin-bottom: 2rem;
   }
+}
+
+/* ===================================================
+   GOTHIC ORNAMENTAL DIVIDERS
+   =================================================== */
+
+.gothic-divider {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-border) 20%, var(--color-border) 80%, transparent);
+  margin: 4rem auto;
+  max-width: 600px;
+}
+
+.gothic-divider::before,
+.gothic-divider::after {
+  content: '◆';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-blood);
+  font-size: 0.75rem;
+  text-shadow: 0 0 8px rgba(157, 34, 53, 0.6);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.gothic-divider::before {
+  left: -1rem;
+}
+
+.gothic-divider::after {
+  right: -1rem;
+}
+
+.gothic-divider-center {
+  position: relative;
+  text-align: center;
+  margin: 4rem 0;
+}
+
+.gothic-divider-center::before,
+.gothic-divider-center::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-border));
+}
+
+.gothic-divider-center::before {
+  left: 0;
+}
+
+.gothic-divider-center::after {
+  right: 0;
+  background: linear-gradient(to left, transparent, var(--color-border));
+}
+
+.gothic-divider-center span {
+  display: inline-block;
+  padding: 0 1.5rem;
+  color: var(--color-blood);
+  font-size: 1.5rem;
+  text-shadow: 0 0 12px rgba(157, 34, 53, 0.5);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* ===================================================
+   PULSING HEARTBEAT ANIMATIONS
+   =================================================== */
+
+@keyframes pulse-glow {
+  0%, 100% {
+    text-shadow: 
+      0 0 8px rgba(157, 34, 53, 0.4),
+      0 0 16px rgba(157, 34, 53, 0.2);
+    filter: brightness(1);
+  }
+  50% {
+    text-shadow: 
+      0 0 12px rgba(157, 34, 53, 0.6),
+      0 0 24px rgba(157, 34, 53, 0.3);
+    filter: brightness(1.1);
+  }
+}
+
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 20px rgba(157, 34, 53, 0.4), 0 0 20px rgba(157, 34, 53, 0.2);
+  }
+  10% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(157, 34, 53, 0.5), 0 0 25px rgba(157, 34, 53, 0.3);
+  }
+  20% {
+    transform: scale(1);
+    box-shadow: 0 4px 20px rgba(157, 34, 53, 0.4), 0 0 20px rgba(157, 34, 53, 0.2);
+  }
+  30% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(157, 34, 53, 0.5), 0 0 25px rgba(157, 34, 53, 0.3);
+  }
+  40%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 20px rgba(157, 34, 53, 0.4), 0 0 20px rgba(157, 34, 53, 0.2);
+  }
+}
+
+/* Apply heartbeat to primary CTAs */
+.btn-primary.pulse {
+  animation: heartbeat 3s ease-in-out infinite;
+}
+
+/* Subtle continuous pulse for less prominent elements */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
 }
