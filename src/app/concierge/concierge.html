@@ -1,41 +1,24 @@
-<!-- ===== D: CONCIERGE REQUEST QUEUE ===== -->
-<section id="concierge" class="section section-alt" appScrollReveal>
+<!-- ===== SKILLS ===== -->
+<section id="skills" class="section section-alt" appScrollReveal>
   <div class="section-inner">
     <div class="section-header">
-      <span class="section-label">Demo D</span>
-      <h2>Concierge Request Queue</h2>
+      <span class="section-label">Technical Expertise</span>
+      <h2>Skills & Technologies</h2>
       <p class="section-description">
-        A real-time request management system that routes, prioritizes, and
-        tracks guest requests from submission through resolution — with SLA
-        tracking and staff assignment built in.
+        A comprehensive toolkit built through years of enterprise development —
+        from frontend frameworks to backend systems and cloud infrastructure.
       </p>
     </div>
 
     <div class="demo-card">
-      <div class="queue-stats">
-        <div class="stat-chip" *ngFor="let stat of stats">
-          <span class="stat-value stat-{{ stat.color }}">{{ stat.value }}</span>
-          <span class="stat-label">{{ stat.label }}</span>
-        </div>
-      </div>
-
-      <div class="queue-list">
-        <div class="queue-item" *ngFor="let req of requests">
-          <div class="queue-item-header">
-            <span class="queue-id">{{ req.id }}</span>
-            <span class="queue-room">Room {{ req.room }}</span>
-            <span class="priority-badge priority-{{ req.priority | lowercase }}">{{ req.priority }}</span>
-            <span class="status-badge status-{{ req.status === 'In Progress' ? 'in-progress' : (req.status | lowercase) }}">{{ req.status }}</span>
-            <span class="queue-time">{{ req.time }}</span>
-          </div>
-          <div class="queue-item-body">
-            <p class="queue-request">{{ req.request }}</p>
-            <span class="queue-assignee">&#x2192; {{ req.assignee }}</span>
+      <div class="skills-grid">
+        <div class="skill-category" *ngFor="let category of skillCategories">
+          <h3 class="skill-category-title">{{ category.name }}</h3>
+          <div class="skill-tags">
+            <span class="skill-tag" *ngFor="let skill of category.skills">{{ skill }}</span>
           </div>
         </div>
       </div>
     </div>
-
-    <p class="demo-note">* UI demo only — no live backend connected</p>
   </div>
 </section>

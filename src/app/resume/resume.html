@@ -1,56 +1,45 @@
-<!-- ===== E: RESUME & CONTACT ===== -->
-<section id="resume" class="section" appScrollReveal>
+<!-- ===== CONTACT ===== -->
+<section id="contact" class="section" appScrollReveal>
   <div class="section-inner">
     <div class="section-header">
-      <span class="section-label">Section E</span>
-      <h2>Resume &amp; Contact</h2>
+      <span class="section-label">Get In Touch</span>
+      <h2>Let's Connect</h2>
     </div>
 
-    <div class="resume-grid">
-
-      <!-- Experience -->
-      <div class="resume-block">
-        <h3 class="resume-block-title">Experience</h3>
-        <div class="resume-entry" *ngFor="let job of jobs">
-          <div class="entry-header">
-            <strong>{{ job.title }}</strong>
-            <span class="entry-company">{{ job.company }}</span>
-            <span class="entry-period">{{ job.period }}</span>
-          </div>
-          <ul class="entry-bullets">
-            <li *ngFor="let b of job.bullets">{{ b }}</li>
-          </ul>
-        </div>
+    <div class="contact-grid">
+      <!-- Contact Info -->
+      <div class="contact-block">
+        <h3 class="contact-block-title">Contact Information</h3>
+        <ul class="contact-list">
+          <li><span class="contact-icon">&#9993;</span> millerjacob67&#64;gmail.com</li>
+          <li><span class="contact-icon">&#128222;</span> 720-636-1085</li>
+          <li><span class="contact-icon">&#128205;</span> Denver, CO</li>
+        </ul>
       </div>
 
-      <!-- Skills & Education -->
-      <div class="resume-sidebar">
-        <div class="resume-block">
-          <h3 class="resume-block-title">Core Skills</h3>
-          <div class="skill-tags">
-            <span class="skill-tag" *ngFor="let s of skills">{{ s }}</span>
-          </div>
-        </div>
-
-        <div class="resume-block">
-          <h3 class="resume-block-title">Education</h3>
-          <p><strong>B.S. Mathematics</strong></p>
-          <p class="text-muted">Western Washington University, 2016</p>
-          <p class="text-muted" style="margin-top: 0.5rem;">SOA Exam P (2017), SOA Exam FM (2018)</p>
-        </div>
-
-        <div class="resume-block">
-          <h3 class="resume-block-title">Contact</h3>
-          <ul class="contact-list">
-            <li><span class="contact-icon">&#9993;</span> millerjacob67&#64;gmail.com</li>
-            <li><span class="contact-icon">&#128279;</span> linkedin.com/in/jacob-miller-485603146</li>
-            <li><span class="contact-icon">&#128736;</span> github.com/mille409Fog</li>
-            <li><span class="contact-icon">&#128205;</span> Denver, CO</li>
-            <li><span class="contact-icon">&#128222;</span> 720-636-1085</li>
-          </ul>
-        </div>
+      <!-- Links -->
+      <div class="contact-block">
+        <h3 class="contact-block-title">Links</h3>
+        <ul class="contact-list">
+          <li><span class="contact-icon">&#128279;</span> <a href="https://linkedin.com/in/jacob-miller-485603146" target="_blank" rel="noopener">LinkedIn Profile</a></li>
+          <li><span class="contact-icon">&#128736;</span> <a href="https://github.com/mille409Fog" target="_blank" rel="noopener">GitHub Projects</a></li>
+        </ul>
       </div>
 
+      <!-- Education -->
+      <div class="contact-block">
+        <h3 class="contact-block-title">Education</h3>
+        <p><strong>B.S. Mathematics</strong></p>
+        <p class="text-muted">Western Washington University, 2016</p>
+        <p class="text-muted" style="margin-top: 0.5rem;">SOA Exam P (2017), SOA Exam FM (2018)</p>
+      </div>
+
+      <!-- Availability -->
+      <div class="contact-block">
+        <h3 class="contact-block-title">Availability</h3>
+        <p>Currently employed and open to discussing new opportunities.</p>
+        <p class="text-muted">Preferred roles: Senior Software Engineer, Tech Lead, Solution Architect</p>
+      </div>
     </div>
   </div>
 </section>

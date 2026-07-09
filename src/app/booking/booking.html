@@ -1,55 +1,31 @@
-<!-- ===== B: ROOM BOOKING ENGINE ===== -->
-<section id="booking" class="section section-alt" appScrollReveal>
+<!-- ===== PROJECTS ===== -->
+<section id="projects" class="section section-alt" appScrollReveal>
   <div class="section-inner">
     <div class="section-header">
-      <span class="section-label">Demo B</span>
-      <h2>Room Booking Engine</h2>
+      <span class="section-label">Featured Work</span>
+      <h2>Projects</h2>
       <p class="section-description">
-        A full-featured reservation flow with real-time availability, dynamic
-        pricing, and upsell logic — built for luxury properties with complex
-        room inventory and rate structures.
+        A selection of enterprise applications I've architected and delivered,
+        spanning telecommunications, finance, and e-commerce at scale.
       </p>
     </div>
 
     <div class="demo-card">
-      <div class="booking-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="checkin">Check-In</label>
-            <input id="checkin" type="date" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label for="checkout">Check-Out</label>
-            <input id="checkout" type="date" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label for="guests">Guests</label>
-            <select id="guests" class="form-control">
-              <option>1 Guest</option>
-              <option>2 Guests</option>
-              <option>3 Guests</option>
-              <option>4 Guests</option>
-            </select>
-          </div>
-          <div class="form-group form-group-btn">
-            <button class="btn btn-primary pulse">Check Availability</button>
-          </div>
-        </div>
-      </div>
-
       <div class="room-grid">
-        <div class="room-card" *ngFor="let room of rooms">
+        <div class="room-card" *ngFor="let project of projects">
           <div class="room-img-placeholder"></div>
           <div class="room-info">
-            <span class="room-tag">{{ room.tag }}</span>
-            <h3>{{ room.name }}</h3>
-            <p class="room-rate">From {{ room.rate }} / night</p>
-            <button class="btn btn-outline btn-sm">Select Room</button>
+            <span class="room-tag">{{ project.category }}</span>
+            <h3>{{ project.name }}</h3>
+            <p class="room-rate">{{ project.description }}</p>
+            <div class="project-tech">
+              <span class="tech-badge" *ngFor="let tech of project.tech">{{ tech }}</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <p class="demo-note">* UI demo only — no live backend connected</p>
+    <p class="demo-note">* Enterprise projects under NDA — descriptions generalized for confidentiality</p>
   </div>
 </section>

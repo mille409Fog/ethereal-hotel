@@ -1,4 +1,4 @@
-/* ----- Resume Styles ----- */
+/* ----- Contact Styles ----- */
 .section {
   padding: 5rem 2rem;
   background: var(--color-bg);
@@ -11,6 +11,7 @@
 
 .section-header {
   margin-bottom: 2.5rem;
+  text-align: center;
 }
 
 .section-label {
@@ -31,84 +32,29 @@
   margin: 0 0 0.75rem;
 }
 
-.resume-grid {
+.contact-grid {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 2.5rem;
-  align-items: start;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-.resume-block {
-  margin-bottom: 2rem;
-}
-
-.resume-block-title {
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--color-blood);
-  margin: 0 0 1rem;
-  padding-bottom: 0.4rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.resume-entry {
-  margin-bottom: 1.5rem;
-}
-
-.entry-header {
+.contact-block {
   display: flex;
   flex-direction: column;
-  margin-bottom: 0.5rem;
+  gap: 1rem;
 }
 
-.entry-company {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-}
-
-.entry-period {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
-.entry-bullets {
-  margin: 0.5rem 0 0 1.25rem;
-  padding: 0;
-}
-
-.entry-bullets li {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  margin-bottom: 0.25rem;
-  line-height: 1.5;
-}
-
-.skill-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.skill-tag {
-  background: color-mix(in srgb, var(--color-blood) 18%, transparent);
-  color: #d88894;
-  font-size: 0.75rem;
+.contact-block-title {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
   font-weight: 600;
-  padding: 0.3rem 0.75rem;
-  border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--color-blood) 35%, transparent);
-  transition: all 0.3s ease;
-  cursor: default;
-}
-
-.skill-tag:hover {
-  background: color-mix(in srgb, var(--color-blood) 30%, transparent);
-  border-color: var(--color-blood);
-  box-shadow: 0 2px 8px rgba(157, 34, 53, 0.3);
-  transform: translateY(-2px);
+  color: var(--color-blood);
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-border);
+  text-shadow: 0 2px 6px rgba(157, 34, 53, 0.3);
 }
 
 .contact-list {
@@ -117,26 +63,51 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.75rem;
 }
 
 .contact-list li {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.contact-list a {
+  color: var(--color-blood);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.contact-list a:hover {
+  color: var(--color-text);
+  text-shadow: 0 0 8px rgba(157, 34, 53, 0.4);
 }
 
 .contact-icon {
-  margin-right: 0.5rem;
+  margin-right: 0.75rem;
+  font-size: 1.1rem;
 }
 
 .text-muted {
   color: var(--color-text-muted);
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   margin: 0.25rem 0 0;
+  line-height: 1.5;
+}
+
+.contact-block p {
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.contact-block strong {
+  color: var(--color-text);
 }
 
 @media (max-width: 720px) {
-  .resume-grid {
+  .contact-grid {
     grid-template-columns: 1fr;
+    gap: 2rem;
   }
 }

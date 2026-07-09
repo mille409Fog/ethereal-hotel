@@ -251,3 +251,28 @@
   padding: 0.375rem 0.875rem;
   font-size: 0.8rem;
 }
+
+/* Project tech badges */
+.project-tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+}
+
+.tech-badge {
+  background: color-mix(in srgb, var(--color-blood) 15%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-blood) 30%, transparent);
+  transition: all 0.3s ease;
+}
+
+.tech-badge:hover {
+  background: color-mix(in srgb, var(--color-blood) 25%, transparent);
+  border-color: var(--color-blood);
+  transform: translateY(-1px);
+}

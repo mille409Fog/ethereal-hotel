@@ -1,46 +1,33 @@
-<!-- ===== C: CRM DEMO ===== -->
-<section id="crm" class="section" appScrollReveal>
+<!-- ===== EXPERIENCE ===== -->
+<section id="experience" class="section" appScrollReveal>
   <div class="section-inner">
     <div class="section-header">
-      <span class="section-label">Demo C</span>
-      <h2>Guest CRM</h2>
+      <span class="section-label">Work History</span>
+      <h2>Professional Experience</h2>
       <p class="section-description">
-        A property-level CRM that consolidates guest history, preferences, and
-        lifetime spend into a single operator view — enabling personalized
-        service at scale.
+        My journey through telecommunications, finance, and retail —
+        building enterprise systems that serve millions of users.
       </p>
     </div>
 
     <div class="demo-card">
-      <div class="crm-toolbar">
-        <input class="form-control crm-search" type="text" placeholder="Search guests..." />
-        <button class="btn btn-primary btn-sm pulse">+ New Guest</button>
+      <div class="experience-list">
+        <div class="experience-entry" *ngFor="let job of jobs">
+          <div class="experience-header">
+            <div class="experience-title">
+              <h3>{{ job.title }}</h3>
+              <span class="experience-company">{{ job.company }}</span>
+            </div>
+            <span class="experience-period">{{ job.period }}</span>
+          </div>
+          <ul class="experience-bullets">
+            <li *ngFor="let bullet of job.bullets">{{ bullet }}</li>
+          </ul>
+          <div class="experience-tech">
+            <span class="tech-badge" *ngFor="let tech of job.tech">{{ tech }}</span>
+          </div>
+        </div>
       </div>
-
-      <table class="crm-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Tier</th>
-            <th>Stays</th>
-            <th>Lifetime Value</th>
-            <th>Last Stay</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let guest of guests">
-            <td>{{ guest.name }}</td>
-            <td><span class="tier-badge tier-{{ guest.tier | lowercase }}">{{ guest.tier }}</span></td>
-            <td>{{ guest.stays }}</td>
-            <td>{{ guest.ltv }}</td>
-            <td>{{ guest.last }}</td>
-            <td><span class="status-badge status-{{ guest.status | lowercase }}">{{ guest.status }}</span></td>
-          </tr>
-        </tbody>
-      </table>
     </div>
-
-    <p class="demo-note">* UI demo only — no live backend connected</p>
   </div>
 </section>

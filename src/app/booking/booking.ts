@@ -9,9 +9,24 @@ import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
   styleUrl: './booking.css',
 })
 export class Booking {
-  rooms = [
-    { name: 'Deluxe King', rate: '$520', tag: 'Most Popular' },
-    { name: 'Grand Suite', rate: '$1,200', tag: 'Best Value' },
-    { name: 'Penthouse', rate: '$3,800', tag: 'Exclusive' }
+  projects = [
+    { 
+      name: 'Revenue Analytics Platform', 
+      description: 'GraphQL-powered analytics processing millions of transactions daily with real-time dashboards',
+      category: 'Telecommunications',
+      tech: ['Angular 22', 'GraphQL', 'TypeScript', 'Azure']
+    },
+    { 
+      name: 'Financial Clearinghouse System', 
+      description: 'High-volume transaction processing for major financial institutions with comprehensive audit trails',
+      category: 'Finance',
+      tech: ['Angular', 'C#', 'T-SQL', 'Blazor']
+    },
+    { 
+      name: 'Device Telemetry Pipeline', 
+      description: 'Scalable microservices architecture processing IoT data at enterprise scale',
+      category: 'Retail',
+      tech: ['Java', 'Spring Boot', 'Kafka', 'Microservices']
+    }
   ];
 }
