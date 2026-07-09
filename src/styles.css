@@ -3,22 +3,22 @@
    =================================================== */
 
 /* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Color palette — warm neutral with gold accent */
-  --color-bg:            #faf9f7;
-  --color-surface:       #ffffff;
-  --color-border:        #e8e4de;
-  --color-text:          #1c1b18;
-  --color-text-secondary:#5a5750;
-  --color-text-muted:    #9c9890;
-  --color-gold:          #a8874a;
-  --color-gold-dark:     #8a6c38;
+  /* Color palette — vampiric elegance with deep burgundy accent */
+  --color-bg:            #1a1618;
+  --color-surface:       #211d1f;
+  --color-border:        #3a3236;
+  --color-text:          #e8dfe3;
+  --color-text-secondary:#b8a8ae;
+  --color-text-muted:    #7a6a70;
+  --color-gold:          #9d2235;
+  --color-gold-dark:     #7a1827;
 
   /* Typography */
-  --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans:  'Crimson Pro', Georgia, serif;
+  --font-serif: 'Cinzel', 'Times New Roman', serif;
 }
 
 /* Reset & Base */
