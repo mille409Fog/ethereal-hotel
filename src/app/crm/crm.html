@@ -12,21 +12,27 @@
 
     <div class="demo-card">
       <div class="experience-list">
-        <div class="experience-entry" *ngFor="let job of jobs">
-          <div class="experience-header">
-            <div class="experience-title">
-              <h3>{{ job.title }}</h3>
-              <span class="experience-company">{{ job.company }}</span>
+        @for (job of jobs; track job.company) {
+          <div class="experience-entry">
+            <div class="experience-header">
+              <div class="experience-title">
+                <h3>{{ job.title }}</h3>
+                <span class="experience-company">{{ job.company }}</span>
+              </div>
+              <span class="experience-period">{{ job.period }}</span>
             </div>
-            <span class="experience-period">{{ job.period }}</span>
+            <ul class="experience-bullets">
+              @for (bullet of job.bullets; track $index) {
+                <li>{{ bullet }}</li>
+              }
+            </ul>
+            <div class="experience-tech">
+              @for (tech of job.tech; track tech) {
+                <span class="tech-badge">{{ tech }}</span>
+              }
+            </div>
           </div>
-          <ul class="experience-bullets">
-            <li *ngFor="let bullet of job.bullets">{{ bullet }}</li>
-          </ul>
-          <div class="experience-tech">
-            <span class="tech-badge" *ngFor="let tech of job.tech">{{ tech }}</span>
-          </div>
-        </div>
+        }
       </div>
     </div>
   </div>

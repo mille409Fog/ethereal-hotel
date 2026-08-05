@@ -1,15 +1,21 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 
 @Component({
   selector: 'app-booking',
-  imports: [CommonModule, ScrollRevealDirective],
+  imports: [ScrollRevealDirective],
   templateUrl: './booking.html',
   styleUrl: './booking.css',
 })
 export class Booking {
   projects = [
+    { 
+      name: 'Real-Time Analytics Dashboard', 
+      description: 'Live data visualization with RxJS observables and Chart.js featuring vampiric theme',
+      category: 'Live Demo',
+      tech: ['Angular 22', 'RxJS', 'Chart.js', 'TypeScript'],
+      link: '/dashboard'
+    },
     { 
       name: 'Revenue Analytics Platform', 
       description: 'GraphQL-powered analytics processing millions of transactions daily with real-time dashboards',

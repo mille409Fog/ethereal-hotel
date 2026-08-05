@@ -1,0 +1,82 @@
+<!-- ===== DASHBOARD ===== -->
+<section class="dashboard-section">
+  <div class="dashboard-inner">
+    
+    <!-- Header -->
+    <div class="dashboard-header">
+      <h1 class="dashboard-title">Real-Time Analytics Dashboard</h1>
+      <p class="dashboard-subtitle">Live system monitoring</p>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="metrics-grid">
+      <div class="metric-card pulse-subtle">
+        <div class="metric-icon">👥</div>
+        <div class="metric-value">{{ metrics.activeUsers }}</div>
+        <div class="metric-label">Active Users</div>
+        <div class="metric-change positive">+{{ (Math.random() * 10 + 5).toFixed(1) }}%</div>
+      </div>
+
+      <div class="metric-card pulse-subtle">
+        <div class="metric-icon">💰</div>
+        <div class="metric-value">${{ metrics.revenue.toLocaleString() }}</div>
+        <div class="metric-label">Revenue (Today)</div>
+        <div class="metric-change positive">+{{ (Math.random() * 15 + 8).toFixed(1) }}%</div>
+      </div>
+
+      <div class="metric-card pulse-subtle">
+        <div class="metric-icon">📊</div>
+        <div class="metric-value">{{ metrics.requests.toLocaleString() }}</div>
+        <div class="metric-label">API Requests/min</div>
+        <div class="metric-change neutral">~{{ (Math.random() * 5).toFixed(1) }}%</div>
+      </div>
+
+      <div class="metric-card pulse-subtle">
+        <div class="metric-icon">⚡</div>
+        <div class="metric-value">{{ metrics.uptime.toFixed(2) }}%</div>
+        <div class="metric-label">System Uptime</div>
+        <div class="metric-change positive">Excellent</div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-grid">
+      
+      <!-- Main Chart -->
+      <div class="chart-card">
+        <h3 class="chart-title">Traffic Over Time</h3>
+        <div class="chart-container" id="lineChart">
+          <canvas id="trafficChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Bar Chart -->
+      <div class="chart-card">
+        <h3 class="chart-title">Performance Metrics</h3>
+        <div class="chart-container" id="barChart">
+          <canvas id="performanceChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Donut Chart -->
+      <div class="chart-card">
+        <h3 class="chart-title">Request Distribution</h3>
+        <div class="chart-container" id="donutChart">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Info Footer -->
+    <div class="dashboard-footer">
+      <p class="dashboard-note">
+        ⚡ Real-time data simulation using RxJS observables • Updates every 2 seconds
+      </p>
+      <p class="dashboard-tech">
+        Built with Angular 22, RxJS, Chart.js, and TypeScript
+      </p>
+    </div>
+
+  </div>
+</section>

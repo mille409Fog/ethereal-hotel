@@ -1,10 +1,9 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 
 @Component({
   selector: 'app-concierge',
-  imports: [CommonModule, ScrollRevealDirective],
+  imports: [ScrollRevealDirective],
   templateUrl: './concierge.html',
   styleUrl: './concierge.css',
 })

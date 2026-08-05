@@ -12,12 +12,16 @@
 
     <div class="demo-card">
       <div class="skills-grid">
-        <div class="skill-category" *ngFor="let category of skillCategories">
-          <h3 class="skill-category-title">{{ category.name }}</h3>
-          <div class="skill-tags">
-            <span class="skill-tag" *ngFor="let skill of category.skills">{{ skill }}</span>
+        @for (category of skillCategories; track category.name) {
+          <div class="skill-category">
+            <h3 class="skill-category-title">{{ category.name }}</h3>
+            <div class="skill-tags">
+              @for (skill of category.skills; track skill) {
+                <span class="skill-tag">{{ skill }}</span>
+              }
+            </div>
           </div>
-        </div>
+        }
       </div>
     </div>
   </div>

@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { Navigation } from './navigation/navigation';
 import { Hero } from './hero/hero';
 import { Booking } from './booking/booking';
@@ -10,7 +9,7 @@ import { Footer } from './footer/footer';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, Navigation, Hero, Booking, Crm, Concierge, Resume, Footer],
+  imports: [Navigation, Hero, Booking, Crm, Concierge, Resume, Footer],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

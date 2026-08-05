@@ -12,17 +12,24 @@
 
     <div class="demo-card">
       <div class="room-grid">
-        <div class="room-card" *ngFor="let project of projects">
-          <div class="room-img-placeholder"></div>
-          <div class="room-info">
-            <span class="room-tag">{{ project.category }}</span>
-            <h3>{{ project.name }}</h3>
-            <p class="room-rate">{{ project.description }}</p>
-            <div class="project-tech">
-              <span class="tech-badge" *ngFor="let tech of project.tech">{{ tech }}</span>
+        @for (project of projects; track project.name) {
+          <div class="room-card">
+            <div class="room-img-placeholder"></div>
+            <div class="room-info">
+              <span class="room-tag">{{ project.category }}</span>
+              <h3>{{ project.name }}</h3>
+              <p class="room-rate">{{ project.description }}</p>
+              <div class="project-tech">
+                @for (tech of project.tech; track tech) {
+                  <span class="tech-badge">{{ tech }}</span>
+                }
+              </div>
+              @if (project.link) {
+                <a [href]="project.link" class="btn btn-outline btn-sm project-link" style="margin-top: 0.75rem;">View Live Demo →</a>
+              }
             </div>
           </div>
-        </div>
+        }
       </div>
     </div>
 
