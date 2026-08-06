@@ -1,0 +1,20 @@
+/* Header */
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.dashboard-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3rem);
+  color: var(--color-text);
+  margin: 0 0 0.5rem;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.5), 0 6px 20px rgba(157, 34, 53, 0.2);
+}
+
+.dashboard-subtitle {
+  color: var(--color-blood);
+  font-size: 1.1rem;
+  margin: 0;
+  text-shadow: 0 2px 6px rgba(157, 34, 53, 0.4);
+}

@@ -1,0 +1,30 @@
+<!-- Metrics Grid -->
+<div class="metrics-grid">
+  <div class="metric-card pulse-subtle">
+    <div class="metric-icon">👥</div>
+    <div class="metric-value">{{ metrics.activeUsers }}</div>
+    <div class="metric-label">Active Users</div>
+    <div class="metric-change positive">+{{ (Math.random() * 10 + 5).toFixed(1) }}%</div>
+  </div>
+
+  <div class="metric-card pulse-subtle">
+    <div class="metric-icon">💰</div>
+    <div class="metric-value">${{ metrics.revenue.toLocaleString() }}</div>
+    <div class="metric-label">Revenue (Today)</div>
+    <div class="metric-change positive">+{{ (Math.random() * 15 + 8).toFixed(1) }}%</div>
+  </div>
+
+  <div class="metric-card pulse-subtle">
+    <div class="metric-icon">📊</div>
+    <div class="metric-value">{{ metrics.requests.toLocaleString() }}</div>
+    <div class="metric-label">API Requests/min</div>
+    <div class="metric-change neutral">~{{ (Math.random() * 5).toFixed(1) }}%</div>
+  </div>
+
+  <div class="metric-card pulse-subtle">
+    <div class="metric-icon">⚡</div>
+    <div class="metric-value">{{ metrics.uptime.toFixed(2) }}%</div>
+    <div class="metric-label">System Uptime</div>
+    <div class="metric-change positive">Excellent</div>
+  </div>
+</div>

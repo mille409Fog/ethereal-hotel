@@ -1,0 +1,19 @@
+/* Dashboard Footer Styles */
+.dashboard-footer {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(157, 34, 53, 0.2);
+  text-align: center;
+}
+
+.dashboard-note {
+  color: #b8a8ae;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-tech {
+  color: #7a6a70;
+  font-size: 0.85rem;
+  font-style: italic;
+}
