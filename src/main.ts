@@ -5,14 +5,11 @@ import { RouterOutlet } from '@angular/router';
   selector: 'app-root',
   imports: [RouterOutlet],
   template: '<router-outlet></router-outlet>',
-  styles: []
+  styles: [],
 })
-export class AppRoot {
-}
-
+export class AppRoot {}
 
 import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config';
 
-bootstrapApplication(AppRoot, appConfig)
-  .catch((err) => console.error(err));
+bootstrapApplication(AppRoot, appConfig).catch((err) => console.error(err));

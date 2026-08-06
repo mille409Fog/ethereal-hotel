@@ -11,7 +11,7 @@ export class MetricsGrid {
     activeUsers: 0,
     revenue: 0,
     requests: 0,
-    uptime: 0
+    uptime: 0,
   };
 
   // Expose Math for template

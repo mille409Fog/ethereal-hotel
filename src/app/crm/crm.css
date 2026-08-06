@@ -51,7 +51,7 @@
   border-radius: 8px;
   padding: 1.5rem;
   overflow-x: auto;
-  box-shadow: 
+  box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.3),
     0 8px 24px rgba(0, 0, 0, 0.2),
     0 0 40px rgba(157, 34, 53, 0.05);
@@ -59,7 +59,7 @@
 }
 
 .demo-card:hover {
-  box-shadow: 
+  box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.35),
     0 12px 32px rgba(0, 0, 0, 0.25),
     0 0 50px rgba(157, 34, 53, 0.1);
@@ -93,7 +93,9 @@
 .form-control:focus {
   outline: none;
   border-color: var(--color-blood);
-  box-shadow: 0 0 0 3px rgba(157, 34, 53, 0.1), 0 0 12px rgba(157, 34, 53, 0.2);
+  box-shadow:
+    0 0 0 3px rgba(157, 34, 53, 0.1),
+    0 0 12px rgba(157, 34, 53, 0.2);
   transform: translateY(-1px);
 }
 
@@ -152,13 +154,31 @@
   text-transform: uppercase;
 }
 
-.tier-diamond  { background: #1a2a3a; color: #6fa8d8; }
-.tier-platinum { background: #2a2537; color: #9a8ab8; }
-.tier-gold     { background: color-mix(in srgb, var(--color-blood) 22%, transparent); color: #d88894; }
-.tier-silver   { background: #2a2a2a; color: #999; }
+.tier-diamond {
+  background: #1a2a3a;
+  color: #6fa8d8;
+}
+.tier-platinum {
+  background: #2a2537;
+  color: #9a8ab8;
+}
+.tier-gold {
+  background: color-mix(in srgb, var(--color-blood) 22%, transparent);
+  color: #d88894;
+}
+.tier-silver {
+  background: #2a2a2a;
+  color: #999;
+}
 
-.status-active   { background: #1a2a1f; color: #6fb880; }
-.status-inactive { background: #252525; color: #888; }
+.status-active {
+  background: #1a2a1f;
+  color: #6fb880;
+}
+.status-inactive {
+  background: #252525;
+  color: #888;
+}
 
 .btn {
   display: inline-block;
@@ -184,7 +204,9 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   transform: translate(-50%, -50%);
-  transition: width 0.6s ease, height 0.6s ease;
+  transition:
+    width 0.6s ease,
+    height 0.6s ease;
 }
 
 .btn:hover::before {
@@ -201,7 +223,9 @@
 .btn-primary:hover {
   background: var(--color-blood-dark);
   border-color: var(--color-blood-dark);
-  box-shadow: 0 4px 20px rgba(157, 34, 53, 0.4), 0 0 20px rgba(157, 34, 53, 0.2);
+  box-shadow:
+    0 4px 20px rgba(157, 34, 53, 0.4),
+    0 0 20px rgba(157, 34, 53, 0.2);
   transform: translateY(-2px);
 }
 
@@ -294,7 +318,7 @@
   .experience-header {
     flex-direction: column;
   }
-  
+
   .experience-period {
     align-self: flex-start;
   }

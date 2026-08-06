@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.angular/
+coverage/
+
+# Lock files
+package-lock.json
+
+# Config files
+*.config.js
+*.config.mjs
+
+# Logs
+*.log

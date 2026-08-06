@@ -11,7 +11,6 @@ import { Footer } from './footer/footer';
   selector: 'app-root',
   imports: [Navigation, Hero, Booking, Crm, Concierge, Resume, Footer],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrl: './app.css',
 })
-export class App {
-}
+export class App {}

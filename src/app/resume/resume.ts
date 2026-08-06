@@ -7,5 +7,4 @@ import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
   templateUrl: './resume.html',
   styleUrl: './resume.css',
 })
-export class Resume {
-}
+export class Resume {}

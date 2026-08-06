@@ -6,5 +6,4 @@ import { Component } from '@angular/core';
   templateUrl: './dashboard-footer.html',
   styleUrl: './dashboard-footer.css',
 })
-export class DashboardFooter {
-}
+export class DashboardFooter {}

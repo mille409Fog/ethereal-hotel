@@ -1,4 +1,11 @@
-import { Component, AfterViewInit, OnDestroy, Input, SimpleChanges, OnChanges } from '@angular/core';
+import {
+  Component,
+  AfterViewInit,
+  OnDestroy,
+  Input,
+  SimpleChanges,
+  OnChanges,
+} from '@angular/core';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 
 // Register Chart.js components
@@ -15,7 +22,7 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
     activeUsers: 0,
     revenue: 0,
     requests: 0,
-    uptime: 0
+    uptime: 0,
   };
 
   private trafficChart?: Chart;
@@ -59,7 +66,7 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
     const labels: string[] = [];
     const data: number[] = [];
     const now = new Date();
-    
+
     for (let i = 11; i >= 0; i--) {
       const time = new Date(now.getTime() - i * 60 * 60 * 1000);
       labels.push(`${time.getHours().toString().padStart(2, '0')}:00`);
@@ -69,21 +76,23 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
     const config: ChartConfiguration = {
       type: 'line',
       data: {
-        labels: labels,
-        datasets: [{
-          label: 'Active Users',
-          data: data,
-          borderColor: '#9d2235',
-          backgroundColor: 'rgba(157, 34, 53, 0.1)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: '#9d2235',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 6
-        }]
+        labels,
+        datasets: [
+          {
+            label: 'Active Users',
+            data,
+            borderColor: '#9d2235',
+            backgroundColor: 'rgba(157, 34, 53, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#9d2235',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -93,37 +102,37 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
             display: true,
             labels: {
               color: '#b8a8ae',
-              font: { size: 12 }
-            }
+              font: { size: 12 },
+            },
           },
           tooltip: {
             backgroundColor: '#211d1f',
             titleColor: '#e8dfe3',
             bodyColor: '#b8a8ae',
             borderColor: '#9d2235',
-            borderWidth: 1
-          }
+            borderWidth: 1,
+          },
         },
         scales: {
           y: {
             beginAtZero: true,
             grid: {
-              color: 'rgba(58, 50, 54, 0.5)'
+              color: 'rgba(58, 50, 54, 0.5)',
             },
             ticks: {
-              color: '#7a6a70'
-            }
+              color: '#7a6a70',
+            },
           },
           x: {
             grid: {
-              color: 'rgba(58, 50, 54, 0.3)'
+              color: 'rgba(58, 50, 54, 0.3)',
             },
             ticks: {
-              color: '#7a6a70'
-            }
-          }
-        }
-      }
+              color: '#7a6a70',
+            },
+          },
+        },
+      },
     };
 
     this.trafficChart = new Chart(ctx, config);
@@ -140,56 +149,58 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
       type: 'bar',
       data: {
         labels: ['API Response', 'Database Query', 'Cache Hit', 'External API', 'Processing'],
-        datasets: [{
-          label: 'Response Time (ms)',
-          data: [45, 120, 12, 230, 85],
-          backgroundColor: [
-            'rgba(157, 34, 53, 0.8)',
-            'rgba(157, 34, 53, 0.7)',
-            'rgba(111, 184, 128, 0.8)',
-            'rgba(157, 34, 53, 0.6)',
-            'rgba(157, 34, 53, 0.75)'
-          ],
-          borderColor: '#9d2235',
-          borderWidth: 1
-        }]
+        datasets: [
+          {
+            label: 'Response Time (ms)',
+            data: [45, 120, 12, 230, 85],
+            backgroundColor: [
+              'rgba(157, 34, 53, 0.8)',
+              'rgba(157, 34, 53, 0.7)',
+              'rgba(111, 184, 128, 0.8)',
+              'rgba(157, 34, 53, 0.6)',
+              'rgba(157, 34, 53, 0.75)',
+            ],
+            borderColor: '#9d2235',
+            borderWidth: 1,
+          },
+        ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            display: false
+            display: false,
           },
           tooltip: {
             backgroundColor: '#211d1f',
             titleColor: '#e8dfe3',
             bodyColor: '#b8a8ae',
             borderColor: '#9d2235',
-            borderWidth: 1
-          }
+            borderWidth: 1,
+          },
         },
         scales: {
           y: {
             beginAtZero: true,
             grid: {
-              color: 'rgba(58, 50, 54, 0.5)'
-            },
-            ticks: {
-              color: '#7a6a70'
-            }
-          },
-          x: {
-            grid: {
-              display: false
+              color: 'rgba(58, 50, 54, 0.5)',
             },
             ticks: {
               color: '#7a6a70',
-              font: { size: 10 }
-            }
-          }
-        }
-      }
+            },
+          },
+          x: {
+            grid: {
+              display: false,
+            },
+            ticks: {
+              color: '#7a6a70',
+              font: { size: 10 },
+            },
+          },
+        },
+      },
     };
 
     this.performanceChart = new Chart(ctx, config);
@@ -206,18 +217,20 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
       type: 'doughnut',
       data: {
         labels: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-        datasets: [{
-          data: [45, 28, 15, 8, 4],
-          backgroundColor: [
-            'rgba(157, 34, 53, 0.9)',
-            'rgba(157, 34, 53, 0.7)',
-            'rgba(157, 34, 53, 0.5)',
-            'rgba(111, 168, 216, 0.7)',
-            'rgba(122, 106, 112, 0.7)'
-          ],
-          borderColor: '#211d1f',
-          borderWidth: 2
-        }]
+        datasets: [
+          {
+            data: [45, 28, 15, 8, 4],
+            backgroundColor: [
+              'rgba(157, 34, 53, 0.9)',
+              'rgba(157, 34, 53, 0.7)',
+              'rgba(157, 34, 53, 0.5)',
+              'rgba(111, 168, 216, 0.7)',
+              'rgba(122, 106, 112, 0.7)',
+            ],
+            borderColor: '#211d1f',
+            borderWidth: 2,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -228,8 +241,8 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
             labels: {
               color: '#b8a8ae',
               padding: 15,
-              font: { size: 11 }
-            }
+              font: { size: 11 },
+            },
           },
           tooltip: {
             backgroundColor: '#211d1f',
@@ -242,11 +255,11 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
                 const label = context.label || '';
                 const value = context.parsed || 0;
                 return `${label}: ${value}%`;
-              }
-            }
-          }
-        }
-      }
+              },
+            },
+          },
+        },
+      },
     };
 
     this.distributionChart = new Chart(ctx, config);
@@ -256,16 +269,18 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
     // Update traffic chart with new data point
     if (this.trafficChart && this.trafficChart.data.datasets[0].data) {
       const data = this.trafficChart.data.datasets[0].data as number[];
-      
+
       // Remove first point and add new one
       data.shift();
       data.push(this.metrics.activeUsers);
-      
+
       // Update labels
       const now = new Date();
       this.trafficChart.data.labels?.shift();
-      this.trafficChart.data.labels?.push(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
-      
+      this.trafficChart.data.labels?.push(
+        `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+      );
+
       this.trafficChart.update('none'); // Update without animation for smoother real-time feel
     }
   }

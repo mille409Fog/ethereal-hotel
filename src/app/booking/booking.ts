@@ -9,30 +9,33 @@ import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 })
 export class Booking {
   projects = [
-    { 
-      name: 'Real-Time Analytics Dashboard', 
-      description: 'Live data visualization with RxJS observables and Chart.js featuring vampiric theme',
+    {
+      name: 'Real-Time Analytics Dashboard',
+      description:
+        'Live data visualization with RxJS observables and Chart.js featuring vampiric theme',
       category: 'Live Demo',
       tech: ['Angular 22', 'RxJS', 'Chart.js', 'TypeScript'],
-      link: '/dashboard'
+      link: '/dashboard',
     },
-    { 
-      name: 'Revenue Analytics Platform', 
-      description: 'GraphQL-powered analytics processing millions of transactions daily with real-time dashboards',
+    {
+      name: 'Revenue Analytics Platform',
+      description:
+        'GraphQL-powered analytics processing millions of transactions daily with real-time dashboards',
       category: 'Telecommunications',
-      tech: ['Angular 22', 'GraphQL', 'TypeScript', 'Azure']
+      tech: ['Angular 22', 'GraphQL', 'TypeScript', 'Azure'],
     },
-    { 
-      name: 'Financial Clearinghouse System', 
-      description: 'High-volume transaction processing for major financial institutions with comprehensive audit trails',
+    {
+      name: 'Financial Clearinghouse System',
+      description:
+        'High-volume transaction processing for major financial institutions with comprehensive audit trails',
       category: 'Finance',
-      tech: ['Angular', 'C#', 'T-SQL', 'Blazor']
+      tech: ['Angular', 'C#', 'T-SQL', 'Blazor'],
     },
-    { 
-      name: 'Device Telemetry Pipeline', 
+    {
+      name: 'Device Telemetry Pipeline',
       description: 'Scalable microservices architecture processing IoT data at enterprise scale',
       category: 'Retail',
-      tech: ['Java', 'Spring Boot', 'Kafka', 'Microservices']
-    }
+      tech: ['Java', 'Spring Boot', 'Kafka', 'Microservices'],
+    },
   ];
 }

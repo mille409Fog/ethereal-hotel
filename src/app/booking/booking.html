@@ -5,8 +5,8 @@
       <span class="section-label">Featured Work</span>
       <h2>Projects</h2>
       <p class="section-description">
-        A selection of enterprise applications I've architected and delivered,
-        spanning telecommunications, finance, and e-commerce at scale.
+        A selection of enterprise applications I've architected and delivered, spanning
+        telecommunications, finance, and e-commerce at scale.
       </p>
     </div>
 
@@ -25,7 +25,12 @@
                 }
               </div>
               @if (project.link) {
-                <a [href]="project.link" class="btn btn-outline btn-sm project-link" style="margin-top: 0.75rem;">View Live Demo →</a>
+                <a
+                  [href]="project.link"
+                  class="btn btn-outline btn-sm project-link"
+                  style="margin-top: 0.75rem"
+                  >View Live Demo →</a
+                >
               }
             </div>
           </div>
@@ -33,6 +38,8 @@
       </div>
     </div>
 
-    <p class="demo-note">* Enterprise projects under NDA — descriptions generalized for confidentiality</p>
+    <p class="demo-note">
+      * Enterprise projects under NDA — descriptions generalized for confidentiality
+    </p>
   </div>
 </section>

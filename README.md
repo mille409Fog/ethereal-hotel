@@ -1,59 +1,200 @@
 # EtherealHotel
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.5.
+[![Code Quality](https://github.com/yourusername/ethereal-hotel/actions/workflows/code-quality.yml/badge.svg)](https://github.com/yourusername/ethereal-hotel/actions/workflows/code-quality.yml)
 
-## Development server
+A professional portfolio and real-time dashboard application built with Angular 22, showcasing modern development practices and enterprise-grade code quality standards.
 
-To start a local development server, run:
+## 🌟 Features
 
-```bash
-ng serve
-```
+- **Real-Time Dashboard**: Live data visualization with RxJS observables and Chart.js
+- **Responsive Design**: Mobile-first approach with smooth animations
+- **Code Quality**: Automated linting, formatting, and pre-commit hooks
+- **CI/CD Pipeline**: GitHub Actions for automated testing and deployment
+- **Modern Stack**: Angular 22 with TypeScript 6.0
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## 🚀 Quick Start
 
-## Code scaffolding
+### Prerequisites
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- Node.js (v20+)
+- npm (v11+)
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+### Installation
 
 ```bash
-ng build
+# Clone the repository
+git clone <repository-url>
+cd ethereal-hotel
+
+# Install dependencies
+npm install
+
+# Start development server
+npm start
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Navigate to `http://localhost:4200/` to view the application.
 
-## Running unit tests
+## 📜 Available Scripts
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+### Development
+```bash
+# Start development server
+npm start
+
+# Build for production
+npm run build
+
+# Watch mode for development
+npm run watch
+```
+
+### Testing
+```bash
+# Run unit tests with Vitest
+npm test
+```
+
+### Code Quality
+```bash
+# Run ESLint
+npm run lint
+
+# Fix ESLint issues automatically
+npm run lint:fix
+
+# Format code with Prettier
+npm run format
+
+# Check code formatting
+npm run format:check
+
+# Run all quality checks
+npm run code-quality
+```
+
+## 🛠️ Tech Stack
+
+- **Frontend Framework**: Angular 22
+- **Language**: TypeScript 6.0
+- **State Management**: RxJS 7.8
+- **Charts**: Chart.js 4.5
+- **Build Tool**: Angular CLI 22
+- **Testing**: Vitest 4.0
+- **Code Quality**: ESLint + Prettier + Husky
+- **CI/CD**: GitHub Actions
+
+## 📋 Code Quality Standards
+
+This project implements professional code quality tools and practices:
+
+- ✅ **ESLint**: Strict TypeScript and Angular linting rules
+- ✅ **Prettier**: Consistent code formatting
+- ✅ **Husky**: Git hooks for pre-commit validation
+- ✅ **Lint-staged**: Automatic formatting of staged files
+- ✅ **Commitlint**: Conventional commit message validation
+- ✅ **CI/CD Pipeline**: Automated testing and builds
+
+### Git Commit Convention
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```bash
-ng test
+# Examples
+git commit -m "feat: add user authentication"
+git commit -m "fix: resolve dashboard loading issue"
+git commit -m "docs: update README"
 ```
 
-## Running end-to-end tests
+**Commit Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`
 
-For end-to-end (e2e) testing, run:
+For detailed information, see [CODE_QUALITY.md](./CODE_QUALITY.md).
+
+## 🏗️ Project Structure
+
+```
+ethereal-hotel/
+├── src/
+│   ├── app/
+│   │   ├── dashboard/        # Real-time dashboard feature
+│   │   ├── booking/          # Projects showcase
+│   │   ├── crm/             # Experience section
+│   │   ├── concierge/       # Skills section
+│   │   ├── resume/          # Resume section
+│   │   ├── directives/      # Reusable directives
+│   │   ├── services/        # Shared services
+│   │   └── ...
+│   └── ...
+├── .github/
+│   └── workflows/           # CI/CD pipelines
+├── .husky/                  # Git hooks
+├── CODE_QUALITY.md         # Code quality guide
+└── ...
+```
+
+## 🔍 Key Features Demonstrated
+
+### 1. Real-Time Data Handling
+- RxJS observables for reactive programming
+- Automatic memory management with takeUntil pattern
+- Live metric updates every 2 seconds
+
+### 2. Modern Angular Patterns
+- Standalone components (Angular 22)
+- Lazy loading with route-based code splitting
+- OnPush change detection strategy (recommended)
+
+### 3. Professional Development Workflow
+- Pre-commit hooks prevent broken code
+- Automated CI/CD pipeline
+- Conventional commit messages
+- Comprehensive linting rules
+
+### 4. Code Organization
+- Feature-based folder structure
+- Reusable components and directives
+- Separation of concerns
+- TypeScript strict mode
+
+## 🧪 Testing
+
+This project uses Vitest for fast, modern unit testing:
 
 ```bash
-ng e2e
+npm test
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## 🚢 Deployment
 
-## Additional Resources
+### Build for Production
+
+```bash
+npm run build
+```
+
+The build artifacts will be stored in the `dist/` directory, optimized for production deployment.
+
+## 👨‍💻 Development
+
+### VS Code Setup
+
+Recommended extensions (defined in `.vscode/extensions.json`):
+- Angular Language Service
+- ESLint
+- Prettier
+- EditorConfig
+
+The project includes VS Code settings for automatic formatting and linting on save.
+
+### Pre-commit Hooks
+
+When you commit code, Husky automatically:
+1. Formats staged files with Prettier
+2. Runs ESLint and fixes auto-fixable issues
+3. Validates commit message format
+
+If issues are found, the commit will be blocked until they're resolved.
+
+## 📚 Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
