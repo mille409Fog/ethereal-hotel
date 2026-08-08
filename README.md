@@ -18,8 +18,11 @@ A professional portfolio and real-time dashboard application built with Angular 
 
 - Node.js (v20+)
 - npm (v11+)
+- Python 3.9+ (for backend)
 
 ### Installation
+
+#### Frontend Setup
 
 ```bash
 # Clone the repository
@@ -34,6 +37,34 @@ npm start
 ```
 
 Navigate to `http://localhost:4200/` to view the application.
+
+#### Backend Setup
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Run the setup and start script (Windows)
+run.bat
+
+# Or manually:
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment (Windows)
+venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start backend server
+python main.py
+```
+
+Backend will be available at:
+- REST API: `http://localhost:8000`
+- WebSocket: `ws://localhost:8000/ws`
+- API Docs: `http://localhost:8000/docs`
 
 ## 📜 Available Scripts
 
@@ -75,7 +106,8 @@ npm run code-quality
 
 ## 🛠️ Tech Stack
 
-- **Frontend Framework**: Angular 22
+### Frontend
+- **Framework**: Angular 22
 - **Language**: TypeScript 6.0
 - **State Management**: RxJS 7.8
 - **Charts**: Chart.js 4.5
@@ -83,6 +115,14 @@ npm run code-quality
 - **Testing**: Vitest 4.0
 - **Code Quality**: ESLint + Prettier + Husky
 - **CI/CD**: GitHub Actions
+
+### Backend
+- **Framework**: FastAPI 0.115
+- **Language**: Python 3.9+
+- **Server**: Uvicorn (ASGI)
+- **Validation**: Pydantic 2.9
+- **Real-time**: WebSockets
+- **API Docs**: Auto-generated (Swagger/ReDoc)
 
 ## 📋 Code Quality Standards
 
@@ -125,6 +165,11 @@ ethereal-hotel/
 │   │   ├── services/        # Shared services
 │   │   └── ...
 │   └── ...
+├── backend/
+│   ├── main.py              # FastAPI application
+│   ├── requirements.txt     # Python dependencies
+│   ├── run.bat             # Windows startup script
+│   └── README.md           # Backend documentation
 ├── .github/
 │   └── workflows/           # CI/CD pipelines
 ├── .husky/                  # Git hooks
