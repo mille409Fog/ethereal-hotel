@@ -1,6 +1,8 @@
 # EtherealHotel Dashboard Backend
 
-A FastAPI-based backend providing real-time metrics via WebSocket and REST API endpoints.
+A FastAPI-based backend providing real-time hotel metrics via WebSocket and REST API
+endpoints. Every dashboard value is **derived from real records** (rooms, guests,
+bookings) stored in a SQLite database via SQLAlchemy — not random numbers.
 
 ## 🚀 Quick Start
 
@@ -12,8 +14,35 @@ run.bat
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+
+# Create the schema and load realistic sample data
+python -m alembic upgrade head
+python -m db.seed --reset
+
 python main.py
 ```
+
+> On first run, `main.py` also creates the schema and seeds sample data automatically
+> if the database is empty, so the manual `alembic`/`seed` steps are optional for a quick demo.
+
+## 🗄️ Database
+
+Persistence is provided by **SQLAlchemy** (ORM) + **Alembic** (migrations) over a local
+**SQLite** file (`ethereal_hotel.db`, git-ignored). Override the location with the
+`DATABASE_URL` env var (e.g. Postgres in production).
+
+| Command | Purpose |
+| --- | --- |
+| `python -m alembic upgrade head` | Apply migrations / create the schema |
+| `python -m alembic revision --autogenerate -m "msg"` | Generate a new migration from model changes |
+| `python -m db.seed` | Seed sample data (only if empty) |
+| `python -m db.seed --reset` | Wipe and reseed |
+
+**Domain model:** `Room` (number, type, floor, rate, operational/maintenance status),
+`Guest`, and `Booking` (guest ↔ room, check-in/out dates, status, rate, party size).
+Metrics such as occupancy, revenue today, arrivals today, ADR, and RevPAR are computed
+from these rows in [`db/metrics.py`](db/metrics.py). Adding or deleting a booking
+changes the reported numbers immediately.
 
 **Server will start at:**
 - 🌐 REST API: http://localhost:8000
@@ -82,16 +111,43 @@ ws.onmessage = (event) => {
 };
 ```
 
+### Booking Endpoints (demonstrate live metric changes)
+
+```bash
+# Create a booking (raises guests-in-house / revenue for today)
+curl -X POST http://localhost:8000/api/bookings \
+  -H "Content-Type: application/json" \
+  -d '{"guest_id":1,"room_id":1,"check_in":"2026-08-08","check_out":"2026-08-11","adults":2,"status":"checked_in","nightly_rate":500}'
+
+# Delete a booking (restores the metrics)
+curl -X DELETE http://localhost:8000/api/bookings/1
+```
+
 ## Data Models
 
 ### Metrics
+All fields are derived from the database. Legacy fields are kept for the existing
+frontend contract; hotel-domain fields are added alongside.
 ```python
 {
-  "activeUsers": int,      # Number of active users (800-1300)
-  "revenue": float,        # Revenue in $ (15000-20000)
-  "requests": int,         # API requests per minute (500-700)
-  "uptime": float,         # System uptime % (99.8-100)
-  "timestamp": string      # ISO format timestamp
+  # legacy contract
+  "activeUsers": int,      # guests currently in house
+  "revenue": float,        # room revenue recognized today ($)
+  "requests": int,         # arrivals (check-ins) today
+  "uptime": float,         # room availability % (operational / total)
+  "timestamp": string,     # ISO format timestamp
+  # hotel-domain fields
+  "occupancy": float,      # occupied / operational rooms (%)
+  "guestsInHouse": int,
+  "revenueToday": float,
+  "arrivalsToday": int,
+  "departuresToday": int,
+  "occupiedRooms": int,
+  "availableRooms": int,
+  "operationalRooms": int,
+  "totalRooms": int,
+  "adr": float,            # average daily rate
+  "revpar": float          # revenue per available room
 }
 ```
 
@@ -118,11 +174,18 @@ You can test all endpoints directly from the browser!
 
 ```
 backend/
-├── main.py              # FastAPI application
+├── main.py              # FastAPI application (REST + WebSocket)
+├── db/                  # Database layer
+│   ├── database.py      #   engine, session, Base, init_db
+│   ├── models.py        #   Room, Guest, Booking ORM models
+│   ├── metrics.py       #   derive dashboard metrics from rows
+│   └── seed.py          #   realistic sample-data seeder
+├── alembic/             # Alembic migrations (versions/ + env.py)
+├── alembic.ini          # Alembic config (DB URL resolved at runtime)
 ├── requirements.txt     # Python dependencies
-├── .env.example        # Environment variables template
-├── .gitignore          # Git ignore rules
-└── README.md           # This file
+├── .env.example         # Environment variables template
+├── .gitignore           # Git ignore rules
+└── README.md            # This file
 ```
 
 ## Integration with Angular Frontend
@@ -233,6 +296,9 @@ Then edit `.env` with your configuration.
 - **FastAPI**: Modern Python web framework
 - **Uvicorn**: ASGI server
 - **Pydantic**: Data validation
+- **SQLAlchemy 2.0**: ORM / database layer
+- **Alembic**: Schema migrations
+- **SQLite**: Default persistence (swap via `DATABASE_URL`)
 - **WebSockets**: Real-time communication
 - **Python 3.9+**: Latest Python features
 

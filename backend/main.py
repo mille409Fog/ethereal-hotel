@@ -1,50 +1,94 @@
 """
 FastAPI Backend for EtherealHotel Real-Time Dashboard
-Provides WebSocket and REST API endpoints for live metrics
+
+Serves WebSocket and REST endpoints for live hotel metrics. All dashboard
+values are **derived from real records** (rooms, guests, bookings) in the
+database — no RNG. Simulated "live motion" only jitters the in-house guest
+count around the real value so the stream feels alive.
 """
 
 import asyncio
-import json
 import random
-from datetime import datetime
-from typing import Dict, List
+from datetime import date
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from db import Booking, BookingStatus, Guest, Room, SessionLocal, get_db, init_db
+from db.metrics import compute_dashboard, compute_metrics
 
 
-# Data Models
+# ---------------------------------------------------------------------------
+# Pydantic schemas
+# ---------------------------------------------------------------------------
 class Metrics(BaseModel):
-    """Real-time metrics data model"""
+    """Point-in-time dashboard metrics, derived from the database."""
+
+    # Legacy fields (kept for the existing frontend contract).
     activeUsers: int
     revenue: float
     requests: int
     uptime: float
     timestamp: str
+    # Explicit hotel-domain fields.
+    occupancy: float
+    guestsInHouse: int
+    revenueToday: float
+    arrivalsToday: int
+    departuresToday: int
+    occupiedRooms: int
+    availableRooms: int
+    operationalRooms: int
+    totalRooms: int
+    adr: float
+    revpar: float
 
 
 class HistoricalData(BaseModel):
-    """Historical data point for charts"""
     timestamp: str
     value: float
 
 
 class DashboardData(BaseModel):
-    """Complete dashboard data"""
     metrics: Metrics
-    historicalUsers: List[HistoricalData]
-    historicalRevenue: List[HistoricalData]
+    historicalUsers: list[HistoricalData]
+    historicalRevenue: list[HistoricalData]
 
 
-# Initialize FastAPI app
+class BookingCreate(BaseModel):
+    guest_id: int
+    room_id: int
+    check_in: date
+    check_out: date
+    adults: int = 1
+    children: int = 0
+    nightly_rate: float | None = None  # defaults to the room's base rate
+    status: BookingStatus = BookingStatus.RESERVED
+
+
+class BookingOut(BaseModel):
+    id: int
+    guest_id: int
+    room_id: int
+    check_in: date
+    check_out: date
+    adults: int
+    children: int
+    nightly_rate: float
+    status: BookingStatus
+
+
+# ---------------------------------------------------------------------------
+# App setup
+# ---------------------------------------------------------------------------
 app = FastAPI(
     title="EtherealHotel Dashboard API",
-    description="Real-time dashboard backend with WebSocket support",
-    version="1.0.0"
+    description="Real-time hotel dashboard backend, powered by real records.",
+    version="2.0.0",
 )
 
-# CORS Configuration - Allow Angular frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -59,139 +103,162 @@ app.add_middleware(
 )
 
 
-# WebSocket Connection Manager
 class ConnectionManager:
-    """Manages active WebSocket connections"""
-    
+    """Manages active WebSocket connections."""
+
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
-    
+        self.active_connections: list[WebSocket] = []
+
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
         print(f"Client connected. Total connections: {len(self.active_connections)}")
-    
+
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
         print(f"Client disconnected. Total connections: {len(self.active_connections)}")
-    
+
     async def broadcast(self, message: dict):
-        """Send message to all connected clients"""
         for connection in self.active_connections:
             try:
                 await connection.send_json(message)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Error sending to client: {e}")
 
 
 manager = ConnectionManager()
 
 
-# Data Generation Functions
-def generate_metrics() -> Metrics:
-    """Generate random metrics data simulating real-time changes"""
-    return Metrics(
-        activeUsers=random.randint(800, 1300),
-        revenue=round(random.uniform(15000, 20000), 2),
-        requests=random.randint(500, 700),
-        uptime=round(99.8 + random.random() * 0.2, 2),
-        timestamp=datetime.now().isoformat()
-    )
+def _live_metrics(db: Session) -> dict:
+    """Real metrics with a touch of live motion on the in-house guest count.
+
+    The jitter is bounded and applied only to ``activeUsers`` so the numbers
+    move like a live feed, while every other value stays exactly as recorded.
+    """
+    metrics = compute_metrics(db)
+    base = metrics["guestsInHouse"]
+    if base > 0:
+        jitter = random.randint(-min(3, base), 3)
+        metrics["activeUsers"] = max(0, base + jitter)
+    return metrics
 
 
-def generate_historical_data(points: int = 10) -> List[HistoricalData]:
-    """Generate historical data points for charts"""
-    data = []
-    base_value = random.randint(800, 1000)
-    
-    for i in range(points):
-        value = base_value + random.randint(-50, 150)
-        data.append(HistoricalData(
-            timestamp=datetime.now().isoformat(),
-            value=value
-        ))
-    
-    return data
-
-
-# REST API Endpoints
+# ---------------------------------------------------------------------------
+# REST endpoints
+# ---------------------------------------------------------------------------
 @app.get("/")
 async def root():
-    """Health check endpoint"""
+    """Health check endpoint."""
     return {
         "status": "online",
         "service": "EtherealHotel Dashboard API",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "endpoints": {
             "metrics": "/api/metrics",
             "dashboard": "/api/dashboard",
-            "websocket": "/ws"
-        }
+            "bookings": "/api/bookings",
+            "websocket": "/ws",
+        },
     }
 
 
 @app.get("/api/metrics", response_model=Metrics)
-async def get_metrics():
-    """Get current metrics snapshot"""
-    return generate_metrics()
+async def get_metrics(db: Session = Depends(get_db)):
+    """Current metrics snapshot, computed from the database."""
+    return compute_metrics(db)
 
 
 @app.get("/api/dashboard", response_model=DashboardData)
-async def get_dashboard():
-    """Get complete dashboard data including metrics and historical data"""
-    return DashboardData(
-        metrics=generate_metrics(),
-        historicalUsers=generate_historical_data(20),
-        historicalRevenue=generate_historical_data(20)
+async def get_dashboard(db: Session = Depends(get_db)):
+    """Complete dashboard data (metrics + historical series), from the database."""
+    return compute_dashboard(db)
+
+
+@app.post("/api/bookings", response_model=BookingOut, status_code=201)
+async def create_booking(payload: BookingCreate, db: Session = Depends(get_db)):
+    """Create a booking. Immediately affects the derived metrics."""
+    if payload.check_out <= payload.check_in:
+        raise HTTPException(422, "check_out must be after check_in")
+    if not db.get(Guest, payload.guest_id):
+        raise HTTPException(404, f"Guest {payload.guest_id} not found")
+    room = db.get(Room, payload.room_id)
+    if not room:
+        raise HTTPException(404, f"Room {payload.room_id} not found")
+
+    booking = Booking(
+        guest_id=payload.guest_id,
+        room_id=payload.room_id,
+        check_in=payload.check_in,
+        check_out=payload.check_out,
+        adults=payload.adults,
+        children=payload.children,
+        nightly_rate=payload.nightly_rate
+        if payload.nightly_rate is not None
+        else room.base_rate,
+        status=payload.status,
     )
+    db.add(booking)
+    db.commit()
+    db.refresh(booking)
+    return booking
 
 
-# WebSocket Endpoint
+@app.delete("/api/bookings/{booking_id}", status_code=204)
+async def delete_booking(booking_id: int, db: Session = Depends(get_db)):
+    """Delete a booking. Immediately affects the derived metrics."""
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, f"Booking {booking_id} not found")
+    db.delete(booking)
+    db.commit()
+    return None
+
+
+# ---------------------------------------------------------------------------
+# WebSocket endpoint
+# ---------------------------------------------------------------------------
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """
-    WebSocket endpoint for real-time metrics streaming
-    Sends updates every 2 seconds
-    """
+    """Streams live metrics every 2 seconds, re-reading the DB each tick."""
     await manager.connect(websocket)
-    
     try:
         while True:
-            # Generate and send new metrics
-            metrics = generate_metrics()
-            await websocket.send_json(metrics.model_dump())
-            
-            # Wait 2 seconds before next update
+            with SessionLocal() as db:
+                metrics = _live_metrics(db)
+            await websocket.send_json(metrics)
             await asyncio.sleep(2)
-            
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"WebSocket error: {e}")
         manager.disconnect(websocket)
 
 
-# Background task for broadcasting to all clients
+# ---------------------------------------------------------------------------
+# Lifecycle
+# ---------------------------------------------------------------------------
 @app.on_event("startup")
 async def startup_event():
-    """Start background tasks on application startup"""
-    print("🚀 EtherealHotel Dashboard API started")
-    print("📊 WebSocket server ready at ws://localhost:8000/ws")
-    print("🌐 REST API ready at http://localhost:8000")
+    """Ensure the schema exists and seed once if the DB is empty."""
+    init_db()
+    with SessionLocal() as db:
+        if db.query(Room).count() == 0:
+            print("Empty database detected — seeding sample data...")
+            from db.seed import seed
+
+            seed(reset=False)
+    print("EtherealHotel Dashboard API started")
+    print("WebSocket server ready at ws://localhost:8000/ws")
+    print("REST API ready at http://localhost:8000")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Cleanup on application shutdown"""
-    print("👋 Shutting down EtherealHotel Dashboard API")
+    print("Shutting down EtherealHotel Dashboard API")
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

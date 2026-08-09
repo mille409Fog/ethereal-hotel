@@ -27,6 +27,11 @@ wheels/
 .env
 .venv
 
+# Database (SQLite is created/seeded at runtime)
+*.db
+*.sqlite
+*.sqlite3
+
 # IDEs
 .vscode/
 .idea/
