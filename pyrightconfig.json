@@ -1,0 +1,21 @@
+{
+  // The repo root mixes an Angular frontend with a Python backend. The backend
+  // is a self-contained package rooted at ./backend and is run from there, so
+  // imports like `from db import ...` are resolved relative to ./backend.
+  //
+  // This execution environment tells Pylance/Pyright to treat ./backend as an
+  // import root for every file under it, which is what clears the false
+  // "import could not be resolved" squiggles in main.py and friends.
+  "executionEnvironments": [
+    {
+      "root": "backend"
+    }
+  ],
+
+  // The backend's third-party dependencies (fastapi, pydantic, sqlalchemy, ...)
+  // live in ./backend/venv. Point Pyright/Pylance at that environment so those
+  // imports resolve without relying on the VS Code interpreter picker.
+  // venvPath is the directory that CONTAINS the venv; venv is its folder name.
+  "venvPath": "backend",
+  "venv": "venv"
+}

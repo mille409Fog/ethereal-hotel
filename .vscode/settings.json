@@ -22,6 +22,17 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
 
+  // Python settings
+  // The backend is a self-contained package rooted at ./backend and is run
+  // from there (e.g. `from db import ...`). Add it to Pylance's search path
+  // so those imports resolve when the workspace is opened at the repo root.
+  "python.analysis.extraPaths": ["./backend"],
+  // The backend's dependencies live in ./backend/venv. Default Pylance to that
+  // interpreter so third-party imports (fastapi, pydantic, sqlalchemy) resolve.
+  // Note: this only applies when no interpreter has been explicitly selected
+  // for the workspace — if imports still fail, use the interpreter picker.
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/Scripts/python.exe",
+
   // File associations
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
