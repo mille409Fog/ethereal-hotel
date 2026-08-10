@@ -150,7 +150,17 @@ git commit -m "docs: update README"
 
 **Commit Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`
 
-For detailed information, see [CODE_QUALITY.md](./CODE_QUALITY.md).
+### Coding Standards
+
+Enforced by ESLint (`eslint.config.mjs`) and Prettier (`.prettierrc`):
+
+- **TypeScript**: no `any`, explicit return types and accessibility modifiers, prefer `const`,
+  max function complexity 10 / length 100 lines.
+- **Angular**: `app-` selector prefix, lifecycle interfaces, prefer OnPush change detection,
+  `trackBy` in `*ngFor`, no method calls in templates.
+- **Templates**: `[(ngModel)]` banana-in-box syntax, async pipe for observables, no duplicate attributes.
+- **General**: no `console.log` (use `console.warn`/`console.error`), no `debugger`, strict equality
+  (`===`), always use curly braces, prefer arrow functions and template literals.
 
 ## 🏗️ Project Structure
 
@@ -175,7 +185,7 @@ ethereal-hotel/
 ├── .github/
 │   └── workflows/           # CI/CD pipelines
 ├── .husky/                  # Git hooks
-├── CODE_QUALITY.md         # Code quality guide
+├── ARCHITECTURE.md         # System architecture & data flow
 └── ...
 ```
 

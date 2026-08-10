@@ -47,7 +47,7 @@ single biggest credibility lever. Use the hotel domain that's already implied.
 
 ---
 
-## 3. Cut the documentation theater
+## 3. Cut the documentation theater — ✅ DONE (verified 2026-08-09)
 **Effort:** S · **Why:** ~15 root markdown files (`BACKEND_COMPLETE.md`,
 `IMPLEMENTATION_COMPLETE.md`, `BEFORE_AND_AFTER.md`, `SETUP_SUMMARY.md`, etc.) read as filler and
 lower signal.
@@ -57,12 +57,14 @@ lower signal.
 - Fix the README badge URL (`yourusername` placeholder is broken).
 
 **DoD:**
-- [ ] Root has ≤4 markdown docs plus this roadmap.
-- [ ] README badge points at the real repo and renders.
+- [x] Root has ≤4 markdown docs plus this roadmap. (3: README, ARCHITECTURE, ROADMAP; backend/README kept.)
+- [x] README badge points at the real repo and renders. (`mille409Fog/ethereal-hotel`; `yourusername`
+      placeholder fixed. Note: badge shows "no status" until CI runs on the default branch — resolves
+      naturally with Item 4.)
 
 ---
 
-## 4. Real tests + meaningful CI
+## 4. Real tests + meaningful CI — ✅ DONE (verified 2026-08-09)
 **Effort:** M · **Why:** Only two `.spec` files and a manual `test_api.py` exist. A green badge
 should mean something.
 
@@ -71,9 +73,20 @@ should mean something.
 - CI fails on test failure, not just lint.
 
 **DoD:**
-- [ ] `pytest` suite exists and passes; wired into the GitHub Actions workflow.
-- [ ] Frontend tests cover the service and the fallback path in `dashboard.ts`.
-- [ ] CI job runs both test suites.
+- [x] `pytest` suite exists and passes; wired into the GitHub Actions workflow.
+      (`backend/tests/` — 9 tests over REST endpoints + the WebSocket stream, on an isolated
+      seeded SQLite DB via `conftest.py`; new `backend` job runs `pytest` in CI.)
+- [x] Frontend tests cover the service and the fallback path in `dashboard.ts`.
+      (`dashboard-api.service.spec.ts` covers REST/health/WebSocket; `dashboard.spec.ts` covers
+      backend-healthy, backend-unavailable, and WebSocket-error→mock fallback. 20 specs total.)
+- [x] CI job runs both test suites. (`.github/workflows/code-quality.yml`: `frontend` job runs
+      `npm run test`, `backend` job runs `pytest`; both fail the build on any test failure.
+      Re-verified 2026-08-09: backend 9/9, frontend 20/20 pass locally.)
+
+**CI trigger (fixed 2026-08-09):** the workflow now triggers on `push`/`pull_request` to
+`[main, develop, development-alpha]`, so CI runs on the working branch and the badge picks up a
+real status once this branch is pushed. (Badge on the default branch `main` will still read
+"no status" until code lands on `main`.)
 
 ---
 

@@ -39,12 +39,13 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         clearTimeout: 'readonly',
-        // Test globals
+        // Test globals (Vitest)
         describe: 'readonly',
         it: 'readonly',
         expect: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
+        vi: 'readonly',
       },
     },
     plugins: {

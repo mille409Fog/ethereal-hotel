@@ -2,13 +2,13 @@ name: Code Quality
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, development-alpha]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, development-alpha]
 
 jobs:
-  code-quality:
-    name: Code Quality Checks
+  frontend:
+    name: Frontend (lint, test, build)
     runs-on: ubuntu-latest
 
     strategy:
@@ -34,7 +34,7 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
-      - name: Run tests
+      - name: Run frontend tests
         run: npm run test
 
       - name: Build application
@@ -47,3 +47,30 @@ jobs:
           name: build-artifacts
           path: dist/
           retention-days: 7
+
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ['3.11']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+        working-directory: backend
+
+      - name: Run pytest
+        run: pytest
+        working-directory: backend

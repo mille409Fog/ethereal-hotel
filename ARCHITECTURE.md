@@ -119,11 +119,9 @@ ethereal-hotel/
 │
 ├── Documentation
 │   ├── README.md                     # Main documentation
-│   ├── BACKEND_SETUP.md             # Backend setup guide
-│   ├── BACKEND_COMPLETE.md          # Backend completion summary
 │   ├── ARCHITECTURE.md              # This file
-│   ├── CODE_QUALITY.md              # Code quality standards
-│   └── QUICK_REFERENCE.md           # Quick reference
+│   ├── ROADMAP.md                   # Planned improvements
+│   └── backend/README.md            # Backend documentation
 │
 └── Configuration
     ├── angular.json                  # Angular config
