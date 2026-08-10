@@ -1,7 +1,13 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { interval, Subject } from 'rxjs';
-import { map, takeUntil } from 'rxjs/operators';
-import { DashboardApiService } from '../services/dashboard-api.service';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import {
+  BackendStatus,
+  DashboardApiService,
+  IHistoricalData,
+  IMetrics,
+} from '../services/dashboard-api.service';
+import { OFFLINE_DASHBOARD } from '../services/offline-dashboard.fixture';
 import { ChartsSection } from './charts-section/charts-section';
 import { DashboardFooter } from './dashboard-footer/dashboard-footer';
 import { DashboardHeader } from './dashboard-header/dashboard-header';
@@ -16,34 +22,42 @@ import { MetricsGrid } from './metrics-grid/metrics-grid';
 export class Dashboard implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
-  // Flag to toggle between mock data and real backend
+  // Flag to toggle between the committed fixture and the real backend
   private useBackend = false;
-  backendStatus: 'checking' | 'connected' | 'disconnected' = 'checking';
+  backendStatus: BackendStatus = 'checking';
 
-  // Real-time metrics
-  metrics = {
-    activeUsers: 1247,
-    revenue: 18500,
-    requests: 687,
-    uptime: 99.92,
-  };
+  // Seeded from the committed snapshot so the grid never renders zeroes while
+  // the health check is in flight. Replaced wholesale once the backend answers.
+  metrics: IMetrics = OFFLINE_DASHBOARD.metrics;
+  historicalGuests: IHistoricalData[] = OFFLINE_DASHBOARD.historicalGuests;
+  historicalRevenue: IHistoricalData[] = OFFLINE_DASHBOARD.historicalRevenue;
 
   constructor(private dashboardApi: DashboardApiService) {}
 
   async ngOnInit(): Promise<void> {
-    // Check if backend is available
-    const backendAvailable = await this.dashboardApi.checkBackendHealth();
-
-    if (backendAvailable) {
-      this.useBackend = true;
-      this.backendStatus = 'connected';
-      console.log('✅ Using real backend data');
-      this.startRealTimeUpdatesFromBackend();
-    } else {
-      this.backendStatus = 'disconnected';
-      console.log('⚠️  Backend not available, using mock data');
-      this.startMockUpdates();
+    if (!(await this.dashboardApi.checkBackendHealth())) {
+      this.useOfflineFixture();
+      return;
     }
+
+    this.useBackend = true;
+    this.backendStatus = 'connected';
+
+    // One REST read for the historical series the charts need, then the socket
+    // takes over for the live snapshot.
+    try {
+      const dashboard = await this.dashboardApi.getDashboard();
+      this.metrics = dashboard.metrics;
+      this.historicalGuests = dashboard.historicalGuests;
+      this.historicalRevenue = dashboard.historicalRevenue;
+    } catch {
+      // The health check passed but this read didn't. Keep the fixture history
+      // and let the socket drive the live numbers rather than blanking the page.
+      this.historicalGuests = OFFLINE_DASHBOARD.historicalGuests;
+      this.historicalRevenue = OFFLINE_DASHBOARD.historicalRevenue;
+    }
+
+    this.startRealTimeUpdatesFromBackend();
   }
 
   ngOnDestroy(): void {
@@ -63,39 +77,27 @@ export class Dashboard implements OnInit, OnDestroy {
       .connectWebSocket()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        next: (data: any) => {
-          this.metrics = {
-            activeUsers: data.activeUsers,
-            revenue: data.revenue,
-            requests: data.requests,
-            uptime: data.uptime,
-          };
+        next: (metrics: IMetrics) => {
+          this.metrics = metrics;
         },
-        error: (error) => {
-          console.error('WebSocket error, falling back to mock data:', error);
-          this.backendStatus = 'disconnected';
-          this.startMockUpdates();
+        error: () => {
+          this.useOfflineFixture();
         },
       });
   }
 
   /**
-   * Fallback: Generate mock data locally (original behavior)
+   * Fall back to the committed snapshot of a real seeded backend.
+   *
+   * Deliberately *not* a generator: the previous implementation invented
+   * numbers with `Math.random()` every two seconds, which contradicted the
+   * README's claim that every value is derived from real records. A recording
+   * is honest — it just has to say so, which the header badge does.
    */
-  private startMockUpdates(): void {
-    interval(2000)
-      .pipe(
-        takeUntil(this.destroy$),
-        map(() => ({
-          activeUsers: Math.floor(Math.random() * 500) + 800,
-          revenue: Math.floor(Math.random() * 5000) + 15000,
-          requests: Math.floor(Math.random() * 200) + 500,
-          uptime: 99.8 + Math.random() * 0.2,
-        }))
-      )
-      .subscribe((data) => {
-        this.metrics = data;
-      });
+  private useOfflineFixture(): void {
+    this.backendStatus = 'disconnected';
+    this.metrics = OFFLINE_DASHBOARD.metrics;
+    this.historicalGuests = OFFLINE_DASHBOARD.historicalGuests;
+    this.historicalRevenue = OFFLINE_DASHBOARD.historicalRevenue;
   }
 }

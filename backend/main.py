@@ -26,15 +26,9 @@ from db.metrics import compute_dashboard, compute_metrics
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 class Metrics(BaseModel):
-    """Point-in-time dashboard metrics, derived from the database."""
+    """Point-in-time hotel metrics, derived from the database."""
 
-    # Legacy fields (kept for the existing frontend contract).
-    activeUsers: int
-    revenue: float
-    requests: int
-    uptime: float
     timestamp: str
-    # Explicit hotel-domain fields.
     occupancy: float
     guestsInHouse: int
     revenueToday: float
@@ -55,7 +49,7 @@ class HistoricalData(BaseModel):
 
 class DashboardData(BaseModel):
     metrics: Metrics
-    historicalUsers: list[HistoricalData]
+    historicalGuests: list[HistoricalData]
     historicalRevenue: list[HistoricalData]
 
 
@@ -177,14 +171,16 @@ manager = ConnectionManager()
 def _live_metrics(db: Session) -> dict:
     """Real metrics with a touch of live motion on the in-house guest count.
 
-    The jitter is bounded and applied only to ``activeUsers`` so the numbers
-    move like a live feed, while every other value stays exactly as recorded.
+    The jitter is bounded and applied only to ``guestsInHouse`` — the one
+    number that genuinely drifts through the day as guests come and go. Every
+    other value (occupancy, ADR, RevPAR, room counts) stays exactly as recorded,
+    so a booking created via the API moves them and nothing else does.
     """
     metrics = compute_metrics(db)
     base = metrics["guestsInHouse"]
     if base > 0:
         jitter = random.randint(-min(3, base), 3)
-        metrics["activeUsers"] = max(0, base + jitter)
+        metrics["guestsInHouse"] = max(0, base + jitter)
     return metrics
 
 

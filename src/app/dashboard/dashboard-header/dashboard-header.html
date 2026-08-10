@@ -1,5 +1,25 @@
 <!-- Header -->
 <div class="dashboard-header">
-  <h1 class="dashboard-title">Real-Time Analytics Dashboard</h1>
-  <p class="dashboard-subtitle">Live system monitoring</p>
+  <h1 class="dashboard-title">Hotel Operations Dashboard</h1>
+  <p class="dashboard-subtitle">Occupancy, rate and revenue, derived from live booking records</p>
+
+  <!-- Says plainly where the numbers came from. The hosted demo runs on the
+       committed fixture until the API is deployed, and must not pretend
+       otherwise. -->
+  @switch (status) {
+    @case ('connected') {
+      <p class="data-source data-source--live">
+        <span class="data-source-dot" aria-hidden="true"></span>
+        Live data · streaming from the API
+      </p>
+    }
+    @case ('disconnected') {
+      <p class="data-source data-source--simulated">
+        Simulated data · backend unreachable, showing a committed snapshot of a seeded database
+      </p>
+    }
+    @default {
+      <p class="data-source">Connecting to the API…</p>
+    }
+  }
 </div>

@@ -27,11 +27,18 @@ class FakeWebSocket {
 }
 
 const sampleMetrics: IMetrics = {
-  activeUsers: 42,
-  revenue: 1234.5,
-  requests: 7,
-  uptime: 99.9,
   timestamp: '2026-08-09T00:00:00',
+  occupancy: 66.67,
+  guestsInHouse: 42,
+  revenueToday: 1234.5,
+  arrivalsToday: 7,
+  departuresToday: 5,
+  occupiedRooms: 2,
+  availableRooms: 1,
+  operationalRooms: 3,
+  totalRooms: 4,
+  adr: 617.25,
+  revpar: 411.5,
 };
 
 describe('DashboardApiService', () => {
@@ -82,7 +89,7 @@ describe('DashboardApiService', () => {
     it('fetches and returns parsed dashboard data', async () => {
       const dashboard = {
         metrics: sampleMetrics,
-        historicalUsers: [{ timestamp: '2026-08-09', value: 4 }],
+        historicalGuests: [{ timestamp: '2026-08-09', value: 4 }],
         historicalRevenue: [{ timestamp: '2026-08-09', value: 300 }],
       };
       fetchSpy.mockResolvedValue({ ok: true, json: async () => dashboard });

@@ -155,11 +155,18 @@ ethereal-hotel/
 
 ```typescript
 interface Metrics {
-  activeUsers: number;
-  revenue: number;
-  requests: number;
-  uptime: number;
-  timestamp?: string;
+  timestamp: string;
+  occupancy: number; // occupied / operational rooms (%)
+  guestsInHouse: number;
+  revenueToday: number;
+  arrivalsToday: number;
+  departuresToday: number;
+  occupiedRooms: number;
+  availableRooms: number;
+  operationalRooms: number;
+  totalRooms: number;
+  adr: number; // average daily rate
+  revpar: number; // revenue per available room
 }
 
 interface HistoricalData {
@@ -169,7 +176,7 @@ interface HistoricalData {
 
 interface DashboardData {
   metrics: Metrics;
-  historicalUsers: HistoricalData[];
+  historicalGuests: HistoricalData[];
   historicalRevenue: HistoricalData[];
 }
 ```
@@ -178,11 +185,18 @@ interface DashboardData {
 
 ```python
 class Metrics(BaseModel):
-    activeUsers: int
-    revenue: float
-    requests: int
-    uptime: float
     timestamp: str
+    occupancy: float
+    guestsInHouse: int
+    revenueToday: float
+    arrivalsToday: int
+    departuresToday: int
+    occupiedRooms: int
+    availableRooms: int
+    operationalRooms: int
+    totalRooms: int
+    adr: float
+    revpar: float
 
 class HistoricalData(BaseModel):
     timestamp: str
@@ -190,8 +204,8 @@ class HistoricalData(BaseModel):
 
 class DashboardData(BaseModel):
     metrics: Metrics
-    historicalUsers: List[HistoricalData]
-    historicalRevenue: List[HistoricalData]
+    historicalGuests: list[HistoricalData]
+    historicalRevenue: list[HistoricalData]
 ```
 
 ## 🔐 Security & CORS

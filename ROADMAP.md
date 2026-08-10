@@ -3,134 +3,214 @@
 Work these in order. Each item has a **Definition of Done (DoD)** so a separate instance can
 implement it and this instance can verify it. Effort is a rough estimate.
 
----
-
-## 1. Make the data real (persistence + real domain) — ✅ DONE (verified 2026-08-09)
-**Effort:** L · **Why:** The dashboard currently streams `random.randint(...)`. Real data is the
-single biggest credibility lever. Use the hotel domain that's already implied.
-
-- Add SQLite + SQLAlchemy (+ Alembic for migrations) to the backend.
-- Model `Room`, `Booking`, `Guest`.
-- Seed script populates realistic data.
-- Dashboard metrics become **derived** from records (occupancy %, revenue today, arrivals today),
-  not RNG. Simulated events may still drive "live" motion, but off real rows.
-
-**DoD:**
-- [x] `backend/` has a DB layer (models, session, migrations) and a seed script.
-- [x] `/api/dashboard` and `/api/metrics` compute values from the DB, not `random`.
-- [x] Deleting/adding a booking changes the reported metrics.
+The bar for every item: *would a senior engineer reviewing this repo in an interview see judgment,
+or see a tutorial?* Prefer finishing one thing convincingly over starting three.
 
 ---
 
-## 2. Deploy it (live URL + env-based config) — 🟡 PARTIAL (verified 2026-08-09: frontend deployed, backend pending)
-**Effort:** M · **Why:** A portfolio you can't click is half a portfolio.
+## 1. Finish the backend deployment (carried over — the only unfinished item from v1)
+**Effort:** M · **Why:** `environment.prod.ts` points at `ethereal-hotel-api.onrender.com`, which
+404s. The live site therefore shows failed requests in DevTools and runs on mock data. A dead URL
+in production source is worse than no URL: it reads as unfinished rather than scoped.
 
-- Frontend to Vercel/Netlify/Cloudflare Pages; backend to Fly.io/Render.
-- Replace hardcoded `http://localhost:8000` in `src/app/services/dashboard-api.service.ts`
-  with Angular environment config (`environment.ts` / `environment.prod.ts`).
-- Backend CORS reads allowed origins from an env var.
+- Deploy the FastAPI app (Render / Fly.io — `backend/Dockerfile` exists) and set `ALLOWED_ORIGINS`
+  to the Vercel origin.
+- Point `environment.prod.ts` at the real backend URL.
+- Note the free-tier cold start (~30s on Render) in the README so a reviewer hitting a slow first
+  load reads it as a known tradeoff, not a bug.
 
 **DoD:**
-- [x] No hardcoded `localhost` URLs in committed frontend source; API base comes from env.
-      (`environment.ts` dev / `environment.prod.ts` prod, swapped via `angular.json` fileReplacements.)
-- [x] Backend CORS origins come from config/env, not a hardcoded list. (`ALLOWED_ORIGINS` env var.)
-- [x] README has a working live link (frontend on Vercel) and a working CI badge (real repo).
-
-**Remaining (blocks a true ✅ — handoff to backend-deploy instance):**
-- [ ] Deploy the FastAPI backend (Render/Fly) and set `ALLOWED_ORIGINS` to the Vercel origin.
-- [ ] Point `environment.prod.ts` at the real backend URL. It currently references a **dead**
-      placeholder (`ethereal-hotel-api.onrender.com` → 404), which shows as failed requests in
-      DevTools on the live site.
-- [ ] Until then the hosted demo runs on **mock data** (health check fails → graceful fallback),
-      so Item 1's real-data work is invisible in production. Either finish the deploy, or make
-      `environment.prod.ts` fall back cleanly and note "simulated data" in the README.
+- [ ] `curl https://<backend>/` returns the health JSON.
+- [ ] The live Vercel site shows real data with a clean network tab — no 404s, no CORS errors.
+- [ ] If the deploy is deliberately skipped, `environment.prod.ts` no longer references a dead host
+      and the README says "simulated data in the hosted demo" explicitly.
 
 ---
 
-## 3. Cut the documentation theater — ✅ DONE (verified 2026-08-09)
-**Effort:** S · **Why:** ~15 root markdown files (`BACKEND_COMPLETE.md`,
-`IMPLEMENTATION_COMPLETE.md`, `BEFORE_AND_AFTER.md`, `SETUP_SUMMARY.md`, etc.) read as filler and
-lower signal.
+## 2. Modernize to signals + OnPush
+**Effort:** M · **Why:** This is an Angular 22 app written in Angular 14 idiom: decorator `@Input`,
+constructor DI, mutable public fields, default change detection on every component. The repo's own
+ESLint config asks for OnPush (`prefer-on-push-component-change-detection`) and is ignored 100% of
+the time. For an Angular-focused role this is the single clearest "keeps current" signal.
 
-- Keep: `README.md`, `ARCHITECTURE.md`, `backend/README.md`, this `ROADMAP.md`.
-- Remove the rest (fold anything genuinely useful into the kept files).
-- Fix the README badge URL (`yourusername` placeholder is broken).
+- `signal()` / `computed()` for component state (`metrics`, `backendStatus`) instead of mutable
+  fields.
+- `input()` / `output()` functions instead of the `@Input` / `@Output` decorators.
+- `inject()` instead of constructor parameter injection (already done in `hero.ts` and
+  `navigation.ts` — make it consistent).
+- `takeUntilDestroyed()` instead of the hand-rolled `destroy$` Subject in `dashboard.ts`.
+- `ChangeDetectionStrategy.OnPush` on every component.
+- Replace the `console.log` calls in `dashboard.ts` (the lint config bans them; they're warnings
+  today, so they shipped).
 
 **DoD:**
-- [x] Root has ≤4 markdown docs plus this roadmap. (3: README, ARCHITECTURE, ROADMAP; backend/README kept.)
-- [x] README badge points at the real repo and renders. (`mille409Fog/ethereal-hotel`; `yourusername`
-      placeholder fixed. Note: badge shows "no status" until CI runs on the default branch — resolves
-      naturally with Item 4.)
+- [ ] No `@Input`/`@Output` decorators and no `destroy$` Subjects remain in `src/`.
+- [ ] Every `@Component` declares `changeDetection: ChangeDetectionStrategy.OnPush`.
+- [ ] `grep -r "console.log" src/` returns nothing.
+- [ ] All existing tests still pass without being rewritten around implementation details.
 
 ---
 
-## 4. Real tests + meaningful CI — ✅ DONE (verified 2026-08-09)
-**Effort:** M · **Why:** Only two `.spec` files and a manual `test_api.py` exist. A green badge
-should mean something.
+## 3. Make CI enforce the standards the README advertises
+**Effort:** S · **Why:** `npm run lint` currently reports **64 warnings, 0 errors**, and CI passes.
+The README lists "Strict TypeScript and Angular linting rules" and "OnPush change detection
+(recommended)" while neither is enforced. A green badge over 64 ignored warnings is a credibility
+problem, not a feature.
 
-- Backend: `pytest` covering REST endpoints and a WebSocket message; run in CI.
-- Frontend: unit-test `DashboardApiService` and the dashboard's backend→mock fallback.
-- CI fails on test failure, not just lint.
+- Add `--max-warnings 0` to the `lint` script, then drive the count to zero. Most are trivial
+  (missing accessibility modifiers, missing return types).
+- **Judgment call worth documenting:** ~6 warnings are
+  `@angular-eslint/component-class-suffix` ("class names should end with Component"). The modern
+  Angular style guide *dropped* that suffix, and this repo already follows the newer convention
+  (`Dashboard`, `Navigation`). The right fix is to turn the rule **off** with a one-line comment
+  explaining why — not to rename 6 classes backwards. Showing you know which lint rules are stale
+  reads better than blind compliance.
+- Enable coverage in the Vitest config with a threshold that fails the build (start at whatever
+  today's number is, so it ratchets rather than blocks).
+- Bump `prefer-on-push-component-change-detection` to `error` once Item 2 lands.
 
 **DoD:**
-- [x] `pytest` suite exists and passes; wired into the GitHub Actions workflow.
-      (`backend/tests/` — 9 tests over REST endpoints + the WebSocket stream, on an isolated
-      seeded SQLite DB via `conftest.py`; new `backend` job runs `pytest` in CI.)
-- [x] Frontend tests cover the service and the fallback path in `dashboard.ts`.
-      (`dashboard-api.service.spec.ts` covers REST/health/WebSocket; `dashboard.spec.ts` covers
-      backend-healthy, backend-unavailable, and WebSocket-error→mock fallback. 20 specs total.)
-- [x] CI job runs both test suites. (`.github/workflows/code-quality.yml`: `frontend` job runs
-      `npm run test`, `backend` job runs `pytest`; both fail the build on any test failure.
-      Re-verified 2026-08-09: backend 9/9, frontend 20/20 pass locally.)
-
-**CI trigger (fixed 2026-08-09):** the workflow now triggers on `push`/`pull_request` to
-`[main, develop, development-alpha]`, so CI runs on the working branch and the badge picks up a
-real status once this branch is pushed. (Badge on the default branch `main` will still read
-"no status" until code lands on `main`.)
+- [ ] `npm run lint` exits non-zero on a single new warning; the current tree is clean.
+- [ ] `npm run test` reports coverage and fails below the configured threshold.
+- [ ] CI runs both and the badge reflects a build that would actually catch a regression.
 
 ---
 
-## 5. Harden existing code — ✅ DONE (verified 2026-08-09)
-**Effort:** M · **Why:** Self-contained fixes that demonstrate real engineering judgment.
+## 4. Backend engineering depth: broadcaster, service layer, full CRUD
+**Effort:** M · **Why:** `main.py` is a 285-line file holding schemas, CORS config, connection
+management, business logic and routes. It works, but it's the shape reviewers expect from a demo,
+not from someone who has maintained a service. Three concrete tells:
 
-- **WebSocket reconnection:** `dashboard-api.service.ts` reuses one `Subject`; once it `.error()`s
-  it's permanently dead and there's no reconnect. Add reconnect with backoff and a per-connection
-  stream.
-- **FastAPI deprecation:** replace `@app.on_event("startup"/"shutdown")` in `backend/main.py` with
-  the `lifespan` context manager.
-- **`broadcast()` bug:** `backend/main.py` can mutate `active_connections` mid-iteration on send
-  failure. Iterate over a copy and prune dead sockets safely.
+- **Every WebSocket client independently polls the DB every 2s.** Ten viewers on the live demo =
+  ten identical queries per tick. Replace with a single background task that computes metrics once
+  and calls `manager.broadcast(...)` — which also fixes the fact that `broadcast()` is currently
+  **dead code** (the previous roadmap admitted this and shipped it anyway).
+- **No `GET /api/bookings`.** You can create and delete bookings but not list them, which makes the
+  API awkward to demo and obviously incomplete. Add it with pagination and a status filter.
+- **`print()` as logging.** Swap for the `logging` module with a configurable level, so the
+  deployed service produces something a platform's log viewer can filter.
+
+Then split: `routers/` for endpoints, `schemas.py` for Pydantic models, `services/` for the
+booking logic currently inlined in the route handlers.
 
 **DoD:**
-- [x] Killing/restarting the backend causes the frontend to reconnect automatically.
-      (Per-connection `Subject` + exponential backoff 1s→30s; `onerror` logs only so the stream
-      survives; `onclose` drives reconnect. Covered by `dashboard-api.service.spec.ts`.)
-- [x] No `@app.on_event` usage remains; lifespan handler is used. (`grep on_event` → none;
-      `FastAPI(lifespan=...)`.)
-- [x] `broadcast()` handles a failing/closed socket without corrupting the connection list.
-      (Iterates a `list(...)` snapshot, prunes dead sockets on send failure.)
-
-Notes: `broadcast()` is correct but currently unused (the `/ws` handler sends per-connection).
-Re-verified 2026-08-09: backend 9/9, frontend 23/23 pass.
+- [ ] One shared broadcast task; N connected clients produce O(1) DB queries per tick (verify by
+      logging query counts with 2+ clients connected).
+- [ ] `GET /api/bookings?limit=&offset=&status=` returns paginated results, covered by a test.
+- [ ] `main.py` is under ~80 lines: app construction and wiring only.
+- [ ] No bare `print()` in `backend/`; log level reads from an env var.
 
 ---
 
-## 6. Fix credibility details
-**Effort:** S · **Why:** Small overclaims undercut trust in an interview.
+## 5. Python static analysis to match the frontend's
+**Effort:** S · **Why:** The frontend has ESLint, Prettier, Husky, lint-staged and commitlint. The
+backend has *nothing* — no formatter, no linter, no type checker in CI. A reviewer who works in
+Python will notice the asymmetry immediately, and it undercuts the "code quality" framing the whole
+repo is built around.
 
-- Route title in `src/app/app.routes.ts` says "Senior Software Engineer" — reconsider to
-  "Software Engineer" and let the work carry the signal.
-- Sweep for other stale placeholders (author name, links, meta tags).
+- Add `pyproject.toml` with **ruff** (lint + format, replaces black/isort/flake8) and **mypy** in
+  strict-ish mode. `pyrightconfig.json` already exists for the editor — CI needs its own gate.
+- Wire `ruff check`, `ruff format --check` and `mypy` into the `backend` CI job.
+- Extend `lint-staged` to run ruff on staged `.py` files so the pre-commit hook covers both halves
+  of the repo.
+- Pin dependencies properly and add Dependabot for `pip`, `npm` and `github-actions`.
 
 **DoD:**
-- [x] Title/labels reflect an accurate, defensible claim. ("Senior Software Engineer" kept
-      throughout — it's the factual current title at Charter (June 2023–Present), so it's
-      accurate and defensible, not an overclaim.)
-- [x] No placeholder text (`yourusername`, lorem, TODO copy) in shipped pages. (Swept `src/`;
-      links/emails are all real. `yourusername` only remains in ROADMAP notes; `example.com`
-      only in backend test fixtures.)
+- [ ] `ruff check backend/` and `mypy backend/` pass locally and run in CI.
+- [ ] Committing a badly formatted `.py` file is blocked by the pre-commit hook.
+- [ ] `.github/dependabot.yml` exists and covers all three ecosystems.
+
+---
+
+## 6. Accessibility as a first-class concern
+**Effort:** M · **Why:** There is not a single `@angular-eslint/template/accessibility-*` rule in
+the ESLint config, and the dashboard mutates numbers on screen every 2 seconds with no `aria-live`
+region — a screen reader user gets silence. Accessibility is a standard senior interview probe and
+one of the cheapest ways to separate a portfolio from the pile, precisely because most portfolios
+skip it.
+
+- Turn on the `@angular-eslint/template` accessibility rule set and fix what it finds.
+- `aria-live="polite"` on the metrics region; announce backend connect/disconnect transitions.
+- Keyboard: visible focus states, a skip-to-content link, verified tab order through the nav.
+- `prefers-reduced-motion` honored by the scroll-reveal directive and the CSS animations.
+- Run axe (via Playwright from Item 7, or `@axe-core/cli`) in CI against the built app.
+
+**DoD:**
+- [ ] Accessibility lint rules enabled; template lint passes with zero warnings.
+- [ ] Automated axe scan of `/` and `/dashboard` reports zero critical or serious violations, run
+      in CI.
+- [ ] The site is fully operable by keyboard alone, and animations stop under reduced-motion.
+- [ ] README documents the a11y approach in two or three sentences — say it, or nobody notices.
+
+---
+
+## 7. End-to-end smoke test
+**Effort:** M · **Why:** Unit tests cover the service and the fallback logic in isolation, but
+nothing proves the app *boots and renders*. An E2E test is also the only honest way to verify the
+mock-fallback path end to end, which is the path the hosted demo actually runs on today.
+
+- Playwright, two specs: the landing page renders the hero and nav; `/dashboard` loads and displays
+  metrics with the backend stubbed both up and down.
+- Run against the production build in CI (`npm run build` → serve `dist/` → test), not the dev
+  server, so it catches build-only breakage.
+- Attach traces/screenshots as CI artifacts on failure.
+
+**DoD:**
+- [ ] `npm run e2e` passes locally and in CI against a production build.
+- [ ] The suite fails if the dashboard renders empty or the fallback path breaks.
+- [ ] Failure artifacts (trace + screenshot) are uploaded by the workflow.
+
+---
+
+## 8. Repo hygiene and a claims audit
+**Effort:** S · **Why:** Small inaccuracies compound. Each one individually is trivial; together
+they signal that nobody re-read the repo after writing it.
+
+- **Delete `backend/test_api.py` and `backend/websocket_test.py`.** They're the manual scripts the
+  real `backend/tests/` suite replaced. Worse, `npm run test:backend` still points at the *stale*
+  script instead of `pytest` — so the documented command runs the obsolete tests.
+- **README says "Python 3.9+". The code requires 3.10+** (`float | None` in `main.py` is PEP 604).
+  CI runs 3.11. Pick one and state it everywhere.
+- **README says "Node.js (v20+)"; `package.json` `engines` says `^22.22.3 || ^24.15.0 || >=26`.**
+- **README claims "OnPush change detection strategy"** — currently false everywhere. Either land
+  Item 2 first or remove the claim until it's true.
+- Add a real `LICENSE` file and a short `CONTRIBUTING.md`. Both are cheap and both are things
+  reviewers check for reflexively on a public repo.
+- Add 2–3 screenshots or a short GIF to the README. Most people decide whether to clone in about
+  eight seconds, and no amount of prose competes with one image of the dashboard.
+
+**DoD:**
+- [ ] Legacy manual test scripts deleted; `npm run test:backend` runs `pytest`.
+- [ ] Every version claim in the README matches what CI and `engines` actually enforce.
+- [ ] No feature is described in the README that isn't demonstrably in the code.
+- [ ] README opens with a screenshot of the dashboard above the fold.
 
 ---
 
 ## Explicitly out of scope (for now)
-More charts, more animations, more frameworks. Depth (real data, deployment, tests) beats breadth.
+More charts, more animations, more frameworks, auth for auth's sake. Depth beats breadth — one
+domain modeled honestly, deployed, tested and accessible outranks five half-built features.
+
+---
+
+## Already shipped
+Kept as a one-line ledger; the full DoDs are in git history.
+
+- **Hotel domain surfaced in the UI** — dashboard renders occupancy, ADR, RevPAR,
+  arrivals/departures and room inventory; charts show guests in house, nightly room revenue and
+  tonight's room mix. Legacy `activeUsers / revenue / requests / uptime` retired from both ends of
+  the contract, `historicalUsers` renamed `historicalGuests`. The `Math.random()` fallback is
+  replaced by a committed snapshot of real seeded output, labelled "simulated data" in the header.
+  *(2026-08-10)*
+- **Real persistence** — SQLite + SQLAlchemy + Alembic, `Room`/`Guest`/`Booking`, seed script; all
+  dashboard metrics derived from rows, not RNG. *(2026-08-09)*
+- **Frontend deployed + env-based config** — Vercel, `environment.ts`/`environment.prod.ts`,
+  `ALLOWED_ORIGINS` for CORS. Backend deploy remains open as Item 1. *(2026-08-09)*
+- **Documentation cut** — ~15 root markdown files reduced to README, ARCHITECTURE, ROADMAP.
+  *(2026-08-09)*
+- **Real tests + CI** — 9 pytest tests (REST + WebSocket, isolated seeded DB), 23 frontend specs;
+  both wired into GitHub Actions and failing the build on error. *(2026-08-09)*
+- **Hardening** — WebSocket reconnect with exponential backoff, FastAPI `lifespan` replacing
+  `on_event`, `broadcast()` no longer mutates its list mid-iteration. *(2026-08-09)*
+- **Credibility sweep** — placeholders removed from shipped pages; titles verified accurate.
+  *(2026-08-09)*

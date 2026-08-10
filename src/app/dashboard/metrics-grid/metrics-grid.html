@@ -1,30 +1,62 @@
-<!-- Metrics Grid -->
+<!-- Hotel performance metrics. Every value is derived from real booking rows. -->
 <div class="metrics-grid">
   <div class="metric-card pulse-subtle">
-    <div class="metric-icon">👥</div>
-    <div class="metric-value">{{ metrics.activeUsers }}</div>
-    <div class="metric-label">Active Users</div>
-    <div class="metric-change positive">+{{ (Math.random() * 10 + 5).toFixed(1) }}%</div>
+    <div class="metric-icon">🛏️</div>
+    <div class="metric-value">{{ metrics.occupancy | number: '1.1-1' }}%</div>
+    <div class="metric-label">Occupancy</div>
+    <div class="metric-detail">
+      {{ metrics.occupiedRooms }} of {{ metrics.operationalRooms }} sellable rooms
+    </div>
   </div>
 
   <div class="metric-card pulse-subtle">
-    <div class="metric-icon">💰</div>
-    <div class="metric-value">${{ metrics.revenue.toLocaleString() }}</div>
-    <div class="metric-label">Revenue (Today)</div>
-    <div class="metric-change positive">+{{ (Math.random() * 15 + 8).toFixed(1) }}%</div>
+    <div class="metric-icon">💵</div>
+    <div class="metric-value">{{ metrics.adr | currency: 'USD' : 'symbol' : '1.0-0' }}</div>
+    <div class="metric-label">ADR</div>
+    <div class="metric-detail">Average daily rate per occupied room</div>
   </div>
 
   <div class="metric-card pulse-subtle">
-    <div class="metric-icon">📊</div>
-    <div class="metric-value">{{ metrics.requests.toLocaleString() }}</div>
-    <div class="metric-label">API Requests/min</div>
-    <div class="metric-change neutral">~{{ (Math.random() * 5).toFixed(1) }}%</div>
+    <div class="metric-icon">📈</div>
+    <div class="metric-value">{{ metrics.revpar | currency: 'USD' : 'symbol' : '1.0-0' }}</div>
+    <div class="metric-label">RevPAR</div>
+    <div class="metric-detail">Revenue per available room</div>
   </div>
 
   <div class="metric-card pulse-subtle">
-    <div class="metric-icon">⚡</div>
-    <div class="metric-value">{{ metrics.uptime.toFixed(2) }}%</div>
-    <div class="metric-label">System Uptime</div>
-    <div class="metric-change positive">Excellent</div>
+    <div class="metric-icon">🧾</div>
+    <div class="metric-value">
+      {{ metrics.revenueToday | currency: 'USD' : 'symbol' : '1.0-0' }}
+    </div>
+    <div class="metric-label">Room Revenue Today</div>
+    <div class="metric-detail">{{ metrics.guestsInHouse | number }} guests in house</div>
+  </div>
+
+  <div class="metric-card pulse-subtle">
+    <div class="metric-icon">🛎️</div>
+    <div class="metric-value">{{ metrics.arrivalsToday }} / {{ metrics.departuresToday }}</div>
+    <div class="metric-label">Arrivals / Departures</div>
+    <div
+      class="metric-detail"
+      [class.up]="netRoomsMovement > 0"
+      [class.down]="netRoomsMovement < 0"
+    >
+      @if (netRoomsMovement > 0) {
+        Net +{{ netRoomsMovement }} rooms filling today
+      } @else if (netRoomsMovement < 0) {
+        Net {{ netRoomsMovement }} rooms emptying today
+      } @else {
+        Even turnover today
+      }
+    </div>
+  </div>
+
+  <div class="metric-card pulse-subtle">
+    <div class="metric-icon">🗝️</div>
+    <div class="metric-value">{{ metrics.availableRooms }}</div>
+    <div class="metric-label">Rooms Available</div>
+    <div class="metric-detail">
+      {{ metrics.totalRooms }} total · {{ outOfServiceRooms }} out of service
+    </div>
   </div>
 </div>

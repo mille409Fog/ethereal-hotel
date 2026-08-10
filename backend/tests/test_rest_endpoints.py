@@ -36,12 +36,11 @@ def test_metrics_are_derived_from_the_database(client):
     assert m["adr"] == 150.0
     assert m["revpar"] == 100.0
 
-    # Legacy fields kept for the existing frontend contract.
-    assert m["activeUsers"] == 4
-    assert m["revenue"] == 300.0
-    assert m["requests"] == 1
-    assert m["uptime"] == 75.0
     assert isinstance(m["timestamp"], str) and m["timestamp"]
+
+    # The generic-SaaS fields the dashboard used to render are retired. Assert
+    # their absence so they cannot quietly return alongside the domain ones.
+    assert {"activeUsers", "revenue", "requests", "uptime"}.isdisjoint(m)
 
 
 def test_dashboard_shape_and_series(client):
@@ -51,16 +50,16 @@ def test_dashboard_shape_and_series(client):
 
     assert data["metrics"]["guestsInHouse"] == 4
     # Default history window is 20 days, ending today.
-    assert len(data["historicalUsers"]) == 20
+    assert len(data["historicalGuests"]) == 20
     assert len(data["historicalRevenue"]) == 20
 
     today_iso = date.today().isoformat()
-    last_users = data["historicalUsers"][-1]
+    last_guests = data["historicalGuests"][-1]
     last_revenue = data["historicalRevenue"][-1]
-    assert last_users["timestamp"] == today_iso
-    assert last_users["value"] == 4  # guests in house today
+    assert last_guests["timestamp"] == today_iso
+    assert last_guests["value"] == 4  # guests in house today
     assert last_revenue["timestamp"] == today_iso
-    assert last_revenue["value"] == 300.0  # room revenue recognized today
+    assert last_revenue["value"] == 300.0  # room revenue recognised today
 
 
 def test_create_booking_changes_metrics(client, db_session):

@@ -28,9 +28,8 @@ def _round(value: float, digits: int = 2) -> float:
 def compute_metrics(db: Session, on_day: date | None = None) -> dict:
     """Compute the point-in-time dashboard metrics for ``on_day`` (default today).
 
-    Returns a dict that is backward compatible with the original payload
-    (``activeUsers``, ``revenue``, ``requests``, ``uptime``) while adding
-    explicit hotel fields (occupancy, arrivals, ADR, RevPAR, ...).
+    Every field is a hotel-domain quantity a hotelier would recognise:
+    occupancy, ADR, RevPAR, arrivals/departures and room counts.
     """
     on_day = on_day or date.today()
 
@@ -89,22 +88,15 @@ def compute_metrics(db: Session, on_day: date | None = None) -> dict:
         or 0
     )
 
-    # Occupancy is against sellable (operational) rooms; availability is the
-    # share of the physical inventory that is in service.
+    # Occupancy is measured against sellable (operational) rooms — rooms out of
+    # service are excluded from the denominator, as the industry defines it.
     occupancy_pct = (occupied_rooms / operational_rooms * 100) if operational_rooms else 0.0
-    availability_pct = (operational_rooms / total_rooms * 100) if total_rooms else 0.0
     available_rooms = max(operational_rooms - occupied_rooms, 0)
     adr = (revenue_today / occupied_rooms) if occupied_rooms else 0.0
     revpar = (revenue_today / operational_rooms) if operational_rooms else 0.0
 
     return {
-        # --- legacy fields (kept so the existing frontend keeps working) ---
-        "activeUsers": int(guests_in_house),
-        "revenue": _round(revenue_today),
-        "requests": int(arrivals_today),
-        "uptime": _round(availability_pct),
         "timestamp": _now_iso(),
-        # --- explicit hotel-domain fields ---
         "occupancy": _round(occupancy_pct),
         "guestsInHouse": int(guests_in_house),
         "revenueToday": _round(revenue_today),
@@ -123,7 +115,7 @@ def _daily_series(db: Session, days: int, value: str) -> list[dict]:
     """Build a ``{timestamp, value}`` series over the last ``days`` days.
 
     ``value`` is either ``"guests"`` (guests in house that day) or
-    ``"revenue"`` (room revenue recognized that day).
+    ``"revenue"`` (room revenue recognised that day).
     """
     today = date.today()
     series: list[dict] = []
@@ -156,7 +148,7 @@ def compute_dashboard(db: Session, history_days: int = 20) -> dict:
     """Compute the full dashboard payload: metrics + derived historical series."""
     return {
         "metrics": compute_metrics(db),
-        "historicalUsers": _daily_series(db, history_days, "guests"),
+        "historicalGuests": _daily_series(db, history_days, "guests"),
         "historicalRevenue": _daily_series(db, history_days, "revenue"),
     }
 

@@ -10,11 +10,11 @@ import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 export class Booking {
   projects = [
     {
-      name: 'Real-Time Analytics Dashboard',
+      name: 'Hotel Operations Dashboard',
       description:
-        'Live data visualization with RxJS observables and Chart.js featuring vampiric theme',
+        'Occupancy, ADR and RevPAR streamed over a WebSocket, computed from real booking records',
       category: 'Live Demo',
-      tech: ['Angular 22', 'RxJS', 'Chart.js', 'TypeScript'],
+      tech: ['Angular 22', 'RxJS', 'Chart.js', 'FastAPI', 'SQLAlchemy'],
       link: '/dashboard',
     },
     {

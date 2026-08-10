@@ -50,7 +50,7 @@ from db import (  # noqa: E402  (import after DATABASE_URL is set)
 # Derived "today" metrics that fall out of this:
 #   occupiedRooms=2, guestsInHouse=4, revenueToday=300, arrivalsToday=1,
 #   departuresToday=1, operationalRooms=3, totalRooms=4, availableRooms=1,
-#   occupancy=66.67, uptime(availability)=75.0, adr=150.0, revpar=100.0
+#   occupancy=66.67, adr=150.0, revpar=100.0
 
 
 def _seed_fixture(db) -> None:

@@ -1,44 +1,56 @@
 import { Subject } from 'rxjs';
 import { Dashboard } from './dashboard';
-import { IMetrics } from '../services/dashboard-api.service';
+import { DashboardApiService, IDashboardData, IMetrics } from '../services/dashboard-api.service';
+import { OFFLINE_DASHBOARD } from '../services/offline-dashboard.fixture';
 
 /**
  * These tests exercise the dashboard's data-source decision logic directly on
  * the component class (no template render needed): whether it uses the live
- * backend WebSocket or falls back to locally generated mock data.
+ * backend WebSocket or falls back to the committed offline fixture.
  */
-describe('Dashboard (backend vs. mock fallback)', () => {
+describe('Dashboard (backend vs. offline fixture)', () => {
   let wsSubject: Subject<IMetrics>;
   let api: {
     checkBackendHealth: ReturnType<typeof vi.fn>;
+    getDashboard: ReturnType<typeof vi.fn>;
     connectWebSocket: ReturnType<typeof vi.fn>;
     disconnectWebSocket: ReturnType<typeof vi.fn>;
   };
 
-  const makeComponent = (): Dashboard =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    new Dashboard(api as any);
+  const makeComponent = (): Dashboard => new Dashboard(api as unknown as DashboardApiService);
 
   const liveMetrics: IMetrics = {
-    activeUsers: 55,
-    revenue: 9000,
-    requests: 12,
-    uptime: 98.5,
     timestamp: '2026-08-09T00:00:00',
+    occupancy: 66.67,
+    guestsInHouse: 4,
+    revenueToday: 300,
+    arrivalsToday: 1,
+    departuresToday: 2,
+    occupiedRooms: 2,
+    availableRooms: 1,
+    operationalRooms: 3,
+    totalRooms: 4,
+    adr: 150,
+    revpar: 100,
+  };
+
+  const liveDashboard: IDashboardData = {
+    metrics: liveMetrics,
+    historicalGuests: [{ timestamp: '2026-08-09', value: 4 }],
+    historicalRevenue: [{ timestamp: '2026-08-09', value: 300 }],
   };
 
   beforeEach(() => {
-    vi.useFakeTimers();
     wsSubject = new Subject<IMetrics>();
     api = {
       checkBackendHealth: vi.fn(),
+      getDashboard: vi.fn().mockResolvedValue(liveDashboard),
       connectWebSocket: vi.fn().mockReturnValue(wsSubject.asObservable()),
       disconnectWebSocket: vi.fn(),
     };
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -51,19 +63,18 @@ describe('Dashboard (backend vs. mock fallback)', () => {
     expect(component.backendStatus).toBe('connected');
     expect(api.connectWebSocket).toHaveBeenCalledTimes(1);
 
+    // The REST read seeds the historical series the charts render.
+    expect(component.historicalGuests).toEqual(liveDashboard.historicalGuests);
+    expect(component.historicalRevenue).toEqual(liveDashboard.historicalRevenue);
+
     // Incoming socket data drives the metrics.
     wsSubject.next(liveMetrics);
-    expect(component.metrics).toEqual({
-      activeUsers: 55,
-      revenue: 9000,
-      requests: 12,
-      uptime: 98.5,
-    });
+    expect(component.metrics).toEqual(liveMetrics);
 
     component.ngOnDestroy();
   });
 
-  it('falls back to mock data when the backend is unavailable', async () => {
+  it('falls back to the committed fixture when the backend is unavailable', async () => {
     api.checkBackendHealth.mockResolvedValue(false);
     const component = makeComponent();
 
@@ -71,18 +82,45 @@ describe('Dashboard (backend vs. mock fallback)', () => {
 
     expect(component.backendStatus).toBe('disconnected');
     expect(api.connectWebSocket).not.toHaveBeenCalled();
-
-    // The mock generator runs on a 2s interval and stays within its bounds.
-    vi.advanceTimersByTime(2000);
-    expect(component.metrics.activeUsers).toBeGreaterThanOrEqual(800);
-    expect(component.metrics.activeUsers).toBeLessThan(1300);
-    expect(component.metrics.revenue).toBeGreaterThanOrEqual(15000);
-    expect(component.metrics.revenue).toBeLessThan(20000);
+    expect(component.metrics).toEqual(OFFLINE_DASHBOARD.metrics);
+    expect(component.historicalGuests).toEqual(OFFLINE_DASHBOARD.historicalGuests);
+    expect(component.historicalRevenue).toEqual(OFFLINE_DASHBOARD.historicalRevenue);
 
     component.ngOnDestroy();
   });
 
-  it('falls back to mock data when the WebSocket errors mid-stream', async () => {
+  it('serves the same fixture values on every run (no RNG)', async () => {
+    api.checkBackendHealth.mockResolvedValue(false);
+
+    const first = makeComponent();
+    await first.ngOnInit();
+    const second = makeComponent();
+    await second.ngOnInit();
+
+    expect(first.metrics).toEqual(second.metrics);
+    expect(first.metrics.occupancy).toBe(OFFLINE_DASHBOARD.metrics.occupancy);
+
+    first.ngOnDestroy();
+    second.ngOnDestroy();
+  });
+
+  it('keeps the fixture history when the backend health check passes but the read fails', async () => {
+    api.checkBackendHealth.mockResolvedValue(true);
+    api.getDashboard.mockRejectedValue(new Error('500'));
+    const component = makeComponent();
+
+    await component.ngOnInit();
+
+    expect(component.backendStatus).toBe('connected');
+    expect(component.historicalGuests).toEqual(OFFLINE_DASHBOARD.historicalGuests);
+    // The socket still drives the live snapshot.
+    wsSubject.next(liveMetrics);
+    expect(component.metrics).toEqual(liveMetrics);
+
+    component.ngOnDestroy();
+  });
+
+  it('falls back to the fixture when the WebSocket errors mid-stream', async () => {
     api.checkBackendHealth.mockResolvedValue(true);
     const component = makeComponent();
 
@@ -93,11 +131,7 @@ describe('Dashboard (backend vs. mock fallback)', () => {
     wsSubject.error(new Error('socket dropped'));
 
     expect(component.backendStatus).toBe('disconnected');
-
-    // Mock updates take over.
-    vi.advanceTimersByTime(2000);
-    expect(component.metrics.activeUsers).toBeGreaterThanOrEqual(800);
-    expect(component.metrics.activeUsers).toBeLessThan(1300);
+    expect(component.metrics).toEqual(OFFLINE_DASHBOARD.metrics);
 
     component.ngOnDestroy();
   });

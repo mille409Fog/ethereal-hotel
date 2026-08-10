@@ -233,7 +233,9 @@ The API base URLs are **not hardcoded**. They live in Angular environment files:
 `angular.json` swaps `environment.ts` for `environment.prod.ts` on production builds
 (`fileReplacements`). To point the deployed frontend at your backend, edit
 `environment.prod.ts` and set `apiUrl`, `wsUrl`, and `healthUrl` to your backend origin,
-then rebuild/redeploy. Until a backend is live, the dashboard falls back to mock data.
+then rebuild/redeploy. Until a backend is live, the dashboard falls back to
+`src/app/services/offline-dashboard.fixture.json` — a committed snapshot of a real seeded
+database, not generated numbers — and labels itself "simulated data" in the header.
 
 ### Backend (CORS origins)
 

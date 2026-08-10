@@ -72,27 +72,28 @@ Health check and API information
 Get current metrics snapshot
 ```json
 {
-  "activeUsers": 1247,
-  "revenue": 18500.50,
-  "requests": 687,
-  "uptime": 99.92,
-  "timestamp": "2024-01-15T10:30:00"
+  "timestamp": "2026-08-10T15:27:04.033508",
+  "occupancy": 85.0,
+  "guestsInHouse": 77,
+  "revenueToday": 16176.08,
+  "arrivalsToday": 16,
+  "departuresToday": 12,
+  "occupiedRooms": 51,
+  "availableRooms": 9,
+  "operationalRooms": 60,
+  "totalRooms": 64,
+  "adr": 317.18,
+  "revpar": 269.60
 }
 ```
 
 #### `GET /api/dashboard`
-Get complete dashboard data including historical data
+Get complete dashboard data including the trailing 20-day series
 ```json
 {
-  "metrics": {
-    "activeUsers": 1247,
-    "revenue": 18500.50,
-    "requests": 687,
-    "uptime": 99.92,
-    "timestamp": "2024-01-15T10:30:00"
-  },
-  "historicalUsers": [...],
-  "historicalRevenue": [...]
+  "metrics": { "occupancy": 85.0, "adr": 317.18, "revpar": 269.60, "...": "..." },
+  "historicalGuests": [{ "timestamp": "2026-08-10", "value": 77 }],
+  "historicalRevenue": [{ "timestamp": "2026-08-10", "value": 16176.08 }]
 }
 ```
 
@@ -126,17 +127,12 @@ curl -X DELETE http://localhost:8000/api/bookings/1
 ## Data Models
 
 ### Metrics
-All fields are derived from the database. Legacy fields are kept for the existing
-frontend contract; hotel-domain fields are added alongside.
+Every field is derived from the database and is a quantity a hotelier would
+recognise. (The old generic `activeUsers` / `revenue` / `requests` / `uptime`
+payload was retired once the dashboard rendered the domain directly.)
 ```python
 {
-  # legacy contract
-  "activeUsers": int,      # guests currently in house
-  "revenue": float,        # room revenue recognized today ($)
-  "requests": int,         # arrivals (check-ins) today
-  "uptime": float,         # room availability % (operational / total)
   "timestamp": string,     # ISO format timestamp
-  # hotel-domain fields
   "occupancy": float,      # occupied / operational rooms (%)
   "guestsInHouse": int,
   "revenueToday": float,

@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
+import { BackendStatus } from '../../services/dashboard-api.service';
 
 @Component({
   selector: 'app-dashboard-header',
@@ -6,4 +7,6 @@ import { Component } from '@angular/core';
   templateUrl: './dashboard-header.html',
   styleUrl: './dashboard-header.css',
 })
-export class DashboardHeader {}
+export class DashboardHeader {
+  @Input() status: BackendStatus = 'checking';
+}

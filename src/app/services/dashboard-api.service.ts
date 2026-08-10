@@ -3,18 +3,41 @@ import { Observable, Subject } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 /**
- * Interface for metrics data from backend
+ * Where the numbers on screen are coming from: still probing, the live
+ * backend, or the committed offline fixture.
+ */
+export type BackendStatus = 'checking' | 'connected' | 'disconnected';
+
+/**
+ * Point-in-time hotel metrics, as returned by `GET /api/metrics` and pushed
+ * over the `/ws` socket. Mirrors the `Metrics` model in `backend/main.py` —
+ * every field is derived from real `Room`/`Guest`/`Booking` rows.
  */
 export interface IMetrics {
-  activeUsers: number;
-  revenue: number;
-  requests: number;
-  uptime: number;
-  timestamp?: string;
+  /** ISO timestamp of the moment the snapshot was computed. */
+  timestamp: string;
+  /** Occupied rooms as a percentage of *operational* rooms. */
+  occupancy: number;
+  /** Adults + children across every stay spanning tonight. */
+  guestsInHouse: number;
+  /** Room revenue recognised today, in USD. */
+  revenueToday: number;
+  arrivalsToday: number;
+  departuresToday: number;
+  occupiedRooms: number;
+  /** Operational rooms not sold tonight. */
+  availableRooms: number;
+  /** Rooms in service — total minus those out for maintenance. */
+  operationalRooms: number;
+  totalRooms: number;
+  /** Average Daily Rate: room revenue / occupied rooms. */
+  adr: number;
+  /** Revenue Per Available Room: room revenue / operational rooms. */
+  revpar: number;
 }
 
 /**
- * Interface for historical data points
+ * One point in a daily series: an ISO date and the value recorded for it.
  */
 export interface IHistoricalData {
   timestamp: string;
@@ -22,11 +45,14 @@ export interface IHistoricalData {
 }
 
 /**
- * Interface for complete dashboard data
+ * Complete dashboard payload from `GET /api/dashboard`: the current snapshot
+ * plus the trailing daily series the charts render.
  */
 export interface IDashboardData {
   metrics: IMetrics;
-  historicalUsers: IHistoricalData[];
+  /** Guests in house per day. */
+  historicalGuests: IHistoricalData[];
+  /** Room revenue recognised per day, in USD. */
   historicalRevenue: IHistoricalData[];
 }
 

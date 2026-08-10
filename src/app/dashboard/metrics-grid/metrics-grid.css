@@ -64,20 +64,24 @@
   margin-bottom: 0.5rem;
 }
 
-.metric-change {
-  font-size: 0.875rem;
-  font-weight: 600;
+/* Supporting context under each headline number — the room counts and
+   qualifiers a hotelier reads the headline against. */
+.metric-detail {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
   display: inline-block;
+  background: color-mix(in srgb, var(--color-border) 40%, transparent);
 }
 
-.metric-change.positive {
-  background: color-mix(in srgb, #6fb880 20%, transparent);
+.metric-detail.up {
+  background: color-mix(in srgb, #6fb880 18%, transparent);
   color: #6fb880;
 }
 
-.metric-change.neutral {
+.metric-detail.down {
   background: color-mix(in srgb, var(--color-blood) 20%, transparent);
   color: #d88894;
 }
