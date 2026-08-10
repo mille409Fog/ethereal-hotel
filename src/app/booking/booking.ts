@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 
 @Component({
@@ -6,9 +6,10 @@ import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
   imports: [ScrollRevealDirective],
   templateUrl: './booking.html',
   styleUrl: './booking.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Booking {
-  projects = [
+  public readonly projects = [
     {
       name: 'Hotel Operations Dashboard',
       description:

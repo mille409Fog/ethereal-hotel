@@ -186,7 +186,13 @@ export default [
     rules: {
       '@angular-eslint/template/no-negated-async': 'error',
       '@angular-eslint/template/use-track-by-function': 'warn',
-      '@angular-eslint/template/no-call-expression': 'warn',
+      // Off deliberately: this rule predates signals. It exists to stop
+      // templates re-running expensive work on every change detection pass —
+      // but reading a `signal()` / `computed()` / `input()` *is* a call
+      // expression, and is both memoized and dependency-tracked. With every
+      // component on OnPush, the calls left in these templates are all signal
+      // reads, which is the idiom Angular now prescribes.
+      '@angular-eslint/template/no-call-expression': 'off',
       '@angular-eslint/template/banana-in-box': 'error',
       '@angular-eslint/template/no-duplicate-attributes': 'error',
       '@angular-eslint/template/conditional-complexity': ['warn', { maxComplexity: 3 }],

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { BackendStatus } from '../../services/dashboard-api.service';
 
 @Component({
@@ -6,7 +6,8 @@ import { BackendStatus } from '../../services/dashboard-api.service';
   imports: [],
   templateUrl: './dashboard-header.html',
   styleUrl: './dashboard-header.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardHeader {
-  @Input() status: BackendStatus = 'checking';
+  public readonly status = input<BackendStatus>('checking');
 }

@@ -1,10 +1,11 @@
 import {
   AfterViewInit,
+  ChangeDetectionStrategy,
   Component,
-  Input,
-  OnChanges,
   OnDestroy,
-  SimpleChanges,
+  computed,
+  effect,
+  input,
 } from '@angular/core';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { IHistoricalData, IMetrics } from '../../services/dashboard-api.service';
@@ -30,36 +31,60 @@ const TOOLTIP_STYLE = {
   borderWidth: 1,
 };
 
+/** A chart-ready daily series: axis labels and the values plotted against them. */
+interface ISeries {
+  labels: string[];
+  data: number[];
+}
+
 @Component({
   selector: 'app-charts-section',
   imports: [],
   templateUrl: './charts-section.html',
   styleUrl: './charts-section.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
-  @Input() metrics: IMetrics = OFFLINE_DASHBOARD.metrics;
-  @Input() historicalGuests: IHistoricalData[] = OFFLINE_DASHBOARD.historicalGuests;
-  @Input() historicalRevenue: IHistoricalData[] = OFFLINE_DASHBOARD.historicalRevenue;
+export class ChartsSection implements AfterViewInit, OnDestroy {
+  public readonly metrics = input<IMetrics>(OFFLINE_DASHBOARD.metrics);
+  public readonly historicalGuests = input<IHistoricalData[]>(OFFLINE_DASHBOARD.historicalGuests);
+  public readonly historicalRevenue = input<IHistoricalData[]>(OFFLINE_DASHBOARD.historicalRevenue);
 
   private guestsChart?: Chart;
   private revenueChart?: Chart;
   private roomMixChart?: Chart;
 
-  ngAfterViewInit(): void {
+  /** Guests in house per night, shaped for the line chart. */
+  private readonly guestSeries = computed(() => ChartsSection.toSeries(this.historicalGuests()));
+
+  /** Room revenue per night, shaped for the bar chart. */
+  private readonly revenueSeries = computed(() => ChartsSection.toSeries(this.historicalRevenue()));
+
+  /** How tonight's physical inventory splits: sold, sellable, out of service. */
+  private readonly roomMix = computed(() => {
+    const { occupiedRooms, availableRooms, totalRooms, operationalRooms } = this.metrics();
+    return [occupiedRooms, availableRooms, Math.max(totalRooms - operationalRooms, 0)];
+  });
+
+  constructor() {
+    // Re-point the charts whenever the inputs change. Each series is read
+    // unconditionally so the effect keeps tracking all three even on its first
+    // run, which happens before `ngAfterViewInit` has created any chart.
+    effect(() => {
+      const guests = this.guestSeries();
+      const revenue = this.revenueSeries();
+      const roomMix = this.roomMix();
+      this.applySeries(guests, revenue, roomMix);
+    });
+  }
+
+  public ngAfterViewInit(): void {
     // Initialize charts after view is ready
     setTimeout(() => {
       this.initializeCharts();
     }, 100);
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    const firstRender = Object.values(changes).every((change) => change.firstChange);
-    if (!firstRender) {
-      this.updateCharts();
-    }
-  }
-
-  ngOnDestroy(): void {
+  public ngOnDestroy(): void {
     // Destroy chart instances
     this.guestsChart?.destroy();
     this.revenueChart?.destroy();
@@ -74,6 +99,13 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
       timeZone: 'UTC',
     });
     return `${monthName} ${Number(day)}`;
+  }
+
+  private static toSeries(points: IHistoricalData[]): ISeries {
+    return {
+      labels: points.map((p) => ChartsSection.dayLabel(p.timestamp)),
+      data: points.map((p) => p.value),
+    };
   }
 
   private static gridScales(): ChartConfiguration['options'] {
@@ -108,16 +140,19 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
   /** Guests in house per night over the trailing window. */
   private initializeGuestsChart(): void {
     const ctx = ChartsSection.canvasContext('guestsChart');
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
+    const series = this.guestSeries();
     const config: ChartConfiguration = {
       type: 'line',
       data: {
-        labels: this.historicalGuests.map((p) => ChartsSection.dayLabel(p.timestamp)),
+        labels: series.labels,
         datasets: [
           {
             label: 'Guests in house',
-            data: this.historicalGuests.map((p) => p.value),
+            data: series.data,
             borderColor: BLOOD,
             backgroundColor: 'rgba(157, 34, 53, 0.1)',
             borderWidth: 2,
@@ -146,16 +181,19 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
   /** Room revenue recognised per night over the trailing window. */
   private initializeRevenueChart(): void {
     const ctx = ChartsSection.canvasContext('revenueChart');
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
+    const series = this.revenueSeries();
     const config: ChartConfiguration = {
       type: 'bar',
       data: {
-        labels: this.historicalRevenue.map((p) => ChartsSection.dayLabel(p.timestamp)),
+        labels: series.labels,
         datasets: [
           {
             label: 'Room revenue',
-            data: this.historicalRevenue.map((p) => p.value),
+            data: series.data,
             backgroundColor: 'rgba(157, 34, 53, 0.75)',
             borderColor: BLOOD,
             borderWidth: 1,
@@ -185,7 +223,9 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
   /** How tonight's physical inventory splits: sold, sellable, out of service. */
   private initializeRoomMixChart(): void {
     const ctx = ChartsSection.canvasContext('roomMixChart');
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     const config: ChartConfiguration = {
       type: 'doughnut',
@@ -221,34 +261,25 @@ export class ChartsSection implements AfterViewInit, OnDestroy, OnChanges {
     this.roomMixChart = new Chart(ctx, config);
   }
 
-  private roomMix(): number[] {
-    const { occupiedRooms, availableRooms, totalRooms, operationalRooms } = this.metrics;
-    return [occupiedRooms, availableRooms, Math.max(totalRooms - operationalRooms, 0)];
-  }
-
   /**
    * Re-point the charts at the current inputs. The series come from the API in
    * full, so we replace them rather than shifting a window by hand.
    */
-  private updateCharts(): void {
+  private applySeries(guests: ISeries, revenue: ISeries, roomMix: number[]): void {
     if (this.guestsChart) {
-      this.guestsChart.data.labels = this.historicalGuests.map((p) =>
-        ChartsSection.dayLabel(p.timestamp)
-      );
-      this.guestsChart.data.datasets[0].data = this.historicalGuests.map((p) => p.value);
+      this.guestsChart.data.labels = guests.labels;
+      this.guestsChart.data.datasets[0].data = guests.data;
       this.guestsChart.update('none'); // no animation — smoother under a 2s feed
     }
 
     if (this.revenueChart) {
-      this.revenueChart.data.labels = this.historicalRevenue.map((p) =>
-        ChartsSection.dayLabel(p.timestamp)
-      );
-      this.revenueChart.data.datasets[0].data = this.historicalRevenue.map((p) => p.value);
+      this.revenueChart.data.labels = revenue.labels;
+      this.revenueChart.data.datasets[0].data = revenue.data;
       this.revenueChart.update('none');
     }
 
     if (this.roomMixChart) {
-      this.roomMixChart.data.datasets[0].data = this.roomMix();
+      this.roomMixChart.data.datasets[0].data = roomMix;
       this.roomMixChart.update('none');
     }
   }

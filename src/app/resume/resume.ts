@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 
 @Component({
@@ -6,5 +6,6 @@ import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
   imports: [ScrollRevealDirective],
   templateUrl: './resume.html',
   styleUrl: './resume.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Resume {}

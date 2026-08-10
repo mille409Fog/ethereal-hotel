@@ -2,16 +2,16 @@
 <section class="dashboard-section">
   <div class="dashboard-inner">
     <!-- Header Component -->
-    <app-dashboard-header [status]="backendStatus" />
+    <app-dashboard-header [status]="backendStatus()" />
 
     <!-- Metrics Grid Component -->
-    <app-metrics-grid [metrics]="metrics" />
+    <app-metrics-grid [metrics]="metrics()" />
 
     <!-- Charts Section Component -->
     <app-charts-section
-      [metrics]="metrics"
-      [historicalGuests]="historicalGuests"
-      [historicalRevenue]="historicalRevenue"
+      [metrics]="metrics()"
+      [historicalGuests]="historicalGuests()"
+      [historicalRevenue]="historicalRevenue()"
     />
 
     <!-- Footer Component -->

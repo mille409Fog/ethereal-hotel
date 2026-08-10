@@ -1,6 +1,13 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnDestroy,
+  OnInit,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   BackendStatus,
   DashboardApiService,
@@ -18,67 +25,70 @@ import { MetricsGrid } from './metrics-grid/metrics-grid';
   imports: [DashboardHeader, MetricsGrid, ChartsSection, DashboardFooter],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Dashboard implements OnInit, OnDestroy {
-  private destroy$ = new Subject<void>();
+  private readonly dashboardApi = inject(DashboardApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Flag to toggle between the committed fixture and the real backend
   private useBackend = false;
-  backendStatus: BackendStatus = 'checking';
+
+  public readonly backendStatus = signal<BackendStatus>('checking');
 
   // Seeded from the committed snapshot so the grid never renders zeroes while
   // the health check is in flight. Replaced wholesale once the backend answers.
-  metrics: IMetrics = OFFLINE_DASHBOARD.metrics;
-  historicalGuests: IHistoricalData[] = OFFLINE_DASHBOARD.historicalGuests;
-  historicalRevenue: IHistoricalData[] = OFFLINE_DASHBOARD.historicalRevenue;
+  public readonly metrics = signal<IMetrics>(OFFLINE_DASHBOARD.metrics);
+  public readonly historicalGuests = signal<IHistoricalData[]>(OFFLINE_DASHBOARD.historicalGuests);
+  public readonly historicalRevenue = signal<IHistoricalData[]>(
+    OFFLINE_DASHBOARD.historicalRevenue
+  );
 
-  constructor(private dashboardApi: DashboardApiService) {}
-
-  async ngOnInit(): Promise<void> {
+  public async ngOnInit(): Promise<void> {
     if (!(await this.dashboardApi.checkBackendHealth())) {
       this.useOfflineFixture();
       return;
     }
 
     this.useBackend = true;
-    this.backendStatus = 'connected';
+    this.backendStatus.set('connected');
 
     // One REST read for the historical series the charts need, then the socket
     // takes over for the live snapshot.
     try {
       const dashboard = await this.dashboardApi.getDashboard();
-      this.metrics = dashboard.metrics;
-      this.historicalGuests = dashboard.historicalGuests;
-      this.historicalRevenue = dashboard.historicalRevenue;
+      this.metrics.set(dashboard.metrics);
+      this.historicalGuests.set(dashboard.historicalGuests);
+      this.historicalRevenue.set(dashboard.historicalRevenue);
     } catch {
       // The health check passed but this read didn't. Keep the fixture history
       // and let the socket drive the live numbers rather than blanking the page.
-      this.historicalGuests = OFFLINE_DASHBOARD.historicalGuests;
-      this.historicalRevenue = OFFLINE_DASHBOARD.historicalRevenue;
+      this.historicalGuests.set(OFFLINE_DASHBOARD.historicalGuests);
+      this.historicalRevenue.set(OFFLINE_DASHBOARD.historicalRevenue);
     }
 
     this.startRealTimeUpdatesFromBackend();
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-
+  public ngOnDestroy(): void {
     if (this.useBackend) {
       this.dashboardApi.disconnectWebSocket();
     }
   }
 
   /**
-   * Connect to backend WebSocket for real-time updates
+   * Connect to backend WebSocket for real-time updates.
+   *
+   * `takeUntilDestroyed` takes an explicit `DestroyRef` because this runs from
+   * `ngOnInit`, outside the injection context its no-argument form requires.
    */
   private startRealTimeUpdatesFromBackend(): void {
     this.dashboardApi
       .connectWebSocket()
-      .pipe(takeUntil(this.destroy$))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (metrics: IMetrics) => {
-          this.metrics = metrics;
+          this.metrics.set(metrics);
         },
         error: () => {
           this.useOfflineFixture();
@@ -95,9 +105,9 @@ export class Dashboard implements OnInit, OnDestroy {
    * is honest — it just has to say so, which the header badge does.
    */
   private useOfflineFixture(): void {
-    this.backendStatus = 'disconnected';
-    this.metrics = OFFLINE_DASHBOARD.metrics;
-    this.historicalGuests = OFFLINE_DASHBOARD.historicalGuests;
-    this.historicalRevenue = OFFLINE_DASHBOARD.historicalRevenue;
+    this.backendStatus.set('disconnected');
+    this.metrics.set(OFFLINE_DASHBOARD.metrics);
+    this.historicalGuests.set(OFFLINE_DASHBOARD.historicalGuests);
+    this.historicalRevenue.set(OFFLINE_DASHBOARD.historicalRevenue);
   }
 }

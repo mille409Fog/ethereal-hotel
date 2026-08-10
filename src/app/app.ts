@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Navigation } from './navigation/navigation';
 import { Hero } from './hero/hero';
 import { Booking } from './booking/booking';
@@ -12,5 +12,6 @@ import { Footer } from './footer/footer';
   imports: [Navigation, Hero, Booking, Crm, Concierge, Resume, Footer],
   templateUrl: './app.html',
   styleUrl: './app.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {}

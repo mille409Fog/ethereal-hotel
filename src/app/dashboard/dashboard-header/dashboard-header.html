@@ -6,7 +6,7 @@
   <!-- Says plainly where the numbers came from. The hosted demo runs on the
        committed fixture until the API is deployed, and must not pretend
        otherwise. -->
-  @switch (status) {
+  @switch (status()) {
     @case ('connected') {
       <p class="data-source data-source--live">
         <span class="data-source-dot" aria-hidden="true"></span>

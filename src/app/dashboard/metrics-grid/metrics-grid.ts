@@ -1,5 +1,5 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { IMetrics } from '../../services/dashboard-api.service';
 import { OFFLINE_DASHBOARD } from '../../services/offline-dashboard.fixture';
 
@@ -8,22 +8,25 @@ import { OFFLINE_DASHBOARD } from '../../services/offline-dashboard.fixture';
   imports: [CurrencyPipe, DecimalPipe],
   templateUrl: './metrics-grid.html',
   styleUrl: './metrics-grid.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MetricsGrid {
-  @Input() metrics: IMetrics = OFFLINE_DASHBOARD.metrics;
+  public readonly metrics = input<IMetrics>(OFFLINE_DASHBOARD.metrics);
 
   /**
    * Rooms held back for maintenance — physical inventory that is not sellable
    * tonight, and therefore excluded from the occupancy denominator.
    */
-  get outOfServiceRooms(): number {
-    return Math.max(this.metrics.totalRooms - this.metrics.operationalRooms, 0);
-  }
+  public readonly outOfServiceRooms = computed(() => {
+    const { totalRooms, operationalRooms } = this.metrics();
+    return Math.max(totalRooms - operationalRooms, 0);
+  });
 
   /**
    * Net movement across the front desk today. Positive means the house fills.
    */
-  get netRoomsMovement(): number {
-    return this.metrics.arrivalsToday - this.metrics.departuresToday;
-  }
+  public readonly netRoomsMovement = computed(() => {
+    const { arrivalsToday, departuresToday } = this.metrics();
+    return arrivalsToday - departuresToday;
+  });
 }

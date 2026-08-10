@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 
 @Component({
@@ -6,9 +6,10 @@ import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
   imports: [ScrollRevealDirective],
   templateUrl: './crm.html',
   styleUrl: './crm.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Crm {
-  jobs = [
+  public readonly jobs = [
     {
       title: 'Senior Software Engineer',
       company: 'Charter Communications',

@@ -27,47 +27,25 @@ in production source is worse than no URL: it reads as unfinished rather than sc
 
 ---
 
-## 2. Modernize to signals + OnPush
-**Effort:** M · **Why:** This is an Angular 22 app written in Angular 14 idiom: decorator `@Input`,
-constructor DI, mutable public fields, default change detection on every component. The repo's own
-ESLint config asks for OnPush (`prefer-on-push-component-change-detection`) and is ignored 100% of
-the time. For an Angular-focused role this is the single clearest "keeps current" signal.
-
-- `signal()` / `computed()` for component state (`metrics`, `backendStatus`) instead of mutable
-  fields.
-- `input()` / `output()` functions instead of the `@Input` / `@Output` decorators.
-- `inject()` instead of constructor parameter injection (already done in `hero.ts` and
-  `navigation.ts` — make it consistent).
-- `takeUntilDestroyed()` instead of the hand-rolled `destroy$` Subject in `dashboard.ts`.
-- `ChangeDetectionStrategy.OnPush` on every component.
-- Replace the `console.log` calls in `dashboard.ts` (the lint config bans them; they're warnings
-  today, so they shipped).
-
-**DoD:**
-- [ ] No `@Input`/`@Output` decorators and no `destroy$` Subjects remain in `src/`.
-- [ ] Every `@Component` declares `changeDetection: ChangeDetectionStrategy.OnPush`.
-- [ ] `grep -r "console.log" src/` returns nothing.
-- [ ] All existing tests still pass without being rewritten around implementation details.
-
----
-
-## 3. Make CI enforce the standards the README advertises
-**Effort:** S · **Why:** `npm run lint` currently reports **64 warnings, 0 errors**, and CI passes.
+## 2. Make CI enforce the standards the README advertises
+**Effort:** S · **Why:** `npm run lint` currently reports **30 warnings, 0 errors**, and CI passes.
 The README lists "Strict TypeScript and Angular linting rules" and "OnPush change detection
-(recommended)" while neither is enforced. A green badge over 64 ignored warnings is a credibility
+(recommended)" while neither is enforced. A green badge over 30 ignored warnings is a credibility
 problem, not a feature.
 
 - Add `--max-warnings 0` to the `lint` script, then drive the count to zero. Most are trivial
-  (missing accessibility modifiers, missing return types).
-- **Judgment call worth documenting:** ~6 warnings are
+  (missing accessibility modifiers, missing return types) and sit in spec files and `test-setup.ts`.
+- **Judgment call worth documenting:** 14 of the 30 are
   `@angular-eslint/component-class-suffix` ("class names should end with Component"). The modern
   Angular style guide *dropped* that suffix, and this repo already follows the newer convention
   (`Dashboard`, `Navigation`). The right fix is to turn the rule **off** with a one-line comment
-  explaining why — not to rename 6 classes backwards. Showing you know which lint rules are stale
-  reads better than blind compliance.
+  explaining why — not to rename 14 classes backwards. Showing you know which lint rules are stale
+  reads better than blind compliance. (The signals work already set the precedent: it turned
+  `template/no-call-expression` off, with a comment, because that rule predates signal reads.)
 - Enable coverage in the Vitest config with a threshold that fails the build (start at whatever
   today's number is, so it ratchets rather than blocks).
-- Bump `prefer-on-push-component-change-detection` to `error` once Item 2 lands.
+- Bump `prefer-on-push-component-change-detection` to `error` — every component now complies, so
+  the rule can be enforced without a single code change.
 
 **DoD:**
 - [ ] `npm run lint` exits non-zero on a single new warning; the current tree is clean.
@@ -76,7 +54,7 @@ problem, not a feature.
 
 ---
 
-## 4. Backend engineering depth: broadcaster, service layer, full CRUD
+## 3. Backend engineering depth: broadcaster, service layer, full CRUD
 **Effort:** M · **Why:** `main.py` is a 285-line file holding schemas, CORS config, connection
 management, business logic and routes. It works, but it's the shape reviewers expect from a demo,
 not from someone who has maintained a service. Three concrete tells:
@@ -102,7 +80,7 @@ booking logic currently inlined in the route handlers.
 
 ---
 
-## 5. Python static analysis to match the frontend's
+## 4. Python static analysis to match the frontend's
 **Effort:** S · **Why:** The frontend has ESLint, Prettier, Husky, lint-staged and commitlint. The
 backend has *nothing* — no formatter, no linter, no type checker in CI. A reviewer who works in
 Python will notice the asymmetry immediately, and it undercuts the "code quality" framing the whole
@@ -122,7 +100,7 @@ repo is built around.
 
 ---
 
-## 6. Accessibility as a first-class concern
+## 5. Accessibility as a first-class concern
 **Effort:** M · **Why:** There is not a single `@angular-eslint/template/accessibility-*` rule in
 the ESLint config, and the dashboard mutates numbers on screen every 2 seconds with no `aria-live`
 region — a screen reader user gets silence. Accessibility is a standard senior interview probe and
@@ -133,7 +111,7 @@ skip it.
 - `aria-live="polite"` on the metrics region; announce backend connect/disconnect transitions.
 - Keyboard: visible focus states, a skip-to-content link, verified tab order through the nav.
 - `prefers-reduced-motion` honored by the scroll-reveal directive and the CSS animations.
-- Run axe (via Playwright from Item 7, or `@axe-core/cli`) in CI against the built app.
+- Run axe (via Playwright from Item 6, or `@axe-core/cli`) in CI against the built app.
 
 **DoD:**
 - [ ] Accessibility lint rules enabled; template lint passes with zero warnings.
@@ -144,7 +122,7 @@ skip it.
 
 ---
 
-## 7. End-to-end smoke test
+## 6. End-to-end smoke test
 **Effort:** M · **Why:** Unit tests cover the service and the fallback logic in isolation, but
 nothing proves the app *boots and renders*. An E2E test is also the only honest way to verify the
 mock-fallback path end to end, which is the path the hosted demo actually runs on today.
@@ -162,7 +140,7 @@ mock-fallback path end to end, which is the path the hosted demo actually runs o
 
 ---
 
-## 8. Repo hygiene and a claims audit
+## 7. Repo hygiene and a claims audit
 **Effort:** S · **Why:** Small inaccuracies compound. Each one individually is trivial; together
 they signal that nobody re-read the repo after writing it.
 
@@ -172,8 +150,9 @@ they signal that nobody re-read the repo after writing it.
 - **README says "Python 3.9+". The code requires 3.10+** (`float | None` in `main.py` is PEP 604).
   CI runs 3.11. Pick one and state it everywhere.
 - **README says "Node.js (v20+)"; `package.json` `engines` says `^22.22.3 || ^24.15.0 || >=26`.**
-- **README claims "OnPush change detection strategy"** — currently false everywhere. Either land
-  Item 2 first or remove the claim until it's true.
+- **README says "Angular 22 with signals"-adjacent claims** — re-check them now that the signals
+  work has landed; the OnPush claim is finally true, so verify the rest are too rather than
+  assuming.
 - Add a real `LICENSE` file and a short `CONTRIBUTING.md`. Both are cheap and both are things
   reviewers check for reflexively on a public repo.
 - Add 2–3 screenshots or a short GIF to the README. Most people decide whether to clone in about
@@ -196,6 +175,15 @@ domain modeled honestly, deployed, tested and accessible outranks five half-buil
 ## Already shipped
 Kept as a one-line ledger; the full DoDs are in git history.
 
+- **Signals + OnPush throughout** — `signal()`/`computed()` for component state, `input()` for every
+  component input, `inject()` everywhere, `takeUntilDestroyed(destroyRef)` replacing the `destroy$`
+  Subject, and `ChangeDetectionStrategy.OnPush` on all 14 components. `ChartsSection` swapped
+  `ngOnChanges` for an `effect()`. **This turned out to be a bug fix, not just modernization:** the
+  app has no zone.js, so under zoneless change detection the old mutable-field writes scheduled no
+  render at all — with a healthy backend the dashboard sat permanently on "Connecting to the API…"
+  and the metrics never moved. Verified against the live backend before and after. Lint dropped
+  60 → 30 warnings; `template/no-call-expression` turned off with a comment, since it predates
+  signal reads. *(2026-08-10)*
 - **Hotel domain surfaced in the UI** — dashboard renders occupancy, ADR, RevPAR,
   arrivals/departures and room inventory; charts show guests in house, nightly room revenue and
   tonight's room mix. Legacy `activeUsers / revenue / requests / uptime` retired from both ends of
