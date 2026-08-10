@@ -131,12 +131,18 @@ export default [
       '@angular-eslint/no-empty-lifecycle-method': 'warn',
       '@angular-eslint/use-lifecycle-interface': 'error',
       '@angular-eslint/use-pipe-transform-interface': 'error',
-      '@angular-eslint/component-class-suffix': 'warn',
+      // Off deliberately: the Angular style guide dropped the mandatory
+      // `Component` suffix, and this repo follows the newer convention
+      // (`Dashboard`, `Navigation`, `Hero`). Renaming 14 classes backwards to
+      // satisfy a superseded rule would be blind compliance, not quality.
+      '@angular-eslint/component-class-suffix': 'off',
       '@angular-eslint/directive-class-suffix': 'error',
       '@angular-eslint/no-input-rename': 'error',
       '@angular-eslint/no-output-rename': 'error',
       '@angular-eslint/no-output-native': 'error',
-      '@angular-eslint/prefer-on-push-component-change-detection': 'warn',
+      // Enforced, not suggested: every component in the tree is already
+      // OnPush, so the README's claim is now backed by the linter.
+      '@angular-eslint/prefer-on-push-component-change-detection': 'error',
 
       // General code quality rules
       'no-console': ['warn', { allow: ['warn', 'error'] }],
@@ -171,6 +177,17 @@ export default [
 
       // Prettier integration
       'prettier/prettier': 'error',
+    },
+  },
+
+  // Spec files
+  {
+    files: ['**/*.spec.ts'],
+    rules: {
+      // Off deliberately: a top-level `describe` callback is a suite
+      // declaration, not a function whose length signals complexity. Capping
+      // it would push cohesive test suites into artificial file splits.
+      'max-lines-per-function': 'off',
     },
   },
 

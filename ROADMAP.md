@@ -27,34 +27,7 @@ in production source is worse than no URL: it reads as unfinished rather than sc
 
 ---
 
-## 2. Make CI enforce the standards the README advertises
-**Effort:** S · **Why:** `npm run lint` currently reports **30 warnings, 0 errors**, and CI passes.
-The README lists "Strict TypeScript and Angular linting rules" and "OnPush change detection
-(recommended)" while neither is enforced. A green badge over 30 ignored warnings is a credibility
-problem, not a feature.
-
-- Add `--max-warnings 0` to the `lint` script, then drive the count to zero. Most are trivial
-  (missing accessibility modifiers, missing return types) and sit in spec files and `test-setup.ts`.
-- **Judgment call worth documenting:** 14 of the 30 are
-  `@angular-eslint/component-class-suffix` ("class names should end with Component"). The modern
-  Angular style guide *dropped* that suffix, and this repo already follows the newer convention
-  (`Dashboard`, `Navigation`). The right fix is to turn the rule **off** with a one-line comment
-  explaining why — not to rename 14 classes backwards. Showing you know which lint rules are stale
-  reads better than blind compliance. (The signals work already set the precedent: it turned
-  `template/no-call-expression` off, with a comment, because that rule predates signal reads.)
-- Enable coverage in the Vitest config with a threshold that fails the build (start at whatever
-  today's number is, so it ratchets rather than blocks).
-- Bump `prefer-on-push-component-change-detection` to `error` — every component now complies, so
-  the rule can be enforced without a single code change.
-
-**DoD:**
-- [ ] `npm run lint` exits non-zero on a single new warning; the current tree is clean.
-- [ ] `npm run test` reports coverage and fails below the configured threshold.
-- [ ] CI runs both and the badge reflects a build that would actually catch a regression.
-
----
-
-## 3. Backend engineering depth: broadcaster, service layer, full CRUD
+## 2. Backend engineering depth: broadcaster, service layer, full CRUD
 **Effort:** M · **Why:** `main.py` is a 285-line file holding schemas, CORS config, connection
 management, business logic and routes. It works, but it's the shape reviewers expect from a demo,
 not from someone who has maintained a service. Three concrete tells:
@@ -80,7 +53,7 @@ booking logic currently inlined in the route handlers.
 
 ---
 
-## 4. Python static analysis to match the frontend's
+## 3. Python static analysis to match the frontend's
 **Effort:** S · **Why:** The frontend has ESLint, Prettier, Husky, lint-staged and commitlint. The
 backend has *nothing* — no formatter, no linter, no type checker in CI. A reviewer who works in
 Python will notice the asymmetry immediately, and it undercuts the "code quality" framing the whole
@@ -100,7 +73,7 @@ repo is built around.
 
 ---
 
-## 5. Accessibility as a first-class concern
+## 4. Accessibility as a first-class concern
 **Effort:** M · **Why:** There is not a single `@angular-eslint/template/accessibility-*` rule in
 the ESLint config, and the dashboard mutates numbers on screen every 2 seconds with no `aria-live`
 region — a screen reader user gets silence. Accessibility is a standard senior interview probe and
@@ -111,7 +84,7 @@ skip it.
 - `aria-live="polite"` on the metrics region; announce backend connect/disconnect transitions.
 - Keyboard: visible focus states, a skip-to-content link, verified tab order through the nav.
 - `prefers-reduced-motion` honored by the scroll-reveal directive and the CSS animations.
-- Run axe (via Playwright from Item 6, or `@axe-core/cli`) in CI against the built app.
+- Run axe (via Playwright from Item 5, or `@axe-core/cli`) in CI against the built app.
 
 **DoD:**
 - [ ] Accessibility lint rules enabled; template lint passes with zero warnings.
@@ -122,7 +95,7 @@ skip it.
 
 ---
 
-## 6. End-to-end smoke test
+## 5. End-to-end smoke test
 **Effort:** M · **Why:** Unit tests cover the service and the fallback logic in isolation, but
 nothing proves the app *boots and renders*. An E2E test is also the only honest way to verify the
 mock-fallback path end to end, which is the path the hosted demo actually runs on today.
@@ -140,7 +113,7 @@ mock-fallback path end to end, which is the path the hosted demo actually runs o
 
 ---
 
-## 7. Repo hygiene and a claims audit
+## 6. Repo hygiene and a claims audit
 **Effort:** S · **Why:** Small inaccuracies compound. Each one individually is trivial; together
 they signal that nobody re-read the repo after writing it.
 
@@ -175,6 +148,20 @@ domain modeled honestly, deployed, tested and accessible outranks five half-buil
 ## Already shipped
 Kept as a one-line ledger; the full DoDs are in git history.
 
+- **CI enforces the standards the README advertises** — `npm run lint` runs with `--max-warnings 0`
+  and the tree sits at zero; Vitest reports coverage and fails below thresholds committed in
+  `angular.json` (statements 64 / branches 75 / functions 52 / lines 62, set at the day's real
+  numbers so they ratchet upward rather than block). `prefer-on-push-component-change-detection`
+  promoted from `warn` to `error`, which every component already satisfies. **Both gates were
+  verified to actually fire, not merely exist:** one stray `console.log` fails lint, and a
+  temporarily raised threshold fails the test run. Three rules are off by design, each with a
+  comment giving the reason — `component-class-suffix` (the style guide dropped the suffix),
+  `template/no-call-expression` (predates signals), and `max-lines-per-function` in specs (a
+  `describe` callback's length isn't a complexity signal). README's "recommended" and "strict"
+  wording rewritten to describe what CI actually blocks. Known friction: the coverage margins are
+  thin by construction — functions sits at 52.11% against a 52% floor, so the first uncovered
+  helper someone adds will trip the build. Raise the floors or widen them the moment that becomes
+  annoying; a gate people route around is worse than no gate. *(2026-08-10)*
 - **Signals + OnPush throughout** — `signal()`/`computed()` for component state, `input()` for every
   component input, `inject()` everywhere, `takeUntilDestroyed(destroyRef)` replacing the `destroy$`
   Subject, and `ChangeDetectionStrategy.OnPush` on all 14 components. `ChartsSection` swapped

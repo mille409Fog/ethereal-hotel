@@ -6,7 +6,8 @@ import fixture from './offline-dashboard.fixture.json';
  * 2026-08-10 and committed verbatim.
  *
  * The dashboard falls back to this when the backend is unreachable (the hosted
- * demo runs this path until the API is deployed — see ROADMAP item 2). It is a
+ * demo runs this path until the API is deployed — see the backend-deployment
+ * item in ROADMAP.md). It is a
  * *recording*, not a generator: no RNG, identical on every load, so the offline
  * demo shows the same numbers a live backend would have shown at capture time.
  * The UI labels it "simulated data" whenever it is on screen.

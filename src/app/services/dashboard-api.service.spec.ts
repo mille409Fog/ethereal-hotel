@@ -8,19 +8,19 @@ import { environment } from '../../environments/environment';
  * handlers by hand to exercise the service's message/error wiring.
  */
 class FakeWebSocket {
-  static last: FakeWebSocket | null = null;
+  public static last: FakeWebSocket | null = null;
 
-  onopen: (() => void) | null = null;
-  onmessage: ((event: { data: string }) => void) | null = null;
-  onerror: ((error: unknown) => void) | null = null;
-  onclose: (() => void) | null = null;
-  closed = false;
+  public onopen: (() => void) | null = null;
+  public onmessage: ((event: { data: string }) => void) | null = null;
+  public onerror: ((error: unknown) => void) | null = null;
+  public onclose: (() => void) | null = null;
+  public closed = false;
 
   constructor(public url: string) {
     FakeWebSocket.last = this;
   }
 
-  close(): void {
+  public close(): void {
     this.closed = true;
     this.onclose?.();
   }

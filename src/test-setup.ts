@@ -9,14 +9,14 @@
  * keeps those components mountable under test.
  */
 class MockIntersectionObserver {
-  readonly root: Element | Document | null = null;
-  readonly rootMargin: string = '';
-  readonly thresholds: readonly number[] = [];
+  public readonly root: Element | Document | null = null;
+  public readonly rootMargin: string = '';
+  public readonly thresholds: readonly number[] = [];
 
-  observe(): void {}
-  unobserve(): void {}
-  disconnect(): void {}
-  takeRecords(): IntersectionObserverEntry[] {
+  public observe(): void {}
+  public unobserve(): void {}
+  public disconnect(): void {}
+  public takeRecords(): IntersectionObserverEntry[] {
     return [];
   }
 }

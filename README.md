@@ -84,13 +84,14 @@ npm run watch
 
 ### Testing
 ```bash
-# Run unit tests with Vitest
+# Run unit tests with Vitest, printing a coverage summary.
+# Fails if coverage drops below the thresholds in angular.json.
 npm test
 ```
 
 ### Code Quality
 ```bash
-# Run ESLint
+# Run ESLint (--max-warnings 0: a single new warning fails the command)
 npm run lint
 
 # Fix ESLint issues automatically
@@ -130,8 +131,9 @@ npm run code-quality
 
 This project implements professional code quality tools and practices:
 
-- ✅ **ESLint**: Strict TypeScript and Angular linting rules
+- ✅ **ESLint**: Strict TypeScript and Angular linting rules, enforced at zero warnings
 - ✅ **Prettier**: Consistent code formatting
+- ✅ **Vitest**: Unit tests with coverage thresholds that fail the build when they regress
 - ✅ **Husky**: Git hooks for pre-commit validation
 - ✅ **Lint-staged**: Automatic formatting of staged files
 - ✅ **Commitlint**: Conventional commit message validation
@@ -152,15 +154,36 @@ git commit -m "docs: update README"
 
 ### Coding Standards
 
-Enforced by ESLint (`eslint.config.mjs`) and Prettier (`.prettierrc`):
+Enforced by ESLint (`eslint.config.mjs`) and Prettier (`.prettierrc`). `npm run lint` runs with
+`--max-warnings 0`, so every rule below is a build failure, not a suggestion:
 
 - **TypeScript**: no `any`, explicit return types and accessibility modifiers, prefer `const`,
   max function complexity 10 / length 100 lines.
-- **Angular**: `app-` selector prefix, lifecycle interfaces, prefer OnPush change detection,
-  `trackBy` in `*ngFor`, no method calls in templates.
+- **Angular**: `app-` selector prefix, lifecycle interfaces, OnPush change detection,
+  `trackBy` in `*ngFor`.
 - **Templates**: `[(ngModel)]` banana-in-box syntax, async pipe for observables, no duplicate attributes.
 - **General**: no `console.log` (use `console.warn`/`console.error`), no `debugger`, strict equality
   (`===`), always use curly braces, prefer arrow functions and template literals.
+
+Two rules are deliberately **off**, each with a comment in `eslint.config.mjs` explaining why:
+`@angular-eslint/component-class-suffix` (the Angular style guide dropped the mandatory `Component`
+suffix) and `@angular-eslint/template/no-call-expression` (it predates signals, and a signal read is
+a memoized call expression).
+
+### Test Coverage
+
+`npm test` reports coverage and fails below the thresholds set in `angular.json` under
+`test.options.coverageThresholds`. They start at today's numbers so the build ratchets upward
+rather than blocking work:
+
+| Metric | Threshold |
+| --- | --- |
+| Statements | 64% |
+| Branches | 75% |
+| Functions | 52% |
+| Lines | 62% |
+
+When new tests push the real numbers up, raise the thresholds to match.
 
 ## 🏗️ Project Structure
 
@@ -199,7 +222,7 @@ ethereal-hotel/
 ### 2. Modern Angular Patterns
 - Standalone components (Angular 22)
 - Lazy loading with route-based code splitting
-- OnPush change detection strategy (recommended)
+- OnPush change detection strategy (lint-enforced on every component)
 
 ### 3. Professional Development Workflow
 - Pre-commit hooks prevent broken code
