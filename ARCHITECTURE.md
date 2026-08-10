@@ -40,23 +40,31 @@
 
 ### Real-Time Updates (Primary)
 
+A **single background task** owns the stream. It computes one metrics snapshot per
+tick from the database and fans it out to every connected socket, so N viewers cost
+the same one query per tick as a single viewer does. Connected clients never poll;
+a tick with no listeners skips the database entirely.
+
 ```
-┌────────────┐                                    ┌────────────┐
-│            │  1. Connect ws://localhost:8000/ws │            │
-│  Dashboard │───────────────────────────────────►│  FastAPI   │
-│ Component  │                                    │  WebSocket │
-│            │  2. Receive metrics every 2s       │  Endpoint  │
-│            │◄───────────────────────────────────│            │
-└────────────┘                                    └────────────┘
-      │                                                  │
-      │ 3. Update UI                                    │ 4. Generate
-      ▼                                                 │    random
-┌────────────┐                                          │    metrics
-│  Metrics   │                                          ▼
-│   Grid     │                                    ┌────────────┐
-│   Charts   │                                    │   Pydantic │
-│  Display   │                                    │   Models   │
-└────────────┘                                    └────────────┘
+┌────────────┐                                    ┌──────────────────────┐
+│            │  1. Connect ws://localhost:8000/ws │  FastAPI /ws         │
+│  Dashboard │───────────────────────────────────►│  registers client,   │
+│ Component  │                                    │  sends one snapshot  │
+│            │  2. Snapshot on connect            │  so the UI renders   │
+│            │◄───────────────────────────────────│  without waiting     │
+└────────────┘                                    └──────────┬───────────┘
+      ▲                                                      │ registered on
+      │ 4. send_json to every client                         ▼
+      │                                           ┌──────────────────────┐
+      └───────────────────────────────────────────│  ConnectionManager   │
+                                                  └──────────┬───────────┘
+                                                             ▲
+                                        3. one snapshot/tick │
+                                       ┌─────────────────────┴───────────┐
+                                       │ broadcaster task (asyncio, 2s)  │
+                                       │ compute_metrics(db) — 1 query   │
+                                       │ set, derived from real rows     │
+                                       └─────────────────────────────────┘
 ```
 
 ### REST API (Fallback)
@@ -100,10 +108,16 @@ ethereal-hotel/
 │   └── assets/                        # Static assets
 │
 ├── backend/                           # Backend source
-│   ├── main.py                       # FastAPI application
+│   ├── main.py                       # App construction and wiring only
+│   ├── config.py                     # Env-driven settings + logging
+│   ├── schemas.py                    # Pydantic wire contract
+│   ├── routers/                      # HTTP + WebSocket endpoints
+│   ├── services/                     # Business logic (no FastAPI imports)
+│   │   ├── bookings.py              #   booking rules
+│   │   └── broadcaster.py           #   ConnectionManager + broadcast task
+│   ├── db/                           # Engine, models, metrics, seeder
+│   ├── tests/                        # pytest suite
 │   ├── requirements.txt              # Python dependencies
-│   ├── test_api.py                   # REST API tests
-│   ├── websocket_test.py             # WebSocket test client
 │   ├── run.bat                       # Windows startup script
 │   ├── Dockerfile                    # Container image
 │   ├── docker-compose.yml            # Docker orchestration
@@ -140,6 +154,9 @@ ethereal-hotel/
 | `/` | GET | Health check | API info |
 | `/api/metrics` | GET | Current metrics | `Metrics` |
 | `/api/dashboard` | GET | Full dashboard | `DashboardData` |
+| `/api/bookings` | GET | List bookings (`limit`, `offset`, `status`) | `BookingPage` |
+| `/api/bookings` | POST | Create a booking | `BookingOut` |
+| `/api/bookings/{id}` | DELETE | Delete a booking | 204 |
 | `/docs` | GET | Swagger UI | HTML |
 | `/redoc` | GET | ReDoc UI | HTML |
 
@@ -147,7 +164,7 @@ ethereal-hotel/
 
 | Endpoint | Protocol | Update Rate | Data |
 |----------|----------|-------------|------|
-| `/ws` | WebSocket | 2 seconds | `Metrics` |
+| `/ws` | WebSocket | 2 seconds (one shared broadcast) | `Metrics` |
 
 ## 📊 Data Models
 
@@ -296,22 +313,21 @@ DOM Update
 ### Backend Data Flow
 
 ```
-WebSocket Connection
+Broadcaster task (one per process, 2s interval)
     ↓
-Connection Manager
+compute_metrics(db) — derived from Room/Guest/Booking rows
     ↓
-Async Loop (2s interval)
-    ↓
-Generate Random Metrics
-    ↓
-Pydantic Validation
+ConnectionManager.broadcast()
     ↓
 JSON Serialization
     ↓
-WebSocket.send()
-    ↓
-Client Receives
+WebSocket.send_json() → every connected client
 ```
+
+Requests follow the same layering in reverse: `routers/` validates and delegates,
+`services/` applies the rules and raises domain errors, `db/` owns persistence.
+Domain errors are mapped to status codes in the router, so `services/` carries no
+HTTP knowledge.
 
 ## 🎨 Component Architecture
 
@@ -383,8 +399,11 @@ python websocket_test.py   # Test WebSocket
 - **Formatting**: Prettier for consistency
 
 ### Backend Testing
-- **API Tests**: `test_api.py` for REST endpoints
-- **WebSocket Tests**: `websocket_test.py` for real-time
+- **pytest suite** (`backend/tests/`): REST endpoints, WebSocket stream and the
+  broadcaster, all against an isolated, deterministically seeded SQLite database
+- **Broadcast fan-out**: `test_broadcaster.py` counts SQL issued against the engine
+  and asserts five clients cost the same query count as one, so a per-client poll
+  cannot quietly return
 - **Interactive Tests**: Swagger UI at `/docs`
 - **Health Checks**: Built into Docker setup
 

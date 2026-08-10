@@ -149,6 +149,89 @@ def test_delete_missing_booking_404(client):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/bookings — pagination and filtering
+# ---------------------------------------------------------------------------
+def test_list_bookings_returns_every_seeded_booking(client):
+    resp = client.get("/api/bookings")
+    assert resp.status_code == 200
+    page = resp.json()
+
+    # The fixture seeds four bookings (A, B, C in-house/departing, D cancelled).
+    assert page["total"] == 4
+    assert len(page["items"]) == 4
+    assert page["offset"] == 0
+
+    booking = page["items"][0]
+    assert set(booking) == {
+        "id", "guest_id", "room_id", "check_in", "check_out",
+        "adults", "children", "nightly_rate", "status",
+    }
+
+    # Ordered newest stay first, so paging is stable.
+    check_ins = [item["check_in"] for item in page["items"]]
+    assert check_ins == sorted(check_ins, reverse=True)
+
+
+def test_list_bookings_paginates(client):
+    everything = client.get("/api/bookings").json()["items"]
+
+    first = client.get("/api/bookings?limit=2&offset=0").json()
+    second = client.get("/api/bookings?limit=2&offset=2").json()
+
+    # total reports the full match count, not the size of the page.
+    assert first["total"] == second["total"] == 4
+    assert first["limit"] == 2 and second["offset"] == 2
+    assert len(first["items"]) == 2
+    assert len(second["items"]) == 2
+
+    # The two pages partition the collection: no overlap, nothing missing.
+    paged_ids = [item["id"] for item in first["items"] + second["items"]]
+    assert paged_ids == [item["id"] for item in everything]
+    assert len(set(paged_ids)) == 4
+
+
+def test_list_bookings_filters_by_status(client):
+    resp = client.get("/api/bookings?status=cancelled")
+    assert resp.status_code == 200
+    page = resp.json()
+
+    # Exactly booking D from the fixture.
+    assert page["total"] == 1
+    assert len(page["items"]) == 1
+    assert page["items"][0]["status"] == "cancelled"
+
+    checked_in = client.get("/api/bookings?status=checked_in").json()
+    assert checked_in["total"] == 2
+    assert {item["status"] for item in checked_in["items"]} == {"checked_in"}
+
+
+def test_list_bookings_rejects_out_of_range_paging(client):
+    assert client.get("/api/bookings?limit=0").status_code == 422
+    assert client.get("/api/bookings?limit=9999").status_code == 422
+    assert client.get("/api/bookings?offset=-1").status_code == 422
+    assert client.get("/api/bookings?status=not_a_status").status_code == 422
+
+
+def test_created_booking_appears_in_the_listing(client, db_session):
+    guest_id, room_id = _ids_for_free_room(db_session)
+    today = date.today()
+
+    created = client.post(
+        "/api/bookings",
+        json={
+            "guest_id": guest_id,
+            "room_id": room_id,
+            "check_in": today.isoformat(),
+            "check_out": (today + timedelta(days=2)).isoformat(),
+        },
+    ).json()
+
+    page = client.get("/api/bookings").json()
+    assert page["total"] == 5
+    assert created["id"] in [item["id"] for item in page["items"]]
+
+
+# ---------------------------------------------------------------------------
 # Small helpers to resolve fixture ids without hardcoding autoincrement values.
 # ---------------------------------------------------------------------------
 def _ids_for_free_room(db_session):

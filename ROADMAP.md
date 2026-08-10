@@ -27,33 +27,7 @@ in production source is worse than no URL: it reads as unfinished rather than sc
 
 ---
 
-## 2. Backend engineering depth: broadcaster, service layer, full CRUD
-**Effort:** M · **Why:** `main.py` is a 285-line file holding schemas, CORS config, connection
-management, business logic and routes. It works, but it's the shape reviewers expect from a demo,
-not from someone who has maintained a service. Three concrete tells:
-
-- **Every WebSocket client independently polls the DB every 2s.** Ten viewers on the live demo =
-  ten identical queries per tick. Replace with a single background task that computes metrics once
-  and calls `manager.broadcast(...)` — which also fixes the fact that `broadcast()` is currently
-  **dead code** (the previous roadmap admitted this and shipped it anyway).
-- **No `GET /api/bookings`.** You can create and delete bookings but not list them, which makes the
-  API awkward to demo and obviously incomplete. Add it with pagination and a status filter.
-- **`print()` as logging.** Swap for the `logging` module with a configurable level, so the
-  deployed service produces something a platform's log viewer can filter.
-
-Then split: `routers/` for endpoints, `schemas.py` for Pydantic models, `services/` for the
-booking logic currently inlined in the route handlers.
-
-**DoD:**
-- [ ] One shared broadcast task; N connected clients produce O(1) DB queries per tick (verify by
-      logging query counts with 2+ clients connected).
-- [ ] `GET /api/bookings?limit=&offset=&status=` returns paginated results, covered by a test.
-- [ ] `main.py` is under ~80 lines: app construction and wiring only.
-- [ ] No bare `print()` in `backend/`; log level reads from an env var.
-
----
-
-## 3. Python static analysis to match the frontend's
+## 2. Python static analysis to match the frontend's
 **Effort:** S · **Why:** The frontend has ESLint, Prettier, Husky, lint-staged and commitlint. The
 backend has *nothing* — no formatter, no linter, no type checker in CI. A reviewer who works in
 Python will notice the asymmetry immediately, and it undercuts the "code quality" framing the whole
@@ -73,7 +47,7 @@ repo is built around.
 
 ---
 
-## 4. Accessibility as a first-class concern
+## 3. Accessibility as a first-class concern
 **Effort:** M · **Why:** There is not a single `@angular-eslint/template/accessibility-*` rule in
 the ESLint config, and the dashboard mutates numbers on screen every 2 seconds with no `aria-live`
 region — a screen reader user gets silence. Accessibility is a standard senior interview probe and
@@ -95,7 +69,7 @@ skip it.
 
 ---
 
-## 5. End-to-end smoke test
+## 4. End-to-end smoke test
 **Effort:** M · **Why:** Unit tests cover the service and the fallback logic in isolation, but
 nothing proves the app *boots and renders*. An E2E test is also the only honest way to verify the
 mock-fallback path end to end, which is the path the hosted demo actually runs on today.
@@ -113,15 +87,16 @@ mock-fallback path end to end, which is the path the hosted demo actually runs o
 
 ---
 
-## 6. Repo hygiene and a claims audit
+## 5. Repo hygiene and a claims audit
 **Effort:** S · **Why:** Small inaccuracies compound. Each one individually is trivial; together
 they signal that nobody re-read the repo after writing it.
 
 - **Delete `backend/test_api.py` and `backend/websocket_test.py`.** They're the manual scripts the
   real `backend/tests/` suite replaced. Worse, `npm run test:backend` still points at the *stale*
   script instead of `pytest` — so the documented command runs the obsolete tests.
-- **README says "Python 3.9+". The code requires 3.10+** (`float | None` in `main.py` is PEP 604).
-  CI runs 3.11. Pick one and state it everywhere.
+- **README says "Python 3.9+". The code requires 3.10+** (`float | None` in `schemas.py` is
+  PEP 604). CI runs 3.11. Pick one and state it everywhere. `backend/README.md` and
+  `ARCHITECTURE.md` both still say 3.9+.
 - **README says "Node.js (v20+)"; `package.json` `engines` says `^22.22.3 || ^24.15.0 || >=26`.**
 - **README says "Angular 22 with signals"-adjacent claims** — re-check them now that the signals
   work has landed; the OnPush claim is finally true, so verify the rest are too rather than
@@ -148,6 +123,25 @@ domain modeled honestly, deployed, tested and accessible outranks five half-buil
 ## Already shipped
 Kept as a one-line ledger; the full DoDs are in git history.
 
+- **Backend engineering depth: broadcaster, service layer, full CRUD** — `main.py` went from 285
+  lines holding everything to 80 lines of wiring: `config.py` (env-driven settings + logging),
+  `schemas.py` (the wire contract), `routers/` (health, metrics, bookings, stream) and `services/`
+  (`bookings.py` for the rules, `broadcaster.py` for the stream). Services import no FastAPI and
+  raise domain errors — `InvalidBookingDates`, `ReferenceNotFound`, `BookingNotFound` — which the
+  router maps to status codes, so HTTP knowledge stays in the HTTP layer. **The per-client DB poll
+  is gone:** one `asyncio` task computes a snapshot per tick and fans it out through
+  `manager.broadcast(...)`, which is now the live path rather than dead code. Measured against a
+  real running app with two clients on the stream: **7 queries per tick, not 14** — the query count
+  is the same for one client as for five, and a tick with nobody connected skips the database
+  entirely. Clients still get one snapshot on connect so a freshly opened dashboard renders
+  without waiting out a tick. `GET /api/bookings?limit=&offset=&status=` returns
+  `{items, total, limit, offset}`, ordered check-in-desc and tie-broken on id so paging is stable.
+  `print()` replaced by `logging` throughout the service, level from `LOG_LEVEL` (an unknown value
+  warns and falls back to INFO rather than failing a deploy). Tests 9 → 18, including one that
+  counts SQL against the engine so a per-client poll cannot quietly return. Known gap: the two
+  legacy scripts `test_api.py` / `websocket_test.py` still contain `print()` — they are deleted by
+  Item 5, and are already broken anyway (they reference the retired `activeUsers` payload).
+  *(2026-08-10)*
 - **CI enforces the standards the README advertises** — `npm run lint` runs with `--max-warnings 0`
   and the tree sits at zero; Vitest reports coverage and fails below thresholds committed in
   `angular.json` (statements 64 / branches 75 / functions 52 / lines 62, set at the day's real

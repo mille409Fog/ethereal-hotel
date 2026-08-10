@@ -10,6 +10,7 @@ Bookings are distributed around *today* so the derived dashboard metrics
 """
 
 import argparse
+import logging
 import random
 from datetime import date, timedelta
 
@@ -17,6 +18,8 @@ from faker import Faker
 
 from .database import SessionLocal, engine, init_db
 from .models import Booking, BookingStatus, Guest, Room, RoomStatus, RoomType
+
+logger = logging.getLogger(__name__)
 
 fake = Faker()
 
@@ -149,44 +152,58 @@ def _create_bookings(db, rooms: list[Room], guests: list[Guest]) -> int:
     return created
 
 
+def seed_if_empty() -> None:
+    """Seed only when there is nothing to show.
+
+    Called on app startup so a fresh clone or a new deploy comes up with a
+    populated dashboard instead of zeros; a no-op on every restart after that.
+    """
+    init_db()
+    with SessionLocal() as db:
+        if db.query(Room).count():
+            return
+    logger.info("Empty database detected, seeding sample data")
+    seed(reset=False)
+
+
 def seed(reset: bool = False) -> None:
     init_db()
     db = SessionLocal()
     try:
         existing = db.query(Room).count()
         if existing and not reset:
-            print(f"Database already seeded ({existing} rooms). Use --reset to reseed.")
+            logger.info(
+                "Database already seeded (%d rooms). Use --reset to reseed.", existing
+            )
             return
         if reset:
-            print("Clearing existing data...")
+            logger.info("Clearing existing data")
             _clear(db)
 
-        print("Seeding rooms...")
         rooms = _create_rooms(db)
-        print(f"  {len(rooms)} rooms created.")
+        logger.info("Created %d rooms", len(rooms))
 
-        print("Seeding guests...")
         guests = _create_guests(db, count=140)
-        print(f"  {len(guests)} guests created.")
+        logger.info("Created %d guests", len(guests))
 
-        print("Seeding bookings...")
         bookings = _create_bookings(db, rooms, guests)
-        print(f"  {bookings} bookings created.")
+        logger.info("Created %d bookings", bookings)
 
         # Quick sanity read so the operator sees live numbers immediately.
         from .metrics import compute_metrics
 
         m = compute_metrics(db)
-        print(
-            "\nToday's derived metrics:\n"
-            f"  Occupancy:      {m['occupancy']}%\n"
-            f"  Guests in house:{m['guestsInHouse']}\n"
-            f"  Revenue today:  ${m['revenueToday']:,.2f}\n"
-            f"  Arrivals today: {m['arrivalsToday']}\n"
-            f"  Departures:     {m['departuresToday']}\n"
-            f"  ADR / RevPAR:   ${m['adr']} / ${m['revpar']}"
+        logger.info(
+            "Seeded. Today's derived metrics: occupancy %s%%, %s guests in house, "
+            "$%s revenue, %s arrivals, %s departures, ADR $%s, RevPAR $%s",
+            m["occupancy"],
+            m["guestsInHouse"],
+            f"{m['revenueToday']:,.2f}",
+            m["arrivalsToday"],
+            m["departuresToday"],
+            m["adr"],
+            m["revpar"],
         )
-        print("\nDone.")
     finally:
         db.close()
 
@@ -197,6 +214,9 @@ if __name__ == "__main__":
         "--reset", action="store_true", help="Wipe existing data before seeding."
     )
     args = parser.parse_args()
+    # Run as a CLI: send this module's progress to the console. When `seed()` is
+    # called from the app instead, the app's logging config already applies.
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     # Seed with a fixed-ish seed for repeatable demos while keeping variety.
     random.seed()
     seed(reset=args.reset)

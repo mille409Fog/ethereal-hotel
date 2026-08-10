@@ -58,3 +58,7 @@ __screenshots__/
 Thumbs.db
 .vercel
 .env*
+# ...but the config templates are documentation, not secrets: they're the only
+# place the available env vars (LOG_LEVEL, ALLOWED_ORIGINS, ...) are listed.
+!.env.example
+!backend/.env.example

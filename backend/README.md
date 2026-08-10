@@ -59,10 +59,11 @@ Health check and API information
 {
   "status": "online",
   "service": "EtherealHotel Dashboard API",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "endpoints": {
     "metrics": "/api/metrics",
     "dashboard": "/api/dashboard",
+    "bookings": "/api/bookings",
     "websocket": "/ws"
   }
 }
@@ -112,9 +113,16 @@ ws.onmessage = (event) => {
 };
 ```
 
+A client receives one snapshot immediately on connect, then rides the shared
+broadcast — see [Streaming architecture](#streaming-architecture) for why that
+distinction matters.
+
 ### Booking Endpoints (demonstrate live metric changes)
 
 ```bash
+# List bookings: newest stay first, paginated, optionally filtered by status
+curl "http://localhost:8000/api/bookings?limit=20&offset=0&status=checked_in"
+
 # Create a booking (raises guests-in-house / revenue for today)
 curl -X POST http://localhost:8000/api/bookings \
   -H "Content-Type: application/json" \
@@ -123,6 +131,62 @@ curl -X POST http://localhost:8000/api/bookings \
 # Delete a booking (restores the metrics)
 curl -X DELETE http://localhost:8000/api/bookings/1
 ```
+
+#### `GET /api/bookings`
+
+| Query param | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `limit` | int | `50` | 1–200 |
+| `offset` | int | `0` | ≥ 0 |
+| `status` | enum | *(none)* | `reserved`, `checked_in`, `checked_out`, `cancelled` |
+
+```json
+{
+  "items": [{ "id": 1, "guest_id": 4, "room_id": 12, "check_in": "2026-08-10", "...": "..." }],
+  "total": 1312,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+`total` is the count *before* `limit`/`offset`, so a client can render page counts
+without walking the collection. Results are ordered by check-in date descending and
+tie-broken on id, giving a total ordering — without one, rows can repeat or vanish
+across pages.
+
+## Streaming architecture
+
+**One background task serves every client.** The task computes a single metrics
+snapshot per tick and fans it out via `ConnectionManager.broadcast(...)`; connected
+sockets do no polling of their own. Ten viewers on the live demo therefore cost the
+same one query per tick as a single viewer, and a tick with nobody connected skips
+the database entirely.
+
+```
+                                   ┌───────────────────────┐
+   asyncio task (every 2s) ───────►│  compute_metrics(db)  │  1 query set
+                                   └───────────┬───────────┘
+                                               │ one snapshot
+                          ┌────────────────────┼────────────────────┐
+                          ▼                    ▼                    ▼
+                     client A             client B             client C
+```
+
+`backend/tests/test_broadcaster.py` enforces this by counting the SQL issued against
+the engine: it asserts that five connected clients produce exactly the same query
+count as one, so a per-client poll cannot quietly return.
+
+The only per-client query is the snapshot sent on connect, so a newly opened
+dashboard renders immediately instead of waiting out a tick.
+
+## Configuration
+
+| Env var | Default | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | local SQLite file | Swap in Postgres, etc. |
+| `ALLOWED_ORIGINS` | localhost dev servers | Comma-separated CORS allowlist |
+| `LOG_LEVEL` | `INFO` | Standard `logging` levels; unknown values fall back to INFO with a warning rather than failing startup |
+| `BROADCAST_INTERVAL_SECONDS` | `2` | Stream cadence |
 
 ## Data Models
 
@@ -170,12 +234,23 @@ You can test all endpoints directly from the browser!
 
 ```
 backend/
-├── main.py              # FastAPI application (REST + WebSocket)
+├── main.py              # App construction and wiring only (~80 lines)
+├── config.py            # Env-driven settings + logging setup
+├── schemas.py           # Pydantic request/response models (the wire contract)
+├── routers/             # HTTP + WebSocket endpoints, one module per resource
+│   ├── health.py        #   GET /
+│   ├── metrics.py       #   GET /api/metrics, /api/dashboard
+│   ├── bookings.py      #   GET/POST/DELETE /api/bookings
+│   └── stream.py        #   WS /ws
+├── services/            # Business logic, no FastAPI imports
+│   ├── bookings.py      #   booking rules; raises domain errors
+│   └── broadcaster.py   #   ConnectionManager + the shared broadcast task
 ├── db/                  # Database layer
 │   ├── database.py      #   engine, session, Base, init_db
 │   ├── models.py        #   Room, Guest, Booking ORM models
 │   ├── metrics.py       #   derive dashboard metrics from rows
 │   └── seed.py          #   realistic sample-data seeder
+├── tests/               # pytest suite (isolated, seeded SQLite)
 ├── alembic/             # Alembic migrations (versions/ + env.py)
 ├── alembic.ini          # Alembic config (DB URL resolved at runtime)
 ├── requirements.txt     # Python dependencies
@@ -183,6 +258,10 @@ backend/
 ├── .gitignore           # Git ignore rules
 └── README.md            # This file
 ```
+
+Routers stay thin: they validate input, delegate to `services/`, and map domain
+errors onto status codes. `services/` never imports FastAPI, so the booking rules
+can be exercised with a bare session and no test client.
 
 ## Integration with Angular Frontend
 
@@ -311,6 +390,13 @@ docker-compose down
 ```
 
 ## Testing
+
+```bash
+# Run the automated suite (isolated, seeded SQLite — no live server needed)
+pytest
+```
+
+Manual pokes against a running server:
 
 ```bash
 # Test health endpoint

@@ -10,7 +10,7 @@ export type BackendStatus = 'checking' | 'connected' | 'disconnected';
 
 /**
  * Point-in-time hotel metrics, as returned by `GET /api/metrics` and pushed
- * over the `/ws` socket. Mirrors the `Metrics` model in `backend/main.py` —
+ * over the `/ws` socket. Mirrors the `Metrics` model in `backend/schemas.py` —
  * every field is derived from real `Room`/`Guest`/`Booking` rows.
  */
 export interface IMetrics {
