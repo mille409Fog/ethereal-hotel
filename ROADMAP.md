@@ -123,8 +123,12 @@ Re-verified 2026-08-09: backend 9/9, frontend 23/23 pass.
 - Sweep for other stale placeholders (author name, links, meta tags).
 
 **DoD:**
-- [ ] Title/labels reflect an accurate, defensible claim.
-- [ ] No placeholder text (`yourusername`, lorem, TODO copy) in shipped pages.
+- [x] Title/labels reflect an accurate, defensible claim. ("Senior Software Engineer" kept
+      throughout — it's the factual current title at Charter (June 2023–Present), so it's
+      accurate and defensible, not an overclaim.)
+- [x] No placeholder text (`yourusername`, lorem, TODO copy) in shipped pages. (Swept `src/`;
+      links/emails are all real. `yourusername` only remains in ROADMAP notes; `example.com`
+      only in backend test fixtures.)
 
 ---
 
