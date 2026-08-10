@@ -35,6 +35,7 @@
 - **Validation**: Pydantic 2.9
 - **Real-time**: WebSockets 13.1
 - **API Docs**: OpenAPI (Swagger/ReDoc)
+- **Code Quality**: Ruff (lint + format) + mypy (strict) + pytest
 
 ## 🔄 Data Flow Architecture
 
@@ -117,15 +118,21 @@ ethereal-hotel/
 │   │   └── broadcaster.py           #   ConnectionManager + broadcast task
 │   ├── db/                           # Engine, models, metrics, seeder
 │   ├── tests/                        # pytest suite
-│   ├── requirements.txt              # Python dependencies
+│   ├── requirements.txt              # Runtime Python dependencies
+│   ├── requirements-dev.txt          # + pytest, ruff, mypy
 │   ├── run.bat                       # Windows startup script
 │   ├── Dockerfile                    # Container image
 │   ├── docker-compose.yml            # Docker orchestration
 │   ├── .env.example                  # Config template
 │   └── README.md                     # Backend docs
 │
-├── .github/workflows/                # CI/CD pipelines
-│   └── code-quality.yml             # Automated checks
+├── .github/
+│   ├── workflows/                    # CI/CD pipelines
+│   │   └── code-quality.yml         # Automated checks (both languages)
+│   └── dependabot.yml               # pip + npm + github-actions updates
+│
+├── scripts/
+│   └── py-tool.mjs                   # Resolves ruff/mypy for npm + lint-staged
 │
 ├── .husky/                           # Git hooks
 │   ├── pre-commit                    # Pre-commit validation
@@ -142,7 +149,9 @@ ethereal-hotel/
     ├── tsconfig.json                # TypeScript config
     ├── eslint.config.mjs            # ESLint rules
     ├── .prettierrc                  # Prettier config
-    └── commitlint.config.mjs        # Commit lint rules
+    ├── commitlint.config.mjs        # Commit lint rules
+    ├── pyproject.toml               # Ruff + mypy config (the Python gates)
+    └── pyrightconfig.json           # Pylance/editor only — not a CI gate
 ```
 
 ## 🔌 API Endpoints
@@ -370,11 +379,15 @@ npm run lint               # Check code quality
 npm run format:check       # Check formatting
 ```
 
-**Backend:**
+**Backend** (the gates run from the repo root; `pytest` runs from `backend/`):
 ```bash
-python test_api.py         # Test REST endpoints
-python websocket_test.py   # Test WebSocket
+ruff check backend/           # Lint
+ruff format --check backend/  # Formatting
+mypy backend/                 # Types, strict
+cd backend && pytest          # 18 tests, isolated seeded SQLite
 ```
+
+Or `npm run code-quality:py` from the root to run all three gates in one command.
 
 ## 📈 Performance Considerations
 
@@ -404,6 +417,9 @@ python websocket_test.py   # Test WebSocket
 - **Broadcast fan-out**: `test_broadcaster.py` counts SQL issued against the engine
   and asserts five clients cost the same query count as one, so a per-client poll
   cannot quietly return
+- **Static analysis**: `ruff check` + `ruff format --check` (lint and formatting) and
+  `mypy` in strict mode, configured in `pyproject.toml` and run in the same CI job as
+  pytest, so the Python half is gated exactly like the TypeScript half
 - **Interactive Tests**: Swagger UI at `/docs`
 - **Health Checks**: Built into Docker setup
 
@@ -454,8 +470,11 @@ Flexible charting library for creating responsive, animated visualizations.
 ### Code Quality Tools
 - **ESLint**: JavaScript/TypeScript linting
 - **Prettier**: Code formatting
-- **Husky**: Git hooks for pre-commit checks
+- **Ruff**: Python linting and formatting (replaces black/isort/flake8)
+- **Mypy**: Python type checking, strict mode
+- **Husky**: Git hooks for pre-commit checks (both languages, via lint-staged)
 - **Commitlint**: Conventional commit enforcement
+- **Dependabot**: Weekly grouped dependency updates for pip, npm and GitHub Actions
 - **GitHub Actions**: CI/CD automation
 
 ### Standards

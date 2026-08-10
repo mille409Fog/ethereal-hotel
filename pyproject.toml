@@ -1,0 +1,109 @@
+# Python tooling for the backend. Lives at the repo root (next to
+# pyrightconfig.json, eslint.config.mjs and .prettierrc) so both halves of the
+# repo declare their standards in the same place, and so `ruff check backend/`
+# and `mypy backend/` work from the root the way `npm run lint` does.
+#
+# There is no [project] table on purpose: the backend is an application run from
+# ./backend, not a distributable package. This file is configuration only.
+
+# ---------------------------------------------------------------------------
+# Ruff — linter *and* formatter (replaces black + isort + flake8)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py311"   # matches CI and backend/Dockerfile (python:3.11-slim)
+line-length = 88
+
+# The backend is a self-contained package rooted at ./backend and is run from
+# there, so `from db import ...` is a first-party import. Telling ruff where the
+# source root is keeps isort from filing those under third-party.
+src = ["backend"]
+
+extend-exclude = [
+  "backend/venv",
+  "backend/alembic/script.py.mako",
+  # Migrations are a generated record of what already ran, not code we maintain.
+  # Excluded from the formatter as well as the linter (and from mypy below, for
+  # the same reason) so the two tools agree: reformatting them is churn against
+  # history, and it would make every `alembic revision --autogenerate` fail CI
+  # until someone reformatted the output by hand.
+  "backend/alembic/versions",
+  # Ruff formats Python code blocks inside Markdown. The ```python blocks in the
+  # READMEs are illustrative payload shapes with aligned explanatory comments —
+  # documentation prose, not code — and reformatting them mangles the alignment
+  # and adds trailing commas to things that aren't literals. Prettier owns .md.
+  "**/*.md",
+]
+
+[tool.ruff.lint]
+# Chosen to be strict about correctness and imports without turning style into
+# a debate. Notably absent: ANN (the formatter and mypy already cover this
+# ground) and ARG (framework callbacks legitimately ignore arguments).
+select = [
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes
+  "I",    # isort — import order, enforced not just suggested
+  "N",    # pep8-naming
+  "UP",   # pyupgrade — keep syntax current with the 3.11 floor
+  "B",    # flake8-bugbear — real bug patterns, not style
+  "BLE",  # flake8-blind-except — the codebase already annotates its `except Exception`s
+  "C4",   # flake8-comprehensions
+  "SIM",  # flake8-simplify
+  "TID",  # flake8-tidy-imports
+  "RUF",  # ruff's own rules, incl. RUF100 (unused noqa)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "db", "main", "routers", "schemas", "services"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"  # `.database` is fine, `..db` is not
+
+[tool.ruff.lint.flake8-bugbear]
+# B008 ("no function calls in argument defaults") is correct for ordinary code
+# and wrong for FastAPI, where `db: Session = Depends(get_db)` *is* the dependency
+# injection syntax. Exempt the injection markers rather than switching B008 off.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
+
+[tool.ruff.lint.per-file-ignores]
+# The metrics payloads are camelCase because they *are* the wire contract the
+# Angular frontend consumes as its IMetrics interface. Renaming them to satisfy
+# a Python naming rule would break the API.
+"backend/schemas.py" = ["N815"]
+# N818 wants an `Error` suffix on every exception. These are domain errors read
+# at the call site as `except ReferenceNotFound`, and the base class already
+# carries the suffix (`BookingError`); `ReferenceNotFoundError` reads worse.
+"backend/services/bookings.py" = ["N818"]
+
+# ---------------------------------------------------------------------------
+# Mypy — strict, with the exceptions named and justified rather than blanket-off
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+# Same reason as ruff's `src`: imports resolve relative to ./backend.
+mypy_path = "backend"
+files = ["backend"]
+exclude = "^backend/(venv|alembic/versions)/"
+
+strict = true
+warn_unreachable = true
+show_error_codes = true
+pretty = true
+
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# Alembic's `context` proxy is dynamically generated and untyped; env.py is
+# boilerplate that alembic itself owns the shape of.
+module = "alembic.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# env.py runs at import time under alembic's own runner, so its module-level
+# calls into the untyped `context` proxy can't be annotated away.
+module = "env"
+disallow_untyped_calls = false
+
+[tool.pydantic-mypy]
+init_typed = true
+warn_required_dynamic_aliases = true

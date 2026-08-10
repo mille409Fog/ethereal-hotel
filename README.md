@@ -103,9 +103,30 @@ npm run format
 # Check code formatting
 npm run format:check
 
-# Run all quality checks
+# Run all frontend quality checks
 npm run code-quality
 ```
+
+The backend has the same three gates, run through the same npm entry points so
+you don't have to remember two sets of commands:
+
+```bash
+# Ruff — lint (--fix to auto-fix) and format, replacing black/isort/flake8
+npm run lint:py
+npm run lint:py:fix
+npm run format:py
+npm run format:py:check
+
+# Mypy in strict mode
+npm run typecheck:py
+
+# All three at once
+npm run code-quality:py
+```
+
+These wrap `ruff` and `mypy` from `backend/venv` via `scripts/py-tool.mjs`, so
+they work whether or not you have the virtualenv activated. Both tools read
+their configuration from `pyproject.toml` at the repo root.
 
 ## 🛠️ Tech Stack
 
@@ -126,17 +147,24 @@ npm run code-quality
 - **Validation**: Pydantic 2.9
 - **Real-time**: WebSockets
 - **API Docs**: Auto-generated (Swagger/ReDoc)
+- **Code Quality**: Ruff (lint + format) + mypy (strict)
 
 ## 📋 Code Quality Standards
 
 This project implements professional code quality tools and practices:
 
+Both languages are gated, not just the TypeScript half:
+
 - ✅ **ESLint**: Strict TypeScript and Angular linting rules, enforced at zero warnings
 - ✅ **Prettier**: Consistent code formatting
+- ✅ **Ruff**: Python linting *and* formatting, enforced at zero errors
+- ✅ **Mypy**: Python type checking in strict mode
 - ✅ **Vitest**: Unit tests with coverage thresholds that fail the build when they regress
+- ✅ **Pytest**: 18 backend tests against an isolated, deterministically seeded database
 - ✅ **Husky**: Git hooks for pre-commit validation
-- ✅ **Lint-staged**: Automatic formatting of staged files
+- ✅ **Lint-staged**: Automatic formatting of staged files, TypeScript and Python alike
 - ✅ **Commitlint**: Conventional commit message validation
+- ✅ **Dependabot**: Weekly grouped updates for pip, npm and GitHub Actions
 - ✅ **CI/CD Pipeline**: Automated testing and builds
 
 ### Git Commit Convention
@@ -170,6 +198,28 @@ Two rules are deliberately **off**, each with a comment in `eslint.config.mjs` e
 suffix) and `@angular-eslint/template/no-call-expression` (it predates signals, and a signal read is
 a memoized call expression).
 
+#### Python
+
+Enforced by Ruff and mypy, both configured in `pyproject.toml` at the repo root. CI runs
+`ruff check`, `ruff format --check` and `mypy` on every push, so these are build failures too:
+
+- **Ruff lint**: pyflakes, pycodestyle, isort, pep8-naming, pyupgrade, bugbear, blind-except,
+  comprehensions, simplify and tidy-imports. `RUF100` is on, so a stale `# noqa` is itself an error.
+- **Ruff format**: 88-column Black-compatible formatting. `.editorconfig` matches it.
+- **Mypy**: `strict = true` plus `warn_unreachable`. Every function in `backend/` is annotated —
+  the metrics payloads are `TypedDict`s, so a typo in a metric key fails the type check rather than
+  reaching the frontend as a missing field.
+
+Four exceptions are configured, each with a comment in `pyproject.toml` giving the reason rather
+than being switched off silently:
+
+| Rule | Where | Why |
+| --- | --- | --- |
+| `B008` | FastAPI `Depends`/`Query` | Calling them in argument defaults *is* the DI syntax |
+| `N815` | `schemas.py` | camelCase fields are the wire contract the Angular `IMetrics` consumes |
+| `N818` | `services/bookings.py` | `ReferenceNotFound` reads better than `ReferenceNotFoundError`; the base class carries the suffix |
+| formatting | `**/*.md` | Ruff formats Python blocks inside Markdown; the ```python blocks in these docs are illustrative payload shapes, not code |
+
 ### Test Coverage
 
 `npm test` reports coverage and fails below the thresholds set in `angular.json` under
@@ -201,14 +251,19 @@ ethereal-hotel/
 │   │   └── ...
 │   └── ...
 ├── backend/
-│   ├── main.py              # FastAPI application
-│   ├── requirements.txt     # Python dependencies
-│   ├── run.bat             # Windows startup script
-│   └── README.md           # Backend documentation
+│   ├── main.py                  # FastAPI application
+│   ├── requirements.txt         # Runtime Python dependencies
+│   ├── requirements-dev.txt     # Tests + ruff/mypy
+│   ├── run.bat                  # Windows startup script
+│   └── README.md                # Backend documentation
+├── scripts/
+│   └── py-tool.mjs              # Resolves ruff/mypy for npm + lint-staged
 ├── .github/
-│   └── workflows/           # CI/CD pipelines
-├── .husky/                  # Git hooks
-├── ARCHITECTURE.md         # System architecture & data flow
+│   ├── workflows/               # CI/CD pipelines
+│   └── dependabot.yml           # pip + npm + github-actions updates
+├── .husky/                      # Git hooks
+├── pyproject.toml               # Ruff + mypy configuration
+├── ARCHITECTURE.md              # System architecture & data flow
 └── ...
 ```
 
@@ -293,17 +348,27 @@ Recommended extensions (defined in `.vscode/extensions.json`):
 - ESLint
 - Prettier
 - EditorConfig
+- Ruff (Python lint + format, same config as CI)
+- Pylance (`pyrightconfig.json` resolves the backend's imports and venv)
 
 The project includes VS Code settings for automatic formatting and linting on save.
 
 ### Pre-commit Hooks
 
-When you commit code, Husky automatically:
-1. Formats staged files with Prettier
-2. Runs ESLint and fixes auto-fixable issues
-3. Validates commit message format
+When you commit code, Husky runs lint-staged over the staged files only:
 
-If issues are found, the commit will be blocked until they're resolved.
+1. `.ts` / `.html` → ESLint `--fix`, then Prettier
+2. `.css` / `.scss` / `.json` → Prettier
+3. `.py` → `ruff check --fix`, then `ruff format`
+4. The commit message is validated against Conventional Commits
+
+Anything auto-fixable is fixed and re-staged, so badly formatted code cannot land. Anything
+that *isn't* auto-fixable — an undefined name, a bare `except`, an ESLint error — fails the
+hook and blocks the commit until it's resolved.
+
+The Python steps need `ruff`, which `scripts/py-tool.mjs` looks for in `backend/venv`, then in
+an activated `$VIRTUAL_ENV`, then on `PATH`. If it isn't found the hook says so and points at
+`backend/requirements-dev.txt` rather than failing with "command not found".
 
 ## 📚 Additional Resources
 

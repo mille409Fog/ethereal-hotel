@@ -6,9 +6,13 @@ issued against the engine, so they fail if a per-client poll ever creeps back in
 """
 
 import asyncio
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
+from typing import Any, cast
 
+from fastapi import WebSocket
 from sqlalchemy import event
+from sqlalchemy.orm import Session
 
 from db import engine
 from services.broadcaster import ConnectionManager, broadcast_tick
@@ -18,26 +22,33 @@ class FakeSocket:
     """A stand-in for a WebSocket that records what it was sent."""
 
     def __init__(self) -> None:
-        self.received: list[dict] = []
+        self.received: list[Mapping[str, Any]] = []
 
     async def accept(self) -> None:
         pass
 
-    async def send_json(self, message: dict) -> None:
+    async def send_json(self, message: Mapping[str, Any]) -> None:
         self.received.append(message)
 
 
 class FailingSocket(FakeSocket):
-    async def send_json(self, message: dict) -> None:
+    async def send_json(self, message: Mapping[str, Any]) -> None:
         raise ConnectionResetError("client vanished mid-send")
 
 
 @contextmanager
-def count_queries():
+def count_queries() -> Iterator[dict[str, int]]:
     """Count SQL statements executed on the shared engine inside the block."""
     counter = {"n": 0}
 
-    def _on_execute(conn, cursor, statement, parameters, context, executemany):
+    def _on_execute(
+        conn: Any,
+        cursor: Any,
+        statement: Any,
+        parameters: Any,
+        context: Any,
+        executemany: Any,
+    ) -> None:
         counter["n"] += 1
 
     event.listen(engine, "before_cursor_execute", _on_execute)
@@ -47,14 +58,19 @@ def count_queries():
         event.remove(engine, "before_cursor_execute", _on_execute)
 
 
-def _manager_with(*sockets) -> ConnectionManager:
+def _manager_with(*sockets: FakeSocket) -> ConnectionManager:
     clients = ConnectionManager()
     for socket in sockets:
-        asyncio.run(clients.connect(socket))
+        # FakeSocket implements only the two methods the manager uses. The cast
+        # states that intent to the type checker rather than widening
+        # ConnectionManager's own signature to accommodate a test double.
+        asyncio.run(clients.connect(cast(WebSocket, socket)))
     return clients
 
 
-def test_query_count_per_tick_is_independent_of_client_count(db_session):
+def test_query_count_per_tick_is_independent_of_client_count(
+    db_session: Session,
+) -> None:
     """One client and five clients must cost exactly the same number of queries."""
     one = _manager_with(FakeSocket())
     with count_queries() as single:
@@ -73,7 +89,7 @@ def test_query_count_per_tick_is_independent_of_client_count(db_session):
     assert all(len(socket.received) == 1 for socket in many_sockets)
 
 
-def test_all_clients_receive_the_same_snapshot(db_session):
+def test_all_clients_receive_the_same_snapshot(db_session: Session) -> None:
     sockets = [FakeSocket() for _ in range(3)]
     clients = _manager_with(*sockets)
 
@@ -87,7 +103,7 @@ def test_all_clients_receive_the_same_snapshot(db_session):
     assert payloads[0]["revenueToday"] == 300.0
 
 
-def test_idle_tick_does_not_touch_the_database(db_session):
+def test_idle_tick_does_not_touch_the_database(db_session: Session) -> None:
     """With nobody connected the broadcaster must issue no queries at all."""
     clients = ConnectionManager()
 
@@ -97,7 +113,9 @@ def test_idle_tick_does_not_touch_the_database(db_session):
     assert counter["n"] == 0
 
 
-def test_a_failing_client_is_dropped_without_stopping_the_fan_out(db_session):
+def test_a_failing_client_is_dropped_without_stopping_the_fan_out(
+    db_session: Session,
+) -> None:
     healthy_before, healthy_after = FakeSocket(), FakeSocket()
     clients = _manager_with(healthy_before, FailingSocket(), healthy_after)
 

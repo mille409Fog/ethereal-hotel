@@ -32,6 +32,6 @@ async def metrics_stream(websocket: WebSocket) -> None:
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("WebSocket stream failed")
         manager.disconnect(websocket)

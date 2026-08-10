@@ -13,7 +13,13 @@
     "lint:fix": "eslint . --ext .ts,.html --fix",
     "format": "prettier --write \"src/**/*.{ts,html,css,scss,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,html,css,scss,json}\"",
+    "lint:py": "node scripts/py-tool.mjs ruff check backend/",
+    "lint:py:fix": "node scripts/py-tool.mjs ruff check --fix backend/",
+    "format:py": "node scripts/py-tool.mjs ruff format backend/",
+    "format:py:check": "node scripts/py-tool.mjs ruff format --check backend/",
+    "typecheck:py": "node scripts/py-tool.mjs mypy backend/",
     "code-quality": "npm run format:check && npm run lint",
+    "code-quality:py": "npm run format:py:check && npm run lint:py && npm run typecheck:py",
     "prepare": "husky",
     "pre-commit": "lint-staged"
   },
@@ -28,6 +34,10 @@
     ],
     "*.{css,scss,json}": [
       "prettier --write"
+    ],
+    "*.py": [
+      "node scripts/py-tool.mjs ruff check --fix",
+      "node scripts/py-tool.mjs ruff format"
     ]
   },
   "private": true,

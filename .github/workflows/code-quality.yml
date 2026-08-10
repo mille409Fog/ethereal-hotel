@@ -58,7 +58,7 @@ jobs:
           retention-days: 7
 
   backend:
-    name: Backend (pytest)
+    name: Backend (lint, types, pytest)
     runs-on: ubuntu-latest
 
     strategy:
@@ -74,11 +74,24 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
 
       - name: Install backend dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
         working-directory: backend
+
+      # Ruff and mypy read their config from pyproject.toml at the repo root,
+      # so these run from the root rather than from backend/.
+      - name: Run Ruff (lint)
+        run: ruff check backend/
+
+      - name: Run Ruff (format check)
+        run: ruff format --check backend/
+
+      - name: Run mypy
+        run: mypy backend/
 
       - name: Run pytest
         run: pytest

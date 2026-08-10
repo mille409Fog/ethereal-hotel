@@ -4,6 +4,11 @@
     "angular.ng-template",
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
-    "editorconfig.editorconfig"
+    "editorconfig.editorconfig",
+    // Python half of the toolchain. Ruff reads pyproject.toml, so the editor
+    // applies exactly the rules CI enforces; Pylance picks up pyrightconfig.json.
+    "charliermarsh.ruff",
+    "ms-python.python",
+    "ms-python.vscode-pylance"
   ]
 }

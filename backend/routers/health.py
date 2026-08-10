@@ -8,7 +8,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/")
-async def root() -> dict:
+async def root() -> dict[str, object]:
     """Health check endpoint, also advertising the API surface."""
     return {
         "status": "online",

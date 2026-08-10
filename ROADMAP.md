@@ -27,27 +27,7 @@ in production source is worse than no URL: it reads as unfinished rather than sc
 
 ---
 
-## 2. Python static analysis to match the frontend's
-**Effort:** S · **Why:** The frontend has ESLint, Prettier, Husky, lint-staged and commitlint. The
-backend has *nothing* — no formatter, no linter, no type checker in CI. A reviewer who works in
-Python will notice the asymmetry immediately, and it undercuts the "code quality" framing the whole
-repo is built around.
-
-- Add `pyproject.toml` with **ruff** (lint + format, replaces black/isort/flake8) and **mypy** in
-  strict-ish mode. `pyrightconfig.json` already exists for the editor — CI needs its own gate.
-- Wire `ruff check`, `ruff format --check` and `mypy` into the `backend` CI job.
-- Extend `lint-staged` to run ruff on staged `.py` files so the pre-commit hook covers both halves
-  of the repo.
-- Pin dependencies properly and add Dependabot for `pip`, `npm` and `github-actions`.
-
-**DoD:**
-- [ ] `ruff check backend/` and `mypy backend/` pass locally and run in CI.
-- [ ] Committing a badly formatted `.py` file is blocked by the pre-commit hook.
-- [ ] `.github/dependabot.yml` exists and covers all three ecosystems.
-
----
-
-## 3. Accessibility as a first-class concern
+## 2. Accessibility as a first-class concern
 **Effort:** M · **Why:** There is not a single `@angular-eslint/template/accessibility-*` rule in
 the ESLint config, and the dashboard mutates numbers on screen every 2 seconds with no `aria-live`
 region — a screen reader user gets silence. Accessibility is a standard senior interview probe and
@@ -58,7 +38,7 @@ skip it.
 - `aria-live="polite"` on the metrics region; announce backend connect/disconnect transitions.
 - Keyboard: visible focus states, a skip-to-content link, verified tab order through the nav.
 - `prefers-reduced-motion` honored by the scroll-reveal directive and the CSS animations.
-- Run axe (via Playwright from Item 5, or `@axe-core/cli`) in CI against the built app.
+- Run axe (via Playwright from Item 3, or `@axe-core/cli`) in CI against the built app.
 
 **DoD:**
 - [ ] Accessibility lint rules enabled; template lint passes with zero warnings.
@@ -69,7 +49,7 @@ skip it.
 
 ---
 
-## 4. End-to-end smoke test
+## 3. End-to-end smoke test
 **Effort:** M · **Why:** Unit tests cover the service and the fallback logic in isolation, but
 nothing proves the app *boots and renders*. An E2E test is also the only honest way to verify the
 mock-fallback path end to end, which is the path the hosted demo actually runs on today.
@@ -87,7 +67,7 @@ mock-fallback path end to end, which is the path the hosted demo actually runs o
 
 ---
 
-## 5. Repo hygiene and a claims audit
+## 4. Repo hygiene and a claims audit
 **Effort:** S · **Why:** Small inaccuracies compound. Each one individually is trivial; together
 they signal that nobody re-read the repo after writing it.
 
@@ -98,6 +78,10 @@ they signal that nobody re-read the repo after writing it.
   PEP 604). CI runs 3.11. Pick one and state it everywhere. `backend/README.md` and
   `ARCHITECTURE.md` both still say 3.9+.
 - **README says "Node.js (v20+)"; `package.json` `engines` says `^22.22.3 || ^24.15.0 || >=26`.**
+- **`backend/.env.example` and `backend/README.md` document a `.env` file that is never loaded.**
+  Nothing calls `load_dotenv()` — `config.py` reads `os.getenv` directly, and `python-dotenv` was
+  an unused dependency (removed in the static-analysis pass). Either wire up dotenv in `config.py`
+  or say plainly that configuration comes from real environment variables only.
 - **README says "Angular 22 with signals"-adjacent claims** — re-check them now that the signals
   work has landed; the OnPush claim is finally true, so verify the rest are too rather than
   assuming.
@@ -123,6 +107,45 @@ domain modeled honestly, deployed, tested and accessible outranks five half-buil
 ## Already shipped
 Kept as a one-line ledger; the full DoDs are in git history.
 
+- **Python static analysis matching the frontend's** — `pyproject.toml` at the repo root (next to
+  `eslint.config.mjs` and `.prettierrc`) configures **ruff** for lint *and* format and **mypy** at
+  `strict = true` plus `warn_unreachable`. All three run in the `backend` CI job, which is now
+  "Backend (lint, types, pytest)". The tree is at **zero ruff errors and zero mypy errors across 24
+  source files**, reached by fixing the code rather than widening the ignore list: every function in
+  `backend/` is annotated, `get_db` yields `Iterator[Session]`, the broadcaster's `session_factory`
+  is a real `sessionmaker[Session]`, and the metrics payloads became **`TypedDict`s** so a typo in a
+  metric key fails the type check instead of reaching the frontend as a missing field. Ruff also
+  found three genuine improvements: `str, Enum` → `enum.StrEnum` (with `(str, Enum)`, `str(status)`
+  returns `"BookingStatus.RESERVED"`, not `"reserved"`), `try/except/pass` → `contextlib.suppress`,
+  and three stale `# noqa: BLE001` comments that suppressed nothing — `RUF100` is on, so those are
+  now errors rather than decoration.
+  **All four gates were verified to actually fire, not merely exist:** an unused import fails
+  `ruff check`, a misformatted file fails `ruff format --check` (exit 1), `a + "str"` fails mypy,
+  and a real `git commit` carrying an undefined name and a bare `except` was **rejected by the husky
+  hook with HEAD unchanged**. Badly *formatted* Python is auto-fixed and re-staged by lint-staged
+  (same semantics as prettier on the TS side), so it cannot land; non-fixable lint errors block.
+  Five exceptions are configured, each with the reason in `pyproject.toml`: `B008` exempted for
+  FastAPI's `Depends`/`Query` (calling them in argument defaults *is* the DI syntax), `N815` in
+  `schemas.py` (camelCase *is* the wire contract Angular's `IMetrics` consumes — ruff already
+  exempts the `TypedDict`s), `N818` in `services/bookings.py` (`ReferenceNotFoundError` reads worse,
+  and the base class already carries the suffix), `**/*.md` excluded from the formatter after it was
+  caught silently reformatting the ```python payload examples in `backend/README.md`, and
+  `alembic/versions/` excluded from **both** ruff and mypy — reformatting a generated record of what
+  already ran is churn against history, and policing it would make every `alembic revision
+  --autogenerate` fail CI until someone hand-formatted the output.
+  Dependencies split into `requirements.txt` (runtime) and `requirements-dev.txt` (tests + tooling),
+  all exact-pinned. Auditing the split turned up two packages the runtime image was carrying for no
+  reason: `requests` (only the legacy smoke script and the Dockerfile healthcheck, which now uses
+  stdlib `urllib`) and `python-dotenv`, which **nothing imports at all** — `.env.example` and
+  `backend/README.md` describe a `.env` file that is never loaded, logged against Item 4. `.github/dependabot.yml` covers pip, npm and
+  github-actions, grouped weekly (`@angular/*` must move in lockstep or nothing merges).
+  `scripts/py-tool.mjs` resolves ruff/mypy from `backend/venv` → `$VIRTUAL_ENV` → `PATH`, so
+  `npm run code-quality:py` and the pre-commit hook work without activating the venv and fail with
+  "install requirements-dev.txt" rather than "command not found". `.editorconfig` gained a `[*.py]`
+  block — the global default was 2-space indent, which was wrong for Python.
+  Known gap: pins are direct-dependency only, not a full transitive lock (no `pip-compile`), so
+  `pip install` still resolves transitives fresh; the npm side has `package-lock.json` and the
+  Python side does not. *(2026-08-10)*
 - **Backend engineering depth: broadcaster, service layer, full CRUD** — `main.py` went from 285
   lines holding everything to 80 lines of wiring: `config.py` (env-driven settings + logging),
   `schemas.py` (the wire contract), `routers/` (health, metrics, bookings, stream) and `services/`
@@ -140,7 +163,7 @@ Kept as a one-line ledger; the full DoDs are in git history.
   warns and falls back to INFO rather than failing a deploy). Tests 9 → 18, including one that
   counts SQL against the engine so a per-client poll cannot quietly return. Known gap: the two
   legacy scripts `test_api.py` / `websocket_test.py` still contain `print()` — they are deleted by
-  Item 5, and are already broken anyway (they reference the retired `activeUsers` payload).
+  Item 4, and are already broken anyway (they reference the retired `activeUsers` payload).
   *(2026-08-10)*
 - **CI enforces the standards the README advertises** — `npm run lint` runs with `--max-warnings 0`
   and the tree sits at zero; Vitest reports coverage and fails below thresholds committed in

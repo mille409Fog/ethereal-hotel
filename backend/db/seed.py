@@ -15,6 +15,7 @@ import random
 from datetime import date, timedelta
 
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from .database import SessionLocal, engine, init_db
 from .models import Booking, BookingStatus, Guest, Room, RoomStatus, RoomType
@@ -39,21 +40,23 @@ PENTHOUSE_ROOMS = 4  # top floor is smaller
 SEASONAL_MIN, SEASONAL_MAX = 0.85, 1.35  # nightly-rate multiplier vs base
 
 
-def _clear(db) -> None:
+def _clear(db: Session) -> None:
     db.query(Booking).delete()
     db.query(Guest).delete()
     db.query(Room).delete()
     db.commit()
 
 
-def _create_rooms(db) -> list[Room]:
+def _create_rooms(db: Session) -> list[Room]:
     rooms: list[Room] = []
     for floor, (rtype, base_rate, capacity) in ROOM_TYPE_BY_FLOOR.items():
         count = PENTHOUSE_ROOMS if rtype == RoomType.PENTHOUSE else ROOMS_PER_FLOOR
         for n in range(1, count + 1):
             # A small share of rooms are out of service for maintenance.
             status = (
-                RoomStatus.MAINTENANCE if random.random() < 0.03 else RoomStatus.OPERATIONAL
+                RoomStatus.MAINTENANCE
+                if random.random() < 0.03
+                else RoomStatus.OPERATIONAL
             )
             rooms.append(
                 Room(
@@ -70,12 +73,13 @@ def _create_rooms(db) -> list[Room]:
     return rooms
 
 
-def _create_guests(db, count: int) -> list[Guest]:
+def _create_guests(db: Session, count: int) -> list[Guest]:
     guests: list[Guest] = []
     seen_emails: set[str] = set()
     while len(guests) < count:
         first, last = fake.first_name(), fake.last_name()
-        email = f"{first}.{last}.{random.randint(1, 9999)}@{fake.free_email_domain()}".lower()
+        domain = fake.free_email_domain()
+        email = f"{first}.{last}.{random.randint(1, 9999)}@{domain}".lower()
         if email in seen_emails:
             continue
         seen_emails.add(email)
@@ -101,7 +105,7 @@ def _status_for(check_in: date, check_out: date, today: date) -> BookingStatus:
     return BookingStatus.RESERVED
 
 
-def _create_bookings(db, rooms: list[Room], guests: list[Guest]) -> int:
+def _create_bookings(db: Session, rooms: list[Room], guests: list[Guest]) -> int:
     today = date.today()
     window_start = today - timedelta(days=40)
     window_end = today + timedelta(days=35)
@@ -119,7 +123,9 @@ def _create_bookings(db, rooms: list[Room], guests: list[Guest]) -> int:
             if cursor >= window_end:
                 break
 
-            nights = random.choices([1, 2, 3, 4, 5, 7], weights=[20, 30, 22, 13, 8, 7])[0]
+            nights = random.choices([1, 2, 3, 4, 5, 7], weights=[20, 30, 22, 13, 8, 7])[
+                0
+            ]
             check_in = cursor
             check_out = check_in + timedelta(days=nights)
             cursor = check_out
@@ -132,7 +138,11 @@ def _create_bookings(db, rooms: list[Room], guests: list[Guest]) -> int:
             seasonal = random.uniform(SEASONAL_MIN, SEASONAL_MAX)
             nightly_rate = round(room.base_rate * seasonal, 2)
             adults = random.randint(1, min(2, room.capacity))
-            children = random.randint(0, max(0, room.capacity - adults)) if random.random() < 0.3 else 0
+            children = (
+                random.randint(0, max(0, room.capacity - adults))
+                if random.random() < 0.3
+                else 0
+            )
 
             db.add(
                 Booking(

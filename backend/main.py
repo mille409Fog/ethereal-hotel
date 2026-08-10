@@ -8,7 +8,8 @@ shared metrics broadcaster for the lifetime of the process. Endpoints live in
 
 import asyncio
 import logging
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Ensure the schema, seed an empty DB, and run one shared broadcast task.
 
     That task is the only thing polling the database on a timer, so N connected
@@ -42,10 +43,8 @@ async def lifespan(app: FastAPI):
     yield
 
     broadcaster.cancel()
-    try:
+    with suppress(asyncio.CancelledError):
         await broadcaster
-    except asyncio.CancelledError:
-        pass
     logger.info("Shutting down EtherealHotel Dashboard API")
 
 

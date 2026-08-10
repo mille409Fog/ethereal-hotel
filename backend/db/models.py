@@ -18,14 +18,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
 
-class RoomType(str, enum.Enum):
+class RoomType(enum.StrEnum):
     STANDARD = "standard"
     DELUXE = "deluxe"
     SUITE = "suite"
     PENTHOUSE = "penthouse"
 
 
-class RoomStatus(str, enum.Enum):
+class RoomStatus(enum.StrEnum):
     """Physical availability of a room, independent of bookings.
 
     ``OPERATIONAL`` rooms are sellable; ``MAINTENANCE`` rooms are temporarily
@@ -36,7 +36,7 @@ class RoomStatus(str, enum.Enum):
     MAINTENANCE = "maintenance"
 
 
-class BookingStatus(str, enum.Enum):
+class BookingStatus(enum.StrEnum):
     RESERVED = "reserved"
     CHECKED_IN = "checked_in"
     CHECKED_OUT = "checked_out"

@@ -5,6 +5,7 @@ local SQLite file next to this package, so the app runs out of the box.
 """
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -17,7 +18,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{_DEFAULT_SQLITE_PATH}")
 
 # ``check_same_thread`` is a SQLite-only argument; only pass it for SQLite so
 # the same config also works if someone points DATABASE_URL at Postgres, etc.
-_connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+_connect_args = (
+    {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+)
 
 engine = create_engine(DATABASE_URL, connect_args=_connect_args, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
@@ -27,7 +30,7 @@ class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
 
 
-def get_db():
+def get_db() -> Iterator[Session]:
     """FastAPI dependency that yields a request-scoped session."""
     db = SessionLocal()
     try:

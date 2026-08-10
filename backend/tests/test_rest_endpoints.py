@@ -5,10 +5,13 @@ The expected numbers are derived from the dataset in ``conftest._seed_fixture``.
 
 from datetime import date, timedelta
 
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
 from db import Booking, BookingStatus
 
 
-def test_root_health(client):
+def test_root_health(client: TestClient) -> None:
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.json()
@@ -18,7 +21,7 @@ def test_root_health(client):
     assert set(body["endpoints"]) == {"metrics", "dashboard", "bookings", "websocket"}
 
 
-def test_metrics_are_derived_from_the_database(client):
+def test_metrics_are_derived_from_the_database(client: TestClient) -> None:
     resp = client.get("/api/metrics")
     assert resp.status_code == 200
     m = resp.json()
@@ -43,7 +46,7 @@ def test_metrics_are_derived_from_the_database(client):
     assert {"activeUsers", "revenue", "requests", "uptime"}.isdisjoint(m)
 
 
-def test_dashboard_shape_and_series(client):
+def test_dashboard_shape_and_series(client: TestClient) -> None:
     resp = client.get("/api/dashboard")
     assert resp.status_code == 200
     data = resp.json()
@@ -62,7 +65,9 @@ def test_dashboard_shape_and_series(client):
     assert last_revenue["value"] == 300.0  # room revenue recognised today
 
 
-def test_create_booking_changes_metrics(client, db_session):
+def test_create_booking_changes_metrics(
+    client: TestClient, db_session: Session
+) -> None:
     before = client.get("/api/metrics").json()
     assert before["guestsInHouse"] == 4
     assert before["occupiedRooms"] == 2
@@ -96,7 +101,9 @@ def test_create_booking_changes_metrics(client, db_session):
     assert after["revenueToday"] == before["revenueToday"] + 300.0
 
 
-def test_create_booking_rejects_bad_dates(client, db_session):
+def test_create_booking_rejects_bad_dates(
+    client: TestClient, db_session: Session
+) -> None:
     guest_id, room_id = _ids_for_free_room(db_session)
     today = date.today()
     resp = client.post(
@@ -111,7 +118,9 @@ def test_create_booking_rejects_bad_dates(client, db_session):
     assert resp.status_code == 422
 
 
-def test_create_booking_unknown_guest_or_room(client, db_session):
+def test_create_booking_unknown_guest_or_room(
+    client: TestClient, db_session: Session
+) -> None:
     _, room_id = _ids_for_free_room(db_session)
     today = date.today()
     base = {
@@ -119,20 +128,31 @@ def test_create_booking_unknown_guest_or_room(client, db_session):
         "check_out": (today + timedelta(days=1)).isoformat(),
     }
 
-    resp = client.post("/api/bookings", json={**base, "guest_id": 9999, "room_id": room_id})
+    resp = client.post(
+        "/api/bookings", json={**base, "guest_id": 9999, "room_id": room_id}
+    )
     assert resp.status_code == 404
 
-    resp = client.post("/api/bookings", json={**base, "guest_id": _any_guest_id(db_session), "room_id": 9999})
+    resp = client.post(
+        "/api/bookings",
+        json={**base, "guest_id": _any_guest_id(db_session), "room_id": 9999},
+    )
     assert resp.status_code == 404
 
 
-def test_delete_booking_changes_metrics(client, db_session):
+def test_delete_booking_changes_metrics(
+    client: TestClient, db_session: Session
+) -> None:
     before = client.get("/api/metrics").json()
 
     # Delete the in-house stay for room 101 (3 guests).
     booking = (
         db_session.query(Booking)
-        .filter(Booking.status == BookingStatus.CHECKED_IN, Booking.adults == 2, Booking.children == 1)
+        .filter(
+            Booking.status == BookingStatus.CHECKED_IN,
+            Booking.adults == 2,
+            Booking.children == 1,
+        )
         .one()
     )
     resp = client.delete(f"/api/bookings/{booking.id}")
@@ -143,7 +163,7 @@ def test_delete_booking_changes_metrics(client, db_session):
     assert after["occupiedRooms"] == before["occupiedRooms"] - 1
 
 
-def test_delete_missing_booking_404(client):
+def test_delete_missing_booking_404(client: TestClient) -> None:
     resp = client.delete("/api/bookings/999999")
     assert resp.status_code == 404
 
@@ -151,7 +171,7 @@ def test_delete_missing_booking_404(client):
 # ---------------------------------------------------------------------------
 # GET /api/bookings — pagination and filtering
 # ---------------------------------------------------------------------------
-def test_list_bookings_returns_every_seeded_booking(client):
+def test_list_bookings_returns_every_seeded_booking(client: TestClient) -> None:
     resp = client.get("/api/bookings")
     assert resp.status_code == 200
     page = resp.json()
@@ -163,8 +183,15 @@ def test_list_bookings_returns_every_seeded_booking(client):
 
     booking = page["items"][0]
     assert set(booking) == {
-        "id", "guest_id", "room_id", "check_in", "check_out",
-        "adults", "children", "nightly_rate", "status",
+        "id",
+        "guest_id",
+        "room_id",
+        "check_in",
+        "check_out",
+        "adults",
+        "children",
+        "nightly_rate",
+        "status",
     }
 
     # Ordered newest stay first, so paging is stable.
@@ -172,7 +199,7 @@ def test_list_bookings_returns_every_seeded_booking(client):
     assert check_ins == sorted(check_ins, reverse=True)
 
 
-def test_list_bookings_paginates(client):
+def test_list_bookings_paginates(client: TestClient) -> None:
     everything = client.get("/api/bookings").json()["items"]
 
     first = client.get("/api/bookings?limit=2&offset=0").json()
@@ -190,7 +217,7 @@ def test_list_bookings_paginates(client):
     assert len(set(paged_ids)) == 4
 
 
-def test_list_bookings_filters_by_status(client):
+def test_list_bookings_filters_by_status(client: TestClient) -> None:
     resp = client.get("/api/bookings?status=cancelled")
     assert resp.status_code == 200
     page = resp.json()
@@ -205,14 +232,16 @@ def test_list_bookings_filters_by_status(client):
     assert {item["status"] for item in checked_in["items"]} == {"checked_in"}
 
 
-def test_list_bookings_rejects_out_of_range_paging(client):
+def test_list_bookings_rejects_out_of_range_paging(client: TestClient) -> None:
     assert client.get("/api/bookings?limit=0").status_code == 422
     assert client.get("/api/bookings?limit=9999").status_code == 422
     assert client.get("/api/bookings?offset=-1").status_code == 422
     assert client.get("/api/bookings?status=not_a_status").status_code == 422
 
 
-def test_created_booking_appears_in_the_listing(client, db_session):
+def test_created_booking_appears_in_the_listing(
+    client: TestClient, db_session: Session
+) -> None:
     guest_id, room_id = _ids_for_free_room(db_session)
     today = date.today()
 
@@ -234,16 +263,19 @@ def test_created_booking_appears_in_the_listing(client, db_session):
 # ---------------------------------------------------------------------------
 # Small helpers to resolve fixture ids without hardcoding autoincrement values.
 # ---------------------------------------------------------------------------
-def _ids_for_free_room(db_session):
+def _ids_for_free_room(db_session: Session) -> tuple[int, int]:
     """Return (guest_id, room_id) for an operational room with no live stay."""
     from db import Guest, Room
 
     room = db_session.query(Room).filter(Room.number == "103").one()
     guest = db_session.query(Guest).first()
+    assert guest is not None
     return guest.id, room.id
 
 
-def _any_guest_id(db_session):
+def _any_guest_id(db_session: Session) -> int:
     from db import Guest
 
-    return db_session.query(Guest).first().id
+    guest = db_session.query(Guest).first()
+    assert guest is not None
+    return guest.id

@@ -1,0 +1,20 @@
+# Development and CI dependencies: the test suite plus the static analysis
+# gates. Install with:
+#
+#     pip install -r requirements-dev.txt
+#
+# Pinned exactly for the same reason the runtime deps are: a linter that
+# silently gains a rule on a Tuesday turns a green branch red with no commit
+# behind it. Dependabot proposes the upgrades as reviewable PRs instead.
+
+-r requirements.txt
+
+# Tests
+pytest==8.3.3
+httpx==0.27.2          # required by fastapi.testclient.TestClient
+requests==2.32.3       # used by the legacy backend/test_api.py smoke script
+
+# Static analysis — see pyproject.toml at the repo root for the configuration.
+ruff==0.16.2
+mypy==2.3.0
+types-requests==2.33.0.20260712

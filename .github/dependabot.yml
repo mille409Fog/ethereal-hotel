@@ -1,0 +1,80 @@
+version: 2
+
+# Everything in this repo is pinned exactly — npm via package-lock.json, pip via
+# `==` in backend/requirements*.txt. Pins only stay safe if something proposes
+# the upgrades, so Dependabot owns that job and CI (code-quality.yml) decides
+# whether each one lands.
+#
+# Updates are grouped and weekly rather than per-package and daily: a stream of
+# single-package PRs is noise nobody reads, which is how pinned repos drift.
+
+updates:
+  # ---------------------------------------------------------------------
+  # Python backend
+  # ---------------------------------------------------------------------
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+    groups:
+      python-dev:
+        # ruff, mypy, pytest and friends: safe to move together, and a failure
+        # here is a lint/type failure rather than a production incident.
+        dependency-type: development
+      python-runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+
+  # ---------------------------------------------------------------------
+  # Angular frontend
+  # ---------------------------------------------------------------------
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+    groups:
+      angular:
+        # The @angular/* packages must move in lockstep; separate PRs would
+        # each fail on their own and none of them could merge.
+        patterns:
+          - '@angular/*'
+          - '@angular-eslint/*'
+          - 'angular-eslint'
+      lint-and-test:
+        patterns:
+          - 'eslint*'
+          - '@eslint/*'
+          - '@typescript-eslint/*'
+          - 'prettier*'
+          - 'vitest'
+          - '@vitest/*'
+          - 'husky'
+          - 'lint-staged'
+          - '@commitlint/*'
+      other-npm:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  # ---------------------------------------------------------------------
+  # GitHub Actions used by .github/workflows/
+  # ---------------------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: 'ci(deps)'
+    groups:
+      actions:
+        patterns: ['*']

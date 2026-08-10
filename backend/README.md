@@ -13,7 +13,8 @@ run.bat
 # Manual way
 python -m venv venv
 venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt        # runtime only
+pip install -r requirements-dev.txt    # + pytest, ruff, mypy (what CI installs)
 
 # Create the schema and load realistic sample data
 python -m alembic upgrade head
@@ -253,11 +254,17 @@ backend/
 ├── tests/               # pytest suite (isolated, seeded SQLite)
 ├── alembic/             # Alembic migrations (versions/ + env.py)
 ├── alembic.ini          # Alembic config (DB URL resolved at runtime)
-├── requirements.txt     # Python dependencies
+├── requirements.txt     # Runtime dependencies (what the Docker image installs)
+├── requirements-dev.txt # + pytest, ruff, mypy (what CI installs)
 ├── .env.example         # Environment variables template
 ├── .gitignore           # Git ignore rules
 └── README.md            # This file
 ```
+
+> Ruff and mypy are configured in [`pyproject.toml`](../pyproject.toml) at the **repo
+> root**, alongside the frontend's `eslint.config.mjs` and `.prettierrc`, and are run
+> from there — `ruff check backend/`, `ruff format --check backend/`, `mypy backend/`.
+> `pyrightconfig.json` is separate and serves the editor only; CI does not use it.
 
 Routers stay thin: they validate input, delegate to `services/`, and map domain
 errors onto status codes. `services/` never imports FastAPI, so the booking rules
@@ -389,11 +396,25 @@ docker-compose logs -f
 docker-compose down
 ```
 
-## Testing
+## Testing and static analysis
 
 ```bash
 # Run the automated suite (isolated, seeded SQLite — no live server needed)
 pytest
+```
+
+The same three static-analysis gates CI runs, from the **repo root**:
+
+```bash
+ruff check backend/           # lint          (--fix to auto-fix)
+ruff format --check backend/  # formatting    (drop --check to apply)
+mypy backend/                 # types, strict
+```
+
+Or via npm from the root, which finds the tools in `venv` without activating it:
+
+```bash
+npm run code-quality:py
 ```
 
 Manual pokes against a running server:

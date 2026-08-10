@@ -5,12 +5,22 @@ every 2s). We only need the first message to prove the stream works and is
 wired to the real, seeded database.
 """
 
+from fastapi.testclient import TestClient
+
 # Keys the frontend's IMetrics relies on from each streamed message.
 _EXPECTED_KEYS = {
     "timestamp",
-    "occupancy", "guestsInHouse", "revenueToday", "arrivalsToday",
-    "departuresToday", "occupiedRooms", "availableRooms",
-    "operationalRooms", "totalRooms", "adr", "revpar",
+    "occupancy",
+    "guestsInHouse",
+    "revenueToday",
+    "arrivalsToday",
+    "departuresToday",
+    "occupiedRooms",
+    "availableRooms",
+    "operationalRooms",
+    "totalRooms",
+    "adr",
+    "revpar",
 }
 
 # The legacy generic-SaaS fields the dashboard used to render. They are gone
@@ -18,7 +28,7 @@ _EXPECTED_KEYS = {
 _RETIRED_KEYS = {"activeUsers", "revenue", "requests", "uptime"}
 
 
-def test_websocket_streams_a_metrics_message(client):
+def test_websocket_streams_a_metrics_message(client: TestClient) -> None:
     with client.websocket_connect("/ws") as ws:
         message = ws.receive_json()
 

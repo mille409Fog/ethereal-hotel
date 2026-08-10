@@ -11,12 +11,14 @@ Ticks with no listeners skip the database entirely, so an idle server is silent.
 import asyncio
 import logging
 import random
+from collections.abc import Mapping
+from typing import Any
 
 from fastapi import WebSocket
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from db import SessionLocal
-from db.metrics import compute_metrics
+from db.metrics import MetricsPayload, compute_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +46,14 @@ class ConnectionManager:
             self._connections.remove(websocket)
             logger.info("Client disconnected (%d active)", self.connection_count)
 
-    async def broadcast(self, message: dict) -> None:
+    async def broadcast(self, message: Mapping[str, Any]) -> None:
         """Send ``message`` to every client, dropping any that fail."""
         # Iterate over a snapshot so a failed send that prunes the connection
         # can't mutate the list mid-iteration.
         for connection in list(self._connections):
             try:
                 await connection.send_json(message)
-            except Exception:  # noqa: BLE001 - one bad client must not stop the fan-out
+            except Exception:
                 logger.warning("Dropping client after a failed send", exc_info=True)
                 self.disconnect(connection)
 
@@ -61,7 +63,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-def live_metrics(db: Session) -> dict:
+def live_metrics(db: Session) -> MetricsPayload:
     """Real metrics with a touch of live motion on the in-house guest count.
 
     The jitter is bounded and applied only to ``guestsInHouse`` — the one number
@@ -78,7 +80,7 @@ def live_metrics(db: Session) -> dict:
 
 
 async def broadcast_tick(
-    clients: ConnectionManager, session_factory=SessionLocal
+    clients: ConnectionManager, session_factory: sessionmaker[Session] = SessionLocal
 ) -> bool:
     """Compute one snapshot and push it to every client.
 
@@ -98,7 +100,7 @@ async def broadcast_tick(
 async def run_metrics_broadcaster(
     clients: ConnectionManager,
     interval_seconds: float,
-    session_factory=SessionLocal,
+    session_factory: sessionmaker[Session] = SessionLocal,
 ) -> None:
     """Broadcast a snapshot every ``interval_seconds`` until cancelled."""
     logger.info("Metrics broadcaster started (every %.1fs)", interval_seconds)
@@ -107,7 +109,7 @@ async def run_metrics_broadcaster(
             await asyncio.sleep(interval_seconds)
             try:
                 await broadcast_tick(clients, session_factory)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 # A transient DB error must not kill the stream for everyone;
                 # log it and try again on the next tick.
                 logger.exception("Metrics broadcast tick failed, continuing")

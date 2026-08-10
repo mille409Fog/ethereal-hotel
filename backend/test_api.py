@@ -3,26 +3,30 @@ Simple test script to verify the API is working
 Run this after starting the server with: python main.py
 """
 
-import requests
 import json
+
+import requests
 
 BASE_URL = "http://localhost:8000"
 
-def test_health():
+
+def test_health() -> None:
     """Test the health check endpoint"""
     print("Testing health endpoint...")
     response = requests.get(f"{BASE_URL}/")
     print(f"Status: {response.status_code}")
     print(f"Response: {json.dumps(response.json(), indent=2)}\n")
 
-def test_metrics():
+
+def test_metrics() -> None:
     """Test the metrics endpoint"""
     print("Testing metrics endpoint...")
     response = requests.get(f"{BASE_URL}/api/metrics")
     print(f"Status: {response.status_code}")
     print(f"Response: {json.dumps(response.json(), indent=2)}\n")
 
-def test_dashboard():
+
+def test_dashboard() -> None:
     """Test the dashboard endpoint"""
     print("Testing dashboard endpoint...")
     response = requests.get(f"{BASE_URL}/api/dashboard")
@@ -32,11 +36,12 @@ def test_dashboard():
     print(f"Historical Users count: {len(data['historicalUsers'])}")
     print(f"Historical Revenue count: {len(data['historicalRevenue'])}\n")
 
+
 if __name__ == "__main__":
     print("=" * 50)
     print("EtherealHotel Dashboard API Tests")
     print("=" * 50 + "\n")
-    
+
     try:
         test_health()
         test_metrics()
@@ -45,5 +50,5 @@ if __name__ == "__main__":
     except requests.exceptions.ConnectionError:
         print("❌ Error: Cannot connect to the server.")
         print("Make sure the server is running: python main.py")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a smoke script reports, it doesn't handle
         print(f"❌ Error: {e}")
