@@ -10,6 +10,7 @@ count around the real value so the stream feels alive.
 import asyncio
 import os
 import random
+from contextlib import asynccontextmanager
 from datetime import date
 
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -82,12 +83,40 @@ class BookingOut(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Lifecycle
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup/shutdown handler.
+
+    On startup: ensure the schema exists and seed once if the DB is empty.
+    On shutdown: log a clean exit. Code before ``yield`` runs at startup,
+    code after it runs at shutdown.
+    """
+    init_db()
+    with SessionLocal() as db:
+        if db.query(Room).count() == 0:
+            print("Empty database detected — seeding sample data...")
+            from db.seed import seed
+
+            seed(reset=False)
+    print("EtherealHotel Dashboard API started")
+    print("WebSocket server ready at ws://localhost:8000/ws")
+    print("REST API ready at http://localhost:8000")
+
+    yield
+
+    print("Shutting down EtherealHotel Dashboard API")
+
+
+# ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="EtherealHotel Dashboard API",
     description="Real-time hotel dashboard backend, powered by real records.",
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 # Allowed CORS origins come from the ALLOWED_ORIGINS env var (comma-separated).
@@ -132,11 +161,14 @@ class ConnectionManager:
         print(f"Client disconnected. Total connections: {len(self.active_connections)}")
 
     async def broadcast(self, message: dict):
-        for connection in self.active_connections:
+        # Iterate over a snapshot so a failed send that prunes the connection
+        # can't mutate the list mid-iteration.
+        for connection in list(self.active_connections):
             try:
                 await connection.send_json(message)
             except Exception as e:  # noqa: BLE001
                 print(f"Error sending to client: {e}")
+                self.disconnect(connection)
 
 
 manager = ConnectionManager()
@@ -245,29 +277,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:  # noqa: BLE001
         print(f"WebSocket error: {e}")
         manager.disconnect(websocket)
-
-
-# ---------------------------------------------------------------------------
-# Lifecycle
-# ---------------------------------------------------------------------------
-@app.on_event("startup")
-async def startup_event():
-    """Ensure the schema exists and seed once if the DB is empty."""
-    init_db()
-    with SessionLocal() as db:
-        if db.query(Room).count() == 0:
-            print("Empty database detected — seeding sample data...")
-            from db.seed import seed
-
-            seed(reset=False)
-    print("EtherealHotel Dashboard API started")
-    print("WebSocket server ready at ws://localhost:8000/ws")
-    print("REST API ready at http://localhost:8000")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    print("Shutting down EtherealHotel Dashboard API")
 
 
 if __name__ == "__main__":

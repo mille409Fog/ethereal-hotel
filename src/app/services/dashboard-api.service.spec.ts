@@ -148,14 +148,68 @@ describe('DashboardApiService', () => {
       expect(errored).toBe(false);
     });
 
-    it('surfaces socket errors on the observable', () => {
-      let caught: unknown = null;
-      service.connectWebSocket().subscribe({ error: (e) => (caught = e) });
+    it('keeps the stream alive on a socket error (no error/complete)', () => {
+      let errored = false;
+      let completed = false;
+      service.connectWebSocket().subscribe({
+        error: () => (errored = true),
+        complete: () => (completed = true),
+      });
 
-      const boom = new Error('socket boom');
-      FakeWebSocket.last!.onerror?.(boom);
+      FakeWebSocket.last!.onerror?.(new Error('socket boom'));
 
-      expect(caught).toBe(boom);
+      // An error must not tear the stream down — reconnection handles recovery.
+      expect(errored).toBe(false);
+      expect(completed).toBe(false);
+    });
+
+    it('reconnects automatically after the socket drops', () => {
+      vi.useFakeTimers();
+      try {
+        const received: IMetrics[] = [];
+        service.connectWebSocket().subscribe((m) => received.push(m));
+
+        const first = FakeWebSocket.last!;
+        // Simulate the backend going away (e.g. restart).
+        first.onclose?.();
+
+        // Reconnect is scheduled, not immediate.
+        expect(FakeWebSocket.last).toBe(first);
+
+        vi.advanceTimersByTime(1000); // INITIAL_RECONNECT_DELAY_MS
+        const second = FakeWebSocket.last!;
+        expect(second).not.toBe(first);
+
+        // The same observable keeps delivering after the reconnect.
+        second.onmessage?.({ data: JSON.stringify(sampleMetrics) });
+        expect(received).toEqual([sampleMetrics]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('backs off exponentially across repeated failures', () => {
+      vi.useFakeTimers();
+      try {
+        service.connectWebSocket().subscribe();
+        const first = FakeWebSocket.last!;
+
+        first.onclose?.();
+        vi.advanceTimersByTime(999);
+        expect(FakeWebSocket.last).toBe(first); // still waiting on the 1000ms delay
+        vi.advanceTimersByTime(1);
+        const second = FakeWebSocket.last!;
+        expect(second).not.toBe(first);
+
+        // Second consecutive failure -> the delay doubles to 2000ms.
+        second.onclose?.();
+        vi.advanceTimersByTime(1999);
+        expect(FakeWebSocket.last).toBe(second);
+        vi.advanceTimersByTime(1);
+        expect(FakeWebSocket.last).not.toBe(second);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('closes any existing socket before opening a new one', () => {
@@ -178,6 +232,22 @@ describe('DashboardApiService', () => {
       service.disconnectWebSocket();
 
       expect(socket.closed).toBe(true);
+    });
+
+    it('stops reconnecting once disconnected', () => {
+      vi.useFakeTimers();
+      try {
+        service.connectWebSocket().subscribe();
+        const first = FakeWebSocket.last!;
+
+        first.onclose?.(); // schedules a reconnect
+        service.disconnectWebSocket(); // ...which this must cancel
+
+        vi.advanceTimersByTime(60000);
+        expect(FakeWebSocket.last).toBe(first); // no new socket was opened
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

@@ -196,28 +196,75 @@ The backend is configured with CORS to allow requests from:
 
 ### Angular Service Example
 
+The live service ([`src/app/services/dashboard-api.service.ts`](../src/app/services/dashboard-api.service.ts))
+streams metrics over a **self-healing** WebSocket: it emits on a fresh `Subject`
+per connection and reconnects with exponential backoff (1s → 30s cap) when the
+socket drops — e.g. when the backend restarts — instead of erroring the stream
+dead. A trimmed sketch of that pattern:
+
 ```typescript
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class DashboardService {
-  private ws: WebSocket;
+  private static readonly INITIAL_RECONNECT_DELAY_MS = 1000;
+  private static readonly MAX_RECONNECT_DELAY_MS = 30000;
+
+  private ws: WebSocket | null = null;
+  private metrics$: Subject<Metrics> | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempts = 0;
+  private shouldReconnect = false;
 
   connectWebSocket(): Observable<Metrics> {
-    return new Observable(observer => {
-      this.ws = new WebSocket('ws://localhost:8000/ws');
+    this.disconnectWebSocket();       // drop any previous connection/stream
+    this.metrics$ = new Subject<Metrics>();
+    this.shouldReconnect = true;
+    this.reconnectAttempts = 0;
+    this.openSocket();
+    return this.metrics$.asObservable();
+  }
 
-      this.ws.onmessage = (event) => {
-        observer.next(JSON.parse(event.data));
-      };
+  private openSocket(): void {
+    const metrics$ = this.metrics$;
+    if (!metrics$) return;
 
-      this.ws.onerror = (error) => {
-        observer.error(error);
-      };
+    this.ws = new WebSocket('ws://localhost:8000/ws');
+    this.ws.onopen = () => (this.reconnectAttempts = 0); // reset backoff
+    this.ws.onmessage = (event) => metrics$.next(JSON.parse(event.data));
+    this.ws.onerror = (error) => console.error('WebSocket error:', error);
+    this.ws.onclose = () => {
+      this.ws = null;
+      if (this.shouldReconnect) this.scheduleReconnect();
+    };
+  }
 
-      return () => this.ws.close();
-    });
+  private scheduleReconnect(): void {
+    const delay = Math.min(
+      DashboardService.INITIAL_RECONNECT_DELAY_MS * 2 ** this.reconnectAttempts,
+      DashboardService.MAX_RECONNECT_DELAY_MS
+    );
+    this.reconnectAttempts += 1;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (this.shouldReconnect) this.openSocket();
+    }, delay);
+  }
+
+  disconnectWebSocket(): void {
+    this.shouldReconnect = false;
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.ws) {
+      this.ws.onclose = null;         // don't let this close trigger a reconnect
+      this.ws.close();
+      this.ws = null;
+    }
+    this.metrics$?.complete();
+    this.metrics$ = null;
   }
 
   getMetrics(): Observable<Metrics> {

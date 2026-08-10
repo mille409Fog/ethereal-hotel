@@ -90,7 +90,7 @@ real status once this branch is pushed. (Badge on the default branch `main` will
 
 ---
 
-## 5. Harden existing code
+## 5. Harden existing code — ✅ DONE (verified 2026-08-09)
 **Effort:** M · **Why:** Self-contained fixes that demonstrate real engineering judgment.
 
 - **WebSocket reconnection:** `dashboard-api.service.ts` reuses one `Subject`; once it `.error()`s
@@ -102,9 +102,16 @@ real status once this branch is pushed. (Badge on the default branch `main` will
   failure. Iterate over a copy and prune dead sockets safely.
 
 **DoD:**
-- [ ] Killing/restarting the backend causes the frontend to reconnect automatically.
-- [ ] No `@app.on_event` usage remains; lifespan handler is used.
-- [ ] `broadcast()` handles a failing/closed socket without corrupting the connection list.
+- [x] Killing/restarting the backend causes the frontend to reconnect automatically.
+      (Per-connection `Subject` + exponential backoff 1s→30s; `onerror` logs only so the stream
+      survives; `onclose` drives reconnect. Covered by `dashboard-api.service.spec.ts`.)
+- [x] No `@app.on_event` usage remains; lifespan handler is used. (`grep on_event` → none;
+      `FastAPI(lifespan=...)`.)
+- [x] `broadcast()` handles a failing/closed socket without corrupting the connection list.
+      (Iterates a `list(...)` snapshot, prunes dead sockets on send failure.)
+
+Notes: `broadcast()` is correct but currently unused (the `/ws` handler sends per-connection).
+Re-verified 2026-08-09: backend 9/9, frontend 23/23 pass.
 
 ---
 
