@@ -10,9 +10,9 @@
 -r requirements.txt
 
 # Tests
-pytest==8.3.3
-httpx==0.27.2          # required by fastapi.testclient.TestClient
-requests==2.32.3       # used by the legacy backend/test_api.py smoke script
+pytest==9.1.1
+httpx==0.28.1          # required by fastapi.testclient.TestClient
+requests==2.34.2       # used by the legacy backend/test_api.py smoke script
 
 # Static analysis — see pyproject.toml at the repo root for the configuration.
 ruff==0.16.2
