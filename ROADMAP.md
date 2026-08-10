@@ -22,7 +22,7 @@ single biggest credibility lever. Use the hotel domain that's already implied.
 
 ---
 
-## 2. Deploy it (live URL + env-based config)
+## 2. Deploy it (live URL + env-based config) — 🟡 PARTIAL (verified 2026-08-09: frontend deployed, backend pending)
 **Effort:** M · **Why:** A portfolio you can't click is half a portfolio.
 
 - Frontend to Vercel/Netlify/Cloudflare Pages; backend to Fly.io/Render.
@@ -31,9 +31,19 @@ single biggest credibility lever. Use the hotel domain that's already implied.
 - Backend CORS reads allowed origins from an env var.
 
 **DoD:**
-- [ ] No hardcoded `localhost` URLs in committed frontend source; API base comes from env.
-- [ ] Backend CORS origins come from config/env, not a hardcoded list.
-- [ ] README has a working live link (and a working CI badge — see item 3).
+- [x] No hardcoded `localhost` URLs in committed frontend source; API base comes from env.
+      (`environment.ts` dev / `environment.prod.ts` prod, swapped via `angular.json` fileReplacements.)
+- [x] Backend CORS origins come from config/env, not a hardcoded list. (`ALLOWED_ORIGINS` env var.)
+- [x] README has a working live link (frontend on Vercel) and a working CI badge (real repo).
+
+**Remaining (blocks a true ✅ — handoff to backend-deploy instance):**
+- [ ] Deploy the FastAPI backend (Render/Fly) and set `ALLOWED_ORIGINS` to the Vercel origin.
+- [ ] Point `environment.prod.ts` at the real backend URL. It currently references a **dead**
+      placeholder (`ethereal-hotel-api.onrender.com` → 404), which shows as failed requests in
+      DevTools on the live site.
+- [ ] Until then the hosted demo runs on **mock data** (health check fails → graceful fallback),
+      so Item 1's real-data work is invisible in production. Either finish the deploy, or make
+      `environment.prod.ts` fall back cleanly and note "simulated data" in the README.
 
 ---
 

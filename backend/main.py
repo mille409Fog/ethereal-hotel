@@ -8,6 +8,7 @@ count around the real value so the stream feels alive.
 """
 
 import asyncio
+import os
 import random
 from datetime import date
 
@@ -89,14 +90,25 @@ app = FastAPI(
     version="2.0.0",
 )
 
+# Allowed CORS origins come from the ALLOWED_ORIGINS env var (comma-separated).
+# Falls back to the local dev servers when the var is unset so local dev "just
+# works". Set ALLOWED_ORIGINS in production, e.g.:
+#   ALLOWED_ORIGINS=https://ethereal-hotel-pink.vercel.app
+_DEFAULT_ORIGINS = (
+    "http://localhost:4200,"  # Angular dev server
+    "http://localhost:5173,"  # Vite alternative
+    "http://127.0.0.1:4200,"
+    "http://127.0.0.1:5173"
+)
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:4200",  # Angular dev server
-        "http://localhost:5173",  # Vite alternative
-        "http://127.0.0.1:4200",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

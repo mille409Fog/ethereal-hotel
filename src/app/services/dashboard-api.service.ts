@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 /**
  * Interface for metrics data from backend
@@ -37,8 +38,8 @@ export interface IDashboardData {
   providedIn: 'root',
 })
 export class DashboardApiService {
-  private readonly API_URL = 'http://localhost:8000/api';
-  private readonly WS_URL = 'ws://localhost:8000/ws';
+  private readonly API_URL = environment.apiUrl;
+  private readonly WS_URL = environment.wsUrl;
 
   private ws: WebSocket | null = null;
   private metricsSubject = new Subject<IMetrics>();
@@ -126,7 +127,7 @@ export class DashboardApiService {
    */
   public async checkBackendHealth(): Promise<boolean> {
     try {
-      const response = await window.fetch('http://localhost:8000/');
+      const response = await window.fetch(environment.healthUrl);
       return response.ok;
     } catch (error) {
       console.error('Backend not available:', error);

@@ -1,6 +1,8 @@
 # EtherealHotel
 
-[![Code Quality](https://github.com/yourusername/ethereal-hotel/actions/workflows/code-quality.yml/badge.svg)](https://github.com/yourusername/ethereal-hotel/actions/workflows/code-quality.yml)
+[![Code Quality](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/code-quality.yml/badge.svg)](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/code-quality.yml)
+
+**Live demo:** https://ethereal-hotel-pink.vercel.app/
 
 A professional portfolio and real-time dashboard application built with Angular 22, showcasing modern development practices and enterprise-grade code quality standards.
 
@@ -209,7 +211,35 @@ This project uses Vitest for fast, modern unit testing:
 npm test
 ```
 
+## ⚙️ Configuration
+
+### Frontend (Angular environments)
+
+The API base URLs are **not hardcoded**. They live in Angular environment files:
+
+- `src/environments/environment.ts` — development (defaults to `http://localhost:8000`).
+- `src/environments/environment.prod.ts` — production (your deployed backend URL).
+
+`angular.json` swaps `environment.ts` for `environment.prod.ts` on production builds
+(`fileReplacements`). To point the deployed frontend at your backend, edit
+`environment.prod.ts` and set `apiUrl`, `wsUrl`, and `healthUrl` to your backend origin,
+then rebuild/redeploy. Until a backend is live, the dashboard falls back to mock data.
+
+### Backend (CORS origins)
+
+Allowed CORS origins are read from the `ALLOWED_ORIGINS` env var (comma-separated). When
+unset, it defaults to the local dev servers. In production, set it to your frontend origin:
+
+```bash
+export ALLOWED_ORIGINS="https://ethereal-hotel-pink.vercel.app"
+```
+
 ## 🚢 Deployment
+
+- **Frontend** → Vercel (live at https://ethereal-hotel-pink.vercel.app/).
+  Build command `npm run build`, output directory `dist/ethereal-hotel/browser`.
+- **Backend** → Fly.io / Render using `backend/Dockerfile`. Set `ALLOWED_ORIGINS`
+  to the Vercel origin so the browser can call the API.
 
 ### Build for Production
 
