@@ -5,9 +5,9 @@
 # Every version is pinned exactly so a deploy six months from now installs what
 # CI tested. Dependabot (.github/dependabot.yml) proposes the bumps.
 
-fastapi==0.115.0
-uvicorn[standard]==0.32.0
-pydantic==2.9.2
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+pydantic==2.13.4
 # uvicorn[standard] pulls this in for the /ws protocol; pinned explicitly
 # because the WebSocket stream is a first-class feature, not an accident.
 websockets==13.1
@@ -18,8 +18,8 @@ websockets==13.1
 # environment variables — see the Configuration table in README.md.
 
 # Persistence
-SQLAlchemy==2.0.35
-alembic==1.13.3
+SQLAlchemy==2.0.51
+alembic==1.19.0
 
 # Used by db/seed.py, which runs on startup to populate an empty database.
 Faker==30.3.0
