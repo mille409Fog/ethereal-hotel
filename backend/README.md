@@ -6,6 +6,10 @@ bookings) stored in a SQLite database via SQLAlchemy — not random numbers.
 
 ## 🚀 Quick Start
 
+**Requires Python 3.11+** — the version CI runs, `Dockerfile` builds on
+(`python:3.11-slim`), and both `ruff` (`target-version = "py311"`) and `mypy`
+(`python_version = "3.11"`) are configured against.
+
 ```bash
 # Easy way (Windows)
 run.bat
@@ -256,7 +260,7 @@ backend/
 ├── alembic.ini          # Alembic config (DB URL resolved at runtime)
 ├── requirements.txt     # Runtime dependencies (what the Docker image installs)
 ├── requirements-dev.txt # + pytest, ruff, mypy (what CI installs)
-├── .env.example         # Environment variables template
+├── pytest.ini           # Test discovery (tests/ only)
 ├── .gitignore           # Git ignore rules
 └── README.md            # This file
 ```
@@ -433,13 +437,18 @@ wscat -c ws://localhost:8000/ws
 
 ## Environment Variables
 
-Create a `.env` file from `.env.example`:
+There is no `.env` loading. `config.py` reads `os.getenv` at import time and nothing
+calls `load_dotenv()`, so configuration comes from **real environment variables** — set
+them in your shell, your `docker-compose.yml`, or your host's dashboard:
 
 ```bash
-cp .env.example .env
+export ALLOWED_ORIGINS="https://ethereal-hotel-pink.vercel.app"
+export LOG_LEVEL=DEBUG
+python main.py
 ```
 
-Then edit `.env` with your configuration.
+The four variables above are the complete set — see [Configuration](#configuration).
+Every one has a default that makes a fresh clone run, so none of them is required.
 
 ## Tech Stack
 
@@ -450,7 +459,7 @@ Then edit `.env` with your configuration.
 - **Alembic**: Schema migrations
 - **SQLite**: Default persistence (swap via `DATABASE_URL`)
 - **WebSockets**: Real-time communication
-- **Python 3.9+**: Latest Python features
+- **Python 3.11+**: the floor CI, `Dockerfile` and `pyproject.toml` all enforce
 
 ## License
 

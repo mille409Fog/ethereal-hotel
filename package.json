@@ -8,7 +8,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "test:backend": "cd backend && python test_api.py",
+    "test:backend": "node scripts/py-tool.mjs pytest backend/",
     "e2e": "ng build && playwright test",
     "a11y": "ng build && playwright test a11y.spec.ts",
     "lint": "eslint . --ext .ts,.html --max-warnings 0",

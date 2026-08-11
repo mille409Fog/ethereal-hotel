@@ -27,35 +27,6 @@ in production source is worse than no URL: it reads as unfinished rather than sc
 - [ ] If the deploy is deliberately skipped, `environment.prod.ts` no longer references a dead host
       and the README says "simulated data in the hosted demo" explicitly.
 
----
-
-## 3. End-to-end smoke test
-
-**Effort:** M · **Why:** Unit tests cover the service and the fallback logic in isolation, but
-nothing proves the app _boots and renders_. An E2E test is also the only honest way to verify the
-mock-fallback path end to end, which is the path the hosted demo actually runs on today.
-
-- Playwright, two specs: the landing page renders the hero and nav; `/dashboard` loads and displays
-  metrics with the backend stubbed both up and down.
-- Run against the production build in CI (`npm run build` → serve `dist/` → test), not the dev
-  server, so it catches build-only breakage.
-- Attach traces/screenshots as CI artifacts on failure.
-
-**DoD:**
-
-- [x] `npm run e2e` passes locally and in CI against a production build.
-- [x] The suite fails if the dashboard renders empty or the fallback path breaks.
-- [x] Failure artifacts (trace + screenshot) are uploaded by the workflow.
-
-**Done.** `e2e/landing.spec.ts` and `e2e/dashboard.spec.ts`, with the backend stubbed at the network
-layer in both directions (`e2e/support/backend.ts`) so the suite is hermetic and never depends on
-the real API host. Both failure modes in the second box were confirmed by mutation rather than
-assumed — zeroing the fallback metrics and making the health check swallow its error each fail the
-dashboard spec and nothing else. The a11y and smoke suites now share one CI job, since they need
-identical setup and `npm run e2e` covers both; `npm run a11y` still scopes to the audit locally.
-
----
-
 ## 4. Repo hygiene and a claims audit
 
 **Effort:** S · **Why:** Small inaccuracies compound. Each one individually is trivial; together
@@ -82,10 +53,36 @@ they signal that nobody re-read the repo after writing it.
 
 **DoD:**
 
-- [ ] Legacy manual test scripts deleted; `npm run test:backend` runs `pytest`.
-- [ ] Every version claim in the README matches what CI and `engines` actually enforce.
-- [ ] No feature is described in the README that isn't demonstrably in the code.
-- [ ] README opens with a screenshot of the dashboard above the fold.
+- [x] Legacy manual test scripts deleted; `npm run test:backend` runs `pytest` (18 passing).
+- [x] Every version claim in the README matches what CI and `engines` actually enforce.
+- [x] No feature is described in the README that isn't demonstrably in the code.
+- [x] README opens with a screenshot of the dashboard above the fold.
+
+**Done (2026-08-11).** Notes on what the audit actually turned up:
+
+- `engines` is `^22.22.3 || ^24.15.0` — the `|| >=26` above was never in the file. The README's
+  "Node.js (v20+)" is now the real range, with `.nvmrc` (22.22.3, what CI installs) and the
+  Vercel 24.x deploy both named.
+- Python floor is **3.11**, not 3.10 — CI, `backend/Dockerfile` (`python:3.11-slim`), ruff
+  `target-version` and mypy `python_version` all already agreed on 3.11. Stated in README,
+  `backend/README.md` and `ARCHITECTURE.md`.
+- **`.env` resolved by deletion.** `backend/.env.example` documented five variables
+  (`HOST`, `PORT`, `RELOAD`, `API_PREFIX`, `DEBUG`) that *no code reads at all* — `main.py`
+  hardcodes host/port/reload. Deleted rather than wiring up dotenv; both READMEs now say
+  configuration comes from real environment variables and list the four that exist.
+- **`tsconfig.json` was missing `strict: true`** while the README claimed "TypeScript strict
+  mode". Enabling it produced exactly one error (`e2e/a11y.spec.ts`, an `impact` that is
+  optional as well as nullable), now fixed — so the claim is true rather than removed.
+- Two other claims were false and are corrected: "async pipe for observables" (no such rule is
+  configured; it's `no-negated-async`) and "takeUntil pattern" (the code uses
+  `takeUntilDestroyed(DestroyRef)`).
+- `requests` / `types-requests` dropped from `requirements-dev.txt` — they existed only for the
+  deleted smoke script.
+- Added `.gitattributes` (`* text=auto eol=lf`). Two committed files were CRLF on disk, so the
+  documented `npm run format:check` failed on Windows while CI stayed green.
+
+Verified green: `format:check`, `lint`, `test` (70 passing), `code-quality:py`,
+`test:backend` (18 passing), `e2e` (13 passing), `build`.
 
 ---
 

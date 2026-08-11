@@ -71,8 +71,10 @@ test.describe('accessibility', () => {
         contentType: 'application/json',
       });
 
-      const blocking = results.violations.filter(
-        (violation) => violation.impact !== null && BLOCKING_IMPACTS.has(violation.impact)
+      // `impact` is optional as well as nullable in axe's types — a truthiness
+      // check covers both, and an unclassified violation can't be blocking.
+      const blocking = results.violations.filter((violation) =>
+        violation.impact ? BLOCKING_IMPACTS.has(violation.impact) : false
       );
 
       expect(blocking, `\n${formatViolations(blocking)}\n`).toEqual([]);

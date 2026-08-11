@@ -1,0 +1,16 @@
+# Normalize line endings to LF in the working tree, not just in the repository.
+#
+# Prettier is configured with `endOfLine: "lf"` and CI runs on Linux, so a
+# Windows clone with core.autocrlf=true would check files out as CRLF and fail
+# `npm run format:check` locally while CI stayed green. Declaring the working
+# tree as LF keeps the documented command working on every platform.
+* text=auto eol=lf
+
+# Binary assets: never touch these.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff  binary
+*.woff2 binary
+*.db    binary

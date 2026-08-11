@@ -30,7 +30,7 @@
 
 ### Backend
 - **Framework**: FastAPI 0.115
-- **Language**: Python 3.9+
+- **Language**: Python 3.11+
 - **Server**: Uvicorn (ASGI)
 - **Validation**: Pydantic 2.9
 - **Real-time**: WebSockets 13.1
@@ -123,7 +123,7 @@ ethereal-hotel/
 │   ├── run.bat                       # Windows startup script
 │   ├── Dockerfile                    # Container image
 │   ├── docker-compose.yml            # Docker orchestration
-│   ├── .env.example                  # Config template
+│   ├── pytest.ini                    # Test discovery (tests/ only)
 │   └── README.md                     # Backend docs
 │
 ├── .github/

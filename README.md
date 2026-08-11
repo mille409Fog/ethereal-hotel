@@ -4,24 +4,36 @@
 
 **Live demo:** https://ethereal-hotel-pink.vercel.app/
 
-A professional portfolio and real-time dashboard application built with Angular 22, showcasing modern development practices and enterprise-grade code quality standards.
+A hotel operations dashboard and portfolio site built with Angular 22 and FastAPI. Every
+figure on the dashboard — occupancy, ADR, RevPAR, revenue — is **derived from real booking
+records** in a SQLite database, not generated from random numbers.
+
+![The hotel operations dashboard: occupancy, ADR, RevPAR, room revenue, arrivals/departures and rooms available](docs/images/dashboard.png)
+
+> The badge reads "simulated data" above because the hosted demo has no backend deployed yet;
+> the dashboard falls back to a committed snapshot of a real seeded database and says so.
+> See [Configuration](#️-configuration).
+
+![Three Chart.js panels: guests in house over 20 days, room revenue by night, and tonight's room inventory as a donut](docs/images/charts.png)
 
 ## 🌟 Features
 
-- **Real-Time Dashboard**: Live data visualization with RxJS observables and Chart.js
-- **Responsive Design**: Mobile-first approach with smooth animations
+- **Real-Time Dashboard**: metrics streamed over a WebSocket every 2 seconds and drawn with Chart.js
+- **Domain-derived metrics**: occupancy, ADR and RevPAR computed from rooms, guests and bookings
 - **Accessible**: WCAG 2.1 AA, verified in CI by axe — see [Accessibility](#-accessibility)
-- **Code Quality**: Automated linting, formatting, and pre-commit hooks
-- **CI/CD Pipeline**: GitHub Actions for automated testing and deployment
-- **Modern Stack**: Angular 22 with TypeScript 6.0
+- **Code Quality**: linting, formatting, type checking and tests gated in CI for *both* languages
+- **CI/CD Pipeline**: GitHub Actions running the same commands documented here
+- **Modern Stack**: Angular 22 signals + TypeScript 6.0 (strict), FastAPI on Python 3.11
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js (v20+)
-- npm (v11+)
-- Python 3.9+ (for backend)
+- **Node.js** — `^22.22.3 || ^24.15.0`, as `package.json` `engines` enforces. `.nvmrc` pins
+  **22.22.3**, which is what CI installs; the Vercel deploy builds on 24.x.
+- **npm** v11+ (`packageManager` pins 11.16.0)
+- **Python 3.11+** for the backend — the version CI runs, `backend/Dockerfile` builds on, and
+  both ruff (`target-version = "py311"`) and mypy (`python_version = "3.11"`) assume.
 
 ### Installation
 
@@ -85,13 +97,20 @@ npm run watch
 
 ### Testing
 ```bash
-# Run unit tests with Vitest, printing a coverage summary.
+# Run frontend unit tests with Vitest, printing a coverage summary.
 # Fails if coverage drops below the thresholds in angular.json.
 npm test
 
-# Build, serve dist/, and run the accessibility suite against it:
-# an axe scan of / and /dashboard, plus keyboard and reduced-motion checks.
+# Run the backend suite: 18 pytest tests against an isolated, deterministically
+# seeded SQLite database. No running server required.
+npm run test:backend
+
+# Build, serve dist/, and run the full Playwright suite (smoke + accessibility).
 # Needs `npx playwright install --only-shell chromium` once.
+npm run e2e
+
+# Just the accessibility half: an axe scan of / and /dashboard, plus keyboard
+# and reduced-motion checks.
 npm run a11y
 ```
 
@@ -137,9 +156,9 @@ their configuration from `pyproject.toml` at the repo root.
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework**: Angular 22
-- **Language**: TypeScript 6.0
-- **State Management**: RxJS 7.8
+- **Framework**: Angular 22 (standalone components, signals, OnPush everywhere)
+- **Language**: TypeScript 6.0, `strict` on
+- **State Management**: signals (`signal` / `computed` / `input`) over an RxJS 7.8 transport
 - **Charts**: Chart.js 4.5
 - **Build Tool**: Angular CLI 22
 - **Testing**: Vitest 4.0
@@ -148,7 +167,7 @@ their configuration from `pyproject.toml` at the repo root.
 
 ### Backend
 - **Framework**: FastAPI 0.115
-- **Language**: Python 3.9+
+- **Language**: Python 3.11+
 - **Server**: Uvicorn (ASGI)
 - **Validation**: Pydantic 2.9
 - **Real-time**: WebSockets
@@ -216,10 +235,11 @@ Enforced by ESLint (`eslint.config.mjs`) and Prettier (`.prettierrc`). `npm run 
 `--max-warnings 0`, so every rule below is a build failure, not a suggestion:
 
 - **TypeScript**: no `any`, explicit return types and accessibility modifiers, prefer `const`,
-  max function complexity 10 / length 100 lines.
+  max function complexity 10 / length 100 lines. `tsconfig.json` sets `strict: true`, so the
+  compiler enforces null-safety underneath all of it.
 - **Angular**: `app-` selector prefix, lifecycle interfaces, OnPush change detection,
-  `trackBy` in `*ngFor`.
-- **Templates**: `[(ngModel)]` banana-in-box syntax, async pipe for observables, no duplicate attributes.
+  a track expression on every loop (`use-track-by-function`).
+- **Templates**: banana-in-box syntax, no negated async, no duplicate attributes.
 - **General**: no `console.log` (use `console.warn`/`console.error`), no `debugger`, strict equality
   (`===`), always use curly braces, prefer arrow functions and template literals.
 
@@ -253,17 +273,19 @@ than being switched off silently:
 ### Test Coverage
 
 `npm test` reports coverage and fails below the thresholds set in `angular.json` under
-`test.options.coverageThresholds`. They start at today's numbers so the build ratchets upward
-rather than blocking work:
+`test.options.coverageThresholds`. The thresholds are floors, deliberately set a little under
+the current figures — V8 attributes function coverage slightly differently across Node
+versions, so a threshold pinned to the exact number would fail on a version bump rather than
+on a real regression. That headroom is why `.nvmrc` pins the Node version CI uses.
 
-| Metric | Threshold |
-| --- | --- |
-| Statements | 90% |
-| Branches | 88% |
-| Functions | 74% |
-| Lines | 90% |
+| Metric | Threshold | Currently |
+| --- | --- | --- |
+| Statements | 90% | 97.05% |
+| Branches | 88% | 93.84% |
+| Functions | 74% | 95.89% |
+| Lines | 90% | 96.88% |
 
-When new tests push the real numbers up, raise the thresholds to match.
+When new tests push the real numbers up durably, raise the floors to match.
 
 ## 🏗️ Project Structure
 
@@ -282,31 +304,44 @@ ethereal-hotel/
 │   └── ...
 ├── backend/
 │   ├── main.py                  # FastAPI application
+│   ├── routers/                 # HTTP + WebSocket endpoints
+│   ├── services/                # Business logic, no FastAPI imports
+│   ├── db/                      # Models, metrics, seeder
+│   ├── tests/                   # pytest suite
 │   ├── requirements.txt         # Runtime Python dependencies
 │   ├── requirements-dev.txt     # Tests + ruff/mypy
 │   ├── run.bat                  # Windows startup script
 │   └── README.md                # Backend documentation
+├── e2e/                         # Playwright: smoke tests + axe audit
 ├── scripts/
-│   └── py-tool.mjs              # Resolves ruff/mypy for npm + lint-staged
+│   ├── py-tool.mjs              # Resolves ruff/mypy/pytest for npm + lint-staged
+│   └── serve-dist.mjs           # Static server for the Playwright suites
+├── docs/images/                 # README screenshots
 ├── .github/
 │   ├── workflows/               # CI/CD pipelines
 │   └── dependabot.yml           # pip + npm + github-actions updates
 ├── .husky/                      # Git hooks
+├── .nvmrc                       # Node version CI installs (22.22.3)
 ├── pyproject.toml               # Ruff + mypy configuration
 ├── ARCHITECTURE.md              # System architecture & data flow
+├── CONTRIBUTING.md              # Setup and the gates a PR must pass
+├── LICENSE                      # MIT
 └── ...
 ```
 
 ## 🔍 Key Features Demonstrated
 
 ### 1. Real-Time Data Handling
-- RxJS observables for reactive programming
-- Automatic memory management with takeUntil pattern
-- Live metric updates every 2 seconds
+- A self-healing WebSocket that reconnects with exponential backoff (1s → 30s cap)
+- Subscriptions torn down by `takeUntilDestroyed(DestroyRef)`, not manual `unsubscribe()`
+- Live metric updates every 2 seconds, from one shared broadcast task on the server
 
 ### 2. Modern Angular Patterns
-- Standalone components (Angular 22)
-- Lazy loading with route-based code splitting
+- Standalone components — there is no `NgModule` in the codebase
+- Signal-based state: `signal()` for component state, `computed()` for derived values,
+  the `input()` signal API instead of `@Input()` decorators
+- Built-in control flow (`@for` / `@if`), not the legacy structural directives
+- Lazy loading with route-based code splitting (`loadComponent` on both routes)
 - OnPush change detection strategy (lint-enforced on every component)
 
 ### 3. Professional Development Workflow
@@ -323,11 +358,17 @@ ethereal-hotel/
 
 ## 🧪 Testing
 
-This project uses Vitest for fast, modern unit testing:
+Four suites, all runnable from the repo root:
 
-```bash
-npm test
-```
+| Command | What it runs |
+| --- | --- |
+| `npm test` | Vitest unit tests + coverage gate |
+| `npm run test:backend` | 18 pytest tests against a seeded, isolated SQLite database |
+| `npm run e2e` | Playwright smoke tests + the axe accessibility audit, against the production build |
+| `npm run a11y` | Just the accessibility audit |
+
+The Playwright suites run against `dist/` rather than `ng serve`, so they exercise the
+production `fileReplacements`, the lazy chunks and the minified CSS that users actually load.
 
 ## ⚙️ Configuration
 
@@ -345,10 +386,21 @@ then rebuild/redeploy. Until a backend is live, the dashboard falls back to
 `src/app/services/offline-dashboard.fixture.json` — a committed snapshot of a real seeded
 database, not generated numbers — and labels itself "simulated data" in the header.
 
-### Backend (CORS origins)
+### Backend (environment variables)
 
-Allowed CORS origins are read from the `ALLOWED_ORIGINS` env var (comma-separated). When
-unset, it defaults to the local dev servers. In production, set it to your frontend origin:
+There is **no `.env` loading**. `backend/config.py` reads `os.getenv` at import time and
+nothing calls `load_dotenv()`, so configuration comes from real environment variables — set
+them in your shell, `docker-compose.yml`, or your host's dashboard. Every one has a default
+that makes a fresh clone run, so none is required:
+
+| Env var | Default | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | local SQLite file | Swap in Postgres, etc. |
+| `ALLOWED_ORIGINS` | localhost dev servers | Comma-separated CORS allowlist |
+| `LOG_LEVEL` | `INFO` | Unknown values fall back to INFO with a warning rather than failing startup |
+| `BROADCAST_INTERVAL_SECONDS` | `2` | Stream cadence |
+
+In production, set the CORS allowlist to your frontend origin:
 
 ```bash
 export ALLOWED_ORIGINS="https://ethereal-hotel-pink.vercel.app"
@@ -400,6 +452,16 @@ The Python steps need `ruff`, which `scripts/py-tool.mjs` looks for in `backend/
 an activated `$VIRTUAL_ENV`, then on `PATH`. If it isn't found the hook says so and points at
 `backend/requirements-dev.txt` rather than failing with "command not found".
 
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the four gates a PR has to pass.
+
+## 📄 License
+
+[MIT](LICENSE) © Jacob Miller
+
 ## 📚 Additional Resources
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — system architecture and data flow
+- [backend/README.md](backend/README.md) — API reference, streaming design, deployment
+- [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli)
