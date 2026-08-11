@@ -1,0 +1,27 @@
+# Vercel builds from source on its own runners, so the local build output and
+# every test/lint artefact is dead weight in the upload. `.gitignore` does not
+# apply to CLI deploys, so these have to be listed again here.
+
+# Build output (Vercel runs `npm run build` itself)
+dist
+.angular
+
+# Test and coverage artefacts
+coverage
+test-results
+playwright-report
+blob-report
+
+# Python tooling caches and virtualenvs
+__pycache__
+.mypy_cache
+.pytest_cache
+.ruff_cache
+backend/venv
+backend/env
+backend/ENV
+
+# Local env files — the CLI writes VERCEL_OIDC_TOKEN into .env.local, and real
+# values belong in Vercel's project env vars, never in the deployment upload.
+.env
+.env.*
