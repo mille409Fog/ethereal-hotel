@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { ScrollService } from '../services/scroll.service';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 @Component({
   selector: 'app-navigation',
@@ -8,10 +7,4 @@ import { ScrollService } from '../services/scroll.service';
   styleUrl: './navigation.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class Navigation {
-  private readonly scrollService = inject(ScrollService);
-
-  public scrollTo(sectionId: string): void {
-    this.scrollService.scrollTo(sectionId);
-  }
-}
+export class Navigation {}

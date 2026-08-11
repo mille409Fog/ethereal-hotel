@@ -5,21 +5,29 @@
 
   <!-- Says plainly where the numbers came from. The hosted demo runs on the
        committed fixture until the API is deployed, and must not pretend
-       otherwise. -->
-  @switch (status()) {
-    @case ('connected') {
-      <p class="data-source data-source--live">
-        <span class="data-source-dot" aria-hidden="true"></span>
-        Live data · streaming from the API
-      </p>
+       otherwise.
+
+       Hidden from assistive technology because the live region below carries
+       the same fact in a form that survives being spoken — without the
+       aria-hidden the two would be read back-to-back as near-duplicates. -->
+  <div aria-hidden="true">
+    @switch (status()) {
+      @case ('connected') {
+        <p class="data-source data-source--live">
+          <span class="data-source-dot"></span>
+          Live data · streaming from the API
+        </p>
+      }
+      @case ('disconnected') {
+        <p class="data-source data-source--simulated">
+          Simulated data · backend unreachable, showing a committed snapshot of a seeded database
+        </p>
+      }
+      @default {
+        <p class="data-source">Connecting to the API…</p>
+      }
     }
-    @case ('disconnected') {
-      <p class="data-source data-source--simulated">
-        Simulated data · backend unreachable, showing a committed snapshot of a seeded database
-      </p>
-    }
-    @default {
-      <p class="data-source">Connecting to the API…</p>
-    }
-  }
+  </div>
+
+  <p class="visually-hidden" role="status">{{ statusAnnouncement() }}</p>
 </div>

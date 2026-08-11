@@ -10,6 +10,7 @@ A professional portfolio and real-time dashboard application built with Angular 
 
 - **Real-Time Dashboard**: Live data visualization with RxJS observables and Chart.js
 - **Responsive Design**: Mobile-first approach with smooth animations
+- **Accessible**: WCAG 2.1 AA, verified in CI by axe — see [Accessibility](#-accessibility)
 - **Code Quality**: Automated linting, formatting, and pre-commit hooks
 - **CI/CD Pipeline**: GitHub Actions for automated testing and deployment
 - **Modern Stack**: Angular 22 with TypeScript 6.0
@@ -87,6 +88,11 @@ npm run watch
 # Run unit tests with Vitest, printing a coverage summary.
 # Fails if coverage drops below the thresholds in angular.json.
 npm test
+
+# Build, serve dist/, and run the accessibility suite against it:
+# an axe scan of / and /dashboard, plus keyboard and reduced-motion checks.
+# Needs `npx playwright install --only-shell chromium` once.
+npm run a11y
 ```
 
 ### Code Quality
@@ -159,6 +165,7 @@ Both languages are gated, not just the TypeScript half:
 - ✅ **Prettier**: Consistent code formatting
 - ✅ **Ruff**: Python linting *and* formatting, enforced at zero errors
 - ✅ **Mypy**: Python type checking in strict mode
+- ✅ **axe**: Accessibility scan of both routes in CI, blocking on serious and critical findings
 - ✅ **Vitest**: Unit tests with coverage thresholds that fail the build when they regress
 - ✅ **Pytest**: 18 backend tests against an isolated, deterministically seeded database
 - ✅ **Husky**: Git hooks for pre-commit validation
@@ -166,6 +173,29 @@ Both languages are gated, not just the TypeScript half:
 - ✅ **Commitlint**: Conventional commit message validation
 - ✅ **Dependabot**: Weekly grouped updates for pip, npm and GitHub Actions
 - ✅ **CI/CD Pipeline**: Automated testing and builds
+
+## ♿ Accessibility
+
+Accessibility is enforced here rather than asserted. The
+`@angular-eslint/template` accessibility rule set runs at **error** severity, and every commit is
+scanned by **axe** against the production build on both `/` and `/dashboard` — the CI job fails on
+any serious or critical finding, and both routes currently report **zero violations at every
+severity**. Alongside the scan, Playwright checks the things axe cannot: that the first Tab reaches
+a skip link, that the nav is traversable and moves focus to the section it targets, and that under
+`prefers-reduced-motion` the animations stop and no content stays stranded behind a fade-in.
+
+Two decisions worth naming, because both went against the obvious version:
+
+- **The metrics grid is deliberately not an `aria-live` region.** The socket pushes a snapshot every
+  two seconds; announcing six cards at that cadence produces speech a listener can never get ahead
+  of, which is worse than silence, not better. Instead one throttled `role="status"` region speaks a
+  plain-language digest at most every 30 seconds ("Occupancy 85.0 percent. 51 of 60 sellable rooms
+  occupied…"), and a second announces backend connect/disconnect transitions — so a screen reader
+  user learns when the figures stop being real.
+- **The brand red is now two tokens.** `--color-blood` (`#9d2235`) reached only ~2:1 as text on this
+  background. It stays for borders, fills and glows; `--color-blood-text` carries anything anyone
+  has to read, and the focus ring moved to it as well, since a 2:1 focus indicator fails
+  WCAG 1.4.11 and is genuinely hard to find on a dark theme.
 
 ### Git Commit Convention
 
@@ -228,10 +258,10 @@ rather than blocking work:
 
 | Metric | Threshold |
 | --- | --- |
-| Statements | 64% |
-| Branches | 75% |
-| Functions | 52% |
-| Lines | 62% |
+| Statements | 90% |
+| Branches | 88% |
+| Functions | 74% |
+| Lines | 90% |
 
 When new tests push the real numbers up, raise the thresholds to match.
 

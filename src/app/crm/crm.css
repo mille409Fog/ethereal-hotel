@@ -19,7 +19,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   margin-bottom: 0.5rem;
 }
 
@@ -268,7 +268,7 @@
 }
 
 .experience-company {
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   font-weight: 600;
   font-size: 0.95rem;
 }

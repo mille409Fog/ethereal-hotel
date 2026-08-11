@@ -27,28 +27,6 @@ in production source is worse than no URL: it reads as unfinished rather than sc
 
 ---
 
-## 2. Accessibility as a first-class concern
-**Effort:** M · **Why:** There is not a single `@angular-eslint/template/accessibility-*` rule in
-the ESLint config, and the dashboard mutates numbers on screen every 2 seconds with no `aria-live`
-region — a screen reader user gets silence. Accessibility is a standard senior interview probe and
-one of the cheapest ways to separate a portfolio from the pile, precisely because most portfolios
-skip it.
-
-- Turn on the `@angular-eslint/template` accessibility rule set and fix what it finds.
-- `aria-live="polite"` on the metrics region; announce backend connect/disconnect transitions.
-- Keyboard: visible focus states, a skip-to-content link, verified tab order through the nav.
-- `prefers-reduced-motion` honored by the scroll-reveal directive and the CSS animations.
-- Run axe (via Playwright from Item 3, or `@axe-core/cli`) in CI against the built app.
-
-**DoD:**
-- [ ] Accessibility lint rules enabled; template lint passes with zero warnings.
-- [ ] Automated axe scan of `/` and `/dashboard` reports zero critical or serious violations, run
-      in CI.
-- [ ] The site is fully operable by keyboard alone, and animations stop under reduced-motion.
-- [ ] README documents the a11y approach in two or three sentences — say it, or nobody notices.
-
----
-
 ## 3. End-to-end smoke test
 **Effort:** M · **Why:** Unit tests cover the service and the fallback logic in isolation, but
 nothing proves the app *boots and renders*. An E2E test is also the only honest way to verify the
@@ -106,6 +84,44 @@ domain modeled honestly, deployed, tested and accessible outranks five half-buil
 
 ## Already shipped
 Kept as a one-line ledger; the full DoDs are in git history.
+
+- **Accessibility as a first-class concern** — the `@angular-eslint/template` accessibility rule set
+  is on at **error** severity, pulled from the package rather than hand-copied so a rule added in a
+  future release arrives with the upgrade. The lint gate was verified to fire (a probe template with
+  a bare `<img>`, a `(click)` on a `<div>`, a `role="checkbox"` and a typo'd `aria-` attribute
+  produced 6 errors) — but the existing templates already satisfied it, which is the honest finding:
+  **the linter caught nothing, and axe caught everything.** A Playwright + `@axe-core/playwright`
+  suite now scans the **production build** of `/` and `/dashboard` and blocks on serious/critical;
+  both routes sit at **zero violations at every severity**, and the gate was verified to fire by
+  reverting one colour token and watching it fail. Real findings, all invisible to the linter:
+  `--color-blood` (`#9d2235`) was being used as body text at **2.07:1**, so it split into
+  `--color-blood` (borders, fills, glows) and `--color-blood-text` for anything readable;
+  `--color-text-muted` went `#7a6a70` → `#9a8a90` (3.27 → 5.5:1); two hardcoded hexes in
+  `dashboard-footer.css` had dodged the token sweep entirely, which is exactly why axe found them.
+  The focus ring moved to the lighter tint too — a 2:1 indicator fails WCAG 1.4.11 and was genuinely
+  hard to see. **The `aria-live` line in the original plan turned out to be wrong as written:** a
+  polite region on a grid refreshed every 2s queues six cards of speech per tick and a listener can
+  never get ahead of it. The grid is therefore *not* live; one `role="status"` region speaks a
+  throttled 30s digest in language built to be heard ("average daily rate 317 dollars", not "ADR
+  $317"), a second announces connect/disconnect, and writing an identical string is a signal no-op,
+  so the unchanging offline fixture announces once and then stays quiet. Also: `<main>` landmarks and
+  a working skip link on both routes; the nav's `href="javascript:void(0)"` + `(click)` handlers
+  became real `#hash` anchors, which deleted `ScrollService` outright and fixed a genuine bug —
+  scrolling by JS left a keyboard user's focus stranded in the nav, so the next Tab resumed from the
+  top of the page; `app.html` was duplicating the `id`s its child components already declared, so
+  every `#hash` resolved to an empty wrapper; canvases became `role="img"` with computed
+  descriptions, since an unlabelled `<canvas>` is simply absent to a screen reader.
+  `prefers-reduced-motion` is honoured in CSS *and* in the two places CSS cannot reach — the hero's
+  inline parallax transform, and the scroll-reveal directive, which now skips the observer entirely
+  rather than disabling the transition and leaving content stuck at `opacity: 0`. Tests 45 → 70,
+  coverage up on every metric (statements 97.05%, branches 93.84%, functions 95.89%, lines 96.88%).
+  Two traps worth knowing: `test.use({ reducedMotion: 'reduce' })` silently did not reach the page —
+  `matchMedia` still reported `false` inside the browser — so the suite uses `page.emulateMedia`;
+  and the axe scan runs under reduced motion deliberately, because scroll-reveal parks sections at
+  `opacity: 0` where axe skips them, which made an early run report 30 contrast failures and a later
+  one 2. Known gap: the scan covers Chromium at one viewport, and "operable by keyboard" is verified
+  by automation, not by a human with a screen reader — axe catches perhaps a third of real WCAG
+  issues, and nobody has driven this with NVDA or VoiceOver. *(2026-08-11)*
 
 - **Python static analysis matching the frontend's** — `pyproject.toml` at the repo root (next to
   `eslint.config.mjs` and `.prettierrc`) configures **ruff** for lint *and* format and **mypy** at

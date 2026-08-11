@@ -206,4 +206,74 @@ describe('ChartsSection', () => {
 
     expect(charts).toHaveLength(0);
   });
+
+  /**
+   * A `<canvas>` is a bitmap. Without a text alternative all three charts are
+   * simply absent for anyone not looking at the screen, and nothing in the
+   * rendered pixels can tell you that has regressed.
+   */
+  describe('text alternatives', () => {
+    const labelOf = (canvasId: string): string =>
+      fixture.nativeElement.querySelector(`#${canvasId}`)?.getAttribute('aria-label') ?? '';
+
+    it('exposes every canvas as a labelled image', async () => {
+      await renderCharts({});
+
+      for (const id of ['guestsChart', 'revenueChart', 'roomMixChart']) {
+        const canvas = fixture.nativeElement.querySelector(`#${id}`);
+        expect(canvas?.getAttribute('role')).toBe('img');
+        expect(labelOf(id).length).toBeGreaterThan(0);
+      }
+    });
+
+    it('describes the guest series by window, range and latest value', async () => {
+      await renderCharts({ historicalGuests: guestHistory });
+
+      expect(labelOf('guestsChart')).toBe(
+        'Guests in house per night, Aug 8 to Aug 9, ranging from 31 guests to 44 guests, most recently 44 guests.'
+      );
+    });
+
+    it('describes revenue in whole dollars rather than reading a chart axis', async () => {
+      await renderCharts({ historicalRevenue: revenueHistory });
+
+      expect(labelOf('revenueChart')).toBe(
+        'Room revenue per night, Aug 8 to Aug 9, ranging from 8,100 dollars to 9,400 dollars, most recently 9,400 dollars.'
+      );
+    });
+
+    it('describes the room mix as the three counts it splits into', async () => {
+      await renderCharts({
+        metrics: metricsWith({
+          occupiedRooms: 51,
+          availableRooms: 9,
+          totalRooms: 64,
+          operationalRooms: 60,
+        }),
+      });
+
+      expect(labelOf('roomMixChart')).toBe(
+        'Room inventory tonight: 51 occupied, 9 available, 4 out of service.'
+      );
+    });
+
+    it('says so rather than inventing a range when a series is empty', async () => {
+      await renderCharts({ historicalGuests: [] });
+
+      expect(labelOf('guestsChart')).toBe('Guests in house per night. No data available.');
+    });
+
+    it('keeps the description in step with the data it plots', async () => {
+      await renderCharts({ historicalGuests: guestHistory });
+
+      fixture.componentRef.setInput('historicalGuests', [
+        { timestamp: '2026-08-10', value: 12 },
+        { timestamp: '2026-08-11', value: 77 },
+      ]);
+      await fixture.whenStable();
+
+      expect(labelOf('guestsChart')).toContain('Aug 10 to Aug 11');
+      expect(labelOf('guestsChart')).toContain('most recently 77 guests');
+    });
+  });
 });

@@ -1,26 +1,32 @@
 <!-- Charts Section -->
-<div class="charts-grid">
-  <!-- Guests in house, nightly -->
-  <div class="chart-card">
-    <h3 class="chart-title">Guests In House</h3>
-    <div class="chart-container">
-      <canvas id="guestsChart"></canvas>
-    </div>
-  </div>
+<section aria-labelledby="charts-heading">
+  <!-- Keeps the outline honest: without it the chart titles are h3s hanging off
+       the metrics h2, implying they are part of it. -->
+  <h2 id="charts-heading" class="visually-hidden">Trends and inventory</h2>
 
-  <!-- Room revenue, nightly -->
-  <div class="chart-card">
-    <h3 class="chart-title">Room Revenue by Night</h3>
-    <div class="chart-container">
-      <canvas id="revenueChart"></canvas>
+  <div class="charts-grid">
+    <!-- Guests in house, nightly -->
+    <div class="chart-card">
+      <h3 class="chart-title">Guests In House</h3>
+      <div class="chart-container">
+        <canvas id="guestsChart" role="img" [attr.aria-label]="guestsChartLabel()"></canvas>
+      </div>
     </div>
-  </div>
 
-  <!-- Tonight's inventory split -->
-  <div class="chart-card">
-    <h3 class="chart-title">Room Inventory Tonight</h3>
-    <div class="chart-container">
-      <canvas id="roomMixChart"></canvas>
+    <!-- Room revenue, nightly -->
+    <div class="chart-card">
+      <h3 class="chart-title">Room Revenue by Night</h3>
+      <div class="chart-container">
+        <canvas id="revenueChart" role="img" [attr.aria-label]="revenueChartLabel()"></canvas>
+      </div>
+    </div>
+
+    <!-- Tonight's inventory split -->
+    <div class="chart-card">
+      <h3 class="chart-title">Room Inventory Tonight</h3>
+      <div class="chart-container">
+        <canvas id="roomMixChart" role="img" [attr.aria-label]="roomMixChartLabel()"></canvas>
+      </div>
     </div>
   </div>
-</div>
+</section>

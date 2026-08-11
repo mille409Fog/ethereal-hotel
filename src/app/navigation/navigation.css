@@ -21,7 +21,7 @@
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   text-shadow: 0 2px 6px rgba(157, 34, 53, 0.4);
   transition: all 0.3s ease;
   cursor: default;
@@ -51,7 +51,7 @@
 }
 
 .nav-links a:hover {
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   text-shadow: 0 0 8px rgba(157, 34, 53, 0.4);
   transform: translateY(-1px);
 }

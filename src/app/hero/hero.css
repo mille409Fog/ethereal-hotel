@@ -50,7 +50,7 @@
 
 .hero-subtitle {
   font-size: 1.1rem;
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   margin: 0 0 1.5rem;
   letter-spacing: 0.02em;
 }
@@ -76,6 +76,7 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
+  text-decoration: none;
   border: 1px solid transparent;
   transition: all 0.3s ease;
   line-height: 1.4;
@@ -125,7 +126,7 @@
 
 .btn-outline {
   background: transparent;
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   border-color: var(--color-blood);
 }
 

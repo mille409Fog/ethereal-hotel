@@ -6,14 +6,17 @@
   text-align: center;
 }
 
+/* These two were hardcoded hexes rather than tokens, which is exactly why the
+   palette fix missed them and axe caught `.dashboard-tech` at 3.5:1. Pointed at
+   the tokens so the next contrast change reaches them. */
 .dashboard-note {
-  color: #b8a8ae;
+  color: var(--color-text-secondary);
   font-size: 0.95rem;
   margin-bottom: 0.5rem;
 }
 
 .dashboard-tech {
-  color: #7a6a70;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
   font-style: italic;
 }

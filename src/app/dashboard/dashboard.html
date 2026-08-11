@@ -1,5 +1,8 @@
-<!-- ===== DASHBOARD ===== -->
-<section class="dashboard-section">
+<!-- ===== DASHBOARD =====
+     `main` rather than `section`: this route renders nothing else, so without
+     it the whole page counted as content outside any landmark and a screen
+     reader user had no way to jump to it. -->
+<main class="dashboard-section">
   <div class="dashboard-inner">
     <!-- Header Component -->
     <app-dashboard-header [status]="backendStatus()" />
@@ -17,4 +20,4 @@
     <!-- Footer Component -->
     <app-dashboard-footer />
   </div>
-</section>
+</main>

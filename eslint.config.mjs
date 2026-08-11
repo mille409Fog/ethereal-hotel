@@ -5,8 +5,23 @@ import angularTemplateParser from '@angular-eslint/template-parser';
 import eslint from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
+import angularEslint from 'angular-eslint';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
+
+/**
+ * The `@angular-eslint/template` accessibility rule set (alt-text,
+ * click-events-have-key-events, valid-aria, role-has-required-aria, …), read
+ * out of the package rather than hand-copied. A rule added in a future
+ * `angular-eslint` release then arrives with the upgrade instead of silently
+ * going missing from a stale list. Only the rules are spread — the plugin and
+ * parser stay registered once, below, so flat config sees a single
+ * `@angular-eslint/template` definition.
+ */
+const templateAccessibilityRules = angularEslint.configs.templateAccessibility.reduce(
+  (rules, config) => ({ ...rules, ...config.rules }),
+  {}
+);
 
 export default [
   // Global ignores
@@ -27,7 +42,7 @@ export default [
     languageOptions: {
       parser: tsparser,
       parserOptions: {
-        project: ['./tsconfig.app.json', './tsconfig.spec.json'],
+        project: ['./tsconfig.app.json', './tsconfig.spec.json', './tsconfig.e2e.json'],
         ecmaVersion: 2022,
         sourceType: 'module',
       },
@@ -180,6 +195,17 @@ export default [
     },
   },
 
+  // Playwright config and specs. These run in Node, not the browser, so they
+  // get `process`; the app code deliberately does not.
+  {
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+      },
+    },
+  },
+
   // Spec files
   {
     files: ['**/*.spec.ts'],
@@ -201,6 +227,11 @@ export default [
       '@angular-eslint/template': angularTemplate,
     },
     rules: {
+      // Accessibility, enforced rather than aspirational. Every rule here is an
+      // error: an a11y regression should fail the build the same way a type
+      // error does, not accumulate as a warning nobody reads.
+      ...templateAccessibilityRules,
+
       '@angular-eslint/template/no-negated-async': 'error',
       '@angular-eslint/template/use-track-by-function': 'warn',
       // Off deliberately: this rule predates signals. It exists to stop

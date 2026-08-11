@@ -1,5 +1,5 @@
 <!-- ===== A: HOME ===== -->
-<section id="home" class="section section-home">
+<section id="home" class="section section-home" tabindex="-1">
   <div class="hero-background" [style.transform]="'translateY(' + parallaxOffset() + 'px)'"></div>
   <div class="section-inner hero-content">
     <h1 class="hero-title">Jacob Miller</h1>
@@ -9,9 +9,12 @@
       Angular, C#, Java, and modern cloud architectures, I've delivered enterprise solutions for
       telecommunications, finance, and retail at scale. Let's build something exceptional together.
     </p>
+    <!-- Links, not buttons: these navigate to a place on the page rather than
+         performing an action, so `<a href="#…">` is the honest element. It also
+         gets focus management, middle click and copy-link for free. -->
     <div class="hero-actions">
-      <button class="btn btn-primary pulse" (click)="scrollTo('projects')">View My Work</button>
-      <button class="btn btn-outline" (click)="scrollTo('contact')">Get In Touch</button>
+      <a class="btn btn-primary pulse" href="#projects">View My Work</a>
+      <a class="btn btn-outline" href="#contact">Get In Touch</a>
     </div>
   </div>
 </section>

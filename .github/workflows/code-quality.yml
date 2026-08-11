@@ -56,6 +56,46 @@ jobs:
           path: dist/
           retention-days: 7
 
+  accessibility:
+    name: Accessibility (axe, keyboard, reduced motion)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `--only-shell` fetches the headless shell rather than full Chromium:
+      # same rendering engine, no windowed browser this job would never open.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps --only-shell chromium
+
+      # Builds, serves `dist/` and scans it. Runs against the production build
+      # rather than `ng serve` on purpose: a dev build skips the production
+      # `fileReplacements` and ships different CSS, so a dev-server scan can
+      # pass while the artefact users actually load fails.
+      - name: Run accessibility suite
+        run: npm run a11y
+
+      - name: Upload accessibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-a11y-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   backend:
     name: Backend (lint, types, pytest)
     runs-on: ubuntu-latest

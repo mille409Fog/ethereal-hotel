@@ -20,7 +20,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   margin-bottom: 0.5rem;
 }
 
@@ -50,7 +50,7 @@
   font-family: var(--font-serif);
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   margin: 0;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid var(--color-border);
@@ -73,7 +73,7 @@
 }
 
 .contact-list a {
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   text-decoration: none;
   transition: all 0.3s ease;
 }

@@ -1,11 +1,18 @@
-<!-- ===== NAV ===== -->
-<nav class="nav">
+<!-- ===== NAV =====
+     These were `href="javascript:void(0)"` with a (click) handler calling
+     scrollIntoView. Real `#hash` anchors instead: the browser scrolls (smoothly
+     already, via `html { scroll-behavior: smooth }`) *and* moves focus to the
+     target section, which the JS version silently skipped — a keyboard user
+     was scrolled to Projects with their focus still stranded in the nav, so the
+     next Tab carried on from the top of the page. They also work on middle
+     click, on copy-link, and before hydration. -->
+<nav class="nav" aria-label="Primary">
   <span class="nav-brand">Jacob Miller</span>
   <ul class="nav-links">
-    <li><a (click)="scrollTo('home')" href="javascript:void(0)">Home</a></li>
-    <li><a (click)="scrollTo('projects')" href="javascript:void(0)">Projects</a></li>
-    <li><a (click)="scrollTo('experience')" href="javascript:void(0)">Experience</a></li>
-    <li><a (click)="scrollTo('skills')" href="javascript:void(0)">Skills</a></li>
-    <li><a (click)="scrollTo('contact')" href="javascript:void(0)">Contact</a></li>
+    <li><a href="#home">Home</a></li>
+    <li><a href="#projects">Projects</a></li>
+    <li><a href="#experience">Experience</a></li>
+    <li><a href="#skills">Skills</a></li>
+    <li><a href="#contact">Contact</a></li>
   </ul>
 </nav>

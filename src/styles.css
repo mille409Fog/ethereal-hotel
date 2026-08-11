@@ -12,9 +12,19 @@
   --color-border: #3a3236;
   --color-text: #e8dfe3;
   --color-text-secondary: #b8a8ae;
-  --color-text-muted: #7a6a70;
+  /* Was #7a6a70, which reached only 3.3:1 on the page background — under the
+     4.5:1 WCAG AA floor for body text. Lightened to clear it on both --color-bg
+     and --color-surface. */
+  --color-text-muted: #9a8a90;
   --color-blood: #9d2235;
   --color-blood-dark: #7a1827;
+  /* Blood red is the brand accent, but as *text* it manages only ~2.1:1 against
+     the page background: decorative at best, unreadable at worst. Borders,
+     gradients, fills and glows keep --color-blood; anything a person has to
+     actually read uses this lighter tint, which clears 4.5:1 on every surface
+     in the palette. Same value as the existing `.metric-detail.down` rose, so
+     this is one tone reused rather than a new one invented. */
+  --color-blood-text: #d88894;
 
   /* Typography */
   --font-sans: 'Crimson Pro', Georgia, serif;
@@ -176,6 +186,8 @@ strong {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  /* Ornament, not text: generated content nobody reads, so it keeps the deep
+     accent rather than the lightened readable tint. */
   color: var(--color-blood);
   font-size: 0.75rem;
   text-shadow: 0 0 8px rgba(157, 34, 53, 0.6);
@@ -303,13 +315,17 @@ strong {
    ENHANCED FOCUS STATES FOR ACCESSIBILITY
    =================================================== */
 
-/* Remove default browser outline and add custom vampiric focus */
+/* The focus ring is drawn in --color-blood-text rather than --color-blood
+   throughout. WCAG 2.1 SC 1.4.11 asks non-text indicators to clear 3:1 against
+   what surrounds them, and the deep accent manages about 2:1 on this
+   background — a focus ring you have to hunt for is not a focus ring. The
+   lighter tint sits near 6:1. */
 *:focus {
   outline: none;
 }
 
 *:focus-visible {
-  outline: 2px solid var(--color-blood);
+  outline: 2px solid var(--color-blood-text);
   outline-offset: 3px;
   box-shadow: 0 0 0 4px rgba(157, 34, 53, 0.2);
   transition:
@@ -319,7 +335,7 @@ strong {
 
 /* Enhanced button focus */
 .btn:focus-visible {
-  outline: 2px solid var(--color-blood);
+  outline: 2px solid var(--color-blood-text);
   outline-offset: 3px;
   box-shadow:
     0 0 0 4px rgba(157, 34, 53, 0.3),
@@ -329,7 +345,7 @@ strong {
 
 /* Enhanced link focus */
 a:focus-visible {
-  outline: 2px solid var(--color-blood);
+  outline: 2px solid var(--color-blood-text);
   outline-offset: 2px;
   text-shadow: 0 0 12px rgba(157, 34, 53, 0.6);
 }
@@ -338,7 +354,7 @@ a:focus-visible {
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  border-color: var(--color-blood);
+  border-color: var(--color-blood-text);
   box-shadow:
     0 0 0 3px rgba(157, 34, 53, 0.15),
     0 0 15px rgba(157, 34, 53, 0.3);
@@ -348,9 +364,19 @@ textarea:focus-visible {
 .room-card:focus-within,
 .queue-item:focus-within,
 .crm-table tbody tr:focus-within {
-  outline: 2px solid var(--color-blood);
+  outline: 2px solid var(--color-blood-text);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(157, 34, 53, 0.2);
+}
+
+/* The skip link and in-page nav targets (`<main>`, each `<section id=…>`) carry
+   tabindex="-1" so a hash link moves *focus*, not just the scroll position.
+   They get no ring of their own: the user asked to go there, and outlining a
+   whole page section is noise rather than feedback. */
+#main-content:focus,
+section[id]:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 /* Skip to content link for screen readers */
@@ -371,4 +397,57 @@ textarea:focus-visible {
   top: 1rem;
   outline: 2px solid #fff;
   outline-offset: 2px;
+}
+
+/* Reachable by assistive technology, absent from the visual layout. Used for
+   the headings that give the dashboard a navigable outline and for the live
+   regions that narrate it. Deliberately not `display: none` or
+   `visibility: hidden`, both of which hide content from screen readers too. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===================================================
+   REDUCED MOTION
+   =================================================== */
+
+/*
+ * This site leans on motion: a parallax hero, a heartbeat on the primary CTA,
+ * pulsing metric cards, a glow on the ornaments, and a fade-and-rise on every
+ * section as it scrolls into view. For a user with vestibular sensitivity that
+ * is not decoration, it is a reason to close the tab.
+ *
+ * Everything animated is switched off here rather than merely slowed. The
+ * scroll-reveal transition needs the extra rule: its resting state is
+ * `opacity: 0`, so killing the transition alone would leave content
+ * permanently invisible rather than immediately visible. The directive also
+ * checks the same media query and skips the observer entirely — this block is
+ * the belt to that directive's braces, and covers the pre-hydration paint.
+ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .scroll-reveal {
+    opacity: 1;
+    transform: none;
+  }
 }

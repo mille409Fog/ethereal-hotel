@@ -1,29 +1,36 @@
+<!-- First focusable thing on the page, so Tab from the address bar reaches it
+     before the nav. It is off-screen until focused (see .skip-to-content). -->
+<a class="skip-to-content" href="#main-content">Skip to main content</a>
+
 <app-navigation />
 
-<app-hero />
+<!-- The `main` landmark. Without it every section here counted as "content
+     outside a landmark", which is what a screen reader user navigating by
+     landmark hits as a dead end — and it is the target the skip link needs.
+     tabindex="-1" makes it focusable by the skip link without putting it in
+     the tab order.
 
-<div class="gothic-divider"></div>
+     Each child component already declares its own `<section id="…">`; the
+     wrapper sections that used to live here duplicated those ids, so
+     getElementById and every `#hash` link resolved to an empty wrapper. -->
+<main id="main-content" tabindex="-1">
+  <app-hero />
 
-<section id="projects">
+  <div class="gothic-divider"></div>
+
   <app-booking />
-</section>
 
-<div class="gothic-divider"></div>
+  <div class="gothic-divider"></div>
 
-<section id="experience">
   <app-crm />
-</section>
 
-<div class="gothic-divider"></div>
+  <div class="gothic-divider"></div>
 
-<section id="skills">
   <app-concierge />
-</section>
 
-<div class="gothic-divider"></div>
+  <div class="gothic-divider"></div>
 
-<section id="contact">
   <app-resume />
-</section>
+</main>
 
 <app-footer />

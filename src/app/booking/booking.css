@@ -23,7 +23,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   margin-bottom: 0.5rem;
 }
 
@@ -182,7 +182,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   background: color-mix(in srgb, var(--color-blood) 18%, transparent);
   padding: 0.2rem 0.5rem;
   border-radius: 3px;
@@ -253,7 +253,7 @@
 
 .btn-outline {
   background: transparent;
-  color: var(--color-blood);
+  color: var(--color-blood-text);
   border-color: var(--color-blood);
 }
 

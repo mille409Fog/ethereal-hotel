@@ -16,10 +16,13 @@ Chart.register(...registerables);
 
 /** Palette shared by every chart, so the three read as one system. */
 const BLOOD = '#9d2235';
-const TEXT_MUTED = '#7a6a70';
+/** Axis tick labels. Tracks --color-text-muted, raised to clear 4.5:1. */
+const TEXT_MUTED = '#9a8a90';
 const LABEL = '#b8a8ae';
 const SURFACE = '#211d1f';
 const AVAILABLE = '#6fa8d8';
+/** A doughnut fill rather than text, so the 3:1 non-text floor applies — which
+    the old muted grey already cleared. Left where it was. */
 const OUT_OF_SERVICE = '#7a6a70';
 
 /** Tooltip/scale styling repeated across all three configs. */
@@ -65,6 +68,38 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
     return [occupiedRooms, availableRooms, Math.max(totalRooms - operationalRooms, 0)];
   });
 
+  /**
+   * Text alternatives for the three canvases.
+   *
+   * A `<canvas>` is a bitmap: to a screen reader an unlabelled one is an empty
+   * box, so all three charts were simply missing from the page. These are
+   * computed from the same signals the charts plot, which means the description
+   * cannot drift away from the picture the way a hand-written summary would —
+   * and it says what the shape of the data *is* (range, latest) rather than
+   * just naming the chart, since "line chart of revenue" tells a listener
+   * nothing they could not guess from the heading.
+   */
+  public readonly guestsChartLabel = computed(() =>
+    ChartsSection.describeSeries(
+      'Guests in house per night',
+      this.guestSeries(),
+      (value) => `${value} guests`
+    )
+  );
+
+  public readonly revenueChartLabel = computed(() =>
+    ChartsSection.describeSeries(
+      'Room revenue per night',
+      this.revenueSeries(),
+      (value) => `${Math.round(value).toLocaleString('en-US')} dollars`
+    )
+  );
+
+  public readonly roomMixChartLabel = computed(() => {
+    const [occupied, available, outOfService] = this.roomMix();
+    return `Room inventory tonight: ${occupied} occupied, ${available} available, ${outOfService} out of service.`;
+  });
+
   constructor() {
     // Re-point the charts whenever the inputs change. Each series is read
     // unconditionally so the effect keeps tracking all three even on its first
@@ -99,6 +134,27 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
       timeZone: 'UTC',
     });
     return `${monthName} ${Number(day)}`;
+  }
+
+  /**
+   * One daily series, described in a sentence: the window it covers, the range
+   * it moves through, and where it ended up.
+   */
+  private static describeSeries(
+    name: string,
+    series: ISeries,
+    format: (value: number) => string
+  ): string {
+    if (series.data.length === 0) {
+      return `${name}. No data available.`;
+    }
+
+    const latest = series.data[series.data.length - 1];
+    return [
+      `${name}, ${series.labels[0]} to ${series.labels[series.labels.length - 1]}`,
+      `ranging from ${format(Math.min(...series.data))} to ${format(Math.max(...series.data))}`,
+      `most recently ${format(latest)}.`,
+    ].join(', ');
   }
 
   private static toSeries(points: IHistoricalData[]): ISeries {
