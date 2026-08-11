@@ -1,0 +1,47 @@
+/* The label/hint/error frame. The control it wraps is projected from the
+   parent and so keeps the parent's styles — `.form-control` lives in
+   `booking.css`, not here. */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+.form-group-narrow {
+  flex: 0 1 8rem;
+  min-width: 7rem;
+}
+
+label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* --color-blood-text, not --color-blood: the deep accent reaches about 2.1:1
+   on this surface, and an error message is the last thing on a page that
+   should be hard to read. See the note in `src/styles.css`. */
+.field-error {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-blood-text);
+  margin: 0;
+}
+
+/* A shape as well as a colour, so the error is not signalled by hue alone. */
+.field-error::before {
+  content: '▲ ';
+  font-size: 0.7em;
+}

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from db import BookingStatus, get_db
-from schemas import BookingCreate, BookingOut, BookingPage
+from schemas import BookingCreate, BookingErrorDetail, BookingOut, BookingPage
 from services import bookings as service
 from services.bookings import (
     BookingError,
@@ -27,8 +27,16 @@ _STATUS_BY_ERROR: dict[type[BookingError], int] = {
 
 
 def _as_http(exc: BookingError) -> HTTPException:
-    """Map a domain error to its HTTP equivalent (400 if unclassified)."""
-    return HTTPException(_STATUS_BY_ERROR.get(type(exc), 400), str(exc))
+    """Map a domain error to its HTTP equivalent (400 if unclassified).
+
+    ``detail`` is the structured :class:`BookingErrorDetail` rather than the
+    bare string FastAPI would otherwise put there, so the field attribution the
+    domain already knows survives the trip. Dumped to a plain dict because
+    ``HTTPException`` is serialised by ``jsonable_encoder``, not by a response
+    model — a Pydantic instance would reach the client as its repr.
+    """
+    detail = BookingErrorDetail(message=str(exc), field=exc.field)
+    return HTTPException(_STATUS_BY_ERROR.get(type(exc), 400), detail.model_dump())
 
 
 @router.get("", response_model=BookingPage)

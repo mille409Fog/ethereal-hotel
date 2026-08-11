@@ -16,6 +16,7 @@
  */
 import type { Page } from '@playwright/test';
 import type { IDashboardData, IMetrics } from '../../src/app/services/dashboard-api.service';
+import type { IBooking, IGuest, IRoom } from '../../src/app/services/booking-api.service';
 import fixture from '../../src/app/services/offline-dashboard.fixture.json';
 import { environment } from '../../src/environments/environment.prod';
 
@@ -39,6 +40,9 @@ function pathOf(url: string): string {
 const HEALTH_PATH = pathOf(environment.healthUrl);
 const DASHBOARD_PATH = pathOf(`${environment.apiUrl}/dashboard`);
 const METRICS_PATH = pathOf(`${environment.apiUrl}/metrics`);
+const BOOKINGS_PATH = pathOf(`${environment.apiUrl}/bookings`);
+const ROOMS_PATH = pathOf(`${environment.apiUrl}/rooms`);
+const GUESTS_PATH = pathOf(`${environment.apiUrl}/guests`);
 
 /**
  * Everything the app addresses on the API, on any origin.
@@ -140,6 +144,155 @@ export async function stubBackendUp(page: Page, metricsUpdates: IMetrics[] = [])
     // A call these tests did not anticipate. Answering 404 rather than letting
     // it through keeps the run hermetic and makes the surprise visible in the
     // trace instead of silently reaching the internet.
+    await route.fulfill({
+      status: 404,
+      headers: CORS_HEADERS,
+      json: { detail: `Unstubbed request to ${pathname}` },
+    });
+  });
+}
+
+/* -------------------------------------------------------------------------
+ * Bookings
+ *
+ * The booking route needs three endpoints and a POST that changes what the
+ * GETs return, which the metrics stubs above have no equivalent of. Same
+ * constraint though: the Playwright run serves the built bundle and nothing
+ * else — there is no Python process — so the API has to be faked.
+ *
+ * What follows is therefore a small reimplementation of
+ * `backend/services/bookings.py`, and reimplementations drift. Two things keep
+ * this one honest: it copies only the two rules the page actually demonstrates
+ * (a stay must be at least one night; a booking must name a room that exists),
+ * and both are pinned on the real thing by `test_create_booking_rejects_bad_dates`
+ * and `test_create_booking_unknown_guest_or_room`. If the API's error shape
+ * changes, those fail first and this gets updated with them.
+ * ---------------------------------------------------------------------------
+ */
+
+export const ROOMS: IRoom[] = [
+  {
+    id: 1,
+    number: '101',
+    room_type: 'standard',
+    floor: 1,
+    capacity: 3,
+    base_rate: 100,
+    status: 'operational',
+  },
+  {
+    id: 3,
+    number: '103',
+    room_type: 'deluxe',
+    floor: 1,
+    capacity: 4,
+    base_rate: 300,
+    status: 'operational',
+  },
+  {
+    id: 4,
+    number: '201',
+    room_type: 'suite',
+    floor: 2,
+    capacity: 4,
+    base_rate: 400,
+    status: 'maintenance',
+  },
+];
+
+export const GUESTS: IGuest[] = [
+  { id: 1, full_name: 'Ada Lovelace' },
+  { id: 2, full_name: 'Alan Turing' },
+];
+
+/** One booking already on file, so the table is not empty on arrival. */
+export const SEEDED_BOOKING: IBooking = {
+  id: 7,
+  guest_id: 2,
+  room_id: 1,
+  check_in: '2026-01-05',
+  check_out: '2026-01-09',
+  adults: 1,
+  children: 0,
+  nightly_rate: 100,
+  status: 'checked_in',
+};
+
+/** One `route.fulfill` argument object. */
+interface IFulfillment {
+  status: number;
+  headers: Record<string, string>;
+  json: unknown;
+}
+
+/** A booking rejection, in the shape `routers/bookings.py` produces. */
+function rejection(status: number, message: string, field: string | null): IFulfillment {
+  return { status, headers: CORS_HEADERS, json: { detail: { message, field } } };
+}
+
+/**
+ * Serve a booking API that remembers what it was told.
+ *
+ * State lives in the Node-side closure and the route outlives navigation, so a
+ * booking created in one page load is still there after `page.reload()` —
+ * which is the claim the page makes on screen and therefore the one worth
+ * testing rather than asserting.
+ */
+export async function stubBookingApi(page: Page): Promise<void> {
+  const bookings: IBooking[] = [SEEDED_BOOKING];
+  let nextId = 100;
+
+  await page.route(API_REQUESTS, async (route) => {
+    const { pathname } = new URL(route.request().url());
+
+    if (pathname === ROOMS_PATH) {
+      await route.fulfill({ json: ROOMS, headers: CORS_HEADERS });
+      return;
+    }
+
+    if (pathname === GUESTS_PATH) {
+      await route.fulfill({ json: GUESTS, headers: CORS_HEADERS });
+      return;
+    }
+
+    if (pathname === BOOKINGS_PATH && route.request().method() === 'POST') {
+      const draft = route.request().postDataJSON() as IBooking;
+
+      if (draft.check_out <= draft.check_in) {
+        await route.fulfill(rejection(422, 'check_out must be after check_in', 'check_out'));
+        return;
+      }
+
+      const room = ROOMS.find((candidate) => candidate.id === draft.room_id);
+      if (!room) {
+        await route.fulfill(rejection(404, `Room ${draft.room_id} not found`, 'room_id'));
+        return;
+      }
+
+      const created: IBooking = {
+        ...draft,
+        id: nextId,
+        nightly_rate: room.base_rate,
+        status: 'reserved',
+      };
+      nextId += 1;
+      bookings.push(created);
+      await route.fulfill({ status: 201, json: created, headers: CORS_HEADERS });
+      return;
+    }
+
+    if (pathname === BOOKINGS_PATH) {
+      // Newest stay first, as `list_bookings` orders it.
+      const items = [...bookings].sort(
+        (a, b) => b.check_in.localeCompare(a.check_in) || b.id - a.id
+      );
+      await route.fulfill({
+        json: { items, total: items.length, limit: 20, offset: 0 },
+        headers: CORS_HEADERS,
+      });
+      return;
+    }
+
     await route.fulfill({
       status: 404,
       headers: CORS_HEADERS,

@@ -19,10 +19,35 @@ records** in a SQLite database, not generated from random numbers.
 
 ![Three Chart.js panels: guests in house over 20 days, room revenue by night, and tonight's room inventory as a donut](docs/images/charts.png)
 
+### The booking form writes to the same database
+
+`/dashboard` reads. `/booking` writes: a reactive form that creates a real row through
+`POST /api/bookings`, then shows it in a list read back from `GET /api/bookings`. Reload the
+page and it is still there, because it was never anywhere else.
+
+![The booking form with a check-out date the server rejected: the message "check_out must be after check_in" is rendered under the check-out input, which is outlined and marked aria-invalid, while the booking created a moment earlier appears in the list below](docs/images/booking-validation-error.png)
+
+The screenshot is the interesting state. Check-out must be at least one night after check-in,
+and that rule is **only** implemented in `backend/services/bookings.py` — there is no copy of
+it in the browser. So the rejection above is a real 422 from the API, and it appears under the
+input that caused it because the error carries the field name on the wire (see
+[ARCHITECTURE.md](ARCHITECTURE.md#-api-endpoints)). A second implementation in TypeScript would
+have been faster to render and one refactor away from disagreeing with the server.
+
+**When the API is down, this page does not fall back to a fixture.** The dashboard does, and
+that is honest there: a committed snapshot of real metrics is still a fact about the hotel, and
+the badge says which you are looking at. It would not be honest here. The whole claim of a
+booking form is that submitting it writes a row someone else can read back — so a fixture would
+let a visitor fill the form, watch a booking appear, reload, and find it gone. Instead the form
+is disabled, the badge says the API is unreachable, and the empty list says why it is empty.
+Read-only and stated, rather than simulated.
+
 ## 🌟 Features
 
 - **Real-Time Dashboard**: metrics streamed over a WebSocket every 2 seconds and drawn with Chart.js
   (the hosted demo polls instead — see [Deployment](#-deployment))
+- **A form that actually writes**: `/booking` creates real bookings and renders server-side
+  validation on the field that caused it
 - **Domain-derived metrics**: occupancy, ADR and RevPAR computed from rooms, guests and bookings
 - **Accessible**: WCAG 2.1 AA, verified in CI by axe — see [Accessibility](#-accessibility)
 - **Code Quality**: linting, formatting, type checking and tests gated in CI for _both_ languages
@@ -108,7 +133,7 @@ npm run watch
 # Fails if coverage drops below the thresholds in angular.json.
 npm test
 
-# Run the backend suite: 22 pytest tests against an isolated, deterministically
+# Run the backend suite: 26 pytest tests against an isolated, deterministically
 # seeded SQLite database. No running server required.
 npm run test:backend
 
@@ -116,8 +141,9 @@ npm run test:backend
 # Needs `npx playwright install --only-shell chromium` once.
 npm run e2e
 
-# Just the accessibility half: an axe scan of / and /dashboard, plus keyboard
-# and reduced-motion checks.
+# Just the accessibility half: an axe scan of /, /dashboard and /booking (the
+# last one twice — at rest and while showing a server-side validation error),
+# plus keyboard and reduced-motion checks.
 npm run a11y
 ```
 
@@ -207,9 +233,12 @@ Both languages are gated, not just the TypeScript half:
 
 Accessibility is enforced here rather than asserted. The
 `@angular-eslint/template` accessibility rule set runs at **error** severity, and every commit is
-scanned by **axe** against the production build on both `/` and `/dashboard` — the CI job fails on
-any serious or critical finding, and both routes currently report **zero violations at every
-severity**. Alongside the scan, Playwright checks the things axe cannot: that the first Tab reaches
+scanned by **axe** against the production build on `/`, `/dashboard` and `/booking` — the CI job
+fails on any serious or critical finding, and every route currently reports **zero violations at
+every severity**. `/booking` is scanned twice: once at rest, and once with a rejected field on
+screen, because an error message is new content inserted after load that has to be associated with
+its control, and a form that scans clean empty can still fail the moment it fails.
+Alongside the scan, Playwright checks the things axe cannot: that the first Tab reaches
 a skip link, that the nav is traversable and moves focus to the section it targets, and that under
 `prefers-reduced-motion` the animations stop and no content stays stranded behind a fade-in.
 
@@ -303,8 +332,9 @@ When new tests push the real numbers up durably, raise the floors to match.
 ethereal-hotel/
 ├── src/
 │   ├── app/
-│   │   ├── dashboard/        # Real-time dashboard feature
-│   │   ├── booking/          # Projects showcase
+│   │   ├── dashboard/        # Real-time dashboard feature (/dashboard)
+│   │   ├── booking/          # Booking form + list (/booking)
+│   │   ├── projects/         # Projects showcase
 │   │   ├── crm/             # Experience section
 │   │   ├── concierge/       # Skills section
 │   │   ├── resume/          # Resume section

@@ -1,15 +1,17 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import type { Result } from 'axe-core';
+import { stubBookingApi } from './support/backend';
 
 /**
- * The two routes the app actually has. `/` is the portfolio page; `/dashboard`
- * is the live-metrics page, which the scan reaches through the SPA fallback in
- * `scripts/serve-dist.mjs`.
+ * The three routes the app actually has. `/` is the portfolio page;
+ * `/dashboard` and `/booking` are the live demos, which the scan reaches
+ * through the SPA fallback in `scripts/serve-dist.mjs`.
  */
 const ROUTES = [
   { path: '/', name: 'landing page' },
   { path: '/dashboard', name: 'dashboard' },
+  { path: '/booking', name: 'booking' },
 ] as const;
 
 /**
@@ -43,6 +45,19 @@ async function waitForSettledDashboard(page: Page): Promise<void> {
   await expect(page.getByText(/Simulated data|Live data/)).toBeVisible();
 }
 
+/**
+ * The booking route settles the same way and for the same reason: it probes
+ * the API on init and the form is disabled until it answers, so scanning
+ * early would audit a page of greyed-out controls.
+ *
+ * Stubbed up rather than left to fail, because the two states have different
+ * a11y surfaces — populated selects and a live table exist only when the API
+ * answers, and those are most of what there is to audit here.
+ */
+async function waitForSettledBooking(page: Page): Promise<void> {
+  await expect(page.getByRole('button', { name: 'Create booking' })).toBeEnabled();
+}
+
 test.describe('accessibility', () => {
   for (const route of ROUTES) {
     test(`${route.name} has no critical or serious axe violations`, async ({ page }, testInfo) => {
@@ -55,10 +70,18 @@ test.describe('accessibility', () => {
       // Reduced motion renders the whole page immediately, so every section is
       // audited on every run.
       await page.emulateMedia({ reducedMotion: 'reduce' });
+
+      if (route.path === '/booking') {
+        await stubBookingApi(page);
+      }
+
       await page.goto(route.path);
 
       if (route.path === '/dashboard') {
         await waitForSettledDashboard(page);
+      }
+      if (route.path === '/booking') {
+        await waitForSettledBooking(page);
       }
 
       const results = await new AxeBuilder({ page }).analyze();
@@ -80,6 +103,43 @@ test.describe('accessibility', () => {
       expect(blocking, `\n${formatViolations(blocking)}\n`).toEqual([]);
     });
   }
+
+  /**
+   * The booking form again, after the server has rejected it.
+   *
+   * Scanning only the resting state would miss the half of a form that is
+   * hardest to get right and easiest to regress: an error message is new
+   * content, inserted after load, that has to be associated with its control
+   * and reachable from it. A page that scans clean empty and dirty on failure
+   * is the normal outcome, not an unlikely one.
+   */
+  test('the booking form has no critical or serious violations while showing an error', async ({
+    page,
+  }, testInfo) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stubBookingApi(page);
+    await page.goto('/booking');
+    await waitForSettledBooking(page);
+
+    // Equal dates: rejected by the API, attributed to check-out.
+    await page.getByLabel('Check-in').fill('2026-06-01');
+    await page.getByLabel('Check-out').fill('2026-06-01');
+    await page.getByRole('button', { name: 'Create booking' }).click();
+    await expect(page.locator('#check_out-error')).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+
+    await testInfo.attach('axe-booking-error-state.json', {
+      body: JSON.stringify(results.violations, null, 2),
+      contentType: 'application/json',
+    });
+
+    const blocking = results.violations.filter((violation) =>
+      violation.impact ? BLOCKING_IMPACTS.has(violation.impact) : false
+    );
+
+    expect(blocking, `\n${formatViolations(blocking)}\n`).toEqual([]);
+  });
 });
 
 test.describe('keyboard operability', () => {

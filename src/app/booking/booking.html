@@ -1,45 +1,219 @@
-<!-- ===== PROJECTS ===== -->
-<section id="projects" class="section section-alt" tabindex="-1" appScrollReveal>
-  <div class="section-inner">
-    <div class="section-header">
-      <span class="section-label">Featured Work</span>
-      <h2>Projects</h2>
-      <p class="section-description">
-        A selection of enterprise applications I've architected and delivered, spanning
-        telecommunications, finance, and e-commerce at scale.
+<!-- ===== ROOM BOOKING ENGINE =====
+     `main` rather than `section`, for the same reason `/dashboard` uses one:
+     this route renders nothing else, so without it the whole page is content
+     outside any landmark. -->
+<main class="booking-page">
+  <div class="booking-inner">
+    <header class="booking-header">
+      <h1 class="booking-title">Room Booking Engine</h1>
+      <p class="booking-subtitle">
+        A reactive form writing to the same database the dashboard reads. Submit one and the
+        occupancy figures on <a href="/dashboard">the dashboard</a> move.
       </p>
-    </div>
 
-    <div class="demo-card">
-      <div class="room-grid">
-        @for (project of projects; track project.name) {
-          <div class="room-card">
-            <div class="room-img-placeholder"></div>
-            <div class="room-info">
-              <span class="room-tag">{{ project.category }}</span>
-              <h3>{{ project.name }}</h3>
-              <p class="room-rate">{{ project.description }}</p>
-              <div class="project-tech">
-                @for (tech of project.tech; track tech) {
-                  <span class="tech-badge">{{ tech }}</span>
-                }
-              </div>
-              @if (project.link) {
-                <a
-                  [href]="project.link"
-                  class="btn btn-outline btn-sm project-link"
-                  style="margin-top: 0.75rem"
-                  >View Live Demo →</a
-                >
-              }
-            </div>
-          </div>
+      <!-- Says where the data came from and whether writes are possible.
+           Hidden from assistive technology because the live region below
+           carries the same fact in a form that survives being spoken. -->
+      <div aria-hidden="true">
+        @switch (status()) {
+          @case ('ready') {
+            <p class="data-source data-source--live">
+              <span class="data-source-dot"></span>
+              Live data · reads and writes are hitting the API
+            </p>
+          }
+          @case ('unreachable') {
+            <p class="data-source data-source--simulated">
+              API unreachable · the form is disabled, because a booking you could not save is worse
+              than one you cannot make
+            </p>
+          }
+          @default {
+            <p class="data-source">Connecting to the API…</p>
+          }
         }
       </div>
-    </div>
 
-    <p class="demo-note">
-      * Enterprise projects under NDA — descriptions generalized for confidentiality
-    </p>
+      <p class="visually-hidden" role="status">{{ statusAnnouncement() }}</p>
+    </header>
+
+    <!-- novalidate: the browser's own bubbles would pre-empt both the
+         component's messages and the server's, and they are not reachable by
+         the same means. Validation is Angular's here, and the date-ordering
+         rule is the API's. -->
+    <form class="demo-card booking-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <h2 class="form-heading">New booking</h2>
+
+      <div class="form-row">
+        <app-booking-field fieldId="room_id" label="Room" [error]="errorFor('room_id')">
+          <select
+            id="room_id"
+            class="form-control"
+            formControlName="room_id"
+            [attr.aria-invalid]="invalidAttr('room_id')"
+            [attr.aria-describedby]="describedBy('room_id', false)"
+          >
+            @for (room of rooms(); track room.id) {
+              <option [value]="room.id">{{ roomLabel(room) }}</option>
+            }
+          </select>
+        </app-booking-field>
+
+        <app-booking-field fieldId="guest_id" label="Guest" [error]="errorFor('guest_id')">
+          <select
+            id="guest_id"
+            class="form-control"
+            formControlName="guest_id"
+            [attr.aria-invalid]="invalidAttr('guest_id')"
+            [attr.aria-describedby]="describedBy('guest_id', false)"
+          >
+            @for (guest of guests(); track guest.id) {
+              <option [value]="guest.id">{{ guest.full_name }}</option>
+            }
+          </select>
+        </app-booking-field>
+      </div>
+
+      <div class="form-row">
+        <app-booking-field fieldId="check_in" label="Check-in" [error]="errorFor('check_in')">
+          <input
+            id="check_in"
+            type="date"
+            class="form-control"
+            formControlName="check_in"
+            [attr.aria-invalid]="invalidAttr('check_in')"
+            [attr.aria-describedby]="describedBy('check_in', false)"
+          />
+        </app-booking-field>
+
+        <app-booking-field
+          fieldId="check_out"
+          label="Check-out"
+          hint="Must be at least one night after check-in. The API owns that rule — set them equal to see it answer."
+          [error]="errorFor('check_out')"
+        >
+          <input
+            id="check_out"
+            type="date"
+            class="form-control"
+            formControlName="check_out"
+            [attr.aria-invalid]="invalidAttr('check_out')"
+            [attr.aria-describedby]="describedBy('check_out', true)"
+          />
+        </app-booking-field>
+      </div>
+
+      <div class="form-row">
+        <app-booking-field
+          fieldId="adults"
+          label="Adults"
+          hint="1 to 12."
+          [narrow]="true"
+          [error]="errorFor('adults')"
+        >
+          <input
+            id="adults"
+            type="number"
+            min="1"
+            max="12"
+            class="form-control"
+            formControlName="adults"
+            [attr.aria-invalid]="invalidAttr('adults')"
+            [attr.aria-describedby]="describedBy('adults', true)"
+          />
+        </app-booking-field>
+
+        <app-booking-field
+          fieldId="children"
+          label="Children"
+          hint="0 to 12."
+          [narrow]="true"
+          [error]="errorFor('children')"
+        >
+          <input
+            id="children"
+            type="number"
+            min="0"
+            max="12"
+            class="form-control"
+            formControlName="children"
+            [attr.aria-invalid]="invalidAttr('children')"
+            [attr.aria-describedby]="describedBy('children', true)"
+          />
+        </app-booking-field>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="status() !== 'ready'">
+          {{ submitLabel() }}
+        </button>
+
+        <!-- One live region for the outcome, rather than `role="alert"` on
+             every field. Six alerts firing at once is not six pieces of
+             information, it is a burst nobody can follow; the fields are
+             wired to their messages with `aria-describedby` instead, so a
+             user who tabs to one hears its objection when they arrive. -->
+        <p
+          class="form-outcome"
+          [class.form-outcome--error]="outcomeIsError()"
+          role="status"
+          aria-live="polite"
+        >
+          {{ outcome() }}
+        </p>
+      </div>
+    </form>
+
+    <section class="demo-card booking-list" aria-labelledby="bookings-heading">
+      <h2 id="bookings-heading" class="form-heading">
+        Bookings <span class="booking-count">{{ listSummary() }}</span>
+      </h2>
+
+      @if (bookings().length > 0) {
+        <div class="booking-table-scroll">
+          <table class="booking-table">
+            <caption class="visually-hidden">
+              Bookings currently in the database, newest stay first
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Room</th>
+                <th scope="col">Guest</th>
+                <th scope="col">Check-in</th>
+                <th scope="col">Check-out</th>
+                <th scope="col">Guests</th>
+                <th scope="col">Rate</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (booking of bookings(); track booking.id) {
+                <tr [attr.data-booking-id]="booking.id">
+                  <th scope="row">{{ roomNumber(booking.room_id) }}</th>
+                  <td>{{ guestName(booking.guest_id) }}</td>
+                  <td>{{ booking.check_in | date: 'mediumDate' : 'UTC' }}</td>
+                  <td>{{ booking.check_out | date: 'mediumDate' : 'UTC' }}</td>
+                  <td>{{ booking.adults + booking.children }}</td>
+                  <td>{{ booking.nightly_rate | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                  <td>{{ statusLabel(booking.status) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="booking-empty">{{ emptyMessage() }}</p>
+      }
+    </section>
+
+    <footer class="booking-footer">
+      <p class="booking-note">
+        Rooms, guests and bookings are real rows in SQLite (Postgres in the container deployment).
+        Validation is Pydantic plus the rules in <code>services/bookings.py</code>; a rejection
+        comes back attributed to the field that caused it, which is why the message appears under
+        the input rather than in a banner.
+      </p>
+      <p class="booking-tech">Angular 22 reactive forms, on FastAPI + SQLAlchemy</p>
+    </footer>
   </div>
-</section>
+</main>

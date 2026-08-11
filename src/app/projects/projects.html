@@ -1,0 +1,45 @@
+<!-- ===== PROJECTS ===== -->
+<section id="projects" class="section section-alt" tabindex="-1" appScrollReveal>
+  <div class="section-inner">
+    <div class="section-header">
+      <span class="section-label">Featured Work</span>
+      <h2>Projects</h2>
+      <p class="section-description">
+        A selection of enterprise applications I've architected and delivered, spanning
+        telecommunications, finance, and e-commerce at scale.
+      </p>
+    </div>
+
+    <div class="demo-card">
+      <div class="room-grid">
+        @for (project of projects; track project.name) {
+          <div class="room-card">
+            <div class="room-img-placeholder"></div>
+            <div class="room-info">
+              <span class="room-tag">{{ project.category }}</span>
+              <h3>{{ project.name }}</h3>
+              <p class="room-rate">{{ project.description }}</p>
+              <div class="project-tech">
+                @for (tech of project.tech; track tech) {
+                  <span class="tech-badge">{{ tech }}</span>
+                }
+              </div>
+              @if (project.link) {
+                <a
+                  [href]="project.link"
+                  class="btn btn-outline btn-sm project-link"
+                  style="margin-top: 0.75rem"
+                  >View Live Demo →</a
+                >
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <p class="demo-note">
+      * Enterprise projects under NDA — descriptions generalized for confidentiality
+    </p>
+  </div>
+</section>

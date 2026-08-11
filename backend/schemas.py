@@ -9,7 +9,7 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict
 
-from db import BookingStatus
+from db import BookingStatus, RoomStatus, RoomType
 
 
 class Metrics(BaseModel):
@@ -76,3 +76,46 @@ class BookingPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class BookingErrorDetail(BaseModel):
+    """The ``detail`` a rejected booking carries.
+
+    An object rather than the bare string FastAPI defaults to, because a client
+    that only receives prose has to parse it to know *which input* was wrong —
+    and a form that cannot answer that renders the failure as a detached banner
+    instead of next to the field. ``field`` is the request field name, or null
+    when the violation is about the booking as a whole.
+    """
+
+    message: str
+    field: str | None = None
+
+
+class RoomOut(BaseModel):
+    """A room, as the booking form offers it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    number: str
+    room_type: RoomType
+    floor: int
+    capacity: int
+    base_rate: float
+    status: RoomStatus
+
+
+class GuestOut(BaseModel):
+    """A guest, reduced to what a booking form needs to name one.
+
+    Email, phone, country and creation date are all on the ORM model and none
+    of them are here: this list is served unauthenticated to anyone who opens
+    the demo, and a directory of contactable people is not what a "pick a
+    guest" dropdown needs to be.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str

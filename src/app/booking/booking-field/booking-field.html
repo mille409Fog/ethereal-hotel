@@ -1,0 +1,15 @@
+<div class="form-group" [class.form-group-narrow]="narrow()">
+  <label [attr.for]="fieldId()">{{ label() }}</label>
+
+  <!-- The control itself, owned by the parent so it can carry its own
+       formControlName and aria bindings. -->
+  <ng-content />
+
+  @if (hint()) {
+    <p class="field-hint" [id]="fieldId() + '-hint'">{{ hint() }}</p>
+  }
+
+  @if (error(); as message) {
+    <p class="field-error" [id]="fieldId() + '-error'">{{ message }}</p>
+  }
+</div>

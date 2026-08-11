@@ -101,10 +101,17 @@ ethereal-hotel/
 │   │   │   ├── dashboard-header/     # Header component
 │   │   │   └── dashboard-footer/     # Footer component
 │   │   │
-│   │   ├── services/                  # Shared services
-│   │   │   └── dashboard-api.service.ts  # Backend integration
+│   │   ├── booking/                   # Booking feature module (/booking)
+│   │   │   ├── booking.ts            # Reactive form + bookings list
+│   │   │   ├── booking.html          # Template
+│   │   │   ├── booking.css           # Styles
+│   │   │   └── booking-field/        # Label/hint/error frame for one control
 │   │   │
-│   │   ├── booking/                   # Projects section
+│   │   ├── services/                  # Shared services
+│   │   │   ├── dashboard-api.service.ts  # Metrics + stream integration
+│   │   │   └── booking-api.service.ts    # Bookings + reference data
+│   │   │
+│   │   ├── projects/                  # Projects section
 │   │   ├── crm/                       # Experience section
 │   │   ├── concierge/                 # Skills section
 │   │   ├── resume/                    # Resume section
@@ -120,6 +127,7 @@ ethereal-hotel/
 │   ├── routers/                      # HTTP + WebSocket endpoints
 │   ├── services/                     # Business logic (no FastAPI imports)
 │   │   ├── bookings.py              #   booking rules
+│   │   ├── reference.py             #   read-only room/guest lists
 │   │   └── broadcaster.py           #   ConnectionManager + broadcast task
 │   ├── db/                           # Engine, models, metrics, seeder
 │   ├── tests/                        # pytest suite
@@ -174,8 +182,30 @@ ethereal-hotel/
 | `/api/bookings`      | GET    | List bookings (`limit`, `offset`, `status`) | `BookingPage`   |
 | `/api/bookings`      | POST   | Create a booking                            | `BookingOut`    |
 | `/api/bookings/{id}` | DELETE | Delete a booking                            | 204             |
+| `/api/rooms`         | GET    | Every room (reference data)                 | `RoomOut[]`     |
+| `/api/guests`        | GET    | Every guest, id and name only               | `GuestOut[]`    |
 | `/docs`              | GET    | Swagger UI                                  | HTML            |
 | `/redoc`             | GET    | ReDoc UI                                    | HTML            |
+
+`/api/rooms` and `/api/guests` are read-only and exist for one caller: `POST /api/bookings`
+takes foreign keys, and a form that asks a visitor to guess one cannot be demonstrated. They
+have no create/update/delete because nothing needs them, and `GuestOut` carries an id and a
+display name and nothing contactable — the list is served unauthenticated to anyone who opens
+the demo.
+
+### How a rejected booking comes back
+
+A `BookingError` carries the request field it belongs to, and the router serialises both:
+
+```json
+{ "detail": { "message": "check_out must be after check_in", "field": "check_out" } }
+```
+
+The `field` is part of the domain error rather than something the router infers from the
+message, because inferring it would mean matching on prose. It is what lets the booking form
+render the server's objection under the input that caused it instead of as a detached banner.
+Note that this is _not_ the shape of Pydantic's own 422 — that one is raised before the handler
+runs and is a list of issues located by path — so a client has to read both.
 
 Health is mounted twice on purpose: the container is alone on its origin, so `/` is the
 natural probe, while on Vercel the Angular app owns `/` and the API is only reachable beneath

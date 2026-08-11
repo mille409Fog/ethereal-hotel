@@ -16,19 +16,42 @@ MAX_PAGE_SIZE = 200
 
 
 class BookingError(Exception):
-    """Base class for booking rule violations."""
+    """Base class for booking rule violations.
+
+    ``field`` names the request field the violation belongs to, or is None when
+    the failure is about the booking as a whole. It is part of the domain model
+    rather than something the router infers from the message, because inferring
+    it would mean matching on prose — and prose is the one part of an error a
+    person is free to reword.
+
+    What it buys: a client can put the message beside the input that caused it.
+    See ``BookingErrorDetail`` in ``schemas`` for how it reaches the wire.
+    """
+
+    field: str | None = None
 
 
 class InvalidBookingDates(BookingError):
     """The requested stay does not describe at least one night."""
 
+    field = "check_out"
+
 
 class ReferenceNotFound(BookingError):
     """The booking refers to a guest or room that does not exist."""
 
+    def __init__(self, message: str, *, field: str) -> None:
+        super().__init__(message)
+        # Per-instance: the same rule fails on two different inputs.
+        self.field = field
+
 
 class BookingNotFound(BookingError):
-    """No booking exists with the requested id."""
+    """No booking exists with the requested id.
+
+    No ``field``: the id came from the path, not from a form the caller is
+    holding open, so there is nothing to attribute it to.
+    """
 
 
 def list_bookings(
@@ -61,11 +84,11 @@ def create_booking(db: Session, payload: BookingCreate) -> Booking:
     if payload.check_out <= payload.check_in:
         raise InvalidBookingDates("check_out must be after check_in")
     if not db.get(Guest, payload.guest_id):
-        raise ReferenceNotFound(f"Guest {payload.guest_id} not found")
+        raise ReferenceNotFound(f"Guest {payload.guest_id} not found", field="guest_id")
 
     room = db.get(Room, payload.room_id)
     if not room:
-        raise ReferenceNotFound(f"Room {payload.room_id} not found")
+        raise ReferenceNotFound(f"Room {payload.room_id} not found", field="room_id")
 
     booking = Booking(
         guest_id=payload.guest_id,

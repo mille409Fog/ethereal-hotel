@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import config
 from db import init_db
-from routers import bookings, health, metrics, stream
+from routers import bookings, health, metrics, reference, stream
 from services.broadcaster import manager, run_metrics_broadcaster
 
 config.configure_logging()
@@ -84,6 +84,7 @@ def create_app(*, live_stream: bool = True) -> FastAPI:
         health.build_router(live_stream=live_stream),
         metrics.router,
         bookings.router,
+        reference.router,
     ]
     if live_stream:
         routers.append(stream.router)

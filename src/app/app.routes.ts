@@ -7,6 +7,11 @@ export const routes: Routes = [
     title: 'Real-Time Dashboard - Jacob Miller',
   },
   {
+    path: 'booking',
+    loadComponent: () => import('./booking/booking').then((m) => m.Booking),
+    title: 'Room Booking Engine - Jacob Miller',
+  },
+  {
     path: '',
     loadComponent: () => import('./app').then((m) => m.App),
     title: 'Jacob Miller - Senior Software Engineer',

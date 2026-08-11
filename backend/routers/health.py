@@ -29,6 +29,8 @@ def build_router(*, live_stream: bool) -> APIRouter:
             "metrics": "/api/metrics",
             "dashboard": "/api/dashboard",
             "bookings": "/api/bookings",
+            "rooms": "/api/rooms",
+            "guests": "/api/guests",
         }
         if live_stream:
             endpoints["websocket"] = "/ws"

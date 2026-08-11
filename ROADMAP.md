@@ -28,43 +28,18 @@ The infrastructure is finished and the content is not. Everything below assumes 
 - `/dashboard` is real. It reads a real API backed by a real database, degrades to polling when
   the deployment has no process for a WebSocket, and falls back to a fixture when the API is down.
   That one route is the whole technical argument.
-- `booking`, `crm`, and `concierge` are **static markup with no behaviour**. `booking.ts` is an
-  empty class. Meanwhile `backend/routers/bookings.py` exposes a working `GET`/`POST`/`DELETE
-  /api/bookings`. A visitor who clicks the form learns the site is a mockup; a visitor who reads
-  the repo learns the backend was finished and the wiring was not. Item 1 fixes this.
+- ~~`booking`, `crm`, and `concierge` are **static markup with no behaviour**.~~ Done, and the
+  premise was already stale when it was written: `src/app/booking/` had stopped being a booking
+  form and become the Projects section, so there was no dead form to wire — there was a missing
+  one. Item 1 renamed that component to `Projects` (matching the section id it actually renders)
+  and built the real booking demo on its own route, `/booking`, the way `/dashboard` is built.
+  `crm` and `concierge` render Experience and Skills and are still unwired; see item 2, whose
+  description needs the same correction.
 - The proprietary work is represented by gestures. That is the single biggest gap between this
   site and a site that gets a callback. Item 2.
 
 Items 1–3 are the ones that change outcomes. Items 4–11 are polish, ordered by how much of it
 survives contact with a hiring manager who spends ninety seconds on the page.
-
----
-
-## 1. Wire the booking form to the API that already exists
-
-**Effort:** M · **Why:** The backend shipped a complete bookings resource — list with pagination,
-create with validation, delete, typed errors via `BookingError` → `HTTPException` — and the
-frontend never calls it. A working form against a real database is a stronger demo than three
-beautiful dead ones, and this one costs a day because the hard half is already merged.
-
-Do the same job the dashboard does: real request, real optimistic state, real error surface.
-
-**DoD:**
-
-- [ ] `booking.ts` is a real component: reactive form, `DashboardApiService`-style typed client
-      (reuse the existing service pattern and `environment.apiUrl`, do not invent a second one).
-- [ ] Submitting creates a booking via `POST /api/bookings` and the new row appears in a list read
-      from `GET /api/bookings` — reload the page and it is still there.
-- [ ] Validation errors from the backend render **in the form**, field-attributed, not as a toast
-      and not as a console log. Trigger one deliberately (overlapping dates, unknown room) and
-      screenshot it.
-- [ ] The API being unreachable produces a stated, non-broken state — the same honesty the
-      dashboard's fixture fallback shows. Decide and document whether booking degrades to
-      read-only or to a fixture; do not silently swallow.
-- [ ] Unit tests cover: successful create, backend validation error, network failure.
-- [ ] A Playwright spec fills the form, submits, and asserts the row appears.
-- [ ] `npm run e2e` (smoke + a11y) and `npm run test:backend` pass; axe reports zero violations on
-      the form, including error states, which is where `aria-describedby` usually goes missing.
 
 ## 2. Decide what `crm` and `concierge` are, and make them that
 
@@ -140,8 +115,8 @@ exact audience the site is for.
 - [ ] A favicon set that survives a dark browser chrome (`.ico`, 180px apple-touch, SVG if you
       have one).
 - [ ] Verified rendered: paste the URL into Slack and into LinkedIn's Post Inspector, screenshot
-      both, attach to the PR. Metadata that is merely *present* is not the DoD; metadata that
-      *renders* is.
+      both, attach to the PR. Metadata that is merely _present_ is not the DoD; metadata that
+      _renders_ is.
 - [ ] `/dashboard` gets its own title and description, since it is the link worth sharing on its
       own.
 
@@ -170,7 +145,7 @@ installation boilerplate and a list of what Chart.js is.
 
 - [ ] `README.md` fits on one screen plus a scroll: what it is, the live link, how to run it, and
       the three decisions worth arguing about, each linked into `ARCHITECTURE.md`.
-- [ ] Sections explaining what FastAPI/RxJS/Pydantic/WebSockets *are* are deleted. The reader
+- [ ] Sections explaining what FastAPI/RxJS/Pydantic/WebSockets _are_ are deleted. The reader
       knows. Explaining them signals you assume they do not.
 - [ ] `ARCHITECTURE.md`'s "Future Enhancements" checkbox list is deleted outright — a generic
       unchecked wishlist (Kubernetes, multi-tenant, mobile app) is the clearest tutorial tell in
