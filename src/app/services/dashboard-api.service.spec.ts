@@ -231,6 +231,103 @@ describe('DashboardApiService', () => {
     });
   });
 
+  /**
+   * The transport the hosted demo runs on. `environment.wsUrl` is mutated
+   * rather than mocked because the service reads it once at construction, so
+   * the value has to be in place before `TestBed.inject` — and because this is
+   * exactly how the production build differs: same code, one field null.
+   */
+  describe('polling transport (no socket configured)', () => {
+    const originalWsUrl = environment.wsUrl;
+
+    /** Rebuild the service with `wsUrl` unset, as production has it. */
+    function serviceWithoutSocket(): DashboardApiService {
+      environment.wsUrl = null;
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({});
+      return TestBed.inject(DashboardApiService);
+    }
+
+    afterEach(() => {
+      environment.wsUrl = originalWsUrl;
+    });
+
+    it('reports the polling transport when no socket URL is configured', () => {
+      expect(serviceWithoutSocket().transport).toBe('polling');
+    });
+
+    it('reports the socket transport when one is configured', () => {
+      expect(service.transport).toBe('socket');
+    });
+
+    it('streamMetrics polls instead of opening a socket, and reads immediately', async () => {
+      fetchSpy.mockResolvedValue({ ok: true, json: async () => sampleMetrics });
+      const polling = serviceWithoutSocket();
+
+      const received: IMetrics[] = [];
+      polling.streamMetrics().subscribe((m) => received.push(m));
+
+      // The first read is not deferred to the end of an interval: a demo that
+      // showed nothing for fifteen seconds would read as broken.
+      await vi.waitFor(() => expect(received).toEqual([sampleMetrics]));
+      expect(FakeWebSocket.last).toBeNull();
+      expect(fetchSpy).toHaveBeenCalledWith(`${environment.apiUrl}/metrics`);
+
+      polling.stopStreaming();
+    });
+
+    it('keeps polling after a failed read rather than ending the stream', async () => {
+      fetchSpy
+        .mockRejectedValueOnce(new Error('gateway timeout'))
+        .mockResolvedValue({ ok: true, json: async () => sampleMetrics });
+      const polling = serviceWithoutSocket();
+
+      const received: IMetrics[] = [];
+      let errored = false;
+      let completed = false;
+      polling.streamMetrics().subscribe({
+        next: (m) => received.push(m),
+        error: () => (errored = true),
+        complete: () => (completed = true),
+      });
+
+      // A single bad read must not send the dashboard back to the fixture; the
+      // socket transport survives a drop, and this one survives a 500.
+      await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+      expect(errored).toBe(false);
+      expect(completed).toBe(false);
+      expect(received).toHaveLength(0);
+
+      polling.stopStreaming();
+    });
+
+    it('re-reads on the configured interval until stopped', async () => {
+      // Fake timers are installed *before* the interval is created, so this
+      // drives the real one rather than advancing a clock nothing is on.
+      // `advanceTimersByTimeAsync` also flushes the microtasks each read awaits.
+      vi.useFakeTimers();
+      try {
+        fetchSpy.mockResolvedValue({ ok: true, json: async () => sampleMetrics });
+        const polling = serviceWithoutSocket();
+
+        const received: IMetrics[] = [];
+        polling.streamMetrics().subscribe((m) => received.push(m));
+
+        await vi.advanceTimersByTimeAsync(0);
+        expect(received).toHaveLength(1); // the immediate first read
+
+        await vi.advanceTimersByTimeAsync(environment.pollIntervalMs);
+        expect(received).toHaveLength(2); // the interval fires
+
+        polling.stopStreaming();
+        await vi.advanceTimersByTimeAsync(environment.pollIntervalMs * 3);
+        expect(received).toHaveLength(2); // ...and stops firing
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   describe('disconnectWebSocket', () => {
     it('closes the active socket', () => {
       service.connectWebSocket().subscribe();

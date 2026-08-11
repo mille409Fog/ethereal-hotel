@@ -24,6 +24,8 @@ export class DashboardHeader {
     switch (this.status()) {
       case 'connected':
         return 'Connected to the API. Hotel metrics are now updating live.';
+      case 'polling':
+        return 'Connected to the API. The figures are real, and refresh every few seconds rather than streaming continuously.';
       case 'disconnected':
         return 'The API is unreachable. The figures shown are simulated — a committed snapshot of a seeded database, not live data.';
       default:

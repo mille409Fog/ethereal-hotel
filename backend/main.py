@@ -4,6 +4,11 @@ Wiring only: build the app, install middleware, mount the routers and run the
 shared metrics broadcaster for the lifetime of the process. Endpoints live in
 ``routers/``, business rules in ``services/``, and the numbers themselves are
 **derived from real records** (rooms, guests, bookings) by ``db.metrics``.
+
+The app is built by :func:`create_app` so the same wiring serves both targets:
+a long-lived server (``backend/Dockerfile``, ``python main.py``) and the
+serverless deployment in ``api/index.py``, which has no process to hold a
+socket open in. See "Deployment" in ``README.md``.
 """
 
 import asyncio
@@ -48,23 +53,48 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Shutting down EtherealHotel Dashboard API")
 
 
-app = FastAPI(
-    title="EtherealHotel Dashboard API",
-    description="Real-time hotel dashboard backend, powered by real records.",
-    version=config.API_VERSION,
-    lifespan=lifespan,
-)
+def create_app(*, live_stream: bool = True) -> FastAPI:
+    """Build the API.
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=config.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    ``live_stream`` toggles everything that needs a long-lived process: the
+    ``/ws`` endpoint, the background broadcaster that feeds it, and the startup
+    seeding that runs alongside them. Serverless deployments pass ``False`` and
+    seed at import time instead, because a function invocation has no lifespan
+    worth the name — see ``api/index.py``.
 
-for _router in (health.router, metrics.router, bookings.router, stream.router):
-    app.include_router(_router)
+    The REST surface is identical either way. Dropping the socket costs the
+    dashboard its push updates, not its data.
+    """
+    app = FastAPI(
+        title="EtherealHotel Dashboard API",
+        description="Real-time hotel dashboard backend, powered by real records.",
+        version=config.API_VERSION,
+        lifespan=lifespan if live_stream else None,
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    routers = [
+        health.build_router(live_stream=live_stream),
+        metrics.router,
+        bookings.router,
+    ]
+    if live_stream:
+        routers.append(stream.router)
+
+    for router in routers:
+        app.include_router(router)
+
+    return app
+
+
+app = create_app()
 
 
 if __name__ == "__main__":

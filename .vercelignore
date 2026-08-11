@@ -21,6 +21,17 @@ backend/venv
 backend/env
 backend/ENV
 
+# Local SQLite databases. The deployed function seeds its own throwaway copy in
+# the temp directory (see api/index.py), so uploading a developer's local one
+# would ship data nobody reviewed to a public URL and never even be read.
+*.db
+
+# Pyright config is editor tooling; nothing at runtime or build time reads it.
+# pyproject.toml deliberately stays IN the upload despite also being tooling
+# config: its `requires-python` is what pins the deployed interpreter. See the
+# comment on that field.
+pyrightconfig.json
+
 # Local env files — the CLI writes VERCEL_OIDC_TOKEN into .env.local, and real
 # values belong in Vercel's project env vars, never in the deployment upload.
 .env

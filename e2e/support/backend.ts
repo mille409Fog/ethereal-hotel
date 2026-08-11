@@ -4,10 +4,15 @@
  * Every URL here is derived from `environment.prod.ts` rather than written out
  * literally, because that is the file the running artefact actually contains:
  * `ng build` swaps it in via `fileReplacements` and Playwright serves that
- * build. Hard-coding the host would mean these tests carry on stubbing
- * `onrender.com` after the backend deployment moves it — at which point the
- * "backend up" test stubs nothing, the page makes a real cross-origin call, and
- * the suite starts passing or failing on somebody else's uptime.
+ * build. Hard-coding the surface would mean these tests carry on stubbing
+ * something the app no longer calls — at which point the "backend up" test
+ * stubs nothing, the page makes a real request, and the suite starts passing or
+ * failing on somebody else's uptime.
+ *
+ * Two things about production drive the shape of this file. The API is
+ * same-origin (a Python function on the same Vercel project), so there is no
+ * API host to match on. And it has no WebSocket, so updates arrive as repeated
+ * reads of `/api/metrics` rather than as pushed frames.
  */
 import type { Page } from '@playwright/test';
 import type { IDashboardData, IMetrics } from '../../src/app/services/dashboard-api.service';
@@ -21,25 +26,39 @@ function escapeForRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const API_ORIGIN = new URL(environment.healthUrl).origin;
-
 /**
- * Everything the app addresses at the API origin.
- *
- * A RegExp rather than a glob so that the health URL itself — origin plus a
- * bare `/` — is unambiguously covered alongside the paths beneath it.
+ * The pathname the app will request, whether the environment addresses the API
+ * relatively (`/api/health`, as production does) or absolutely (a full URL, as
+ * a split-host deployment would). The base is required for the relative case
+ * and ignored for the absolute one.
  */
-const API_REQUESTS = new RegExp(`^${escapeForRegExp(API_ORIGIN)}/`);
+function pathOf(url: string): string {
+  return new URL(url, 'http://localhost').pathname;
+}
 
-const HEALTH_PATH = new URL(environment.healthUrl).pathname;
-const DASHBOARD_PATH = new URL(`${environment.apiUrl}/dashboard`).pathname;
+const HEALTH_PATH = pathOf(environment.healthUrl);
+const DASHBOARD_PATH = pathOf(`${environment.apiUrl}/dashboard`);
+const METRICS_PATH = pathOf(`${environment.apiUrl}/metrics`);
 
 /**
- * A fulfilled response still goes through the browser's CORS check: the page is
- * served from `localhost:4173` and the API is a different origin, so without
- * this header the stubbed response is rejected before the app ever sees it and
- * the "backend up" test quietly degrades into a second copy of the "backend
- * down" test — passing, and proving nothing.
+ * Everything the app addresses on the API, on any origin.
+ *
+ * Matched on pathname rather than on a fixed origin: same-origin requests carry
+ * whatever host and port Playwright's preview server happened to pick, and
+ * pinning that here would couple these tests to it. Leaving the origin open
+ * also means a regression that starts calling some *other* host still lands in
+ * this handler and gets the 404 below, rather than reaching the internet.
+ */
+const API_REQUESTS = new RegExp(
+  `^https?://[^/]+${escapeForRegExp(pathOf(environment.apiUrl))}(/|$)`
+);
+
+/**
+ * Harmless while the API is same-origin, and load-bearing if it ever stops
+ * being: a fulfilled cross-origin response still goes through the browser's
+ * CORS check, and without this header it would be rejected before the app saw
+ * it — quietly degrading the "backend up" test into a second copy of the
+ * "backend down" test, passing and proving nothing.
  */
 const CORS_HEADERS = { 'access-control-allow-origin': '*' };
 
@@ -72,8 +91,8 @@ export const LIVE_DASHBOARD: IDashboardData = {
   },
 };
 
-/** A later snapshot, as the live socket would push it. Distinct again. */
-export const SOCKET_METRICS: IMetrics = {
+/** A later snapshot, as a subsequent poll would read it. Distinct again. */
+export const POLLED_METRICS: IMetrics = {
   ...LIVE_DASHBOARD.metrics,
   occupancy: 93.4,
   occupiedRooms: 56,
@@ -86,20 +105,18 @@ export { OFFLINE_DASHBOARD };
 /**
  * Serve a healthy backend.
  *
- * @param socketFrames Metrics snapshots to push once the app opens the socket.
- *   Default empty: the socket connects and stays silent, so a test asserting on
- *   the REST payload cannot race a live update that overwrites it.
+ * @param metricsUpdates Snapshots to hand out to successive reads of
+ *   `/metrics`, one per read, holding the last one once they run out. Default
+ *   empty: every read answers with the same figures as the dashboard payload,
+ *   so a test asserting on that payload cannot race an update that overwrites
+ *   it. The app polls once immediately on connecting, so a single entry here is
+ *   enough to exercise the update path without waiting out an interval.
  */
-export async function stubBackendUp(page: Page, socketFrames: IMetrics[] = []): Promise<void> {
-  // No `connectToServer()`, so the socket is fully mocked and nothing leaves
-  // the machine. The handler runs on connect, by which point the app has
-  // already assigned `onmessage` — it does so synchronously after `new
-  // WebSocket()` — so a frame sent here cannot arrive too early to be seen.
-  await page.routeWebSocket(environment.wsUrl, (ws) => {
-    for (const frame of socketFrames) {
-      ws.send(JSON.stringify(frame));
-    }
-  });
+export async function stubBackendUp(page: Page, metricsUpdates: IMetrics[] = []): Promise<void> {
+  const pending = [...metricsUpdates];
+  let latest: IMetrics = LIVE_DASHBOARD.metrics;
+
+  await stubSocket(page, (ws) => ws.close());
 
   await page.route(API_REQUESTS, async (route) => {
     const { pathname } = new URL(route.request().url());
@@ -111,6 +128,12 @@ export async function stubBackendUp(page: Page, socketFrames: IMetrics[] = []): 
 
     if (pathname === DASHBOARD_PATH) {
       await route.fulfill({ json: LIVE_DASHBOARD, headers: CORS_HEADERS });
+      return;
+    }
+
+    if (pathname === METRICS_PATH) {
+      latest = pending.shift() ?? latest;
+      await route.fulfill({ json: latest, headers: CORS_HEADERS });
       return;
     }
 
@@ -126,7 +149,7 @@ export async function stubBackendUp(page: Page, socketFrames: IMetrics[] = []): 
 }
 
 /**
- * Serve a backend that is not there — the path the hosted demo runs on today.
+ * Serve a backend that is not there.
  *
  * Requests are aborted rather than answered with a 500 because that is the
  * shape of the real failure: a host that does not resolve makes `fetch` reject,
@@ -134,11 +157,23 @@ export async function stubBackendUp(page: Page, socketFrames: IMetrics[] = []): 
  * bad status.
  */
 export async function stubBackendDown(page: Page): Promise<void> {
-  // The app returns from `ngOnInit` before opening a socket when the health
-  // check fails, so this route should never fire. It is here so that a
-  // regression which *does* open a socket fails against a mock instead of
-  // reaching the real host.
-  await page.routeWebSocket(environment.wsUrl, (ws) => ws.close());
-
+  await stubSocket(page, (ws) => ws.close());
   await page.route(API_REQUESTS, (route) => route.abort('failed'));
+}
+
+/**
+ * Mock the socket, if this environment has one at all.
+ *
+ * Production sets `wsUrl` to null — a serverless function cannot hold a socket
+ * open — so there is usually nothing to route and this is a no-op. It stays
+ * because the guard is the interesting part: a regression that opens a socket
+ * against a deployment without one should fail against a mock here rather than
+ * escape to a real host, and a future environment that restores `wsUrl` gets
+ * that protection back without anyone remembering to re-add it.
+ */
+async function stubSocket(page: Page, handler: (ws: { close: () => void }) => void): Promise<void> {
+  if (environment.wsUrl === null) {
+    return;
+  }
+  await page.routeWebSocket(environment.wsUrl, handler);
 }

@@ -3,5 +3,13 @@
   "framework": "angular",
   "buildCommand": "npm run build",
   "outputDirectory": "dist/ethereal-hotel/browser",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "functions": {
+    "api/**/*.py": {
+      "excludeFiles": "{node_modules/**,dist/**,src/**,e2e/**,public/**,coverage/**,test-results/**,playwright-report/**,.angular/**,docs/**,scripts/**,backend/venv/**,backend/tests/**,backend/alembic/**,**/*.db}"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

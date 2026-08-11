@@ -3,8 +3,43 @@
 # repo declare their standards in the same place, and so `ruff check backend/`
 # and `mypy backend/` work from the root the way `npm run lint` does.
 #
-# There is no [project] table on purpose: the backend is an application run from
-# ./backend, not a distributable package. This file is configuration only.
+# The [project] table below is what Vercel reads to build the deployed API. The
+# backend is still an application run from ./backend rather than a distributable
+# package — nothing here is meant to be built or published — but Vercel's Python
+# runtime takes its interpreter *and* its dependency list from this file, so
+# both have to be declared here to take effect.
+#
+# `requires-python` is the load-bearing part. Vercel offers 3.12 / 3.13 / 3.14,
+# and with no declared version it resolves against the newest it has. On 3.14
+# our pinned pydantic-core has no wheel, so uv falls back to compiling it from
+# Rust source and the build fails. A `.python-version` file is documented as an
+# equivalent lever and was tried first; this builder ignored it, and so did
+# `requires-python` for as long as a root requirements.txt was present to serve
+# as the dependency source instead. Hence both fields, and no requirements.txt
+# at the root.
+#
+# 3.12 rather than the 3.11 used by backend/Dockerfile and the ruff/mypy targets
+# simply because Vercel does not offer 3.11. The CI matrix runs both so that gap
+# is tested rather than assumed away.
+#
+# `dependencies` duplicates backend/requirements.txt, which is what the
+# container and CI install from. Duplication normally means silent drift, so it
+# is not left to discipline: backend/tests/test_dependency_pins.py fails if the
+# two lists stop agreeing.
+
+[project]
+name = "ethereal-hotel"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi==0.115.0",
+  "uvicorn[standard]==0.32.0",
+  "pydantic==2.9.2",
+  "websockets==13.1",
+  "SQLAlchemy==2.0.35",
+  "alembic==1.13.3",
+  "Faker==30.3.0",
+]
 
 # ---------------------------------------------------------------------------
 # Ruff — linter *and* formatter (replaces black + isort + flake8)
@@ -15,7 +50,8 @@ line-length = 88
 
 # The backend is a self-contained package rooted at ./backend and is run from
 # there, so `from db import ...` is a first-party import. Telling ruff where the
-# source root is keeps isort from filing those under third-party.
+# source root is keeps isort from filing those under third-party. `api/` imports
+# the same modules after putting ./backend on sys.path, so it shares the root.
 src = ["backend"]
 
 extend-exclude = [
@@ -80,9 +116,11 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "f
 # ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.11"
-# Same reason as ruff's `src`: imports resolve relative to ./backend.
+# Same reason as ruff's `src`: imports resolve relative to ./backend. That also
+# resolves `api/index.py`'s imports, which reach the same modules through the
+# sys.path entry it installs at runtime.
 mypy_path = "backend"
-files = ["backend"]
+files = ["backend", "api"]
 exclude = "^backend/(venv|alembic/versions)/"
 
 strict = true

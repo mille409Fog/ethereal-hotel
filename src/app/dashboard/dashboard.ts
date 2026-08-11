@@ -51,7 +51,9 @@ export class Dashboard implements OnInit, OnDestroy {
     }
 
     this.useBackend = true;
-    this.backendStatus.set('connected');
+    // Real data either way; the badge distinguishes a pushed stream from a
+    // polled one rather than calling both "live".
+    this.backendStatus.set(this.dashboardApi.transport === 'socket' ? 'connected' : 'polling');
 
     // One REST read for the historical series the charts need, then the socket
     // takes over for the live snapshot.
@@ -72,19 +74,20 @@ export class Dashboard implements OnInit, OnDestroy {
 
   public ngOnDestroy(): void {
     if (this.useBackend) {
-      this.dashboardApi.disconnectWebSocket();
+      this.dashboardApi.stopStreaming();
     }
   }
 
   /**
-   * Connect to backend WebSocket for real-time updates.
+   * Subscribe to live updates over whatever transport the backend offers — a
+   * WebSocket locally, REST polling on the serverless demo.
    *
    * `takeUntilDestroyed` takes an explicit `DestroyRef` because this runs from
    * `ngOnInit`, outside the injection context its no-argument form requires.
    */
   private startRealTimeUpdatesFromBackend(): void {
     this.dashboardApi
-      .connectWebSocket()
+      .streamMetrics()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (metrics: IMetrics) => {

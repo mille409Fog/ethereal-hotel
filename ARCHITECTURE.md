@@ -20,6 +20,7 @@
 ## 📦 Technology Stack
 
 ### Frontend
+
 - **Framework**: Angular 22 (Standalone Components)
 - **Language**: TypeScript 6.0
 - **State Management**: RxJS 7.8
@@ -29,6 +30,7 @@
 - **Code Quality**: ESLint + Prettier + Husky
 
 ### Backend
+
 - **Framework**: FastAPI 0.115
 - **Language**: Python 3.11+
 - **Server**: Uvicorn (ASGI)
@@ -84,6 +86,9 @@ a tick with no listeners skips the database entirely.
 
 ```
 ethereal-hotel/
+│
+├── api/                                # Vercel deployment entrypoint
+│   └── index.py                       # Serves backend/ as a Python function
 │
 ├── src/                                # Frontend source
 │   ├── app/
@@ -150,7 +155,9 @@ ethereal-hotel/
     ├── eslint.config.mjs            # ESLint rules
     ├── .prettierrc                  # Prettier config
     ├── commitlint.config.mjs        # Commit lint rules
-    ├── pyproject.toml               # Ruff + mypy config (the Python gates)
+    ├── .python-version              # Interpreter for the Vercel function (3.12)
+    ├── vercel.json                  # Routing + function bundling for the demo
+    ├── pyproject.toml               # Ruff + mypy config, and the deps Vercel installs
     └── pyrightconfig.json           # Pylance/editor only — not a CI gate
 ```
 
@@ -158,22 +165,34 @@ ethereal-hotel/
 
 ### Backend REST API
 
-| Endpoint | Method | Description | Response |
-|----------|--------|-------------|----------|
-| `/` | GET | Health check | API info |
-| `/api/metrics` | GET | Current metrics | `Metrics` |
-| `/api/dashboard` | GET | Full dashboard | `DashboardData` |
-| `/api/bookings` | GET | List bookings (`limit`, `offset`, `status`) | `BookingPage` |
-| `/api/bookings` | POST | Create a booking | `BookingOut` |
-| `/api/bookings/{id}` | DELETE | Delete a booking | 204 |
-| `/docs` | GET | Swagger UI | HTML |
-| `/redoc` | GET | ReDoc UI | HTML |
+| Endpoint             | Method | Description                                 | Response        |
+| -------------------- | ------ | ------------------------------------------- | --------------- |
+| `/`                  | GET    | Health check                                | API info        |
+| `/api/health`        | GET    | The same handler, second mount              | API info        |
+| `/api/metrics`       | GET    | Current metrics                             | `Metrics`       |
+| `/api/dashboard`     | GET    | Full dashboard                              | `DashboardData` |
+| `/api/bookings`      | GET    | List bookings (`limit`, `offset`, `status`) | `BookingPage`   |
+| `/api/bookings`      | POST   | Create a booking                            | `BookingOut`    |
+| `/api/bookings/{id}` | DELETE | Delete a booking                            | 204             |
+| `/docs`              | GET    | Swagger UI                                  | HTML            |
+| `/redoc`             | GET    | ReDoc UI                                    | HTML            |
+
+Health is mounted twice on purpose: the container is alone on its origin, so `/` is the
+natural probe, while on Vercel the Angular app owns `/` and the API is only reachable beneath
+`/api`. One handler, two mounts — a second endpoint would drift.
+
+The payload carries `liveStream`, which reports whether _this_ deployment serves the socket
+below, and its `endpoints` map omits `/ws` when it does not.
 
 ### WebSocket Endpoint
 
-| Endpoint | Protocol | Update Rate | Data |
-|----------|----------|-------------|------|
-| `/ws` | WebSocket | 2 seconds (one shared broadcast) | `Metrics` |
+| Endpoint | Protocol  | Update Rate                      | Data      |
+| -------- | --------- | -------------------------------- | --------- |
+| `/ws`    | WebSocket | 2 seconds (one shared broadcast) | `Metrics` |
+
+Mounted only when `create_app(live_stream=True)` — i.e. the container deployment. The
+serverless demo has no process to hold a socket open and does not advertise this endpoint;
+its frontend polls `/api/metrics` instead. See [Deployment Options](#-deployment-options).
 
 ## 📊 Data Models
 
@@ -238,7 +257,13 @@ class DashboardData(BaseModel):
 
 ### CORS Configuration
 
-The backend allows requests from:
+CORS only applies when the API is on a **different origin** from the page — the container
+deployment. The hosted demo serves both from one Vercel origin, so the browser issues no
+preflight and this middleware is never exercised there. It is still installed in both, because
+`create_app()` builds one application and the container needs it.
+
+By default the backend allows requests from:
+
 - `http://localhost:4200` (Angular dev server)
 - `http://localhost:5173` (Vite alternative)
 - `http://127.0.0.1:4200`
@@ -259,11 +284,13 @@ app.add_middleware(
 ### Development
 
 **Frontend:**
+
 ```bash
 npm start                    # http://localhost:4200
 ```
 
 **Backend:**
+
 ```bash
 cd backend
 python main.py              # http://localhost:8000
@@ -271,26 +298,62 @@ python main.py              # http://localhost:8000
 
 ### Production
 
+Two targets, built from the same application by the same `create_app()` factory in
+`backend/main.py`. The factory takes one flag, `live_stream`, which toggles everything that
+needs a long-lived process: the `/ws` endpoint, the background broadcaster feeding it, and the
+startup seeding they assume.
+
+#### 1. Serverless — the hosted demo (`live_stream=False`)
+
+Frontend and API deploy as **one Vercel project**, so the browser sees a single origin:
+
+```
+                      https://ethereal-hotel-pink.vercel.app
+                                      │
+                     ┌────────────────┴────────────────┐
+        /api/*  ─────┤  vercel.json rewrites           ├───── /*
+                     └────────────────┬────────────────┘
+                                      │
+          ┌───────────────────────────┴───────────────────────┐
+          ▼                                                   ▼
+   api/index.py                                    dist/ethereal-hotel/browser
+   Python 3.12 function                            Angular SPA shell
+   → backend/ create_app(live_stream=False)        → client-side routing
+   → SQLite seeded in /tmp, fixed RNG seed
+```
+
+Consequences, all of them deliberate:
+
+|                        | Serverless demo                  | Container                  |
+| ---------------------- | -------------------------------- | -------------------------- |
+| Metrics transport      | `GET /api/metrics` polling       | `/ws`, pushed every 2s     |
+| `liveStream` in health | `false`                          | `true`                     |
+| CORS                   | none needed (same origin)        | `ALLOWED_ORIGINS` required |
+| Database               | rebuilt per cold start in `/tmp` | persistent                 |
+| Writes                 | accepted, not durable            | durable                    |
+
+The seed is fixed (`api/index.py`) so every instance derives the _same_ hotel; the bookings
+are still laid out around `date.today()`, so the demo never goes stale the way a committed
+snapshot would. The health endpoint reports `liveStream: false` and omits `/ws` from its
+advertised surface rather than offering a socket nothing can serve.
+
+#### 2. Container — the full stack (`live_stream=True`)
+
+```bash
+docker-compose up -d                                    # recommended
+uvicorn main:app --host 0.0.0.0 --port 8000             # simple
+gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker # multi-worker
+```
+
+The WebSocket and shared broadcaster are features of this target. Note that the multi-worker
+form gives each worker its own broadcaster and its own in-memory connection list — correct,
+because each worker only fans out to the clients it holds, but it does mean the "one query per
+tick" property is per worker rather than per cluster.
+
 **Frontend:**
+
 ```bash
 npm run build               # Outputs to dist/
-```
-
-**Backend Options:**
-
-1. **Uvicorn (Simple)**
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-2. **Gunicorn (Multi-worker)**
-```bash
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
-```
-
-3. **Docker (Recommended)**
-```bash
-docker-compose up -d
 ```
 
 ## 🔄 State Management
@@ -361,11 +424,13 @@ Dashboard (Container)
 ### Making Changes
 
 **Frontend Changes:**
+
 1. Edit component files in `src/app/`
 2. Save (auto-reload via Vite)
 3. View changes at http://localhost:4200
 
 **Backend Changes:**
+
 1. Edit `backend/main.py`
 2. Save (auto-reload enabled)
 3. Test at http://localhost:8000/docs
@@ -373,6 +438,7 @@ Dashboard (Container)
 ### Testing
 
 **Frontend:**
+
 ```bash
 npm test                    # Run Vitest
 npm run lint               # Check code quality
@@ -380,6 +446,7 @@ npm run format:check       # Check formatting
 ```
 
 **Backend** (the gates run from the repo root; `pytest` runs from `backend/`):
+
 ```bash
 ruff check backend/           # Lint
 ruff format --check backend/  # Formatting
@@ -392,12 +459,14 @@ Or `npm run code-quality:py` from the root to run all three gates in one command
 ## 📈 Performance Considerations
 
 ### Frontend
+
 - **Lazy Loading**: Route-based code splitting
 - **OnPush Change Detection**: Optimized re-rendering
 - **RxJS Memory Management**: Proper unsubscription
 - **Debouncing**: Chart update optimization
 
 ### Backend
+
 - **Async/Await**: Non-blocking I/O
 - **Connection Pooling**: Efficient WebSocket management
 - **Pydantic Validation**: Fast data validation
@@ -406,12 +475,14 @@ Or `npm run code-quality:py` from the root to run all three gates in one command
 ## 🧪 Testing Strategy
 
 ### Frontend Testing
+
 - **Unit Tests**: Vitest for components and services
 - **E2E Tests**: (Can be added with Playwright/Cypress)
 - **Linting**: ESLint for code quality
 - **Formatting**: Prettier for consistency
 
 ### Backend Testing
+
 - **pytest suite** (`backend/tests/`): REST endpoints, WebSocket stream and the
   broadcaster, all against an isolated, deterministically seeded SQLite database
 - **Broadcast fan-out**: `test_broadcaster.py` counts SQL issued against the engine
@@ -426,40 +497,49 @@ Or `npm run code-quality:py` from the root to run all three gates in one command
 ## 🌐 Browser Support
 
 ### Frontend
+
 - Chrome/Edge (latest)
 - Firefox (latest)
 - Safari (latest)
 - Modern browsers with ES2022+ support
 
 ### WebSocket Support
+
 All modern browsers support WebSockets natively.
 
 ## 📚 Key Technologies Explained
 
 ### FastAPI
+
 Modern Python web framework with automatic API documentation, type hints, and async support.
 
 ### WebSockets
+
 Full-duplex communication protocol enabling real-time, bidirectional data flow.
 
 ### RxJS
+
 Reactive programming library for handling asynchronous data streams in Angular.
 
 ### Pydantic
+
 Data validation library ensuring type safety and automatic JSON serialization.
 
 ### Chart.js
+
 Flexible charting library for creating responsive, animated visualizations.
 
 ## 🎯 Design Patterns Used
 
 ### Frontend
+
 - **Component Pattern**: Modular, reusable UI components
 - **Service Pattern**: Business logic separation
 - **Observer Pattern**: RxJS observables for state
 - **Singleton Pattern**: Injected services
 
 ### Backend
+
 - **Singleton Pattern**: ConnectionManager
 - **Factory Pattern**: Data generation functions
 - **Middleware Pattern**: CORS handling
@@ -468,6 +548,7 @@ Flexible charting library for creating responsive, animated visualizations.
 ## ✅ Quality Assurance
 
 ### Code Quality Tools
+
 - **ESLint**: JavaScript/TypeScript linting
 - **Prettier**: Code formatting
 - **Ruff**: Python linting and formatting (replaces black/isort/flake8)
@@ -478,6 +559,7 @@ Flexible charting library for creating responsive, animated visualizations.
 - **GitHub Actions**: CI/CD automation
 
 ### Standards
+
 - TypeScript strict mode
 - Python type hints
 - Conventional commits
@@ -487,6 +569,7 @@ Flexible charting library for creating responsive, animated visualizations.
 ## 🚀 Future Enhancements
 
 Potential areas for expansion:
+
 - [ ] Database integration (PostgreSQL/MongoDB)
 - [ ] User authentication (JWT)
 - [ ] Historical data persistence

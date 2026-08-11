@@ -1,13 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { Dashboard } from './dashboard';
-import { DashboardApiService, IDashboardData, IMetrics } from '../services/dashboard-api.service';
+import {
+  DashboardApiService,
+  IDashboardData,
+  IMetrics,
+  MetricsTransport,
+} from '../services/dashboard-api.service';
 import { OFFLINE_DASHBOARD } from '../services/offline-dashboard.fixture';
 
 /**
  * These tests exercise the dashboard's data-source decision logic directly on
- * the component class (no template render needed): whether it uses the live
- * backend WebSocket or falls back to the committed offline fixture.
+ * the component class (no template render needed): whether it streams from the
+ * live backend or falls back to the committed offline fixture, and which of the
+ * two real-data labels it claims.
  *
  * The component is built inside a TestBed injection context rather than with
  * `new`, because it resolves its dependencies with `inject()`.
@@ -36,23 +42,27 @@ const liveDashboard: IDashboardData = {
 };
 
 describe('Dashboard (backend vs. offline fixture)', () => {
-  let wsSubject: Subject<IMetrics>;
+  let streamSubject: Subject<IMetrics>;
   let api: {
+    transport: MetricsTransport;
     checkBackendHealth: ReturnType<typeof vi.fn>;
     getDashboard: ReturnType<typeof vi.fn>;
-    connectWebSocket: ReturnType<typeof vi.fn>;
-    disconnectWebSocket: ReturnType<typeof vi.fn>;
+    streamMetrics: ReturnType<typeof vi.fn>;
+    stopStreaming: ReturnType<typeof vi.fn>;
   };
 
   const makeComponent = (): Dashboard => TestBed.runInInjectionContext(() => new Dashboard());
 
   beforeEach(() => {
-    wsSubject = new Subject<IMetrics>();
+    streamSubject = new Subject<IMetrics>();
     api = {
+      // The default deployment under test is the one with a socket; the
+      // polling case gets its own test rather than being the baseline.
+      transport: 'socket',
       checkBackendHealth: vi.fn(),
       getDashboard: vi.fn().mockResolvedValue(liveDashboard),
-      connectWebSocket: vi.fn().mockReturnValue(wsSubject.asObservable()),
-      disconnectWebSocket: vi.fn(),
+      streamMetrics: vi.fn().mockReturnValue(streamSubject.asObservable()),
+      stopStreaming: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -64,21 +74,42 @@ describe('Dashboard (backend vs. offline fixture)', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses the backend WebSocket when the backend is healthy', async () => {
+  it('streams from the backend when it is healthy', async () => {
     api.checkBackendHealth.mockResolvedValue(true);
     const component = makeComponent();
 
     await component.ngOnInit();
 
     expect(component.backendStatus()).toBe('connected');
-    expect(api.connectWebSocket).toHaveBeenCalledTimes(1);
+    expect(api.streamMetrics).toHaveBeenCalledTimes(1);
 
     // The REST read seeds the historical series the charts render.
     expect(component.historicalGuests()).toEqual(liveDashboard.historicalGuests);
     expect(component.historicalRevenue()).toEqual(liveDashboard.historicalRevenue);
 
-    // Incoming socket data drives the metrics.
-    wsSubject.next(liveMetrics);
+    // Incoming stream data drives the metrics.
+    streamSubject.next(liveMetrics);
+    expect(component.metrics()).toEqual(liveMetrics);
+
+    component.ngOnDestroy();
+  });
+
+  it('labels a polling deployment as polling, not as a live stream', async () => {
+    // The hosted demo's shape: a healthy backend with no socket behind it. The
+    // data is just as real, so the fixture must not be used — but claiming
+    // "streaming" for a transport that re-reads on a timer would overclaim,
+    // and this badge is the only thing telling a visitor which they are seeing.
+    api.transport = 'polling';
+    api.checkBackendHealth.mockResolvedValue(true);
+    const component = makeComponent();
+
+    await component.ngOnInit();
+
+    expect(component.backendStatus()).toBe('polling');
+    expect(api.streamMetrics).toHaveBeenCalledTimes(1);
+    expect(component.historicalGuests()).toEqual(liveDashboard.historicalGuests);
+
+    streamSubject.next(liveMetrics);
     expect(component.metrics()).toEqual(liveMetrics);
 
     component.ngOnDestroy();
@@ -91,7 +122,7 @@ describe('Dashboard (backend vs. offline fixture)', () => {
     await component.ngOnInit();
 
     expect(component.backendStatus()).toBe('disconnected');
-    expect(api.connectWebSocket).not.toHaveBeenCalled();
+    expect(api.streamMetrics).not.toHaveBeenCalled();
     expect(component.metrics()).toEqual(OFFLINE_DASHBOARD.metrics);
     expect(component.historicalGuests()).toEqual(OFFLINE_DASHBOARD.historicalGuests);
     expect(component.historicalRevenue()).toEqual(OFFLINE_DASHBOARD.historicalRevenue);
@@ -123,22 +154,22 @@ describe('Dashboard (backend vs. offline fixture)', () => {
 
     expect(component.backendStatus()).toBe('connected');
     expect(component.historicalGuests()).toEqual(OFFLINE_DASHBOARD.historicalGuests);
-    // The socket still drives the live snapshot.
-    wsSubject.next(liveMetrics);
+    // The stream still drives the live snapshot.
+    streamSubject.next(liveMetrics);
     expect(component.metrics()).toEqual(liveMetrics);
 
     component.ngOnDestroy();
   });
 
-  it('falls back to the fixture when the WebSocket errors mid-stream', async () => {
+  it('falls back to the fixture when the stream errors mid-flight', async () => {
     api.checkBackendHealth.mockResolvedValue(true);
     const component = makeComponent();
 
     await component.ngOnInit();
     expect(component.backendStatus()).toBe('connected');
 
-    // Simulate the socket dropping.
-    wsSubject.error(new Error('socket dropped'));
+    // Simulate the transport giving up for good.
+    streamSubject.error(new Error('stream dropped'));
 
     expect(component.backendStatus()).toBe('disconnected');
     expect(component.metrics()).toEqual(OFFLINE_DASHBOARD.metrics);
@@ -146,13 +177,13 @@ describe('Dashboard (backend vs. offline fixture)', () => {
     component.ngOnDestroy();
   });
 
-  it('disconnects the WebSocket on destroy when using the backend', async () => {
+  it('tears the stream down on destroy when using the backend', async () => {
     api.checkBackendHealth.mockResolvedValue(true);
     const component = makeComponent();
     await component.ngOnInit();
 
     component.ngOnDestroy();
 
-    expect(api.disconnectWebSocket).toHaveBeenCalledTimes(1);
+    expect(api.stopStreaming).toHaveBeenCalledTimes(1);
   });
 });

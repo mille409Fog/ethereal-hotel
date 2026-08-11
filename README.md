@@ -10,18 +10,22 @@ records** in a SQLite database, not generated from random numbers.
 
 ![The hotel operations dashboard: occupancy, ADR, RevPAR, room revenue, arrivals/departures and rooms available](docs/images/dashboard.png)
 
-> The badge reads "simulated data" above because the hosted demo has no backend deployed yet;
-> the dashboard falls back to a committed snapshot of a real seeded database and says so.
-> See [Configuration](#️-configuration).
+> The screenshot above predates the backend deployment, so its badge reads "simulated data".
+> The live demo now serves real figures from a deployed API and the badge reads "Live data ·
+> polled from the API every few seconds" — the hosted API is serverless and has no WebSocket,
+> so the dashboard polls instead of streaming and says which it is doing. If the API is ever
+> unreachable it falls back to a committed snapshot of a real seeded database and labels that
+> "simulated data". See [Deployment](#-deployment).
 
 ![Three Chart.js panels: guests in house over 20 days, room revenue by night, and tonight's room inventory as a donut](docs/images/charts.png)
 
 ## 🌟 Features
 
 - **Real-Time Dashboard**: metrics streamed over a WebSocket every 2 seconds and drawn with Chart.js
+  (the hosted demo polls instead — see [Deployment](#-deployment))
 - **Domain-derived metrics**: occupancy, ADR and RevPAR computed from rooms, guests and bookings
 - **Accessible**: WCAG 2.1 AA, verified in CI by axe — see [Accessibility](#-accessibility)
-- **Code Quality**: linting, formatting, type checking and tests gated in CI for *both* languages
+- **Code Quality**: linting, formatting, type checking and tests gated in CI for _both_ languages
 - **CI/CD Pipeline**: GitHub Actions running the same commands documented here
 - **Modern Stack**: Angular 22 signals + TypeScript 6.0 (strict), FastAPI on Python 3.11
 
@@ -77,6 +81,7 @@ python main.py
 ```
 
 Backend will be available at:
+
 - REST API: `http://localhost:8000`
 - WebSocket: `ws://localhost:8000/ws`
 - API Docs: `http://localhost:8000/docs`
@@ -84,6 +89,7 @@ Backend will be available at:
 ## 📜 Available Scripts
 
 ### Development
+
 ```bash
 # Start development server
 npm start
@@ -96,12 +102,13 @@ npm run watch
 ```
 
 ### Testing
+
 ```bash
 # Run frontend unit tests with Vitest, printing a coverage summary.
 # Fails if coverage drops below the thresholds in angular.json.
 npm test
 
-# Run the backend suite: 18 pytest tests against an isolated, deterministically
+# Run the backend suite: 22 pytest tests against an isolated, deterministically
 # seeded SQLite database. No running server required.
 npm run test:backend
 
@@ -115,6 +122,7 @@ npm run a11y
 ```
 
 ### Code Quality
+
 ```bash
 # Run ESLint (--max-warnings 0: a single new warning fails the command)
 npm run lint
@@ -156,6 +164,7 @@ their configuration from `pyproject.toml` at the repo root.
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework**: Angular 22 (standalone components, signals, OnPush everywhere)
 - **Language**: TypeScript 6.0, `strict` on
 - **State Management**: signals (`signal` / `computed` / `input`) over an RxJS 7.8 transport
@@ -166,6 +175,7 @@ their configuration from `pyproject.toml` at the repo root.
 - **CI/CD**: GitHub Actions
 
 ### Backend
+
 - **Framework**: FastAPI 0.115
 - **Language**: Python 3.11+
 - **Server**: Uvicorn (ASGI)
@@ -182,11 +192,11 @@ Both languages are gated, not just the TypeScript half:
 
 - ✅ **ESLint**: Strict TypeScript and Angular linting rules, enforced at zero warnings
 - ✅ **Prettier**: Consistent code formatting
-- ✅ **Ruff**: Python linting *and* formatting, enforced at zero errors
+- ✅ **Ruff**: Python linting _and_ formatting, enforced at zero errors
 - ✅ **Mypy**: Python type checking in strict mode
 - ✅ **axe**: Accessibility scan of both routes in CI, blocking on serious and critical findings
 - ✅ **Vitest**: Unit tests with coverage thresholds that fail the build when they regress
-- ✅ **Pytest**: 18 backend tests against an isolated, deterministically seeded database
+- ✅ **Pytest**: 22 backend tests against an isolated, deterministically seeded database
 - ✅ **Husky**: Git hooks for pre-commit validation
 - ✅ **Lint-staged**: Automatic formatting of staged files, TypeScript and Python alike
 - ✅ **Commitlint**: Conventional commit message validation
@@ -263,12 +273,12 @@ Enforced by Ruff and mypy, both configured in `pyproject.toml` at the repo root.
 Four exceptions are configured, each with a comment in `pyproject.toml` giving the reason rather
 than being switched off silently:
 
-| Rule | Where | Why |
-| --- | --- | --- |
-| `B008` | FastAPI `Depends`/`Query` | Calling them in argument defaults *is* the DI syntax |
-| `N815` | `schemas.py` | camelCase fields are the wire contract the Angular `IMetrics` consumes |
-| `N818` | `services/bookings.py` | `ReferenceNotFound` reads better than `ReferenceNotFoundError`; the base class carries the suffix |
-| formatting | `**/*.md` | Ruff formats Python blocks inside Markdown; the ```python blocks in these docs are illustrative payload shapes, not code |
+| Rule       | Where                     | Why                                                                                                                      |
+| ---------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `B008`     | FastAPI `Depends`/`Query` | Calling them in argument defaults _is_ the DI syntax                                                                     |
+| `N815`     | `schemas.py`              | camelCase fields are the wire contract the Angular `IMetrics` consumes                                                   |
+| `N818`     | `services/bookings.py`    | `ReferenceNotFound` reads better than `ReferenceNotFoundError`; the base class carries the suffix                        |
+| formatting | `**/*.md`                 | Ruff formats Python blocks inside Markdown; the ```python blocks in these docs are illustrative payload shapes, not code |
 
 ### Test Coverage
 
@@ -278,12 +288,12 @@ the current figures — V8 attributes function coverage slightly differently acr
 versions, so a threshold pinned to the exact number would fail on a version bump rather than
 on a real regression. That headroom is why `.nvmrc` pins the Node version CI uses.
 
-| Metric | Threshold | Currently |
-| --- | --- | --- |
-| Statements | 90% | 97.05% |
-| Branches | 88% | 93.84% |
-| Functions | 74% | 95.89% |
-| Lines | 90% | 96.88% |
+| Metric     | Threshold | Currently |
+| ---------- | --------- | --------- |
+| Statements | 90%       | 97.05%    |
+| Branches   | 88%       | 93.84%    |
+| Functions  | 74%       | 95.89%    |
+| Lines      | 90%       | 96.88%    |
 
 When new tests push the real numbers up durably, raise the floors to match.
 
@@ -332,11 +342,13 @@ ethereal-hotel/
 ## 🔍 Key Features Demonstrated
 
 ### 1. Real-Time Data Handling
+
 - A self-healing WebSocket that reconnects with exponential backoff (1s → 30s cap)
 - Subscriptions torn down by `takeUntilDestroyed(DestroyRef)`, not manual `unsubscribe()`
 - Live metric updates every 2 seconds, from one shared broadcast task on the server
 
 ### 2. Modern Angular Patterns
+
 - Standalone components — there is no `NgModule` in the codebase
 - Signal-based state: `signal()` for component state, `computed()` for derived values,
   the `input()` signal API instead of `@Input()` decorators
@@ -345,12 +357,14 @@ ethereal-hotel/
 - OnPush change detection strategy (lint-enforced on every component)
 
 ### 3. Professional Development Workflow
+
 - Pre-commit hooks prevent broken code
 - Automated CI/CD pipeline
 - Conventional commit messages
 - Comprehensive linting rules
 
 ### 4. Code Organization
+
 - Feature-based folder structure
 - Reusable components and directives
 - Separation of concerns
@@ -360,12 +374,12 @@ ethereal-hotel/
 
 Four suites, all runnable from the repo root:
 
-| Command | What it runs |
-| --- | --- |
-| `npm test` | Vitest unit tests + coverage gate |
-| `npm run test:backend` | 18 pytest tests against a seeded, isolated SQLite database |
-| `npm run e2e` | Playwright smoke tests + the axe accessibility audit, against the production build |
-| `npm run a11y` | Just the accessibility audit |
+| Command                | What it runs                                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| `npm test`             | Vitest unit tests + coverage gate                                                  |
+| `npm run test:backend` | 22 pytest tests against a seeded, isolated SQLite database                         |
+| `npm run e2e`          | Playwright smoke tests + the axe accessibility audit, against the production build |
+| `npm run a11y`         | Just the accessibility audit                                                       |
 
 The Playwright suites run against `dist/` rather than `ng serve`, so they exercise the
 production `fileReplacements`, the lazy chunks and the minified CSS that users actually load.
@@ -377,14 +391,30 @@ production `fileReplacements`, the lazy chunks and the minified CSS that users a
 The API base URLs are **not hardcoded**. They live in Angular environment files:
 
 - `src/environments/environment.ts` — development (defaults to `http://localhost:8000`).
-- `src/environments/environment.prod.ts` — production (your deployed backend URL).
+- `src/environments/environment.prod.ts` — production (relative, same-origin URLs).
+- `src/environments/environment.model.ts` — the interface both must satisfy, so a field added
+  to one and forgotten in the other fails to compile instead of failing in production.
 
 `angular.json` swaps `environment.ts` for `environment.prod.ts` on production builds
-(`fileReplacements`). To point the deployed frontend at your backend, edit
-`environment.prod.ts` and set `apiUrl`, `wsUrl`, and `healthUrl` to your backend origin,
-then rebuild/redeploy. Until a backend is live, the dashboard falls back to
-`src/app/services/offline-dashboard.fixture.json` — a committed snapshot of a real seeded
-database, not generated numbers — and labels itself "simulated data" in the header.
+(`fileReplacements`).
+
+Production addresses the API **relatively** (`apiUrl: '/api'`) because the API is deployed as
+a function on the same Vercel project. That is worth more than it looks: there is no CORS
+preflight, no origin to keep in sync with `ALLOWED_ORIGINS`, and no hostname that can rot —
+every preview deployment gets a working backend at its own URL with no edit here.
+
+`wsUrl` is `null` in production. That is not "not configured yet": it is the instruction to
+use the polling transport, because a serverless function cannot hold a socket open. The
+dashboard picks its transport from this field and labels the result honestly:
+
+| `wsUrl`             | Transport                                 | Badge                                             |
+| ------------------- | ----------------------------------------- | ------------------------------------------------- |
+| set                 | WebSocket, pushed every 2s                | Live data · streaming from the API                |
+| `null`              | `GET /api/metrics` every `pollIntervalMs` | Live data · polled from the API every few seconds |
+| — (API unreachable) | none; committed fixture                   | Simulated data · backend unreachable              |
+
+The fallback is `src/app/services/offline-dashboard.fixture.json` — a committed snapshot of a
+real seeded database, not generated numbers.
 
 ### Backend (environment variables)
 
@@ -393,25 +423,88 @@ nothing calls `load_dotenv()`, so configuration comes from real environment vari
 them in your shell, `docker-compose.yml`, or your host's dashboard. Every one has a default
 that makes a fresh clone run, so none is required:
 
-| Env var | Default | Purpose |
-| --- | --- | --- |
-| `DATABASE_URL` | local SQLite file | Swap in Postgres, etc. |
-| `ALLOWED_ORIGINS` | localhost dev servers | Comma-separated CORS allowlist |
-| `LOG_LEVEL` | `INFO` | Unknown values fall back to INFO with a warning rather than failing startup |
-| `BROADCAST_INTERVAL_SECONDS` | `2` | Stream cadence |
+| Env var                      | Default               | Purpose                                                                     |
+| ---------------------------- | --------------------- | --------------------------------------------------------------------------- |
+| `DATABASE_URL`               | local SQLite file     | Swap in Postgres, etc.                                                      |
+| `ALLOWED_ORIGINS`            | localhost dev servers | Comma-separated CORS allowlist                                              |
+| `LOG_LEVEL`                  | `INFO`                | Unknown values fall back to INFO with a warning rather than failing startup |
+| `BROADCAST_INTERVAL_SECONDS` | `2`                   | Stream cadence                                                              |
 
-In production, set the CORS allowlist to your frontend origin:
+When the API is on a **different origin** from the frontend — the container deployment — set
+the CORS allowlist to that frontend's origin:
 
 ```bash
 export ALLOWED_ORIGINS="https://ethereal-hotel-pink.vercel.app"
 ```
 
+The hosted demo needs none of this: the API is same-origin, so the browser never issues a
+preflight and `ALLOWED_ORIGINS` is never consulted. Not having to configure it is one of the
+reasons the API is deployed alongside the frontend rather than on a host of its own.
+
 ## 🚢 Deployment
 
-- **Frontend** → Vercel (live at https://ethereal-hotel-pink.vercel.app/).
-  Build command `npm run build`, output directory `dist/ethereal-hotel/browser`.
-- **Backend** → Fly.io / Render using `backend/Dockerfile`. Set `ALLOWED_ORIGINS`
-  to the Vercel origin so the browser can call the API.
+There are two supported targets, and they are not the same deployment. The difference is
+deliberate and visible on screen rather than papered over.
+
+### The hosted demo — one Vercel project, both halves
+
+Live at https://ethereal-hotel-pink.vercel.app/.
+
+|          |                                                                                   |
+| -------- | --------------------------------------------------------------------------------- |
+| Frontend | `npm run build` → `dist/ethereal-hotel/browser`                                   |
+| Backend  | `api/index.py`, a Python function running the same FastAPI app from `backend/`    |
+| Routing  | `vercel.json` rewrites `/api/*` to the function, everything else to the SPA shell |
+| Python   | 3.12, pinned by `.python-version` and `requires-python` in `pyproject.toml`       |
+
+Verify it in one command:
+
+```bash
+curl https://ethereal-hotel-pink.vercel.app/api/health
+# {"status":"online","service":"EtherealHotel Dashboard API","version":"2.1.0",
+#  "liveStream":false,"endpoints":{...}}
+```
+
+Three things about this deployment are worth knowing before you read it as sloppy:
+
+- **No WebSocket.** `liveStream: false` in the health payload is the API telling you so, and
+  it does not advertise a `/ws` it cannot serve. A function invocation has no process to hold
+  a socket open, so the dashboard polls `/api/metrics` instead and the badge says "polled",
+  not "streaming". The socket is a real feature — it just belongs to the container below.
+- **The database is rebuilt on every cold start**, into the function's temp directory, from a
+  **fixed RNG seed**. Fixing the seed is what stops two instances serving two different
+  hotels; anchoring the seeding to `date.today()` is what stops the demo decaying into a
+  stale snapshot the way a committed database would. The figures are still derived from real
+  `Room`/`Guest`/`Booking` rows — the seed decides which rows, not what the numbers mean.
+- **Writes do not persist.** `POST`/`DELETE /api/bookings` work and move the metrics, but only
+  for that instance's lifetime. The dashboard itself is read-only, so this is invisible in
+  normal use; it matters if you go poking at the API.
+
+Cold start is roughly a second — the seeding step measures ~0.16s. There is no free-tier
+spin-down delay here, which was the main reason to prefer this over a container host.
+
+### The full stack — container
+
+```bash
+docker build -t ethereal-hotel-api backend/
+docker run -p 8000:8000 -e ALLOWED_ORIGINS="https://your-frontend" ethereal-hotel-api
+```
+
+This is the deployment with the live WebSocket, the shared broadcaster, and a database that
+persists. Point a frontend at it by setting `apiUrl`/`wsUrl`/`healthUrl` in
+`environment.prod.ts` to its origin, and add that origin to `ALLOWED_ORIGINS` — cross-origin
+means CORS applies again, which the same-origin demo avoids entirely.
+
+Both targets build the app through the same `create_app()` in `backend/main.py`; the function
+passes `live_stream=False`. There is no second copy of the wiring to keep in sync.
+
+### A note on Python versions
+
+The container and CI run **3.11**; the hosted function runs **3.12**, because Vercel's Python
+runtime offers 3.12/3.13/3.14 and no 3.11. Rather than leave that gap untested, the CI matrix
+runs the backend suite on both. Runtime dependencies are declared twice for the same reason —
+`backend/requirements.txt` for the container, `[project.dependencies]` in `pyproject.toml` for
+Vercel — and `backend/tests/test_dependency_pins.py` fails if the two lists ever disagree.
 
 ### Build for Production
 
@@ -426,6 +519,7 @@ The build artifacts will be stored in the `dist/` directory, optimized for produ
 ### VS Code Setup
 
 Recommended extensions (defined in `.vscode/extensions.json`):
+
 - Angular Language Service
 - ESLint
 - Prettier
@@ -445,7 +539,7 @@ When you commit code, Husky runs lint-staged over the staged files only:
 4. The commit message is validated against Conventional Commits
 
 Anything auto-fixable is fixed and re-staged, so badly formatted code cannot land. Anything
-that *isn't* auto-fixable — an undefined name, a bare `except`, an ESLint error — fails the
+that _isn't_ auto-fixable — an undefined name, a bare `except`, an ESLint error — fails the
 hook and blocks the commit until it's resolved.
 
 The Python steps need `ruff`, which `scripts/py-tool.mjs` looks for in `backend/venv`, then in

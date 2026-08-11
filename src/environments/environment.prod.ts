@@ -1,16 +1,24 @@
 /**
- * Production environment configuration.
+ * Production environment configuration — the hosted demo on Vercel.
  *
- * Point these at your deployed FastAPI backend (Render / Fly.io / etc.).
- * Until a backend is live, the dashboard gracefully falls back to mock data,
- * so the frontend remains fully functional at the placeholder below.
+ * The URLs are **relative on purpose**. The FastAPI app is deployed as a Python
+ * function on this same Vercel project (`api/index.py`), so the API is served
+ * from the origin the page was loaded from. That means no CORS preflight, no
+ * `ALLOWED_ORIGINS` to keep in sync, and — the reason this file used to be
+ * wrong — no hostname that can rot. Every preview deployment gets a working
+ * backend at its own URL without anyone editing this file.
  *
- * NOTE: keep the origin (scheme + host) consistent between the three URLs and
- * make sure it is listed in the backend's ALLOWED_ORIGINS env var.
+ * `wsUrl` is null because a serverless function cannot hold a socket open. The
+ * dashboard falls back to polling `/api/metrics` and labels itself accordingly;
+ * the live stream is a feature of the container deployment, not the demo.
+ * See "Deployment" in README.md for the full picture.
  */
-export const environment = {
+import { IEnvironment } from './environment.model';
+
+export const environment: IEnvironment = {
   production: true,
-  apiUrl: 'https://ethereal-hotel-api.onrender.com/api',
-  wsUrl: 'wss://ethereal-hotel-api.onrender.com/ws',
-  healthUrl: 'https://ethereal-hotel-api.onrender.com/',
+  apiUrl: '/api',
+  wsUrl: null,
+  healthUrl: '/api/health',
+  pollIntervalMs: 15000,
 };

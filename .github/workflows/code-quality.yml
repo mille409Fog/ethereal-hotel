@@ -112,7 +112,12 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.11']
+        # 3.11 is what backend/Dockerfile runs and what ruff/mypy target.
+        # 3.12 is what the hosted demo runs: Vercel's Python runtime offers
+        # 3.12/3.13/3.14 and no 3.11, so the deployed function cannot match the
+        # container. Testing both is what keeps that gap from being untested
+        # rather than merely documented.
+        python-version: ['3.11', '3.12']
 
     steps:
       - name: Checkout code
@@ -132,15 +137,20 @@ jobs:
         working-directory: backend
 
       # Ruff and mypy read their config from pyproject.toml at the repo root,
-      # so these run from the root rather than from backend/.
+      # so these run from the root rather than from backend/. `api/` is the
+      # Vercel deployment entrypoint — it is the code that actually serves the
+      # hosted demo, so it is held to the same bar as backend/, not exempted
+      # for being four statements long.
       - name: Run Ruff (lint)
-        run: ruff check backend/
+        run: ruff check backend/ api/
 
       - name: Run Ruff (format check)
-        run: ruff format --check backend/
+        run: ruff format --check backend/ api/
 
+      # No path argument: `files` in pyproject.toml names both trees, and
+      # passing one here would silently override it.
       - name: Run mypy
-        run: mypy backend/
+        run: mypy
 
       - name: Run pytest
         run: pytest

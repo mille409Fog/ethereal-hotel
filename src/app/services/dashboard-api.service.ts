@@ -3,10 +3,21 @@ import { Observable, Subject } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 /**
- * Where the numbers on screen are coming from: still probing, the live
- * backend, or the committed offline fixture.
+ * Where the numbers on screen are coming from: still probing, the live backend
+ * over a socket, the live backend over REST polling, or the committed offline
+ * fixture.
+ *
+ * `connected` and `polling` are both real data — the distinction is how fresh
+ * it is, and the badge draws it because "live" would overclaim on a deployment
+ * that re-reads every fifteen seconds.
  */
-export type BackendStatus = 'checking' | 'connected' | 'disconnected';
+export type BackendStatus = 'checking' | 'connected' | 'polling' | 'disconnected';
+
+/**
+ * How this deployment receives metric updates. Determined by configuration
+ * (`environment.wsUrl`), not by attempting a socket and seeing it fail.
+ */
+export type MetricsTransport = 'socket' | 'polling';
 
 /**
  * Point-in-time hotel metrics, as returned by `GET /api/metrics` and pushed
@@ -79,6 +90,84 @@ export class DashboardApiService {
   private reconnectAttempts = 0;
   private shouldReconnect = false;
 
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private pollSubject: Subject<IMetrics> | null = null;
+
+  /**
+   * Which transport {@link streamMetrics} will use.
+   *
+   * Read from configuration rather than probed, so the dashboard can label the
+   * data source correctly on first paint instead of after a socket times out.
+   */
+  public get transport(): MetricsTransport {
+    return this.WS_URL === null ? 'polling' : 'socket';
+  }
+
+  /**
+   * Subscribe to metric updates over whichever transport this deployment has.
+   *
+   * Callers do not care which one it is: both return an Observable that emits
+   * snapshots until {@link stopStreaming} is called, and both survive a backend
+   * that comes and goes.
+   */
+  public streamMetrics(): Observable<IMetrics> {
+    return this.WS_URL === null ? this.pollMetrics() : this.connectWebSocket();
+  }
+
+  /**
+   * Tear down whichever transport is running. Safe to call when none is.
+   */
+  public stopStreaming(): void {
+    this.disconnectWebSocket();
+    this.stopPolling();
+  }
+
+  /**
+   * Poll `GET /api/metrics` on an interval — the transport for deployments
+   * without a socket.
+   *
+   * A failed poll is swallowed rather than propagated: the next tick retries,
+   * which mirrors how the socket transport treats a dropped connection. Erroring
+   * the Observable would send the dashboard back to the fixture over one blip.
+   */
+  private pollMetrics(): Observable<IMetrics> {
+    this.stopStreaming();
+
+    const subject = new Subject<IMetrics>();
+    this.pollSubject = subject;
+
+    const read = async (): Promise<void> => {
+      try {
+        const metrics = await this.getMetrics();
+        // Guard against a read that was in flight when polling was stopped.
+        if (this.pollSubject === subject) {
+          subject.next(metrics);
+        }
+      } catch {
+        // Already logged by getMetrics. Next tick retries.
+      }
+    };
+
+    // Read immediately so the first snapshot does not wait out a full interval.
+    void read();
+    this.pollTimer = setInterval(() => void read(), environment.pollIntervalMs);
+
+    return subject.asObservable();
+  }
+
+  /** Stop the polling transport and complete its stream. */
+  private stopPolling(): void {
+    if (this.pollTimer !== null) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+
+    if (this.pollSubject) {
+      this.pollSubject.complete();
+      this.pollSubject = null;
+    }
+  }
+
   /**
    * Get current metrics via REST API
    */
@@ -112,7 +201,11 @@ export class DashboardApiService {
   }
 
   /**
-   * Connect to WebSocket for real-time metrics updates.
+   * Connect to WebSocket for real-time metrics updates — the socket transport.
+   *
+   * Prefer {@link streamMetrics}, which picks this or polling based on what the
+   * deployment supports. This stays public because it is meaningful on its own
+   * and is exercised directly by its tests.
    *
    * The returned stream survives dropped connections: if the socket errors or
    * closes (e.g. the backend restarts), it automatically reconnects with an
@@ -139,11 +232,12 @@ export class DashboardApiService {
    */
   private openSocket(): void {
     const subject = this.metricsSubject;
-    if (!subject) {
+    const url = this.WS_URL;
+    if (!subject || url === null) {
       return;
     }
 
-    this.ws = new WebSocket(this.WS_URL);
+    this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
       // Healthy connection — reset the backoff for the next disconnect.

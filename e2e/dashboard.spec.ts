@@ -1,17 +1,19 @@
 /**
  * Dashboard smoke test, with the backend stubbed up and stubbed down.
  *
- * The "down" half is the one that earns its keep: it is the path the hosted
- * demo actually runs on, and the only place the fallback is exercised end to
- * end. `dashboard.spec.ts` in `src/` proves the component *chooses* the fixture
- * when the health check fails; this proves the numbers reach the screen.
+ * The "up" half is the path the hosted demo now runs on, since the API deploys
+ * alongside the frontend. The "down" half is still the one that earns its keep:
+ * it is the only place the fallback is exercised end to end, and it is what a
+ * visitor sees if the function errors or the deployment is rolled back.
+ * `dashboard.spec.ts` in `src/` proves the component *chooses* the fixture when
+ * the health check fails; this proves the numbers reach the screen.
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { IMetrics } from '../src/app/services/dashboard-api.service';
 import {
   LIVE_DASHBOARD,
   OFFLINE_DASHBOARD,
-  SOCKET_METRICS,
+  POLLED_METRICS,
   stubBackendDown,
   stubBackendUp,
 } from './support/backend';
@@ -112,8 +114,8 @@ async function expectMetricsRendered(page: Page, metrics: IMetrics): Promise<voi
 
 test.describe('dashboard with the backend up', () => {
   test('renders the metrics the API served and labels them live', async ({ page }) => {
-    // No socket frames: the REST payload is what is under test here, and a live
-    // update landing mid-assertion would overwrite it.
+    // No updates queued: the /dashboard payload is what is under test here, and
+    // a differing poll landing mid-assertion would overwrite it.
     await stubBackendUp(page);
     await page.goto('/dashboard');
 
@@ -121,13 +123,14 @@ test.describe('dashboard with the backend up', () => {
     await expectMetricsRendered(page, LIVE_DASHBOARD.metrics);
   });
 
-  test('applies a metrics snapshot pushed over the websocket', async ({ page }) => {
-    await stubBackendUp(page, [SOCKET_METRICS]);
+  test('applies a metrics snapshot read by the polling transport', async ({ page }) => {
+    await stubBackendUp(page, [POLLED_METRICS]);
     await page.goto('/dashboard');
 
-    // The REST payload lands first and is then overwritten by the frame, so
-    // these values can only be on screen if the socket path works end to end.
-    await expectMetricsRendered(page, SOCKET_METRICS);
+    // The /dashboard payload lands first and is then overwritten by the first
+    // poll, so these values can only be on screen if the polling transport
+    // works end to end.
+    await expectMetricsRendered(page, POLLED_METRICS);
     await expectDataSource(page, 'live');
   });
 });

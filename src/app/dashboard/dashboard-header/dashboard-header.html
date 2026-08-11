@@ -3,9 +3,10 @@
   <h1 class="dashboard-title">Hotel Operations Dashboard</h1>
   <p class="dashboard-subtitle">Occupancy, rate and revenue, derived from live booking records</p>
 
-  <!-- Says plainly where the numbers came from. The hosted demo runs on the
-       committed fixture until the API is deployed, and must not pretend
-       otherwise.
+  <!-- Says plainly where the numbers came from, and how fresh they are. The
+       hosted demo polls a serverless API rather than streaming from a socket,
+       so it claims "polled", not "streaming"; if the API is unreachable it
+       falls back to a committed fixture and calls that simulated.
 
        Hidden from assistive technology because the live region below carries
        the same fact in a form that survives being spoken — without the
@@ -16,6 +17,12 @@
         <p class="data-source data-source--live">
           <span class="data-source-dot"></span>
           Live data · streaming from the API
+        </p>
+      }
+      @case ('polling') {
+        <p class="data-source data-source--live">
+          <span class="data-source-dot"></span>
+          Live data · polled from the API every few seconds
         </p>
       }
       @case ('disconnected') {

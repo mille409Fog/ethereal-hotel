@@ -17,8 +17,41 @@ def test_root_health(client: TestClient) -> None:
     body = resp.json()
     assert body["status"] == "online"
     assert body["service"] == "EtherealHotel Dashboard API"
+    assert body["liveStream"] is True
     # The health check advertises the API surface.
     assert set(body["endpoints"]) == {"metrics", "dashboard", "bookings", "websocket"}
+
+
+def test_health_is_also_served_under_api(client: TestClient) -> None:
+    """The Vercel deployment cannot use ``/`` — the Angular app owns it there.
+
+    Both mounts have to stay reachable: the container deployment probes ``/``
+    and the hosted demo probes ``/api/health``, and a change that moved the
+    handler instead of adding to it would break exactly one of them.
+    """
+    assert client.get("/api/health").json() == client.get("/").json()
+
+
+def test_serverless_app_hides_the_stream_it_cannot_serve() -> None:
+    """A function deployment must not advertise a socket it has no process for.
+
+    This is the contract ``api/index.py`` depends on, and the frontend reads the
+    same absence from its own config. If ``create_app`` ever started mounting
+    ``/ws`` unconditionally, the hosted demo would retry a connection forever.
+    """
+    from main import create_app
+
+    # Kept as a local rather than reached through `TestClient.app`, which is
+    # typed as the bare ASGI callable and so has no `.routes` to inspect.
+    serverless_app = create_app(live_stream=False)
+    serverless = TestClient(serverless_app)
+
+    body = serverless.get("/api/health").json()
+    assert body["liveStream"] is False
+    assert "websocket" not in body["endpoints"]
+    assert not any(
+        getattr(route, "path", None) == "/ws" for route in serverless_app.routes
+    )
 
 
 def test_metrics_are_derived_from_the_database(client: TestClient) -> None:
