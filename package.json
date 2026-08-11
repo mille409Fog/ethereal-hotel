@@ -20,6 +20,7 @@
     "format:py": "node scripts/py-tool.mjs ruff format backend/ api/",
     "format:py:check": "node scripts/py-tool.mjs ruff format --check backend/ api/",
     "typecheck:py": "node scripts/py-tool.mjs mypy",
+    "check:docs": "node scripts/check-docs.mjs",
     "code-quality": "npm run format:check && npm run lint",
     "code-quality:py": "npm run format:py:check && npm run lint:py && npm run typecheck:py",
     "prepare": "husky",

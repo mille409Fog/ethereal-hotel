@@ -56,6 +56,27 @@ jobs:
           path: dist/
           retention-days: 7
 
+  # CLAUDE.md is the orientation document: read first, trusted most, re-checked
+  # never. That combination is how a doc map ends up pointing at files that
+  # moved three commits ago. Its falsifiable claims — paths, pins, ports, counts
+  # — are asserted here for the same reason the dependency lists are asserted in
+  # test_dependency_pins.py. Pure node builtins, so this job installs nothing.
+  docs:
+    name: Docs (CLAUDE.md claims)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Check CLAUDE.md against the repository
+        run: npm run check:docs
+
   # One browser job for the whole Playwright suite — the smoke tests and the
   # accessibility audit — rather than one per suite. They need the identical
   # setup (npm ci, a browser download, a production build), so splitting them
