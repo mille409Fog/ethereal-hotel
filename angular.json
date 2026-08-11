@@ -83,10 +83,10 @@
             ],
             "coverageReporters": ["text-summary", "lcovonly"],
             "coverageThresholds": {
-              "statements": 64,
-              "branches": 75,
-              "functions": 52,
-              "lines": 62
+              "statements": 90,
+              "branches": 88,
+              "functions": 74,
+              "lines": 90
             }
           }
         }
