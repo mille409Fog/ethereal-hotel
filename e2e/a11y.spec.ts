@@ -161,13 +161,25 @@ test.describe('reduced motion', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
 
-    const running = await page.evaluate(() =>
-      document
-        .getAnimations()
-        .filter((animation) => animation.playState === 'running')
-        .map((animation) => (animation as CSSAnimation).animationName ?? 'unnamed')
-    );
-
-    expect(running).toEqual([]);
+    // Polled, not sampled once. The reduced-motion block does not delete these
+    // animations — it collapses them to `animation-duration: 0.01ms` with a
+    // single iteration, which is the standard recipe and the right one. So they
+    // genuinely do run, for one frame, and a single `getAnimations()` call
+    // immediately after load catches them still `running` often enough to fail
+    // roughly one run in three. What the test means to assert is that nothing
+    // is *looping*, and that is a claim about where the animations end up, not
+    // about this instant.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() =>
+            document
+              .getAnimations()
+              .filter((animation) => animation.playState === 'running')
+              .map((animation) => (animation as CSSAnimation).animationName ?? 'unnamed')
+          ),
+        { timeout: 2000 }
+      )
+      .toEqual([]);
   });
 });

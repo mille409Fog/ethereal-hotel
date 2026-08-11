@@ -3,12 +3,13 @@
 Work these in order. Each item has a **Definition of Done (DoD)** so a separate instance can
 implement it and this instance can verify it. Effort is a rough estimate.
 
-The bar for every item: *would a senior engineer reviewing this repo in an interview see judgment,
-or see a tutorial?* Prefer finishing one thing convincingly over starting three.
+The bar for every item: _would a senior engineer reviewing this repo in an interview see judgment,
+or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ---
 
 ## 1. Finish the backend deployment (carried over — the only unfinished item from v1)
+
 **Effort:** M · **Why:** `environment.prod.ts` points at `ethereal-hotel-api.onrender.com`, which
 404s. The live site therefore shows failed requests in DevTools and runs on mock data. A dead URL
 in production source is worse than no URL: it reads as unfinished rather than scoped.
@@ -20,6 +21,7 @@ in production source is worse than no URL: it reads as unfinished rather than sc
   load reads it as a known tradeoff, not a bug.
 
 **DoD:**
+
 - [ ] `curl https://<backend>/` returns the health JSON.
 - [ ] The live Vercel site shows real data with a clean network tab — no 404s, no CORS errors.
 - [ ] If the deploy is deliberately skipped, `environment.prod.ts` no longer references a dead host
@@ -28,8 +30,9 @@ in production source is worse than no URL: it reads as unfinished rather than sc
 ---
 
 ## 3. End-to-end smoke test
+
 **Effort:** M · **Why:** Unit tests cover the service and the fallback logic in isolation, but
-nothing proves the app *boots and renders*. An E2E test is also the only honest way to verify the
+nothing proves the app _boots and renders_. An E2E test is also the only honest way to verify the
 mock-fallback path end to end, which is the path the hosted demo actually runs on today.
 
 - Playwright, two specs: the landing page renders the hero and nav; `/dashboard` loads and displays
@@ -39,18 +42,27 @@ mock-fallback path end to end, which is the path the hosted demo actually runs o
 - Attach traces/screenshots as CI artifacts on failure.
 
 **DoD:**
-- [ ] `npm run e2e` passes locally and in CI against a production build.
-- [ ] The suite fails if the dashboard renders empty or the fallback path breaks.
-- [ ] Failure artifacts (trace + screenshot) are uploaded by the workflow.
+
+- [x] `npm run e2e` passes locally and in CI against a production build.
+- [x] The suite fails if the dashboard renders empty or the fallback path breaks.
+- [x] Failure artifacts (trace + screenshot) are uploaded by the workflow.
+
+**Done.** `e2e/landing.spec.ts` and `e2e/dashboard.spec.ts`, with the backend stubbed at the network
+layer in both directions (`e2e/support/backend.ts`) so the suite is hermetic and never depends on
+the real API host. Both failure modes in the second box were confirmed by mutation rather than
+assumed — zeroing the fallback metrics and making the health check swallow its error each fail the
+dashboard spec and nothing else. The a11y and smoke suites now share one CI job, since they need
+identical setup and `npm run e2e` covers both; `npm run a11y` still scopes to the audit locally.
 
 ---
 
 ## 4. Repo hygiene and a claims audit
+
 **Effort:** S · **Why:** Small inaccuracies compound. Each one individually is trivial; together
 they signal that nobody re-read the repo after writing it.
 
 - **Delete `backend/test_api.py` and `backend/websocket_test.py`.** They're the manual scripts the
-  real `backend/tests/` suite replaced. Worse, `npm run test:backend` still points at the *stale*
+  real `backend/tests/` suite replaced. Worse, `npm run test:backend` still points at the _stale_
   script instead of `pytest` — so the documented command runs the obsolete tests.
 - **README says "Python 3.9+". The code requires 3.10+** (`float | None` in `schemas.py` is
   PEP 604). CI runs 3.11. Pick one and state it everywhere. `backend/README.md` and
@@ -69,6 +81,7 @@ they signal that nobody re-read the repo after writing it.
   eight seconds, and no amount of prose competes with one image of the dashboard.
 
 **DoD:**
+
 - [ ] Legacy manual test scripts deleted; `npm run test:backend` runs `pytest`.
 - [ ] Every version claim in the README matches what CI and `engines` actually enforce.
 - [ ] No feature is described in the README that isn't demonstrably in the code.
@@ -77,148 +90,6 @@ they signal that nobody re-read the repo after writing it.
 ---
 
 ## Explicitly out of scope (for now)
+
 More charts, more animations, more frameworks, auth for auth's sake. Depth beats breadth — one
 domain modeled honestly, deployed, tested and accessible outranks five half-built features.
-
----
-
-## Already shipped
-Kept as a one-line ledger; the full DoDs are in git history.
-
-- **Accessibility as a first-class concern** — the `@angular-eslint/template` accessibility rule set
-  is on at **error** severity, pulled from the package rather than hand-copied so a rule added in a
-  future release arrives with the upgrade. The lint gate was verified to fire (a probe template with
-  a bare `<img>`, a `(click)` on a `<div>`, a `role="checkbox"` and a typo'd `aria-` attribute
-  produced 6 errors) — but the existing templates already satisfied it, which is the honest finding:
-  **the linter caught nothing, and axe caught everything.** A Playwright + `@axe-core/playwright`
-  suite now scans the **production build** of `/` and `/dashboard` and blocks on serious/critical;
-  both routes sit at **zero violations at every severity**, and the gate was verified to fire by
-  reverting one colour token and watching it fail. Real findings, all invisible to the linter:
-  `--color-blood` (`#9d2235`) was being used as body text at **2.07:1**, so it split into
-  `--color-blood` (borders, fills, glows) and `--color-blood-text` for anything readable;
-  `--color-text-muted` went `#7a6a70` → `#9a8a90` (3.27 → 5.5:1); two hardcoded hexes in
-  `dashboard-footer.css` had dodged the token sweep entirely, which is exactly why axe found them.
-  The focus ring moved to the lighter tint too — a 2:1 indicator fails WCAG 1.4.11 and was genuinely
-  hard to see. **The `aria-live` line in the original plan turned out to be wrong as written:** a
-  polite region on a grid refreshed every 2s queues six cards of speech per tick and a listener can
-  never get ahead of it. The grid is therefore *not* live; one `role="status"` region speaks a
-  throttled 30s digest in language built to be heard ("average daily rate 317 dollars", not "ADR
-  $317"), a second announces connect/disconnect, and writing an identical string is a signal no-op,
-  so the unchanging offline fixture announces once and then stays quiet. Also: `<main>` landmarks and
-  a working skip link on both routes; the nav's `href="javascript:void(0)"` + `(click)` handlers
-  became real `#hash` anchors, which deleted `ScrollService` outright and fixed a genuine bug —
-  scrolling by JS left a keyboard user's focus stranded in the nav, so the next Tab resumed from the
-  top of the page; `app.html` was duplicating the `id`s its child components already declared, so
-  every `#hash` resolved to an empty wrapper; canvases became `role="img"` with computed
-  descriptions, since an unlabelled `<canvas>` is simply absent to a screen reader.
-  `prefers-reduced-motion` is honoured in CSS *and* in the two places CSS cannot reach — the hero's
-  inline parallax transform, and the scroll-reveal directive, which now skips the observer entirely
-  rather than disabling the transition and leaving content stuck at `opacity: 0`. Tests 45 → 70,
-  coverage up on every metric (statements 97.05%, branches 93.84%, functions 95.89%, lines 96.88%).
-  Two traps worth knowing: `test.use({ reducedMotion: 'reduce' })` silently did not reach the page —
-  `matchMedia` still reported `false` inside the browser — so the suite uses `page.emulateMedia`;
-  and the axe scan runs under reduced motion deliberately, because scroll-reveal parks sections at
-  `opacity: 0` where axe skips them, which made an early run report 30 contrast failures and a later
-  one 2. Known gap: the scan covers Chromium at one viewport, and "operable by keyboard" is verified
-  by automation, not by a human with a screen reader — axe catches perhaps a third of real WCAG
-  issues, and nobody has driven this with NVDA or VoiceOver. *(2026-08-11)*
-
-- **Python static analysis matching the frontend's** — `pyproject.toml` at the repo root (next to
-  `eslint.config.mjs` and `.prettierrc`) configures **ruff** for lint *and* format and **mypy** at
-  `strict = true` plus `warn_unreachable`. All three run in the `backend` CI job, which is now
-  "Backend (lint, types, pytest)". The tree is at **zero ruff errors and zero mypy errors across 24
-  source files**, reached by fixing the code rather than widening the ignore list: every function in
-  `backend/` is annotated, `get_db` yields `Iterator[Session]`, the broadcaster's `session_factory`
-  is a real `sessionmaker[Session]`, and the metrics payloads became **`TypedDict`s** so a typo in a
-  metric key fails the type check instead of reaching the frontend as a missing field. Ruff also
-  found three genuine improvements: `str, Enum` → `enum.StrEnum` (with `(str, Enum)`, `str(status)`
-  returns `"BookingStatus.RESERVED"`, not `"reserved"`), `try/except/pass` → `contextlib.suppress`,
-  and three stale `# noqa: BLE001` comments that suppressed nothing — `RUF100` is on, so those are
-  now errors rather than decoration.
-  **All four gates were verified to actually fire, not merely exist:** an unused import fails
-  `ruff check`, a misformatted file fails `ruff format --check` (exit 1), `a + "str"` fails mypy,
-  and a real `git commit` carrying an undefined name and a bare `except` was **rejected by the husky
-  hook with HEAD unchanged**. Badly *formatted* Python is auto-fixed and re-staged by lint-staged
-  (same semantics as prettier on the TS side), so it cannot land; non-fixable lint errors block.
-  Five exceptions are configured, each with the reason in `pyproject.toml`: `B008` exempted for
-  FastAPI's `Depends`/`Query` (calling them in argument defaults *is* the DI syntax), `N815` in
-  `schemas.py` (camelCase *is* the wire contract Angular's `IMetrics` consumes — ruff already
-  exempts the `TypedDict`s), `N818` in `services/bookings.py` (`ReferenceNotFoundError` reads worse,
-  and the base class already carries the suffix), `**/*.md` excluded from the formatter after it was
-  caught silently reformatting the ```python payload examples in `backend/README.md`, and
-  `alembic/versions/` excluded from **both** ruff and mypy — reformatting a generated record of what
-  already ran is churn against history, and policing it would make every `alembic revision
-  --autogenerate` fail CI until someone hand-formatted the output.
-  Dependencies split into `requirements.txt` (runtime) and `requirements-dev.txt` (tests + tooling),
-  all exact-pinned. Auditing the split turned up two packages the runtime image was carrying for no
-  reason: `requests` (only the legacy smoke script and the Dockerfile healthcheck, which now uses
-  stdlib `urllib`) and `python-dotenv`, which **nothing imports at all** — `.env.example` and
-  `backend/README.md` describe a `.env` file that is never loaded, logged against Item 4. `.github/dependabot.yml` covers pip, npm and
-  github-actions, grouped weekly (`@angular/*` must move in lockstep or nothing merges).
-  `scripts/py-tool.mjs` resolves ruff/mypy from `backend/venv` → `$VIRTUAL_ENV` → `PATH`, so
-  `npm run code-quality:py` and the pre-commit hook work without activating the venv and fail with
-  "install requirements-dev.txt" rather than "command not found". `.editorconfig` gained a `[*.py]`
-  block — the global default was 2-space indent, which was wrong for Python.
-  Known gap: pins are direct-dependency only, not a full transitive lock (no `pip-compile`), so
-  `pip install` still resolves transitives fresh; the npm side has `package-lock.json` and the
-  Python side does not. *(2026-08-10)*
-- **Backend engineering depth: broadcaster, service layer, full CRUD** — `main.py` went from 285
-  lines holding everything to 80 lines of wiring: `config.py` (env-driven settings + logging),
-  `schemas.py` (the wire contract), `routers/` (health, metrics, bookings, stream) and `services/`
-  (`bookings.py` for the rules, `broadcaster.py` for the stream). Services import no FastAPI and
-  raise domain errors — `InvalidBookingDates`, `ReferenceNotFound`, `BookingNotFound` — which the
-  router maps to status codes, so HTTP knowledge stays in the HTTP layer. **The per-client DB poll
-  is gone:** one `asyncio` task computes a snapshot per tick and fans it out through
-  `manager.broadcast(...)`, which is now the live path rather than dead code. Measured against a
-  real running app with two clients on the stream: **7 queries per tick, not 14** — the query count
-  is the same for one client as for five, and a tick with nobody connected skips the database
-  entirely. Clients still get one snapshot on connect so a freshly opened dashboard renders
-  without waiting out a tick. `GET /api/bookings?limit=&offset=&status=` returns
-  `{items, total, limit, offset}`, ordered check-in-desc and tie-broken on id so paging is stable.
-  `print()` replaced by `logging` throughout the service, level from `LOG_LEVEL` (an unknown value
-  warns and falls back to INFO rather than failing a deploy). Tests 9 → 18, including one that
-  counts SQL against the engine so a per-client poll cannot quietly return. Known gap: the two
-  legacy scripts `test_api.py` / `websocket_test.py` still contain `print()` — they are deleted by
-  Item 4, and are already broken anyway (they reference the retired `activeUsers` payload).
-  *(2026-08-10)*
-- **CI enforces the standards the README advertises** — `npm run lint` runs with `--max-warnings 0`
-  and the tree sits at zero; Vitest reports coverage and fails below thresholds committed in
-  `angular.json` (statements 64 / branches 75 / functions 52 / lines 62, set at the day's real
-  numbers so they ratchet upward rather than block). `prefer-on-push-component-change-detection`
-  promoted from `warn` to `error`, which every component already satisfies. **Both gates were
-  verified to actually fire, not merely exist:** one stray `console.log` fails lint, and a
-  temporarily raised threshold fails the test run. Three rules are off by design, each with a
-  comment giving the reason — `component-class-suffix` (the style guide dropped the suffix),
-  `template/no-call-expression` (predates signals), and `max-lines-per-function` in specs (a
-  `describe` callback's length isn't a complexity signal). README's "recommended" and "strict"
-  wording rewritten to describe what CI actually blocks. Known friction: the coverage margins are
-  thin by construction — functions sits at 52.11% against a 52% floor, so the first uncovered
-  helper someone adds will trip the build. Raise the floors or widen them the moment that becomes
-  annoying; a gate people route around is worse than no gate. *(2026-08-10)*
-- **Signals + OnPush throughout** — `signal()`/`computed()` for component state, `input()` for every
-  component input, `inject()` everywhere, `takeUntilDestroyed(destroyRef)` replacing the `destroy$`
-  Subject, and `ChangeDetectionStrategy.OnPush` on all 14 components. `ChartsSection` swapped
-  `ngOnChanges` for an `effect()`. **This turned out to be a bug fix, not just modernization:** the
-  app has no zone.js, so under zoneless change detection the old mutable-field writes scheduled no
-  render at all — with a healthy backend the dashboard sat permanently on "Connecting to the API…"
-  and the metrics never moved. Verified against the live backend before and after. Lint dropped
-  60 → 30 warnings; `template/no-call-expression` turned off with a comment, since it predates
-  signal reads. *(2026-08-10)*
-- **Hotel domain surfaced in the UI** — dashboard renders occupancy, ADR, RevPAR,
-  arrivals/departures and room inventory; charts show guests in house, nightly room revenue and
-  tonight's room mix. Legacy `activeUsers / revenue / requests / uptime` retired from both ends of
-  the contract, `historicalUsers` renamed `historicalGuests`. The `Math.random()` fallback is
-  replaced by a committed snapshot of real seeded output, labelled "simulated data" in the header.
-  *(2026-08-10)*
-- **Real persistence** — SQLite + SQLAlchemy + Alembic, `Room`/`Guest`/`Booking`, seed script; all
-  dashboard metrics derived from rows, not RNG. *(2026-08-09)*
-- **Frontend deployed + env-based config** — Vercel, `environment.ts`/`environment.prod.ts`,
-  `ALLOWED_ORIGINS` for CORS. Backend deploy remains open as Item 1. *(2026-08-09)*
-- **Documentation cut** — ~15 root markdown files reduced to README, ARCHITECTURE, ROADMAP.
-  *(2026-08-09)*
-- **Real tests + CI** — 9 pytest tests (REST + WebSocket, isolated seeded DB), 23 frontend specs;
-  both wired into GitHub Actions and failing the build on error. *(2026-08-09)*
-- **Hardening** — WebSocket reconnect with exponential backoff, FastAPI `lifespan` replacing
-  `on_event`, `broadcast()` no longer mutates its list mid-iteration. *(2026-08-09)*
-- **Credibility sweep** — placeholders removed from shipped pages; titles verified accurate.
-  *(2026-08-09)*

@@ -56,8 +56,13 @@ jobs:
           path: dist/
           retention-days: 7
 
-  accessibility:
-    name: Accessibility (axe, keyboard, reduced motion)
+  # One browser job for the whole Playwright suite — the smoke tests and the
+  # accessibility audit — rather than one per suite. They need the identical
+  # setup (npm ci, a browser download, a production build), so splitting them
+  # would pay that cost twice to learn the same thing; Playwright's report
+  # already attributes a failure to its spec.
+  e2e:
+    name: End-to-end (smoke, axe, keyboard, reduced motion)
     runs-on: ubuntu-latest
 
     steps:
@@ -78,18 +83,23 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps --only-shell chromium
 
-      # Builds, serves `dist/` and scans it. Runs against the production build
+      # Builds, serves `dist/` and tests it. Runs against the production build
       # rather than `ng serve` on purpose: a dev build skips the production
-      # `fileReplacements` and ships different CSS, so a dev-server scan can
-      # pass while the artefact users actually load fails.
-      - name: Run accessibility suite
-        run: npm run a11y
+      # `fileReplacements` and ships different CSS, so a dev-server run can pass
+      # while the artefact users actually load fails. The backend is stubbed at
+      # the network layer in both directions, so this job needs no services and
+      # never touches the real API host.
+      - name: Run end-to-end suite
+        run: npm run e2e
 
-      - name: Upload accessibility report
+      # `if: always()` because these only matter when the step above failed:
+      # the config records a trace and a screenshot on failure, and without the
+      # upload a red CI run gives you a stack trace and no way to see the page.
+      - name: Upload Playwright report (traces + screenshots)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-a11y-report
+          name: playwright-report
           path: |
             playwright-report/
             test-results/

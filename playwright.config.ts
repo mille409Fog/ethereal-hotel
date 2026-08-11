@@ -3,10 +3,14 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = 4173;
 
 /**
- * Playwright runs the accessibility audit (`e2e/a11y.spec.ts`) against the
- * **production build**, not `ng serve`. A dev build ships unminified CSS and
- * skips the production `fileReplacements`, so a dev-server scan can pass while
- * the artefact users actually load fails.
+ * Playwright runs every suite here — the smoke tests (`landing`, `dashboard`)
+ * and the accessibility audit (`a11y`) — against the **production build**, not
+ * `ng serve`. A dev build ships unminified CSS and skips the production
+ * `fileReplacements`, so a dev-server run can pass while the artefact users
+ * actually load fails. It also means the smoke tests exercise the lazy chunks
+ * and the production API URLs, which is the whole point of running them.
+ *
+ * `npm run e2e` builds and runs all of it; `npm run a11y` scopes to the audit.
  */
 export default defineConfig({
   testDir: './e2e',
