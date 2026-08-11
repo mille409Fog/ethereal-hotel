@@ -361,9 +361,7 @@ textarea:focus-visible {
 }
 
 /* Card focus for keyboard navigation */
-.room-card:focus-within,
-.queue-item:focus-within,
-.crm-table tbody tr:focus-within {
+.room-card:focus-within {
   outline: 2px solid var(--color-blood-text);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(157, 34, 53, 0.2);

@@ -2,13 +2,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 
 @Component({
-  selector: 'app-crm',
+  selector: 'app-experience',
   imports: [ScrollRevealDirective],
-  templateUrl: './crm.html',
-  styleUrl: './crm.css',
+  templateUrl: './experience.html',
+  styleUrl: './experience.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class Crm {
+export class Experience {
   public readonly jobs = [
     {
       title: 'Senior Software Engineer',

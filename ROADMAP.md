@@ -33,37 +33,49 @@ The infrastructure is finished and the content is not. Everything below assumes 
   form and become the Projects section, so there was no dead form to wire — there was a missing
   one. Item 1 renamed that component to `Projects` (matching the section id it actually renders)
   and built the real booking demo on its own route, `/booking`, the way `/dashboard` is built.
-  `crm` and `concierge` render Experience and Skills and are still unwired; see item 2, whose
-  description needs the same correction.
+  `crm` and `concierge` were the same stale premise a second time — see item 2, now done.
 - The proprietary work is represented by gestures. That is the single biggest gap between this
-  site and a site that gets a callback. Item 2.
+  site and a site that gets a callback. Item 3.
 
 Items 1–3 are the ones that change outcomes. Items 4–11 are polish, ordered by how much of it
 survives contact with a hiring manager who spends ninety seconds on the page.
 
-## 2. Decide what `crm` and `concierge` are, and make them that
+## 2. ~~Decide what `crm` and `concierge` are, and make them that~~ — done
 
-**Effort:** S · **Why:** After item 1, these two are the only remaining fiction on the page, and
-proximity to a working form makes them look worse, not better. There is no version of this where
-leaving them ambiguous helps.
+**Effort:** S · **Why:** After item 1, these two were believed to be the only remaining fiction on
+the page.
 
-Pick one per section and commit:
+**The premise was stale, in exactly the way item 1 predicted.** Neither section was a mockup.
+`crm/` rendered `<section id="experience">` with the real work history (Charter, Feature 23,
+Walmart Labs); `concierge/` rendered `<section id="skills">` with the real skills list. The nav
+already linked `#experience` and `#skills`, and `e2e/a11y.spec.ts` already asserted those labels —
+so there were no dead nav links and nothing captioning could honestly say. Deleting would have
+removed real résumé content; captioning them "not wired to the backend" would have been a *new*
+falsehood, since an Experience section is static content by nature, not a mockup of a feature.
 
-- **Delete it.** Cheapest, and a shorter site that is entirely true beats a longer one that is
-  not. Default to this unless the section earns its keep.
-- **Label it.** Keep the visual if it carries the aesthetic, and caption it plainly — "static
-  design study; not wired to the backend". A reviewer who sees you mark your own mockups trusts
-  everything else on the page more.
+What was actually false was the naming, and the CSS underneath it:
 
-Do **not** build two more full-stack features to justify them. The dashboard and the booking flow
-already prove the skill; a third and fourth CRUD screen proves stamina.
+- The directories and classes were hotel-metaphor leftovers that no longer described what they
+  rendered. Renamed to match their section ids, following item 1's precedent (`booking` →
+  `Projects`): `crm/` → `experience/` (`Crm` → `Experience`), `concierge/` → `skills/`
+  (`Concierge` → `Skills`), plus the `app-crm` / `app-concierge` selectors.
+- ~208 lines of genuinely orphaned CSS survived the mockups they styled: the CRM table
+  (`.crm-table`, `.crm-toolbar`, `.crm-search`), the concierge queue (`.queue-*`, `.stat-chip`,
+  `.stat-value`, `.stat-label`), and the tier/status/priority badge sets — dead in `app.css`,
+  in both component stylesheets, and in the `:focus-within` rule in `styles.css`. Removed.
+  `.room-card` and `pulse-subtle` looked similar but are still live, and were kept.
+
+The lesson worth carrying to item 3: this roadmap's descriptions were written against an older
+state of the tree twice now. Read the component before believing the item.
 
 **DoD:**
 
-- [ ] Each of `crm` and `concierge` is deleted (component, styles, template, route/anchor, nav
+- [x] Each of `crm` and `concierge` is deleted (component, styles, template, route/anchor, nav
       entry, tests) or carries a visible, non-decorative caption stating it is non-functional.
-- [ ] No dead nav links, no orphaned CSS, no `src/app/*` directory with nothing importing it.
-- [ ] `npm run lint` and `npm run e2e` pass; nav keyboard order still makes sense after removals.
+      _Neither applied — both held true content. Renamed to match what they render instead._
+- [x] No dead nav links, no orphaned CSS, no `src/app/*` directory with nothing importing it.
+- [x] `npm run lint` and `npm run e2e` pass; nav keyboard order still makes sense after removals.
+      _Nav markup is untouched, so tab order is unchanged._
 
 ## 3. Turn the proprietary projects into case studies that disclose nothing
 

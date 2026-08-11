@@ -112,8 +112,8 @@ ethereal-hotel/
 │   │   │   └── booking-api.service.ts    # Bookings + reference data
 │   │   │
 │   │   ├── projects/                  # Projects section
-│   │   ├── crm/                       # Experience section
-│   │   ├── concierge/                 # Skills section
+│   │   ├── experience/                # Experience section
+│   │   ├── skills/                    # Skills section
 │   │   ├── resume/                    # Resume section
 │   │   └── directives/                # Reusable directives
 │   │

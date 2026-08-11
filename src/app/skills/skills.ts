@@ -2,13 +2,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 
 @Component({
-  selector: 'app-concierge',
+  selector: 'app-skills',
   imports: [ScrollRevealDirective],
-  templateUrl: './concierge.html',
-  styleUrl: './concierge.css',
+  templateUrl: './skills.html',
+  styleUrl: './skills.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class Concierge {
+export class Skills {
   public readonly skillCategories = [
     {
       name: 'Frontend',

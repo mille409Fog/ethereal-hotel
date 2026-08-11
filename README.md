@@ -335,8 +335,8 @@ ethereal-hotel/
 │   │   ├── dashboard/        # Real-time dashboard feature (/dashboard)
 │   │   ├── booking/          # Booking form + list (/booking)
 │   │   ├── projects/         # Projects showcase
-│   │   ├── crm/             # Experience section
-│   │   ├── concierge/       # Skills section
+│   │   ├── experience/      # Experience section
+│   │   ├── skills/          # Skills section
 │   │   ├── resume/          # Resume section
 │   │   ├── directives/      # Reusable directives
 │   │   ├── services/        # Shared services
