@@ -19,66 +19,6 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   source; a root `requirements.txt` silently overrode both and pinned the build to 3.14, where
   our `pydantic-core` has no wheel. That is why there is no `requirements.txt` at the root.
 
----
-
-## The state of things, honestly
-
-The infrastructure is finished and the content is not. Everything below assumes that diagnosis:
-
-- `/dashboard` is real. It reads a real API backed by a real database, degrades to polling when
-  the deployment has no process for a WebSocket, and falls back to a fixture when the API is down.
-  That one route is the whole technical argument.
-- ~~`booking`, `crm`, and `concierge` are **static markup with no behaviour**.~~ Done, and the
-  premise was already stale when it was written: `src/app/booking/` had stopped being a booking
-  form and become the Projects section, so there was no dead form to wire — there was a missing
-  one. Item 1 renamed that component to `Projects` (matching the section id it actually renders)
-  and built the real booking demo on its own route, `/booking`, the way `/dashboard` is built.
-  `crm` and `concierge` were the same stale premise a second time — see item 2, now done.
-- ~~The proprietary work is represented by gestures. That is the single biggest gap between this
-  site and a site that gets a callback.~~ Done — see item 3. `/work` carries three case studies,
-  and the five project cards that used to make the gestures now link into them.
-
-Items 1–3 are the ones that change outcomes. Items 4–11 are polish, ordered by how much of it
-survives contact with a hiring manager who spends ninety seconds on the page.
-
-## 4. Make the link worth pasting
-
-**Effort:** S · **Why:** This URL's most common first impression is a preview card in Slack,
-LinkedIn, or iMessage — rendered before anyone decides whether to click. Right now that card is
-almost certainly a bare URL and a blank rectangle, which is a wasted first impression on the
-exact audience the site is for.
-
-**DoD:**
-
-- [x] `og:title`, `og:description`, `og:image` (1200×630), `twitter:card=summary_large_image`,
-      canonical URL, and a real `<meta name="description">` in `src/index.html`.
-- [x] The OG image is the site's own aesthetic — not a screenshot of a browser window, not a
-      stock gradient. Committed under `public/`, under 300KB. (`public/og-image.png`, 138KB, the
-      hero's own gradient and Cinzel wordmark.)
-- [x] A favicon set that survives a dark browser chrome (`.ico`, 180px apple-touch, SVG if you
-      have one). The `.ico` that was there was the stock Angular logo from `ng new` — the exact
-      tutorial tell this file complains about elsewhere.
-- [x] `/dashboard` gets its own title and description, since it is the link worth sharing on its
-      own. Its own `/booking` and `/work` too, by the same mechanism.
-
-The "paste it into Slack and LinkedIn's Post Inspector and screenshot both" bullet was dropped
-rather than carried unchecked: it needs a deploy and an account to paste from, which makes it a
-task for whoever ships this, not a gate on the code. What could be automated instead was —
-`npm run check:docs` asserts the image really is 1200×630 and under the ceiling, that `og:image`
-and `twitter:image` are absolute (a relative one is the usual cause of a card rendering blank),
-and that every route in `route-meta.json` has a `vercel.json` rewrite sitting above the SPA
-catch-all. Worth knowing when someone does eyeball it: LinkedIn caches a URL's card for about a
-week, so inspect before posting anywhere that counts.
-
-**How, and why it is not just `Meta` calls:** the site is client-rendered and `vercel.json`
-rewrites everything to `/index.html`. Crawlers do not run JavaScript, so a title set by the router
-is invisible to all of them — `/dashboard` would render the home page's card. `scripts/emit-route-meta.mjs`
-runs after `ng build` and stamps a real `<route>/index.html` per route, identical to the root
-document except for the block between the ROUTE-META markers. Strings live once, in
-`src/route-meta.json`, which `app.routes.ts` also reads for its titles. `scripts/gen-social-assets.mjs`
-renders the card and the whole icon set from one SVG through the Playwright Chromium that is
-already installed, so there is no new dependency and no binary without a source.
-
 ## 5. Buy the domain
 
 **Effort:** S · **Why:** `ethereal-hotel-pink.vercel.app` reads as a scratch deploy. A name you
@@ -174,21 +114,6 @@ opened, from where, and for how long is the difference between iterating and gue
       the end, resume PDF downloaded.
 - [ ] A `docs/` note on what is collected and what is not — the same instinct as the a11y
       comments, applied to data.
-
-## 11. Keep the supply chain honest
-
-**Effort:** S · **Why:** The repo already runs strict mypy, `--max-warnings 0`, a pin-drift test,
-and commit linting. Dependency freshness is the one gate not automated, and a portfolio repo with
-stale advisories undercuts every other quality claim on the page.
-
-**DoD:**
-
-- [ ] Dependabot (or Renovate) configured for npm, pip, and GitHub Actions, grouped so it does not
-      open twenty PRs a week.
-- [ ] CodeQL on push to `main` and on PRs.
-- [ ] `npm audit --audit-level=high` and `pip-audit` run in CI and fail the build.
-- [ ] Any finding at the time of merge is fixed or has a dated, reasoned exception in the workflow
-      file. An open advisory with no note is worse than no scanner.
 
 ---
 

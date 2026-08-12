@@ -141,7 +141,8 @@ ethereal-hotel/
 │
 ├── .github/
 │   ├── workflows/                    # CI/CD pipelines
-│   │   └── code-quality.yml         # Automated checks (both languages)
+│   │   ├── code-quality.yml         # Automated checks (both languages)
+│   │   └── supply-chain.yml         # npm audit + pip-audit + CodeQL
 │   └── dependabot.yml               # pip + npm + github-actions updates
 │
 ├── scripts/
@@ -586,6 +587,8 @@ Flexible charting library for creating responsive, animated visualizations.
 - **Husky**: Git hooks for pre-commit checks (both languages, via lint-staged)
 - **Commitlint**: Conventional commit enforcement
 - **Dependabot**: Weekly grouped dependency updates for pip, npm and GitHub Actions
+- **npm audit / pip-audit**: Advisory scan of both dependency trees, blocking the build
+- **CodeQL**: Static security analysis of both languages, reporting to the Security tab
 - **GitHub Actions**: CI/CD automation
 
 ### Standards

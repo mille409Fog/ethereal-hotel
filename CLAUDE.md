@@ -53,7 +53,7 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 
 | File                | Size | Read it when                                                                                                                          |
 | ------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROADMAP.md`        | 13K  | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here. |
+| `ROADMAP.md`        | 7K   | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here. |
 | `README.md`         | 28K  | You need the deployment story, env vars, the a11y decisions, or the coverage gate.                                                    |
 | `ARCHITECTURE.md`   | 25K  | You need API endpoint shapes, the error contract, or the data-flow diagrams. **See "Stale claims" below.**                            |
 | `backend/README.md` | 16K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
@@ -84,6 +84,14 @@ A sixth job runs `npm run check:docs`, which fails when this file's claims stop 
 See §Keeping this file honest — if you change something documented here, that check is how you find
 out.
 
+`.github/workflows/supply-chain.yml` is a second workflow. `npm run audit` is its local twin: npm
+advisories at **high and above**, then `pip-audit` over both Python lists. CodeQL runs there too,
+over both languages, and reports to the Security tab rather than failing. Anything the audits let
+through carries a `# EXCEPTION <token> (<YYYY-MM-DD>) — <reason>` note in that workflow, and
+`check:docs` fails when a suppression has no note, when a note has no real date or no reason, and
+when a note outlives the suppression it explained. Do not add a suppression without the note; do
+not leave the note behind when the suppression goes.
+
 ## Traps that have cost previous instances time
 
 - **Never rewrite files with `sed`/`perl`/PowerShell redirection.** `.gitattributes` sets
@@ -94,8 +102,8 @@ out.
   get that route's social card — the app is client-rendered, so a title set by the router is
   invisible to Slack and LinkedIn. `ng build` alone drops those files and every shared link
   silently falls back to the home page's card.
-- **`ruff`/`mypy`/`pytest` are not on PATH.** They live in `backend/venv`. Go through the npm
-  scripts, which resolve them via `scripts/py-tool.mjs` (venv → `$VIRTUAL_ENV` → PATH). Both tools
+- **`ruff`/`mypy`/`pytest`/`pip-audit` are not on PATH.** They live in `backend/venv`. Go through
+  the npm scripts, which resolve them via `scripts/py-tool.mjs` (venv → `$VIRTUAL_ENV` → PATH). Both tools
   read config from the **root** `pyproject.toml`, and `mypy` takes no path argument — `files` in
   pyproject names both trees and a CLI path silently overrides it.
 - **Node version affects the coverage gate.** V8 attributes function coverage differently across
@@ -124,9 +132,10 @@ The docs have drifted in known places. Don't propagate these, and fix them if yo
   checklist is slated for deletion by ROADMAP item 6.
 - **Backend test counts disagree** across README (26 in one place, 22 in two) and ARCHITECTURE (18).
   There are 26 test functions in `backend/tests/` today. Prefer not restating the count at all.
-- **`ROADMAP.md` corrects itself in place** rather than being rewritten — item 1 is gone (done) and
-  the prose above item 2 explains that its own premise was stale when written. Read the preamble,
-  not just the headings.
+- **`ROADMAP.md` deletes items as they land** rather than checking them off, so it opens at item 5
+  and the numbering has gaps. A missing number is a finished item, not a lost one — the reasoning
+  that survived it moved into the code or the config it describes. Read the preamble before
+  proposing work; it carries the constraints the items assume.
 
 ## Conventions
 

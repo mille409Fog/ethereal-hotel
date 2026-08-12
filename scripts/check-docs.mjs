@@ -55,7 +55,9 @@ check('files CLAUDE.md points at still exist', () => {
     'e2e/support/backend.ts',
     '.gitattributes',
     '.github/workflows/code-quality.yml',
+    '.github/workflows/supply-chain.yml',
     'backend/requirements.txt',
+    'backend/requirements-dev.txt',
     'backend/tests/test_dependency_pins.py',
     'pyproject.toml',
     'eslint.config.mjs',
@@ -191,8 +193,21 @@ check('quoted config values still match the files they came from', () => {
     );
   }
 
+  const supplyChain = read('.github/workflows/supply-chain.yml');
+  expect(
+    supplyChain.includes('--audit-level=high'),
+    'CLAUDE.md says the supply-chain job fails on npm advisories at high and above; ' +
+      'supply-chain.yml no longer passes --audit-level=high.'
+  );
+  expect(
+    supplyChain.includes('pip-audit') &&
+      read('backend/requirements-dev.txt').includes('pip-audit=='),
+    'CLAUDE.md documents pip-audit as a gate run from a pin. It is no longer both ' +
+      'pinned in backend/requirements-dev.txt and invoked by supply-chain.yml.'
+  );
+
   const scripts = JSON.parse(read('package.json')).scripts;
-  for (const gate of ['code-quality', 'test', 'code-quality:py', 'test:backend', 'e2e']) {
+  for (const gate of ['code-quality', 'test', 'code-quality:py', 'test:backend', 'e2e', 'audit']) {
     expect(
       gate in scripts,
       `CLAUDE.md documents \`npm run ${gate}\` as a gate; package.json has no such script.`
@@ -261,7 +276,9 @@ check('the social preview set is intact', () => {
     ['twitter:image', /name="twitter:image" content="(https:\/\/[^"]+)"/],
   ]) {
     if (!pattern.test(index)) {
-      problems.push(`src/index.html is missing an absolute ${property}. A relative one renders blank.`);
+      problems.push(
+        `src/index.html is missing an absolute ${property}. A relative one renders blank.`
+      );
     }
   }
   for (const tag of ['twitter:card" content="summary_large_image', 'rel="apple-touch-icon"']) {
@@ -317,6 +334,113 @@ check('the social preview set is intact', () => {
   }
 
   return problems;
+});
+
+// `npm audit --audit-level=high` and pip-audit's `--ignore-vuln` are both ways
+// of saying "this advisory is open and we are shipping anyway". That is a
+// defensible thing to say, exactly once you have said why — ROADMAP item 11 put
+// it plainly: an open advisory with no note is worse than no scanner. So the
+// note is required rather than encouraged. And, like the stale-claims check
+// below, it fails in the other direction too: a note left behind after its
+// suppression is gone is how a file of reasons becomes a file of fiction.
+//
+// The format, one per suppression, anywhere in the workflow:
+//
+//     # EXCEPTION <token> (<YYYY-MM-DD>) — <why, at least a sentence of it>
+//
+// where <token> is `audit-level=<level>` for npm's severity floor, or the
+// advisory ID handed to `--ignore-vuln`. Continuation lines are plain comments.
+
+// A note is found loosely and then verified strictly. One strict pattern would
+// have been shorter and wrong: a malformed note would simply not match, and a
+// suppression whose note is unreadable would read as a suppression with no note
+// at all — or worse, slip through silently. Finding candidates first is what
+// makes "this note does not parse" a thing the check can say.
+const NOTE_CANDIDATE = /^\s*#\s*EXCEPTION\b.*$/gm;
+const NOTE_WELL_FORMED = /^\s*#\s*EXCEPTION\s+(\S+)\s+\((\d{4}-\d{2}-\d{2})\)\s+—\s+(.+)$/;
+
+// A reason shorter than this is a gesture at one. The number is arbitrary; the
+// principle is that a suppression nobody can evaluate is one nobody revisits.
+const MINIMUM_REASON = 20;
+
+/**
+ * Find suppressions in the supply-chain workflow that are not justified.
+ *
+ * @param {string} workflow - the full text of .github/workflows/supply-chain.yml
+ * @returns {string[]} one message per problem, each naming the token it is
+ *   about and what would fix it; empty when every suppression has a well-formed
+ *   note and every note still has a suppression.
+ */
+const unjustifiedSuppressions = (workflow) => {
+  const problems = [];
+
+  // What the file actually suppresses, read off the `run:` lines. `low` is
+  // npm's floor and suppresses nothing, so it is not one — a note explaining it
+  // would be a note about nothing.
+  const suppressed = new Set([
+    ...[...workflow.matchAll(/--audit-level=(\w+)/g)]
+      .filter(([, level]) => level !== 'low')
+      .map(([, level]) => `audit-level=${level}`),
+    ...[...workflow.matchAll(/--ignore-vuln\s+(\S+)/g)].map(([, id]) => id),
+  ]);
+
+  // What the file claims to have thought about, read off the comments.
+  const explained = new Set();
+
+  for (const line of workflow.match(NOTE_CANDIDATE) ?? []) {
+    const note = line.match(NOTE_WELL_FORMED);
+    if (note === null) {
+      problems.push(
+        `This EXCEPTION note does not parse: "${line.trim()}". The format is ` +
+          '`# EXCEPTION <token> (<YYYY-MM-DD>) — <reason>`, and the separator is an em dash.'
+      );
+      continue;
+    }
+
+    const [, token, date, reason] = note;
+    explained.add(token);
+
+    // The pattern above already guarantees the shape, so this is the only thing
+    // left to be wrong about a date: 2026-13-40 is well-formed and not a day.
+    if (Number.isNaN(new Date(date).valueOf())) {
+      problems.push(
+        `The EXCEPTION note for ${token} is dated ${date}, which is not a real date.`
+      );
+    }
+    if (reason.trim().length < MINIMUM_REASON) {
+      problems.push(
+        `The EXCEPTION note for ${token} offers "${reason.trim()}" as its reason. ` +
+          `Say what is open and why it is acceptable, in enough words to be argued with.`
+      );
+    }
+  }
+
+  // The two directions. The second is the one that rots quietly: a note is
+  // written once, in a hurry, and outlives the thing it excused by years.
+  for (const token of suppressed) {
+    if (!explained.has(token)) {
+      problems.push(
+        `${token} is suppressed with no \`# EXCEPTION\` note. Add one naming what stays ` +
+          `open and why, or drop the suppression — an open advisory with no note is ` +
+          `worse than no scanner.`
+      );
+    }
+  }
+  for (const token of explained) {
+    if (!suppressed.has(token)) {
+      problems.push(
+        `An \`# EXCEPTION\` note explains ${token}, which this workflow no longer ` +
+          `suppresses. Delete the note; it has outlived what it excused.`
+      );
+    }
+  }
+
+  return problems;
+};
+
+check('every advisory suppression carries a dated exception', () => {
+  if (!exists('.github/workflows/supply-chain.yml')) return []; // reported above
+  return unjustifiedSuppressions(read('.github/workflows/supply-chain.yml'));
 });
 
 // The stale-claims section is a warning about *other* documents, so it has the

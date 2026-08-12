@@ -1,6 +1,7 @@
 # EtherealHotel
 
 [![Code Quality](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/code-quality.yml/badge.svg)](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/code-quality.yml)
+[![Supply chain](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/supply-chain.yml/badge.svg)](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/supply-chain.yml)
 
 **Live demo:** https://ethereal-hotel-pink.vercel.app/
 
@@ -202,7 +203,7 @@ their configuration from `pyproject.toml` at the repo root.
 
 ### Backend
 
-- **Framework**: FastAPI 0.115
+- **Framework**: FastAPI 0.141
 - **Language**: Python 3.11+
 - **Server**: Uvicorn (ASGI)
 - **Validation**: Pydantic 2.9
@@ -227,6 +228,8 @@ Both languages are gated, not just the TypeScript half:
 - ✅ **Lint-staged**: Automatic formatting of staged files, TypeScript and Python alike
 - ✅ **Commitlint**: Conventional commit message validation
 - ✅ **Dependabot**: Weekly grouped updates for pip, npm and GitHub Actions
+- ✅ **npm audit + pip-audit**: Advisory scan of both dependency trees, failing the build
+- ✅ **CodeQL**: Static security analysis of the TypeScript and the Python
 - ✅ **CI/CD Pipeline**: Automated testing and builds
 
 ## ♿ Accessibility

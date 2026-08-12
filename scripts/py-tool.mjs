@@ -1,4 +1,5 @@
-// Run a Python dev tool (ruff, mypy) from npm scripts and lint-staged.
+// Run a Python dev tool (ruff, mypy, pytest, pip-audit) from npm scripts and
+// lint-staged.
 //
 //     node scripts/py-tool.mjs ruff check backend/
 //     node scripts/py-tool.mjs mypy backend/
@@ -24,7 +25,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 
 const [tool, ...args] = process.argv.slice(2);
 if (!tool) {
-  console.error('usage: node scripts/py-tool.mjs <ruff|mypy> [args...]');
+  console.error('usage: node scripts/py-tool.mjs <ruff|mypy|pytest|pip-audit> [args...]');
   process.exit(2);
 }
 

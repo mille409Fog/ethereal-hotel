@@ -3,9 +3,15 @@
 # image (backend/Dockerfile) doesn't ship a linter.
 #
 # Every version is pinned exactly so a deploy six months from now installs what
-# CI tested. Dependabot (.github/dependabot.yml) proposes the bumps.
+# CI tested. Dependabot (.github/dependabot.yml) proposes the bumps and
+# `pip-audit` (.github/workflows/supply-chain.yml) fails the build if a pin has
+# a known advisory against it.
 
-fastapi==0.115.0
+# Held at >= 0.141 rather than 0.115 because of what it drags in, not for
+# anything in its own changelog: fastapi's starlette range is the only lever on
+# starlette's version, and 0.115 caps it below 0.39 — eight PYSEC advisories
+# short of a fix. 0.141 allows starlette 1.x, which clears all eight.
+fastapi==0.141.1
 uvicorn[standard]==0.32.0
 pydantic==2.9.2
 # uvicorn[standard] pulls this in for the /ws protocol; pinned explicitly

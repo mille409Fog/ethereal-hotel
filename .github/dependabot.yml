@@ -12,8 +12,19 @@ updates:
   # ---------------------------------------------------------------------
   # Python backend
   # ---------------------------------------------------------------------
+  #
+  # Two directories in one entry, not two entries. The runtime pins are
+  # declared twice — backend/requirements.txt for the container and CI, the
+  # [project.dependencies] table in the root pyproject.toml for Vercel — and
+  # backend/tests/test_dependency_pins.py fails when the two disagree. A pip
+  # entry per directory would therefore propose every runtime bump as two PRs,
+  # each of which fails that test on its own and neither of which can merge
+  # until someone hand-edits the other file. Grouping the directories is what
+  # makes a bump land as one reviewable, green change.
   - package-ecosystem: pip
-    directory: /backend
+    directories:
+      - /backend
+      - /
     schedule:
       interval: weekly
       day: monday

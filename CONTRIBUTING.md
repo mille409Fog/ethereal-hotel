@@ -46,6 +46,12 @@ npm run test:backend      # pytest
 `npm run e2e` additionally builds and runs the Playwright suite (smoke + accessibility). It
 needs a browser once: `npx playwright install --only-shell chromium`.
 
+`npm run audit` runs the dependency scanners CI runs — `npm audit` at high and above, then
+`pip-audit` over both Python lists. You only need it when you have touched a dependency, but a
+PR that adds one will fail on it if the pin carries a known advisory. Anything left open has to
+carry a dated `# EXCEPTION` note in `.github/workflows/supply-chain.yml`; `npm run check:docs`
+fails if it does not, and fails again if the note outlives the thing it excused.
+
 A pre-commit hook runs lint-staged over your staged files and will auto-fix what it can.
 Anything it can't fix — an ESLint error, an undefined name — blocks the commit.
 

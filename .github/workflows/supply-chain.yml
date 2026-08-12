@@ -1,0 +1,140 @@
+name: Supply chain
+
+# Dependency freshness was the one quality claim in this repo left to memory.
+# Everything else — types, lint, coverage, the two dependency lists, the claims
+# in CLAUDE.md — is asserted by something that fails. This file closes that gap
+# with three mechanisms, deliberately of different shapes:
+#
+#   * .github/dependabot.yml proposes upgrades weekly. It is the only one that
+#     can surface an advisory published against code nobody touched.
+#   * `audit` below fails a push or a PR whose dependency tree carries a known
+#     advisory. It runs on changes rather than on a timer on purpose — a
+#     scheduled red X on a repo whose whole argument is "the gates are real"
+#     argues the opposite, and Dependabot already owns the timer.
+#   * `codeql` reads the first-party code instead of the dependency list, and
+#     reports rather than blocks, so it also runs weekly.
+#
+# Every suppression in this file carries a `# EXCEPTION` note naming what is
+# suppressed, when the call was made, and why. That is not a convention held by
+# discipline: scripts/check-docs.mjs parses these notes and fails the Docs job
+# when a suppression has no note, when a note has no real date or no reason, or
+# when a note outlives the suppression it explains.
+
+on:
+  push:
+    branches: [main, develop, development-alpha]
+  pull_request:
+    branches: [main, develop, development-alpha]
+  schedule:
+    # Mondays, the same morning Dependabot opens its PRs.
+    - cron: '0 7 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Advisories (npm audit, pip-audit)
+    runs-on: ubuntu-latest
+    # See the header: the timer belongs to Dependabot and CodeQL. This job
+    # answers "does the tree this change produces carry a known advisory", and
+    # that question has no answer on a week where nothing changed.
+    if: github.event_name != 'schedule'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # No `npm ci`. `npm audit` resolves package-lock.json against the
+      # registry and never reads node_modules, so installing would cost a
+      # minute to learn nothing this job does not already have.
+      - name: Setup Node.js (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      # EXCEPTION audit-level=high (2026-08-12) — six advisories sit below this
+      #   threshold and are knowingly left open. All six are the Angular build
+      #   toolchain: @babel/core and esbuild each read arbitrary files through a
+      #   dev server or a sourceMappingURL comment (low), and a path traversal
+      #   in @hono/node-server is reachable through @angular/cli (moderate).
+      #   None of the three is present in what gets deployed — a static bundle
+      #   and a Python function — so all three require an attacker who is
+      #   already running builds on a maintainer's machine. npm's own fix for
+      #   the @hono chain is `@angular/cli@21`, which cannot build an Angular 22
+      #   workspace; the other two are waiting on their parents to re-pin.
+      #   Revisit when @angular/cli releases a 22.x carrying MCP SDK >= 1.30.
+      - name: npm audit (fails at high and above)
+        run: npm audit --audit-level=high
+
+      # 3.11 rather than the matrix backend/ runs against: pip-audit reads the
+      # pins in the requirements files, and those do not vary by interpreter.
+      # One run is the whole answer.
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      # pip-audit is pinned in requirements-dev.txt rather than installed ad
+      # hoc, so the version CI runs is the version `npm run audit:py` runs on a
+      # contributor's machine. Installing the file is also what keeps that pin
+      # from being declared in two places.
+      - name: Install backend dependencies
+        run: pip install -r requirements-dev.txt
+        working-directory: backend
+
+      # requirements-dev.txt opens with `-r requirements.txt`, so auditing it
+      # audits both lists. `--strict` fails when pip-audit cannot resolve a
+      # dependency, which stops a package it silently skipped from reading as a
+      # clean report. No severity floor here, unlike npm: the Python tree is
+      # eleven direct pins deep and every finding to date has been actionable.
+      - name: pip-audit (fails on any advisory)
+        run: pip-audit --strict --progress-spinner=off -r backend/requirements-dev.txt
+
+  # CodeQL asks the question the two audits cannot: not "is a dependency known
+  # to be vulnerable" but "does the code in this repository do something
+  # dangerous". Findings land in the Security tab rather than failing the build,
+  # which is why this one is allowed to run on a schedule — a new query written
+  # next month against code committed last year is exactly what the weekly run
+  # is for, and it cannot turn the badge red.
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both halves of the repo. `api/` is covered by the python analysis for
+        # the same reason ruff and mypy cover it: it is the code that serves the
+        # hosted demo, not a four-line shim.
+        language: [javascript-typescript, python]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # No `queries:` override, which means the default security suite. The
+      # security-and-quality suite was the obvious upgrade and is the wrong one
+      # here: its maintainability queries re-litigate ground ESLint and ruff
+      # already hold at zero warnings, and a Security tab full of style findings
+      # is how a real one gets ignored.
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          # Neither language is compiled, so there is nothing to trace.
+          build-mode: none
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:${{ matrix.language }}'
