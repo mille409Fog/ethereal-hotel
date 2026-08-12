@@ -3,10 +3,18 @@
  * accessibility run (see `playwright.config.ts`).
  *
  * Deliberately dependency-free rather than pulling in `serve`/`http-server`:
- * the only two things this needs beyond `fs` are a correct `Content-Type` and
- * an SPA fallback, and the fallback is not optional — `/dashboard` is a client
- * route with no file behind it, so a naive static server answers 404 and the
- * scan would silently audit an error page instead of the dashboard.
+ * the only three things this needs beyond `fs` are a correct `Content-Type`, a
+ * directory index, and an SPA fallback. The fallback is not optional — a client
+ * route with no file behind it would otherwise 404 and the scan would silently
+ * audit an error page instead of the page it named.
+ *
+ * The directory index is what makes this server match Vercel rather than merely
+ * work: `scripts/emit-route-meta.mjs` writes a real `dashboard/index.html` with
+ * that route's own social card, and both Vercel's filesystem step and the
+ * explicit rewrites in `vercel.json` resolve `/dashboard` to it. Falling
+ * straight through to the SPA fallback here would serve the home page's
+ * metadata under the dashboard's URL, and the difference would only show up
+ * once a link was already pasted somewhere public.
  *
  * Usage: node scripts/serve-dist.mjs [--root <dir>] [--port <port>]
  */
@@ -55,7 +63,13 @@ async function resolveFile(urlPath) {
 
   try {
     const stats = await stat(candidate);
-    return stats.isDirectory() ? null : candidate;
+    if (!stats.isDirectory()) {
+      return candidate;
+    }
+    // A directory is only servable if it has an index; otherwise report it
+    // missing and let the caller fall through to the SPA fallback.
+    const index = join(candidate, 'index.html');
+    return (await stat(index)).isFile() ? index : null;
   } catch {
     return null;
   }

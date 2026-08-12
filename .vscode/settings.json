@@ -37,6 +37,18 @@
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+  // `source.organizeImports` above deletes imports it cannot see a use for,
+  // and it runs on every explicit save. In a TypeScript file mid-edit that is
+  // usually right. In the plain-ESM scripts under `scripts/` it is not: those
+  // get written top-down, so the `node:` imports at the top have no usages yet
+  // and Ctrl+S silently removes the lines you just typed. Formatting and
+  // ESLint's fixAll still apply — this turns off only the import surgery.
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "never"
+    }
+  },
   "[html]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },

@@ -51,6 +51,7 @@ check('files CLAUDE.md points at still exist', () => {
     'backend/main.py',
     'src/environments/environment.prod.ts',
     'scripts/py-tool.mjs',
+    'scripts/emit-route-meta.mjs',
     'e2e/support/backend.ts',
     '.gitattributes',
     '.github/workflows/code-quality.yml',
@@ -172,10 +173,19 @@ check('quoted config values still match the files they came from', () => {
     'CLAUDE.md lists 4173 as the Playwright static-server port; playwright.config.ts disagrees.'
   );
 
+  // The paths themselves moved to src/route-meta.json, which app.routes.ts and
+  // scripts/emit-route-meta.mjs both read; assert against that, and that the
+  // router still wires each one up.
   const routes = read('src/app/app.routes.ts');
+  const routeMeta = JSON.parse(read('src/route-meta.json'));
   for (const route of ['dashboard', 'booking']) {
     expect(
-      new RegExp(`path:\\s*'${route}'`).test(routes),
+      routeMeta.routes[route]?.path === route,
+      `CLAUDE.md calls /${route} one of the two routes carrying the technical argument; ` +
+        `src/route-meta.json no longer defines it.`
+    );
+    expect(
+      routes.includes(`meta.${route}.path`),
       `CLAUDE.md calls /${route} one of the two routes carrying the technical argument; ` +
         `it is no longer registered in app.routes.ts.`
     );
@@ -187,6 +197,123 @@ check('quoted config values still match the files they came from', () => {
       gate in scripts,
       `CLAUDE.md documents \`npm run ${gate}\` as a gate; package.json has no such script.`
     );
+  }
+
+  expect(
+    scripts.build.includes('emit-route-meta'),
+    'CLAUDE.md warns that bare `ng build` drops the per-route social cards, on the basis ' +
+      'that `npm run build` chains scripts/emit-route-meta.mjs. It no longer does.'
+  );
+  // The a11y run serves the build directory directly, so a build that skipped
+  // the stamping would scan pages the deployment does not serve.
+  for (const script of ['e2e', 'a11y']) {
+    expect(
+      !/(^|&&\s*)ng build/.test(scripts[script]),
+      `package.json's \`${script}\` calls \`ng build\` directly, which skips ` +
+        `scripts/emit-route-meta.mjs. Use \`npm run build\` so Playwright serves the same ` +
+        `files Vercel does.`
+    );
+  }
+
+  return problems;
+});
+
+// The social-preview set. Everything here fails silently and off-site: a card
+// is rendered by Slack or LinkedIn, from a crawl this repo never sees, and the
+// first sign of a broken one is a link that has already been pasted somewhere
+// that matters. So the parts that can be checked from here are.
+check('the social preview set is intact', () => {
+  const problems = [];
+  const meta = JSON.parse(read('src/route-meta.json'));
+
+  for (const asset of ['og-image.png', 'favicon.ico', 'favicon.svg', 'apple-touch-icon.png']) {
+    if (!exists(`public/${asset}`)) {
+      problems.push(`public/${asset} is missing; index.html links it. Run \`npm run gen:social\`.`);
+    }
+  }
+
+  if (exists('public/og-image.png')) {
+    const png = readFileSync(path.join(repoRoot, 'public/og-image.png'));
+    // IHDR is the first chunk of every PNG: width and height are big-endian
+    // u32s at byte 16 and 20.
+    const width = png.readUInt32BE(16);
+    const height = png.readUInt32BE(20);
+    if (width !== 1200 || height !== 630) {
+      problems.push(
+        `public/og-image.png is ${width}×${height}. Facebook, LinkedIn and Slack all ` +
+          `size their large card at 1200×630; anything else is letterboxed or cropped.`
+      );
+    }
+    // The ROADMAP set this ceiling. Crawlers give the fetch a short budget and
+    // some skip the image entirely rather than wait for it.
+    const KB = png.length / 1024;
+    if (KB > 300) {
+      problems.push(`public/og-image.png is ${KB.toFixed(0)}KB; the ceiling is 300KB.`);
+    }
+  }
+
+  // og:image and og:url are read by a crawler with no page context, so a
+  // relative path resolves against nothing. This is the single most common way
+  // a card silently renders blank.
+  const index = read('src/index.html');
+  for (const [property, pattern] of [
+    ['og:image', /property="og:image" content="(https:\/\/[^"]+)"/],
+    ['twitter:image', /name="twitter:image" content="(https:\/\/[^"]+)"/],
+  ]) {
+    if (!pattern.test(index)) {
+      problems.push(`src/index.html is missing an absolute ${property}. A relative one renders blank.`);
+    }
+  }
+  for (const tag of ['twitter:card" content="summary_large_image', 'rel="apple-touch-icon"']) {
+    if (!index.includes(tag)) {
+      problems.push(`src/index.html no longer contains \`${tag}\`.`);
+    }
+  }
+
+  // src/index.html carries the home page's card so that `ng serve` and any
+  // reader of the source see the truth; the build overwrites it from the JSON
+  // either way. If the two disagree, one of them is lying to somebody.
+  const block = index.slice(
+    index.indexOf('<!-- ROUTE-META:START -->'),
+    index.indexOf('<!-- ROUTE-META:END -->')
+  );
+  if (!block) {
+    problems.push(
+      'src/index.html has no ROUTE-META block. scripts/emit-route-meta.mjs needs those ' +
+        'markers to stamp per-route cards, and exits non-zero without them.'
+    );
+  } else {
+    if (!block.includes(`<title>${meta.routes.home.title}</title>`)) {
+      problems.push(
+        `src/index.html's <title> does not match route-meta.json's home title. The build ` +
+          `would replace it with the JSON's; make the source agree rather than leaving it stale.`
+      );
+    }
+    if (!block.includes(meta.routes.home.description)) {
+      problems.push("src/index.html's description does not match route-meta.json's home entry.");
+    }
+  }
+
+  // Vercel resolves these off the filesystem before the SPA rewrite, so the
+  // explicit entries are belt to that braces — but a route added to the JSON
+  // and forgotten here is a card that quietly falls back to the home page's.
+  const vercel = read('vercel.json');
+  const rewrites = JSON.parse(vercel).rewrites;
+  const catchAll = rewrites.findIndex((r) => r.destination === '/index.html');
+  for (const route of Object.values(meta.routes)) {
+    if (!route.path) continue;
+    const at = rewrites.findIndex((r) => r.source === `/${route.path}`);
+    if (at === -1) {
+      problems.push(
+        `vercel.json has no rewrite for /${route.path}, which route-meta.json defines. ` +
+          `Without it the route depends on Vercel resolving the directory index itself.`
+      );
+    } else if (catchAll !== -1 && at > catchAll) {
+      problems.push(
+        `vercel.json's rewrite for /${route.path} sits after the SPA catch-all, so it ` +
+          `never matches. Move it above the /(.*) entry.`
+      );
+    }
   }
 
   return problems;

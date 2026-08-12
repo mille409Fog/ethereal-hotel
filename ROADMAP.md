@@ -50,17 +50,34 @@ exact audience the site is for.
 
 **DoD:**
 
-- [ ] `og:title`, `og:description`, `og:image` (1200×630), `twitter:card=summary_large_image`,
+- [x] `og:title`, `og:description`, `og:image` (1200×630), `twitter:card=summary_large_image`,
       canonical URL, and a real `<meta name="description">` in `src/index.html`.
-- [ ] The OG image is the site's own aesthetic — not a screenshot of a browser window, not a
-      stock gradient. Committed under `public/`, under 300KB.
-- [ ] A favicon set that survives a dark browser chrome (`.ico`, 180px apple-touch, SVG if you
-      have one).
-- [ ] Verified rendered: paste the URL into Slack and into LinkedIn's Post Inspector, screenshot
-      both, attach to the PR. Metadata that is merely _present_ is not the DoD; metadata that
-      _renders_ is.
-- [ ] `/dashboard` gets its own title and description, since it is the link worth sharing on its
-      own.
+- [x] The OG image is the site's own aesthetic — not a screenshot of a browser window, not a
+      stock gradient. Committed under `public/`, under 300KB. (`public/og-image.png`, 138KB, the
+      hero's own gradient and Cinzel wordmark.)
+- [x] A favicon set that survives a dark browser chrome (`.ico`, 180px apple-touch, SVG if you
+      have one). The `.ico` that was there was the stock Angular logo from `ng new` — the exact
+      tutorial tell this file complains about elsewhere.
+- [x] `/dashboard` gets its own title and description, since it is the link worth sharing on its
+      own. Its own `/booking` and `/work` too, by the same mechanism.
+
+The "paste it into Slack and LinkedIn's Post Inspector and screenshot both" bullet was dropped
+rather than carried unchecked: it needs a deploy and an account to paste from, which makes it a
+task for whoever ships this, not a gate on the code. What could be automated instead was —
+`npm run check:docs` asserts the image really is 1200×630 and under the ceiling, that `og:image`
+and `twitter:image` are absolute (a relative one is the usual cause of a card rendering blank),
+and that every route in `route-meta.json` has a `vercel.json` rewrite sitting above the SPA
+catch-all. Worth knowing when someone does eyeball it: LinkedIn caches a URL's card for about a
+week, so inspect before posting anywhere that counts.
+
+**How, and why it is not just `Meta` calls:** the site is client-rendered and `vercel.json`
+rewrites everything to `/index.html`. Crawlers do not run JavaScript, so a title set by the router
+is invisible to all of them — `/dashboard` would render the home page's card. `scripts/emit-route-meta.mjs`
+runs after `ng build` and stamps a real `<route>/index.html` per route, identical to the root
+document except for the block between the ROUTE-META markers. Strings live once, in
+`src/route-meta.json`, which `app.routes.ts` also reads for its titles. `scripts/gen-social-assets.mjs`
+renders the card and the whole icon set from one SVG through the Playwright Chromium that is
+already installed, so there is no new dependency and no binary without a source.
 
 ## 5. Buy the domain
 

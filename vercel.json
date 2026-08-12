@@ -10,6 +10,9 @@
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/dashboard", "destination": "/dashboard/index.html" },
+    { "source": "/booking", "destination": "/booking/index.html" },
+    { "source": "/work", "destination": "/work/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
