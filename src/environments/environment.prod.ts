@@ -11,7 +11,7 @@
  * `wsUrl` is null because a serverless function cannot hold a socket open. The
  * dashboard falls back to polling `/api/metrics` and labels itself accordingly;
  * the live stream is a feature of the container deployment, not the demo.
- * See "Deployment" in README.md for the full picture.
+ * See "Transport and degradation" in ARCHITECTURE.md for the full picture.
  */
 import { IEnvironment } from './environment.model';
 

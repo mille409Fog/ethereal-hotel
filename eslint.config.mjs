@@ -156,7 +156,7 @@ export default [
       '@angular-eslint/no-output-rename': 'error',
       '@angular-eslint/no-output-native': 'error',
       // Enforced, not suggested: every component in the tree is already
-      // OnPush, so the README's claim is now backed by the linter.
+      // OnPush, so ARCHITECTURE.md's claim is now backed by the linter.
       '@angular-eslint/prefer-on-push-component-change-detection': 'error',
 
       // General code quality rules

@@ -21,7 +21,7 @@ websockets==13.1
 # python-dotenv was here but nothing imports it: config.py reads os.getenv
 # directly and no code calls load_dotenv(). Rather than wire up a .env loader
 # nobody asked for, the docs now say plainly that configuration comes from real
-# environment variables — see the Configuration table in README.md.
+# environment variables — see the Configuration table in ARCHITECTURE.md.
 
 # Persistence
 SQLAlchemy==2.0.35

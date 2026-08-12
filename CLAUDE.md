@@ -11,7 +11,7 @@ product; it is a hiring artifact. That distinction decides most arguments:
 - **The bar is truthfulness, not feature count.** Every number on screen is derived from real
   database rows. Every claim in the docs is supposed to be executable. When the app can't do
   something, it says so on screen rather than simulating it — see the three dashboard badge states
-  in README's Configuration table.
+  in ARCHITECTURE's §Transport and degradation.
 - **Two routes carry the whole technical argument**: `/dashboard` (reads, degrades from WebSocket →
   polling → committed fixture) and `/booking` (writes, renders server-side validation on the field
   that caused it). Everything else is a portfolio section.
@@ -54,11 +54,23 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | File                | Size | Read it when                                                                                                                          |
 | ------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `ROADMAP.md`        | 7K   | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here. |
-| `README.md`         | 28K  | You need the deployment story, env vars, the a11y decisions, or the coverage gate.                                                    |
-| `ARCHITECTURE.md`   | 25K  | You need API endpoint shapes, the error contract, or the data-flow diagrams. **See "Stale claims" below.**                            |
+| `README.md`         | 4K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
+| `ARCHITECTURE.md`   | 22K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 16K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
 | `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project, spec'd but **not built** — no `src/aubade/` exists yet).                |
-| `CONTRIBUTING.md`   | 3K   | Shortest accurate summary of setup + the four gates. Good substitute for README §Quick Start.                                         |
+| `CONTRIBUTING.md`   | 3K   | Setup and the four gates. This is where "how do I run it" lives; the README only links here.                                          |
+
+**`ROADMAP.md` deletes items as they land** rather than checking them off, so it opens partway down
+and the numbering has gaps. A missing number is a finished item, not a lost one — the reasoning that
+survived it moved into the code or the config it describes. Read the preamble before proposing work;
+it carries the constraints the items assume.
+
+The docs no longer carry a known-stale list: ROADMAP item 6 rewrote `README.md` down to one page and
+made `ARCHITECTURE.md` the reference doc, fixing the drift that section used to warn about. Two
+habits are what let that rot set in, so avoid both. Don't explain what FastAPI or RxJS *are* — the
+reader knows. And don't restate the backend test count in another document: it was quoted in three
+places and disagreed with itself in all three. There are 26 test functions in `backend/tests/`
+today, this sentence is the only place that says so, and `check:docs` keeps it honest.
 
 Code-level intent lives in module docstrings and file-header comments, and it is unusually dense
 here: `api/index.py`, `backend/main.py`, `src/environments/environment.prod.ts`,
@@ -121,22 +133,6 @@ not leave the note behind when the suppression goes.
 - Windows box. `run.bat` and `start-dev.bat` exist alongside their `.sh` twins. Ports in play:
   4200 (ng serve), 8000 (FastAPI), 4173 (`scripts/serve-dist.mjs` for Playwright).
 
-## Stale claims — verify before repeating
-
-The docs have drifted in known places. Don't propagate these, and fix them if you're in the file:
-
-- **`ARCHITECTURE.md` is the least current.** Its project tree lists `src/styles/` and `src/assets/`
-  (neither exists); its Dashboard hierarchy lists a `MetricCard` component that was never built;
-  §Testing Strategy says E2E "can be added with Playwright" — `e2e/` has existed for several commits;
-  §State Management says RxJS where the app is signals-over-RxJS-transport. Its "Future Enhancements"
-  checklist is slated for deletion by ROADMAP item 6.
-- **Backend test counts disagree** across README (26 in one place, 22 in two) and ARCHITECTURE (18).
-  There are 26 test functions in `backend/tests/` today. Prefer not restating the count at all.
-- **`ROADMAP.md` deletes items as they land** rather than checking them off, so it opens at item 5
-  and the numbering has gaps. A missing number is a finished item, not a lost one — the reasoning
-  that survived it moved into the code or the config it describes. Read the preamble before
-  proposing work; it carries the constraints the items assume.
-
 ## Conventions
 
 - **Conventional Commits**, enforced by commitlint. History is mostly `feat:` with a short lowercase
@@ -160,7 +156,7 @@ mistake for bugs:
 - The fixed RNG seed in `api/index.py` is what stops two function instances serving two different
   hotels. Bookings are still laid out around `date.today()` so the demo doesn't decay.
 - The metrics grid is deliberately **not** an `aria-live` region — a throttled `role="status"`
-  digest replaces it. README §Accessibility has the reasoning.
+  digest replaces it. ARCHITECTURE §Accessibility has the reasoning.
 - Health is mounted twice (`/` and `/api/health`) on purpose: one handler, two deployment shapes.
 - **There is no cookie banner because there is nothing to consent to.** Vercel Analytics is loaded
   from the same-origin `/_vercel/` path and sets no cookie; that is the reason it was chosen over
@@ -173,8 +169,8 @@ mistake for bugs:
 **This document is gated.** `npm run check:docs` (`scripts/check-docs.mjs`, its own CI job) reads
 the repository and fails when a factual claim here stops being true — a path that moved, a version
 pin that changed, a route that was renamed, the test count, the doc sizes in the table above. It
-also fails in the other direction: when one of the "stale claims" it warns about gets **fixed**, it
-tells you to delete the warning, so that section retires itself instead of becoming the stale thing.
+also checks the other documents against themselves — every `npm run` they tell a reader to type has
+to exist in `package.json`, so a renamed script cannot leave a dead instruction behind.
 
 Run it after any change that touches this file's subject matter. It takes about 50ms and installs
 nothing.
@@ -193,7 +189,7 @@ The script deliberately does not check prose. These are the parts it cannot see,
 | Deployment target, `create_app` flags, Vercel    | §Traps — the Python split and the `requirements.txt` landmine    |
 | A gate, threshold, or CI job                     | §The four gates                                                  |
 | Anything in `ROADMAP.md` §Deliberately not doing | §Don't helpfully add these — it mirrors that list                |
-| Finishing a ROADMAP item that removes a section  | §Stale claims, and the doc-map row for whatever the item rewrote |
+| Finishing a ROADMAP item that removes a section  | The doc-map row for whatever the item rewrote, and its size      |
 
 **Two failure modes to avoid.** Do not let this file grow into a seventh long document — it earns
 its place by being the short one, and anything over ~250 lines has stopped routing and started

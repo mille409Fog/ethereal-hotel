@@ -546,28 +546,74 @@ check('every advisory suppression carries a dated exception', () => {
   return unjustifiedSuppressions(read('.github/workflows/supply-chain.yml'));
 });
 
-// The stale-claims section is a warning about *other* documents, so it has the
-// opposite failure mode from everything above: it goes wrong when someone does
-// the right thing. Retiring each warning as it is fixed is what stops this
-// section from becoming the stale thing it warns about.
-check('the stale claims CLAUDE.md warns about are still stale', () => {
-  if (!exists('ARCHITECTURE.md')) return [];
-  const architecture = read('ARCHITECTURE.md');
-  const warnings = [
-    ['# Global styles', 'the `styles/` and `assets/` entries in its project tree'],
-    ['MetricCard', 'the `MetricCard` components in its dashboard hierarchy'],
-    ['Can be added with Playwright', 'its claim that E2E tests "can be added"'],
-    ['## 🚀 Future Enhancements', 'its "Future Enhancements" checklist'],
-  ];
+// A document that tells a reader to run a command which does not exist is the
+// cheapest kind of wrong to ship and the most expensive kind to hit: the reader
+// is following instructions, in a fresh clone, at the exact moment they have the
+// least context to work out what was meant. ROADMAP item 6 required that every
+// code block in the docs actually runs, and then cut those docs down to the
+// commands worth keeping — this is what holds that true afterwards, because the
+// realistic way it breaks is a script being renamed in package.json by someone
+// who never opened the Markdown.
+//
+// Scope is `npm run <name>` only. Bare `npm test` and `npm start` are already
+// covered by the gate list in the config check above, and shell commands
+// (`docker build`, `curl`, `python main.py`) are not this script's to resolve.
 
-  return warnings
-    .filter(([marker]) => !architecture.includes(marker))
-    .map(
-      ([, description]) =>
-        `ARCHITECTURE.md no longer has ${description} — that was fixed. Delete the ` +
-        `corresponding warning from the "Stale claims" section of CLAUDE.md so the ` +
-        `section does not outlive the problem.`
+// Documents that *instruct* a reader. ROADMAP.md and AUBADE.md are deliberately
+// absent: they describe intentions, and both name scripts that do not exist yet
+// on purpose — ROADMAP item 9 specifies `npm run resume:pdf` as the thing it
+// will add. Checking them would punish planning.
+const INSTRUCTIONAL_DOCS = [
+  'README.md',
+  'ARCHITECTURE.md',
+  'CONTRIBUTING.md',
+  'CLAUDE.md',
+  'backend/README.md',
+];
+
+/**
+ * Find `npm run` invocations in the documentation that package.json cannot
+ * satisfy.
+ *
+ * @param {Record<string, string>} docs - file path → that file's full Markdown
+ *   text. Paths are repo-relative and used only to name the file in messages.
+ * @param {Record<string, string>} scripts - the `scripts` object from
+ *   package.json; only its keys matter.
+ * @returns {string[]} one message per undefined script, naming the document it
+ *   was found in and the script it asked for; empty when every documented
+ *   `npm run` resolves.
+ */
+const missingNpmScripts = (docs, scripts) => {
+  const problems = [];
+
+  for (const [file, text] of Object.entries(docs)) {
+    // Deduped per file: a command documented in three places is one broken
+    // instruction, not three, and three copies of the same message would bury
+    // whatever else this run found.
+    const asked = new Set(
+      [...text.matchAll(/npm run ([a-z0-9][\w:-]*)/g)].map(([, name]) => name)
     );
+
+    for (const name of asked) {
+      if (!(name in scripts)) {
+        problems.push(
+          `${file} tells the reader to run \`npm run ${name}\`, which package.json does ` +
+            `not define. Add the script or fix the document — whoever hits this is ` +
+            `following instructions in a fresh clone, with the least context of anyone ` +
+            `to work out what was meant.`
+        );
+      }
+    }
+  }
+
+  return problems;
+};
+
+check('every `npm run` the docs mention exists in package.json', () => {
+  const docs = Object.fromEntries(
+    INSTRUCTIONAL_DOCS.filter(exists).map((file) => [file, read(file)])
+  );
+  return missingNpmScripts(docs, JSON.parse(read('package.json')).scripts);
 });
 
 // ---------------------------------------------------------------------------

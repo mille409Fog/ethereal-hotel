@@ -12,7 +12,7 @@ invocation has no process lifetime, so the ``/ws`` metrics stream and the
 background broadcaster behind it cannot run here. The frontend degrades to REST
 polling when the health check reports ``liveStream: false``. The full stack,
 socket included, is what ``backend/Dockerfile`` builds — see "Deployment" in
-``README.md``.
+``ARCHITECTURE.md``.
 
 Vercel routes every ``/api/*`` request here via the rewrite in ``vercel.json``
 and invokes the ``app`` exported at the bottom.

@@ -1,52 +1,66 @@
 # EtherealHotel Architecture
 
-## 🏗️ System Overview
+Reference for the parts of this repo that are decisions rather than defaults: how the two
+routes get their data, what the API returns when it says no, and why the same application
+deploys two different ways. Setup and the CI gates live in [CONTRIBUTING.md](CONTRIBUTING.md);
+the database schema, seeding and streaming internals live in
+[backend/README.md](backend/README.md).
+
+## System overview
+
+One Angular SPA, one FastAPI application, two supported deployments. The frontend never talks
+to anything but its own origin in production; in development it crosses from :4200 to :8000 and
+CORS applies.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     EtherealHotel Dashboard                     │
-│                     Real-Time Data Platform                     │
-└─────────────────────────────────────────────────────────────────┘
-
-┌──────────────────────┐              ┌──────────────────────┐
-│                      │              │                      │
-│   Frontend Layer     │◄────────────►│   Backend Layer      │
-│   (Angular 22)       │   WebSocket  │   (FastAPI)          │
-│   Port 4200          │   & HTTP     │   Port 8000          │
-│                      │              │                      │
-└──────────────────────┘              └──────────────────────┘
+┌──────────────────────┐        WebSocket (container only)        ┌──────────────────────┐
+│  Angular 22 SPA      │◄─────────────────────────────────────────►│  FastAPI             │
+│  signals, OnPush     │        HTTP (both deployments)            │  create_app()        │
+│  :4200 dev           │◄─────────────────────────────────────────►│  :8000 dev           │
+└──────────────────────┘                                           └──────────┬───────────┘
+                                                                              │
+                                                                   ┌──────────▼───────────┐
+                                                                   │  SQLite (SQLAlchemy) │
+                                                                   │  seeded on startup   │
+                                                                   └──────────────────────┘
 ```
 
-## 📦 Technology Stack
+## Transport and degradation
 
-### Frontend
+The dashboard has three ways to get metrics and says on screen which one it is using. This is
+the behaviour the whole read path is built around, so it is worth stating precisely.
 
-- **Framework**: Angular 22 (Standalone Components)
-- **Language**: TypeScript 6.0
-- **State Management**: RxJS 7.8
-- **Visualization**: Chart.js 4.5
-- **Build Tool**: Vite (via Angular CLI 22)
-- **Testing**: Vitest 4.0
-- **Code Quality**: ESLint + Prettier + Husky
+The frontend picks its transport from `wsUrl` in the active environment file — it does not
+discover the absence of a socket by failing to open one:
 
-### Backend
+| `wsUrl`             | Transport                                 | Badge                                             |
+| ------------------- | ----------------------------------------- | ------------------------------------------------- |
+| set                 | WebSocket, pushed every 2s                | Live data · streaming from the API                |
+| `null`              | `GET /api/metrics` every `pollIntervalMs` | Live data · polled from the API every few seconds |
+| — (API unreachable) | none; committed fixture                   | Simulated data · backend unreachable              |
 
-- **Framework**: FastAPI 0.115
-- **Language**: Python 3.11+
-- **Server**: Uvicorn (ASGI)
-- **Validation**: Pydantic 2.9
-- **Real-time**: WebSockets 13.1
-- **API Docs**: OpenAPI (Swagger/ReDoc)
-- **Code Quality**: Ruff (lint + format) + mypy (strict) + pytest
+`wsUrl: null` in `src/environments/environment.prod.ts` is not an unfinished config value. It
+is the instruction to poll, because the hosted demo is a serverless function with no process to
+hold a socket open. `pollIntervalMs` is 15000 rather than an imitation of the 2s socket cadence,
+because on serverless every poll is a billed invocation.
 
-## 🔄 Data Flow Architecture
+The last row is the fixture fallback:
+`src/app/services/offline-dashboard.fixture.json` is a committed snapshot of a real seeded
+database, not generated numbers — so the shapes on the charts are still facts about a hotel,
+and the badge says you are looking at a snapshot.
 
-### Real-Time Updates (Primary)
+**`/booking` deliberately has no equivalent fallback.** A fixture is honest on the dashboard
+because a committed snapshot of real metrics is still true; it would not be honest on a form
+whose entire claim is that submitting it writes a row someone can read back. A visitor would
+fill the form, watch a booking appear, reload, and find it gone. Instead the form is disabled,
+the badge says the API is unreachable, and the empty list says why it is empty.
 
-A **single background task** owns the stream. It computes one metrics snapshot per
-tick from the database and fans it out to every connected socket, so N viewers cost
-the same one query per tick as a single viewer does. Connected clients never poll;
-a tick with no listeners skips the database entirely.
+### Streaming, when there is a stream
+
+A **single background task** owns the stream. It computes one metrics snapshot per tick from
+the database and fans it out to every connected socket, so N viewers cost the same one query
+per tick as a single viewer does. Connected clients never poll; a tick with no listeners skips
+the database entirely.
 
 ```
 ┌────────────┐                                    ┌──────────────────────┐
@@ -70,109 +84,13 @@ a tick with no listeners skips the database entirely.
                                        └─────────────────────────────────┘
 ```
 
-### REST API (Fallback)
+`test_broadcaster.py` counts the SQL issued against the engine and asserts five clients cost
+the same query count as one, so a per-client poll cannot quietly return.
 
-```
-┌────────────┐                                    ┌────────────┐
-│            │  GET /api/metrics                  │            │
-│  Dashboard │───────────────────────────────────►│  FastAPI   │
-│  Service   │                                    │  REST API  │
-│            │  Response: Metrics JSON            │            │
-│            │◄───────────────────────────────────│            │
-└────────────┘                                    └────────────┘
-```
+The socket reconnects with exponential backoff (1s → 30s cap), and subscriptions are torn down
+by `takeUntilDestroyed(DestroyRef)` rather than manual `unsubscribe()`.
 
-## 📂 Project Structure
-
-```
-ethereal-hotel/
-│
-├── api/                                # Vercel deployment entrypoint
-│   └── index.py                       # Serves backend/ as a Python function
-│
-├── src/                                # Frontend source
-│   ├── app/
-│   │   ├── dashboard/                 # Dashboard feature module
-│   │   │   ├── dashboard.ts          # Main component
-│   │   │   ├── dashboard.html        # Template
-│   │   │   ├── dashboard.css         # Styles
-│   │   │   ├── metrics-grid/         # Metrics display
-│   │   │   ├── charts-section/       # Charts visualization
-│   │   │   ├── dashboard-header/     # Header component
-│   │   │   └── dashboard-footer/     # Footer component
-│   │   │
-│   │   ├── booking/                   # Booking feature module (/booking)
-│   │   │   ├── booking.ts            # Reactive form + bookings list
-│   │   │   ├── booking.html          # Template
-│   │   │   ├── booking.css           # Styles
-│   │   │   └── booking-field/        # Label/hint/error frame for one control
-│   │   │
-│   │   ├── services/                  # Shared services
-│   │   │   ├── dashboard-api.service.ts  # Metrics + stream integration
-│   │   │   └── booking-api.service.ts    # Bookings + reference data
-│   │   │
-│   │   ├── projects/                  # Projects section
-│   │   ├── experience/                # Experience section
-│   │   ├── skills/                    # Skills section
-│   │   ├── resume/                    # Resume section
-│   │   └── directives/                # Reusable directives
-│   │
-│   ├── styles/                        # Global styles
-│   └── assets/                        # Static assets
-│
-├── backend/                           # Backend source
-│   ├── main.py                       # App construction and wiring only
-│   ├── config.py                     # Env-driven settings + logging
-│   ├── schemas.py                    # Pydantic wire contract
-│   ├── routers/                      # HTTP + WebSocket endpoints
-│   ├── services/                     # Business logic (no FastAPI imports)
-│   │   ├── bookings.py              #   booking rules
-│   │   ├── reference.py             #   read-only room/guest lists
-│   │   └── broadcaster.py           #   ConnectionManager + broadcast task
-│   ├── db/                           # Engine, models, metrics, seeder
-│   ├── tests/                        # pytest suite
-│   ├── requirements.txt              # Runtime Python dependencies
-│   ├── requirements-dev.txt          # + pytest, ruff, mypy
-│   ├── run.bat                       # Windows startup script
-│   ├── Dockerfile                    # Container image
-│   ├── docker-compose.yml            # Docker orchestration
-│   ├── pytest.ini                    # Test discovery (tests/ only)
-│   └── README.md                     # Backend docs
-│
-├── .github/
-│   ├── workflows/                    # CI/CD pipelines
-│   │   ├── code-quality.yml         # Automated checks (both languages)
-│   │   └── supply-chain.yml         # npm audit + pip-audit + CodeQL
-│   └── dependabot.yml               # pip + npm + github-actions updates
-│
-├── scripts/
-│   └── py-tool.mjs                   # Resolves ruff/mypy for npm + lint-staged
-│
-├── .husky/                           # Git hooks
-│   ├── pre-commit                    # Pre-commit validation
-│   └── commit-msg                    # Commit message check
-│
-├── Documentation
-│   ├── README.md                     # Main documentation
-│   ├── ARCHITECTURE.md              # This file
-│   ├── ROADMAP.md                   # Planned improvements
-│   └── backend/README.md            # Backend documentation
-│
-└── Configuration
-    ├── angular.json                  # Angular config
-    ├── tsconfig.json                # TypeScript config
-    ├── eslint.config.mjs            # ESLint rules
-    ├── .prettierrc                  # Prettier config
-    ├── commitlint.config.mjs        # Commit lint rules
-    ├── .python-version              # Interpreter for the Vercel function (3.12)
-    ├── vercel.json                  # Routing + function bundling for the demo
-    ├── pyproject.toml               # Ruff + mypy config, and the deps Vercel installs
-    └── pyrightconfig.json           # Pylance/editor only — not a CI gate
-```
-
-## 🔌 API Endpoints
-
-### Backend REST API
+## API endpoints
 
 | Endpoint             | Method | Description                                 | Response        |
 | -------------------- | ------ | ------------------------------------------- | --------------- |
@@ -187,6 +105,18 @@ ethereal-hotel/
 | `/api/guests`        | GET    | Every guest, id and name only               | `GuestOut[]`    |
 | `/docs`              | GET    | Swagger UI                                  | HTML            |
 | `/redoc`             | GET    | ReDoc UI                                    | HTML            |
+
+| Endpoint | Protocol  | Update Rate                      | Data      |
+| -------- | --------- | -------------------------------- | --------- |
+| `/ws`    | WebSocket | 2 seconds (one shared broadcast) | `Metrics` |
+
+`/ws` is mounted only when `create_app(live_stream=True)` — the container deployment. The
+health payload carries `liveStream`, which reports whether *this* deployment serves the socket,
+and its `endpoints` map omits `/ws` when it does not.
+
+Health is mounted twice on purpose: the container is alone on its origin, so `/` is the natural
+probe, while on Vercel the Angular app owns `/` and the API is only reachable beneath `/api`.
+One handler, two mounts — a second endpoint would drift.
 
 `/api/rooms` and `/api/guests` are read-only and exist for one caller: `POST /api/bookings`
 takes foreign keys, and a form that asks a visitor to guess one cannot be demonstrated. They
@@ -205,29 +135,34 @@ A `BookingError` carries the request field it belongs to, and the router seriali
 The `field` is part of the domain error rather than something the router infers from the
 message, because inferring it would mean matching on prose. It is what lets the booking form
 render the server's objection under the input that caused it instead of as a detached banner.
-Note that this is _not_ the shape of Pydantic's own 422 — that one is raised before the handler
+
+The rule itself lives once, in `backend/services/bookings.py`, and has no counterpart in the
+browser. A second implementation in TypeScript would have rendered faster and been one refactor
+away from disagreeing with the server about what a valid booking is.
+
+Note that this is *not* the shape of Pydantic's own 422 — that one is raised before the handler
 runs and is a list of issues located by path — so a client has to read both.
 
-Health is mounted twice on purpose: the container is alone on its origin, so `/` is the
-natural probe, while on Vercel the Angular app owns `/` and the API is only reachable beneath
-`/api`. One handler, two mounts — a second endpoint would drift.
+## Layering
 
-The payload carries `liveStream`, which reports whether _this_ deployment serves the socket
-below, and its `endpoints` map omits `/ws` when it does not.
+Requests go one way through the backend, and domain code carries no HTTP knowledge:
 
-### WebSocket Endpoint
+```
+routers/    validates the request shape and delegates      (FastAPI lives here)
+   ↓
+services/   applies the rules, raises domain errors        (no FastAPI imports)
+   ↓
+db/         owns persistence                               (SQLAlchemy models, metrics, seed)
+```
 
-| Endpoint | Protocol  | Update Rate                      | Data      |
-| -------- | --------- | -------------------------------- | --------- |
-| `/ws`    | WebSocket | 2 seconds (one shared broadcast) | `Metrics` |
+Domain errors are mapped to status codes in the router. `services/` never imports FastAPI, so
+the booking rules are callable — and testable — without a request.
 
-Mounted only when `create_app(live_stream=True)` — i.e. the container deployment. The
-serverless demo has no process to hold a socket open and does not advertise this endpoint;
-its frontend polls `/api/metrics` instead. See [Deployment Options](#-deployment-options).
+The frontend is the mirror image: components hold `signal()` state and `computed()` derivations,
+services own the transport, and RxJS appears only where the transport is genuinely a stream.
+State is signals over an RxJS transport, not an RxJS store.
 
-## 📊 Data Models
-
-### TypeScript (Frontend)
+## Data models
 
 ```typescript
 interface Metrics {
@@ -245,96 +180,34 @@ interface Metrics {
   revpar: number; // revenue per available room
 }
 
-interface HistoricalData {
-  timestamp: string;
-  value: number;
-}
-
 interface DashboardData {
   metrics: Metrics;
-  historicalGuests: HistoricalData[];
+  historicalGuests: HistoricalData[]; // { timestamp: string; value: number }
   historicalRevenue: HistoricalData[];
 }
 ```
 
-### Python (Backend)
+The Python side is the same shape, declared in `backend/schemas.py`. The camelCase field names
+are the wire contract the Angular interfaces consume, which is why `N815` is switched off for
+that file. The metrics payloads are `TypedDict`s internally, so a typo in a metric key fails
+`mypy --strict` rather than reaching the frontend as a missing field.
 
-```python
-class Metrics(BaseModel):
-    timestamp: str
-    occupancy: float
-    guestsInHouse: int
-    revenueToday: float
-    arrivalsToday: int
-    departuresToday: int
-    occupiedRooms: int
-    availableRooms: int
-    operationalRooms: int
-    totalRooms: int
-    adr: float
-    revpar: float
-
-class HistoricalData(BaseModel):
-    timestamp: str
-    value: float
-
-class DashboardData(BaseModel):
-    metrics: Metrics
-    historicalGuests: list[HistoricalData]
-    historicalRevenue: list[HistoricalData]
-```
-
-## 🔐 Security & CORS
-
-### CORS Configuration
-
-CORS only applies when the API is on a **different origin** from the page — the container
-deployment. The hosted demo serves both from one Vercel origin, so the browser issues no
-preflight and this middleware is never exercised there. It is still installed in both, because
-`create_app()` builds one application and the container needs it.
-
-By default the backend allows requests from:
-
-- `http://localhost:4200` (Angular dev server)
-- `http://localhost:5173` (Vite alternative)
-- `http://127.0.0.1:4200`
-- `http://127.0.0.1:5173`
-
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:4200", ...],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
-
-## 🚀 Deployment Options
-
-### Development
-
-**Frontend:**
-
-```bash
-npm start                    # http://localhost:4200
-```
-
-**Backend:**
-
-```bash
-cd backend
-python main.py              # http://localhost:8000
-```
-
-### Production
+## Deployment
 
 Two targets, built from the same application by the same `create_app()` factory in
 `backend/main.py`. The factory takes one flag, `live_stream`, which toggles everything that
 needs a long-lived process: the `/ws` endpoint, the background broadcaster feeding it, and the
-startup seeding they assume.
+startup seeding they assume. There is no second copy of the wiring to keep in sync.
 
-#### 1. Serverless — the hosted demo (`live_stream=False`)
+|                        | Serverless demo (`live_stream=False`) | Container (`live_stream=True`) |
+| ---------------------- | ------------------------------------- | ------------------------------ |
+| Metrics transport      | `GET /api/metrics` polling            | `/ws`, pushed every 2s         |
+| `liveStream` in health | `false`                               | `true`                         |
+| CORS                   | none needed (same origin)             | `ALLOWED_ORIGINS` required     |
+| Database               | rebuilt per cold start in `/tmp`      | persistent                     |
+| Writes                 | accepted, not durable                 | durable                        |
+
+### Serverless — the hosted demo
 
 Frontend and API deploy as **one Vercel project**, so the browser sees a single origin:
 
@@ -353,275 +226,169 @@ Frontend and API deploy as **one Vercel project**, so the browser sees a single 
    → SQLite seeded in /tmp, fixed RNG seed
 ```
 
-Consequences, all of them deliberate:
+Same-origin is worth more than it looks: no CORS preflight, no `ALLOWED_ORIGINS` to keep in
+sync, and no hostname that can rot — every preview deployment gets a working backend at its own
+URL with no edit to `environment.prod.ts`.
 
-|                        | Serverless demo                  | Container                  |
-| ---------------------- | -------------------------------- | -------------------------- |
-| Metrics transport      | `GET /api/metrics` polling       | `/ws`, pushed every 2s     |
-| `liveStream` in health | `false`                          | `true`                     |
-| CORS                   | none needed (same origin)        | `ALLOWED_ORIGINS` required |
-| Database               | rebuilt per cold start in `/tmp` | persistent                 |
-| Writes                 | accepted, not durable            | durable                    |
+The seed is fixed (`api/index.py`) so every cold-started instance derives the *same* hotel —
+without that, two function instances would serve two different hotels. The bookings are still
+laid out around `date.today()`, so the demo does not decay the way a committed database would.
+The figures are derived from real `Room`/`Guest`/`Booking` rows either way: the seed decides
+which rows, not what the numbers mean.
 
-The seed is fixed (`api/index.py`) so every instance derives the _same_ hotel; the bookings
-are still laid out around `date.today()`, so the demo never goes stale the way a committed
-snapshot would. The health endpoint reports `liveStream: false` and omits `/ws` from its
-advertised surface rather than offering a socket nothing can serve.
+Writes work and move the metrics, but only for that instance's lifetime. The dashboard is
+read-only, so this is invisible in normal use; it matters if you go poking at the API. Cold
+start is roughly a second, of which seeding is ~0.16s.
 
-#### 2. Container — the full stack (`live_stream=True`)
-
-```bash
-docker-compose up -d                                    # recommended
-uvicorn main:app --host 0.0.0.0 --port 8000             # simple
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker # multi-worker
-```
-
-The WebSocket and shared broadcaster are features of this target. Note that the multi-worker
-form gives each worker its own broadcaster and its own in-memory connection list — correct,
-because each worker only fans out to the clients it holds, but it does mean the "one query per
-tick" property is per worker rather than per cluster.
-
-**Frontend:**
+### Container — the full stack
 
 ```bash
-npm run build               # Outputs to dist/
+docker build -t ethereal-hotel-api backend/
+docker run -p 8000:8000 -e ALLOWED_ORIGINS="https://your-frontend" ethereal-hotel-api
 ```
 
-## 🔄 State Management
+This is the deployment with the live WebSocket, the shared broadcaster and a database that
+persists. Point a frontend at it by setting `apiUrl`/`wsUrl`/`healthUrl` in
+`environment.prod.ts` to its origin, and add that origin to `ALLOWED_ORIGINS` — cross-origin
+means CORS applies again, which the same-origin demo avoids entirely.
 
-### Frontend State Flow
+Run under multiple workers and each worker gets its own broadcaster and its own in-memory
+connection list. That is correct — each worker only fans out to the clients it holds — but it
+does mean the "one query per tick" property is per worker rather than per cluster.
+
+### The Python version gap
+
+The container and CI run **3.11**; the hosted function runs **3.12**, because Vercel's Python
+runtime offers 3.12/3.13/3.14 and no 3.11. Rather than leave that gap untested, the CI matrix
+runs the backend suite on both.
+
+Runtime dependencies are declared twice for the same reason — `backend/requirements.txt` for
+the container, `[project.dependencies]` in `pyproject.toml` for Vercel — and
+`backend/tests/test_dependency_pins.py` fails if the two lists ever disagree.
+
+There is deliberately **no `requirements.txt` at the repo root**. Its presence makes it the
+dependency source, which silently overrides `requires-python` and `.python-version` and pins
+the Vercel build to 3.14, where the pinned `pydantic-core` has no wheel. This has broken the
+deploy before.
+
+## Configuration
+
+The API base URLs are not hardcoded. `src/environments/environment.model.ts` is the interface
+both environment files satisfy, so a field added to one and forgotten in the other fails to
+compile instead of failing in production; `angular.json` swaps `environment.ts` for
+`environment.prod.ts` on production builds via `fileReplacements`.
+
+On the backend there is **no `.env` loading**: `backend/config.py` reads `os.getenv` at import
+time and nothing calls `load_dotenv()`, so configuration comes from real environment variables.
+Every one has a default that makes a fresh clone run, so none is required:
+
+| Env var                      | Default               | Purpose                                                                     |
+| ---------------------------- | --------------------- | --------------------------------------------------------------------------- |
+| `DATABASE_URL`               | local SQLite file     | Swap in Postgres, etc.                                                      |
+| `ALLOWED_ORIGINS`            | localhost dev servers | Comma-separated CORS allowlist                                              |
+| `LOG_LEVEL`                  | `INFO`                | Unknown values fall back to INFO with a warning rather than failing startup |
+| `BROADCAST_INTERVAL_SECONDS` | `2`                   | Stream cadence                                                              |
+
+CORS only applies when the API is on a different origin from the page — the container
+deployment, and local development. The hosted demo serves both from one Vercel origin, so the
+browser issues no preflight and the middleware is never exercised there. It is still installed
+in both, because `create_app()` builds one application and the container needs it.
+
+## Accessibility
+
+Enforced rather than asserted: the `@angular-eslint/template` accessibility rules run at
+**error** severity, and every commit is scanned by **axe** against the production build on `/`,
+`/dashboard` and `/booking`. The CI job fails on any serious or critical finding. `/booking` is
+scanned twice — once at rest, once with a rejected field on screen — because an error message
+is new content inserted after load that has to be associated with its control, and a form that
+scans clean empty can still fail the moment it fails.
+
+Alongside the scan, Playwright checks what axe cannot: that the first Tab reaches a skip link,
+that the nav is traversable and moves focus to the section it targets, and that under
+`prefers-reduced-motion` the animations stop and no content stays stranded behind a fade-in.
+
+Two decisions went against the obvious version:
+
+- **The metrics grid is deliberately not an `aria-live` region.** The socket pushes a snapshot
+  every two seconds; announcing six cards at that cadence produces speech a listener can never
+  get ahead of, which is worse than silence, not better. Instead one throttled `role="status"`
+  region speaks a plain-language digest at most every 30 seconds ("Occupancy 85.0 percent. 51 of
+  60 sellable rooms occupied…"), and a second announces backend connect/disconnect transitions —
+  so a screen reader user learns when the figures stop being real.
+- **The brand red is two tokens.** `--color-blood` (`#9d2235`) reached only ~2:1 as text on this
+  background. It stays for borders, fills and glows; `--color-blood-text` carries anything anyone
+  has to read, and the focus ring moved to it as well, since a 2:1 focus indicator fails
+  WCAG 1.4.11 and is genuinely hard to find on a dark theme.
+
+## Testing
+
+| Suite                  | Covers                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `npm test`             | Vitest over components and services, with coverage thresholds that fail the build |
+| `npm run test:backend` | pytest: REST endpoints, the WebSocket stream, broadcaster fan-out, dependency pins |
+| `npm run e2e`          | Playwright smoke tests + the axe audit, against the production build          |
+| `npm run a11y`         | Just the axe audit and the keyboard/reduced-motion checks                      |
+
+The backend suite runs against an isolated, deterministically seeded SQLite database and needs
+no running server. The Playwright suites run against `dist/` rather than `ng serve`, so they
+exercise the production `fileReplacements`, the lazy chunks and the minified CSS that users
+actually load; they stub the backend at the network layer, so they need no running server
+either.
+
+`ruff check`, `ruff format --check` and `mypy --strict` run in the same CI job as pytest, so the
+Python half is gated exactly like the TypeScript half. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for the commands.
+
+## Project structure
 
 ```
-User Action
-    ↓
-Component (Dashboard)
-    ↓
-Service (DashboardApiService)
-    ↓
-WebSocket/HTTP Request
-    ↓
-Backend API
-    ↓
-Response
-    ↓
-RxJS Observable
-    ↓
-Component Update
-    ↓
-Angular Change Detection
-    ↓
-DOM Update
+ethereal-hotel/
+├── api/index.py                   # Vercel entrypoint: backend/ as a Python function
+├── src/
+│   ├── app/
+│   │   ├── dashboard/             # /dashboard — the read path
+│   │   │   ├── dashboard.ts       #   container
+│   │   │   ├── metrics-grid/      #   the six figures
+│   │   │   ├── charts-section/    #   Chart.js panels
+│   │   │   ├── dashboard-header/  #   title + connection badge
+│   │   │   └── dashboard-footer/
+│   │   ├── booking/               # /booking — the write path
+│   │   │   ├── booking.ts         #   reactive form + bookings list
+│   │   │   └── booking-field/     #   label/hint/error frame for one control
+│   │   ├── services/
+│   │   │   ├── dashboard-api.service.ts     # metrics: socket, polling, fixture
+│   │   │   ├── booking-api.service.ts       # bookings + reference data
+│   │   │   ├── analytics.service.ts         # see docs/analytics.md
+│   │   │   └── offline-dashboard.fixture.json
+│   │   ├── hero/ work/ projects/ experience/ skills/ resume/  # portfolio sections
+│   │   ├── navigation/ footer/ directives/
+│   │   └── app.routes.ts          # lazy routes, titles from src/route-meta.json
+│   ├── environments/              # environment.ts, .prod.ts, .model.ts
+│   ├── route-meta.json            # per-route social card copy
+│   ├── styles.css                 # global tokens, focus rings, reduced-motion
+│   └── index.html
+├── backend/
+│   ├── main.py                    # create_app(live_stream=...) — wiring only
+│   ├── config.py                  # env-driven settings + logging
+│   ├── schemas.py                 # Pydantic wire contract
+│   ├── routers/                   # health, metrics, bookings, reference, stream
+│   ├── services/                  # bookings, reference, broadcaster — no FastAPI
+│   ├── db/                        # database, models, metrics, seed
+│   ├── alembic/                   # migrations
+│   ├── tests/                     # pytest suite
+│   ├── Dockerfile, docker-compose.yml
+│   └── README.md                  # schema, seeding, streaming internals
+├── e2e/                           # Playwright: smoke + axe, backend stubbed
+├── scripts/
+│   ├── check-docs.mjs             # fails when CLAUDE.md drifts from the repo
+│   ├── emit-route-meta.mjs        # stamps <route>/index.html for crawlers
+│   ├── gen-social-assets.mjs      # og-image + favicons
+│   ├── py-tool.mjs                # resolves ruff/mypy/pytest for npm + lint-staged
+│   └── serve-dist.mjs             # static server for the Playwright suites
+├── docs/                          # analytics.md, README screenshots
+├── .github/workflows/             # code-quality.yml, supply-chain.yml
+├── pyproject.toml                 # ruff + mypy config, and the deps Vercel installs
+├── .python-version                # 3.12 — the Vercel function's interpreter
+├── .nvmrc                         # 22.22.3 — the Node version CI installs
+└── vercel.json                    # routing + function bundling
 ```
-
-### Backend Data Flow
-
-```
-Broadcaster task (one per process, 2s interval)
-    ↓
-compute_metrics(db) — derived from Room/Guest/Booking rows
-    ↓
-ConnectionManager.broadcast()
-    ↓
-JSON Serialization
-    ↓
-WebSocket.send_json() → every connected client
-```
-
-Requests follow the same layering in reverse: `routers/` validates and delegates,
-`services/` applies the rules and raises domain errors, `db/` owns persistence.
-Domain errors are mapped to status codes in the router, so `services/` carries no
-HTTP knowledge.
-
-## 🎨 Component Architecture
-
-### Dashboard Component Hierarchy
-
-```
-Dashboard (Container)
-├── DashboardHeader
-├── MetricsGrid
-│   ├── MetricCard (Active Users)
-│   ├── MetricCard (Revenue)
-│   ├── MetricCard (Requests)
-│   └── MetricCard (Uptime)
-├── ChartsSection
-│   ├── LineChart (Users)
-│   └── BarChart (Revenue)
-└── DashboardFooter
-```
-
-## 🔧 Development Workflow
-
-### Making Changes
-
-**Frontend Changes:**
-
-1. Edit component files in `src/app/`
-2. Save (auto-reload via Vite)
-3. View changes at http://localhost:4200
-
-**Backend Changes:**
-
-1. Edit `backend/main.py`
-2. Save (auto-reload enabled)
-3. Test at http://localhost:8000/docs
-
-### Testing
-
-**Frontend:**
-
-```bash
-npm test                    # Run Vitest
-npm run lint               # Check code quality
-npm run format:check       # Check formatting
-```
-
-**Backend** (the gates run from the repo root; `pytest` runs from `backend/`):
-
-```bash
-ruff check backend/           # Lint
-ruff format --check backend/  # Formatting
-mypy backend/                 # Types, strict
-cd backend && pytest          # 18 tests, isolated seeded SQLite
-```
-
-Or `npm run code-quality:py` from the root to run all three gates in one command.
-
-## 📈 Performance Considerations
-
-### Frontend
-
-- **Lazy Loading**: Route-based code splitting
-- **OnPush Change Detection**: Optimized re-rendering
-- **RxJS Memory Management**: Proper unsubscription
-- **Debouncing**: Chart update optimization
-
-### Backend
-
-- **Async/Await**: Non-blocking I/O
-- **Connection Pooling**: Efficient WebSocket management
-- **Pydantic Validation**: Fast data validation
-- **Uvicorn**: High-performance ASGI server
-
-## 🧪 Testing Strategy
-
-### Frontend Testing
-
-- **Unit Tests**: Vitest for components and services
-- **E2E Tests**: (Can be added with Playwright/Cypress)
-- **Linting**: ESLint for code quality
-- **Formatting**: Prettier for consistency
-
-### Backend Testing
-
-- **pytest suite** (`backend/tests/`): REST endpoints, WebSocket stream and the
-  broadcaster, all against an isolated, deterministically seeded SQLite database
-- **Broadcast fan-out**: `test_broadcaster.py` counts SQL issued against the engine
-  and asserts five clients cost the same query count as one, so a per-client poll
-  cannot quietly return
-- **Static analysis**: `ruff check` + `ruff format --check` (lint and formatting) and
-  `mypy` in strict mode, configured in `pyproject.toml` and run in the same CI job as
-  pytest, so the Python half is gated exactly like the TypeScript half
-- **Interactive Tests**: Swagger UI at `/docs`
-- **Health Checks**: Built into Docker setup
-
-## 🌐 Browser Support
-
-### Frontend
-
-- Chrome/Edge (latest)
-- Firefox (latest)
-- Safari (latest)
-- Modern browsers with ES2022+ support
-
-### WebSocket Support
-
-All modern browsers support WebSockets natively.
-
-## 📚 Key Technologies Explained
-
-### FastAPI
-
-Modern Python web framework with automatic API documentation, type hints, and async support.
-
-### WebSockets
-
-Full-duplex communication protocol enabling real-time, bidirectional data flow.
-
-### RxJS
-
-Reactive programming library for handling asynchronous data streams in Angular.
-
-### Pydantic
-
-Data validation library ensuring type safety and automatic JSON serialization.
-
-### Chart.js
-
-Flexible charting library for creating responsive, animated visualizations.
-
-## 🎯 Design Patterns Used
-
-### Frontend
-
-- **Component Pattern**: Modular, reusable UI components
-- **Service Pattern**: Business logic separation
-- **Observer Pattern**: RxJS observables for state
-- **Singleton Pattern**: Injected services
-
-### Backend
-
-- **Singleton Pattern**: ConnectionManager
-- **Factory Pattern**: Data generation functions
-- **Middleware Pattern**: CORS handling
-- **WebSocket Pattern**: Real-time communication
-
-## ✅ Quality Assurance
-
-### Code Quality Tools
-
-- **ESLint**: JavaScript/TypeScript linting
-- **Prettier**: Code formatting
-- **Ruff**: Python linting and formatting (replaces black/isort/flake8)
-- **Mypy**: Python type checking, strict mode
-- **Husky**: Git hooks for pre-commit checks (both languages, via lint-staged)
-- **Commitlint**: Conventional commit enforcement
-- **Dependabot**: Weekly grouped dependency updates for pip, npm and GitHub Actions
-- **npm audit / pip-audit**: Advisory scan of both dependency trees, blocking the build
-- **CodeQL**: Static security analysis of both languages, reporting to the Security tab
-- **GitHub Actions**: CI/CD automation
-
-### Standards
-
-- TypeScript strict mode
-- Python type hints
-- Conventional commits
-- REST API best practices
-- WebSocket protocol compliance
-
-## 🚀 Future Enhancements
-
-Potential areas for expansion:
-
-- [ ] Database integration (PostgreSQL/MongoDB)
-- [ ] User authentication (JWT)
-- [ ] Historical data persistence
-- [ ] Alert/notification system
-- [ ] Admin dashboard
-- [ ] Mobile app (Ionic/React Native)
-- [ ] Kubernetes deployment
-- [ ] Monitoring (Prometheus/Grafana)
-- [ ] Load testing
-- [ ] Multi-tenant support
-
-## 📖 Additional Resources
-
-- [Angular Documentation](https://angular.dev/)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [WebSocket Protocol](https://datatracker.ietf.org/doc/html/rfc6455)
-- [RxJS Documentation](https://rxjs.dev/)
-- [Chart.js Documentation](https://www.chartjs.org/)
-
----
-
-**Built with ❤️ using modern web technologies**

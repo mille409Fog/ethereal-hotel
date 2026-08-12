@@ -32,27 +32,6 @@ received.
 - [ ] `og:url`, canonical, and any absolute URLs in the README updated.
 - [ ] `README.md`, resume, and GitHub profile point at the new domain.
 
-## 6. Cut the README to one page
-
-**Effort:** M · **Why:** `README.md` is 25KB and `ARCHITECTURE.md` is 23KB, for a project with
-one real route. The volume argues the opposite of what it intends: thoroughness at this ratio
-reads as inability to prioritise, and nothing that long is read at all. The good material —
-the deployment tradeoff, the Python version gap, the fixture fallback — is currently buried under
-installation boilerplate and a list of what Chart.js is.
-
-**DoD:**
-
-- [ ] `README.md` fits on one screen plus a scroll: what it is, the live link, how to run it, and
-      the three decisions worth arguing about, each linked into `ARCHITECTURE.md`.
-- [ ] Sections explaining what FastAPI/RxJS/Pydantic/WebSockets _are_ are deleted. The reader
-      knows. Explaining them signals you assume they do not.
-- [ ] `ARCHITECTURE.md`'s "Future Enhancements" checkbox list is deleted outright — a generic
-      unchecked wishlist (Kubernetes, multi-tenant, mobile app) is the clearest tutorial tell in
-      the repo, and this ROADMAP is where real intentions live.
-- [ ] Every remaining code block in both files has been executed and works as written.
-- [ ] The emoji-per-heading convention is applied consistently or dropped entirely. Either is
-      fine; the mix is what looks unconsidered.
-
 ## 7. A performance and accessibility budget that fails the build
 
 **Effort:** M · **Why:** The a11y work is already done and already good — the reasoning in
@@ -76,13 +55,14 @@ next change quietly regresses it and no one finds out.
 repo and the live site cannot demonstrate half of it. The `/ws` path exists, is tested
 (`test_websocket.py`), and is invisible to anyone who does not read Python.
 
+**Needs item 12 first** — that one gets the container running and verified; this one only has to
+point a camera at it.
+
 **DoD:**
 
 - [ ] A short screen recording (or animated WebP under 2MB) of the container deployment pushing
       live updates, committed to `docs/images/` and embedded in the README beside the polling
       explanation.
-- [ ] `docker compose up` in `backend/` reaches a working stream from a clean clone — verified by
-      following your own instructions on a fresh checkout, not from memory.
 - [ ] The dashboard's connection badge is captured in both states, so the degradation is legible
       as a designed behaviour rather than a bug.
 
@@ -101,21 +81,32 @@ nice piece of engineering and costs less than maintaining both.
       stale.
 - [ ] The PDF is genuinely presentable at A4 and US Letter, and text is selectable.
 
-## 10. Know whether anyone visited
+## 12. Run the container path, do not just document it
 
-**Effort:** S · **Why:** Applications go out and nothing comes back; knowing that a link was
-opened, from where, and for how long is the difference between iterating and guessing.
+**Effort:** S, once Docker is installed — which is the actual cost here. **Why:** Item 6 required
+that every code block in the docs had been executed. Every one was, except the `docker build` /
+`docker run` pair in `ARCHITECTURE.md` §Container, which could not be: there is no Docker on the
+development box. That leaves it the only instruction in the repo nobody has ever followed, and it
+is the wrong one to leave unverified — the container is the half of the serverless/container split
+the live demo cannot show, which makes it exactly the half a curious reviewer will try to run.
 
 **DoD:**
 
-- [ ] Privacy-respecting analytics (Vercel Analytics or Plausible), no cookie banner required, no
-      third-party ad network.
-- [ ] Custom events for the three things worth knowing: `/dashboard` reached, case study read to
-      the end, resume PDF downloaded.
-- [ ] A `docs/` note on what is collected and what is not — the same instinct as the a11y
-      comments, applied to data.
+- [ ] Both commands in `ARCHITECTURE.md` §Container execute as written from a clean clone. If they
+      don't, fix the document — the point is the instructions, not getting a container up by hand.
+- [ ] The running container answers `GET /api/health` with `liveStream: true` and `/ws` present in
+      `endpoints`, which is what ARCHITECTURE's comparison table claims separates the two targets.
+      The serverless side of that table is already verified against the live demo.
+- [ ] A client actually receives a frame on `/ws` — point the dashboard at it by setting `wsUrl` in
+      `environment.prod.ts`, so "pushed every 2s" is observed rather than inferred from
+      `test_websocket.py`.
+- [ ] `backend/docker-compose.yml` is either exercised or deleted. It is committed and listed in
+      ARCHITECTURE's project tree, but no CI job, gate or verified instruction touches it — so it
+      is either a second supported way in, or it is decoration.
 
----
+Deliberately **before item 8** despite the higher number: 8 wants a screen recording of the
+container pushing live updates, and recording something that has never been run is how a short task
+turns into a debugging session. Do this first and 8 is just the capture.
 
 ## Deliberately not doing
 

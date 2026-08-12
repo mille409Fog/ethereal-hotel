@@ -8,7 +8,7 @@ shared metrics broadcaster for the lifetime of the process. Endpoints live in
 The app is built by :func:`create_app` so the same wiring serves both targets:
 a long-lived server (``backend/Dockerfile``, ``python main.py``) and the
 serverless deployment in ``api/index.py``, which has no process to hold a
-socket open in. See "Deployment" in ``README.md``.
+socket open in. See "Deployment" in ``ARCHITECTURE.md``.
 """
 
 import asyncio
