@@ -1,0 +1,99 @@
+<!-- ===== CASE STUDIES =====
+     `main` rather than `section`, matching `/dashboard` and `/booking`: this
+     route renders nothing else, so without it the page is content outside any
+     landmark. -->
+<main class="work-page">
+  <div class="work-inner">
+    <header class="work-header">
+      <h1 class="work-title">Case Studies</h1>
+      <p class="work-subtitle">
+        Three decisions from work I cannot show you the code for. The code is the part under NDA;
+        the reasoning is not, and the reasoning is the part worth reading.
+      </p>
+    </header>
+
+    @if (isEmpty) {
+      <p class="work-empty">
+        Not written yet. There is nothing here rather than three plausible paragraphs, which is the
+        same choice <a href="/booking">the booking demo</a> makes about fixtures.
+      </p>
+    } @else {
+      <!-- Each study is an `article` with its heading as the accessible name,
+           so a screen reader's rotor lists three case studies rather than
+           fifteen unlabelled sections. The five parts inside are one article,
+           not five: they are a single argument and navigating between them
+           independently would break it apart. -->
+      @for (study of studies; track study.slug) {
+        <!-- id + tabindex="-1" on the article, not the heading: the project
+             cards deep-link here with `/work#slug`, and a fragment target that
+             cannot hold focus scrolls the page while leaving the keyboard
+             where it was. Same reasoning as the section anchors on the home
+             page. -->
+        <article
+          class="study"
+          [id]="study.slug"
+          tabindex="-1"
+          [attr.aria-labelledby]="study.slug + '-title'"
+        >
+          <header class="study-header">
+            <span class="study-domain">{{ study.domain }}</span>
+            <h2 class="study-title" [id]="study.slug + '-title'">{{ study.title }}</h2>
+          </header>
+
+          <div class="study-body">
+            <section class="study-part">
+              <h3 class="study-part-label">Context</h3>
+              <p>{{ study.context }}</p>
+            </section>
+
+            <section class="study-part">
+              <h3 class="study-part-label">Constraint</h3>
+              <p>{{ study.constraint }}</p>
+            </section>
+
+            <section class="study-part">
+              <h3 class="study-part-label">Options</h3>
+              <ul class="study-options">
+                @for (option of study.options; track option.label) {
+                  <li class="study-option">
+                    <span class="study-option-label">
+                      {{ option.label }}
+                      @if (option.conventional) {
+                        <!-- Marks the option most engineers reach for first.
+                             Text, not a colour or an icon: it is a claim about
+                             the option and has to survive being read aloud. -->
+                        <span class="study-option-tag">the usual choice</span>
+                      }
+                    </span>
+                    <span class="study-option-detail">{{ option.detail }}</span>
+                  </li>
+                }
+              </ul>
+            </section>
+
+            <section class="study-part">
+              <h3 class="study-part-label">Decision</h3>
+              <p>{{ study.decision }}</p>
+              <!-- The cost is visually separated because it is the part that
+                   carries the judgment, and the part that goes missing first
+                   when this genre of writing gets sanded down. -->
+              <p class="study-cost"><strong>What it cost:</strong> {{ study.cost }}</p>
+            </section>
+
+            <section class="study-part">
+              <h3 class="study-part-label">Outcome</h3>
+              <p class="study-outcome">{{ study.outcome }}</p>
+            </section>
+          </div>
+        </article>
+      }
+    }
+
+    <p class="work-note">
+      No client, product, repository, internal service, or colleague is named on this page — a
+      constraint enforced by a test, not by memory.
+    </p>
+
+    <a class="work-back" href="/">← Back to the rest of the site</a>
+  </div>
+</main>

@@ -4,14 +4,16 @@ import type { Result } from 'axe-core';
 import { stubBookingApi } from './support/backend';
 
 /**
- * The three routes the app actually has. `/` is the portfolio page;
- * `/dashboard` and `/booking` are the live demos, which the scan reaches
- * through the SPA fallback in `scripts/serve-dist.mjs`.
+ * The four routes the app actually has. `/` is the portfolio page;
+ * `/dashboard` and `/booking` are the live demos and `/work` is the case
+ * studies, all three of which the scan reaches through the SPA fallback in
+ * `scripts/serve-dist.mjs`.
  */
 const ROUTES = [
   { path: '/', name: 'landing page' },
   { path: '/dashboard', name: 'dashboard' },
   { path: '/booking', name: 'booking' },
+  { path: '/work', name: 'case studies' },
 ] as const;
 
 /**

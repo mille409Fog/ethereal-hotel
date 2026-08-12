@@ -34,82 +34,12 @@ The infrastructure is finished and the content is not. Everything below assumes 
   one. Item 1 renamed that component to `Projects` (matching the section id it actually renders)
   and built the real booking demo on its own route, `/booking`, the way `/dashboard` is built.
   `crm` and `concierge` were the same stale premise a second time — see item 2, now done.
-- The proprietary work is represented by gestures. That is the single biggest gap between this
-  site and a site that gets a callback. Item 3.
+- ~~The proprietary work is represented by gestures. That is the single biggest gap between this
+  site and a site that gets a callback.~~ Done — see item 3. `/work` carries three case studies,
+  and the five project cards that used to make the gestures now link into them.
 
 Items 1–3 are the ones that change outcomes. Items 4–11 are polish, ordered by how much of it
 survives contact with a hiring manager who spends ninety seconds on the page.
-
-## 2. ~~Decide what `crm` and `concierge` are, and make them that~~ — done
-
-**Effort:** S · **Why:** After item 1, these two were believed to be the only remaining fiction on
-the page.
-
-**The premise was stale, in exactly the way item 1 predicted.** Neither section was a mockup.
-`crm/` rendered `<section id="experience">` with the real work history (Charter, Feature 23,
-Walmart Labs); `concierge/` rendered `<section id="skills">` with the real skills list. The nav
-already linked `#experience` and `#skills`, and `e2e/a11y.spec.ts` already asserted those labels —
-so there were no dead nav links and nothing captioning could honestly say. Deleting would have
-removed real résumé content; captioning them "not wired to the backend" would have been a *new*
-falsehood, since an Experience section is static content by nature, not a mockup of a feature.
-
-What was actually false was the naming, and the CSS underneath it:
-
-- The directories and classes were hotel-metaphor leftovers that no longer described what they
-  rendered. Renamed to match their section ids, following item 1's precedent (`booking` →
-  `Projects`): `crm/` → `experience/` (`Crm` → `Experience`), `concierge/` → `skills/`
-  (`Concierge` → `Skills`), plus the `app-crm` / `app-concierge` selectors.
-- ~208 lines of genuinely orphaned CSS survived the mockups they styled: the CRM table
-  (`.crm-table`, `.crm-toolbar`, `.crm-search`), the concierge queue (`.queue-*`, `.stat-chip`,
-  `.stat-value`, `.stat-label`), and the tier/status/priority badge sets — dead in `app.css`,
-  in both component stylesheets, and in the `:focus-within` rule in `styles.css`. Removed.
-  `.room-card` and `pulse-subtle` looked similar but are still live, and were kept.
-
-The lesson worth carrying to item 3: this roadmap's descriptions were written against an older
-state of the tree twice now. Read the component before believing the item.
-
-**DoD:**
-
-- [x] Each of `crm` and `concierge` is deleted (component, styles, template, route/anchor, nav
-      entry, tests) or carries a visible, non-decorative caption stating it is non-functional.
-      _Neither applied — both held true content. Renamed to match what they render instead._
-- [x] No dead nav links, no orphaned CSS, no `src/app/*` directory with nothing importing it.
-- [x] `npm run lint` and `npm run e2e` pass; nav keyboard order still makes sense after removals.
-      _Nav markup is untouched, so tab order is unchanged._
-
-## 3. Turn the proprietary projects into case studies that disclose nothing
-
-**Effort:** L · **Why:** "Worked on a large-scale proprietary system" transmits zero bits. The
-part of proprietary work you are free to describe is the part that actually demonstrates
-seniority: the shape of the constraint and the judgment you applied under it. Nobody needs your
-employer's code to evaluate your reasoning — they need the reasoning, and right now it is absent.
-
-Write three, each to this skeleton:
-
-1. **Context** — two sentences, domain-level. "A scheduling system for a fleet of field
-   technicians." No client, no product name, no internal system names.
-2. **Constraint** — the specific thing that made it hard, stated precisely enough to be
-   falsifiable. Not "at scale" — "writes arrived out of order and the ordering key was
-   client-supplied".
-3. **Options** — the two or three real candidates, including the one an average engineer picks.
-4. **Decision and why** — the tradeoff you accepted, named. Every real decision costs something;
-   say what yours cost.
-5. **Outcome** — a number. Relative numbers disclose nothing: "cut p99 by roughly half", "took
-   the on-call page count from weekly to quarterly", "removed a class of bug that had produced
-   four incidents".
-
-The failure mode is vagueness that pretends to be discretion. If a paragraph would be equally
-true of any system, it is not confidential — it is empty. Rewrite it.
-
-**DoD:**
-
-- [ ] Three case studies, 250–400 words each, live in a real section/route (`src/app/work/`,
-      lazy-loaded, matching the existing design tokens).
-- [ ] Each names one tradeoff **and what it cost**, and ends on one number.
-- [ ] None names a client, product, repository, internal service, or colleague.
-- [ ] Read-aloud test: a peer outside the domain can restate the decision and why after one pass.
-      If they cannot, the constraint was underspecified.
-- [ ] Linked from the hero and from the resume section; a11y and lint pass.
 
 ## 4. Make the link worth pasting
 

@@ -14,6 +14,11 @@
          gets focus management, middle click and copy-link for free. -->
     <div class="hero-actions">
       <a class="btn btn-primary pulse" href="#projects">View My Work</a>
+      <!-- A route, not an anchor, so this one is a real navigation. Same plain
+           `href` as the links to /dashboard and /booking rather than
+           routerLink: the site treats its routes as pages, and a hero that
+           works before hydration is worth more here than a saved reload. -->
+      <a class="btn btn-outline" href="/work">Read the Case Studies</a>
       <a class="btn btn-outline" href="#contact">Get In Touch</a>
     </div>
   </div>

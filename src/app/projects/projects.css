@@ -292,3 +292,12 @@
   border-color: var(--color-blood);
   transform: translateY(-1px);
 }
+
+/* The NDA note links to /work. `.demo-note` itself is styled in `app.css`,
+   but that stylesheet is scoped to the App component and this markup belongs
+   to Projects, so the link colour has to be set here. At the bare `a` colour
+   it failed the contrast gate — small italic muted text is the least forgiving
+   place on the page for an accent that only manages 2.1:1. */
+.demo-note a {
+  color: var(--color-blood-text);
+}

@@ -72,13 +72,17 @@
   line-height: 1.5;
 }
 
-.contact-list a {
+/* Scoped to the block rather than the list: the Case Studies block links from
+   a paragraph, not a list item, and at the bare `a` colour that link failed
+   the contrast gate. Every link in a contact block wants the readable tint —
+   see the --color-blood-text note in styles.css. */
+.contact-block a {
   color: var(--color-blood-text);
   text-decoration: none;
   transition: all 0.3s ease;
 }
 
-.contact-list a:hover {
+.contact-block a:hover {
   color: var(--color-text);
   text-shadow: 0 0 8px rgba(157, 34, 53, 0.4);
 }

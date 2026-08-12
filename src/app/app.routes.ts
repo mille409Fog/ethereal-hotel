@@ -12,6 +12,11 @@ export const routes: Routes = [
     title: 'Room Booking Engine - Jacob Miller',
   },
   {
+    path: 'work',
+    loadComponent: () => import('./work/work').then((m) => m.Work),
+    title: 'Case Studies - Jacob Miller',
+  },
+  {
     path: '',
     loadComponent: () => import('./app').then((m) => m.App),
     title: 'Jacob Miller - Senior Software Engineer',

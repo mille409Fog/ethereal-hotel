@@ -25,11 +25,15 @@
                 }
               </div>
               @if (project.link) {
+                <!-- The accessible name repeats the project, because "Read the
+                     Case Study" five times over is what a screen reader user
+                     hears when they list the links on this page. -->
                 <a
                   [href]="project.link"
                   class="btn btn-outline btn-sm project-link"
                   style="margin-top: 0.75rem"
-                  >View Live Demo →</a
+                  [attr.aria-label]="project.linkLabel + ': ' + project.name"
+                  >{{ project.linkLabel }} <span aria-hidden="true">→</span></a
                 >
               }
             </div>
@@ -39,7 +43,9 @@
     </div>
 
     <p class="demo-note">
-      * Enterprise projects under NDA — descriptions generalized for confidentiality
+      * The last three are under NDA. Rather than generalise the description until it says nothing,
+      each links to a <a href="/work">case study</a> covering the constraint, the options and the
+      tradeoff — none of which is confidential.
     </p>
   </div>
 </section>
