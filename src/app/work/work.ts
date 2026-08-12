@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { StudyReadDirective } from './study-read.directive';
 import { CASE_STUDIES, ICaseStudy } from './work.data';
 
 /**
@@ -16,6 +17,7 @@ import { CASE_STUDIES, ICaseStudy } from './work.data';
  */
 @Component({
   selector: 'app-work',
+  imports: [StudyReadDirective],
   templateUrl: './work.html',
   styleUrl: './work.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

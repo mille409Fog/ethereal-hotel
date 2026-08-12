@@ -336,6 +336,109 @@ check('the social preview set is intact', () => {
   return problems;
 });
 
+// Analytics is the one feature here whose correctness is a promise to somebody
+// else. `docs/analytics.md` tells a reader exactly which events this site
+// sends; an event added in TypeScript and forgotten in that table turns a
+// privacy note into a false one, and unlike a broken card nobody ever sees it
+// happen. So the table is checked against the union it describes, in both
+// directions, and the parts of the claim that are structural — the script tag,
+// the same-origin path, the absence of a consent banner's prerequisites — are
+// checked against the files that would have to change for them to stop holding.
+check('the analytics doc lists exactly the events the code sends', () => {
+  if (!exists('docs/analytics.md') || !exists('src/app/services/analytics.service.ts')) {
+    return ['docs/analytics.md or the analytics service is missing; ROADMAP item 10 shipped both.'];
+  }
+
+  const problems = [];
+  const service = read('src/app/services/analytics.service.ts');
+  const doc = read('docs/analytics.md');
+
+  // The event names as the code will actually send them: the string literals
+  // in the ANALYTICS_EVENTS object, not the property keys, since the string is
+  // what Vercel groups by.
+  const block = service.slice(
+    service.indexOf('ANALYTICS_EVENTS = {'),
+    service.indexOf('} as const;')
+  );
+  const sent = [...block.matchAll(/:\s*'([a-z_]+)'/g)].map(([, name]) => name);
+
+  if (sent.length === 0) {
+    return ['Could not read the event names out of ANALYTICS_EVENTS. Did its shape change?'];
+  }
+
+  for (const event of sent) {
+    if (!doc.includes(`\`${event}\``)) {
+      problems.push(
+        `analytics.service.ts sends \`${event}\`, which docs/analytics.md does not list. ` +
+          `A privacy note that undercounts what is collected is worse than none.`
+      );
+    }
+  }
+  for (const [, event] of doc.matchAll(/^\|\s*`([a-z_]+)`\s*\|/gm)) {
+    if (!sent.includes(event)) {
+      problems.push(
+        `docs/analytics.md documents \`${event}\`, which the code no longer sends. ` +
+          `Delete the row — it describes collection that does not happen.`
+      );
+    }
+  }
+
+  return problems;
+});
+
+check('the analytics claims that are structural still hold', () => {
+  if (!exists('docs/analytics.md')) return []; // reported above
+  const problems = [];
+  const index = read('src/index.html');
+
+  // Same-origin is the entire basis for "no third-party host" and, with the
+  // cookie-free provider, for shipping no consent banner. A tag pointing
+  // anywhere else invalidates the note rather than just moving a file.
+  const tag = index.match(/<script[^>]*src="([^"]*insights[^"]*)"[^>]*>/);
+  if (!tag) {
+    problems.push(
+      'src/index.html no longer loads the Vercel Analytics script. docs/analytics.md ' +
+        'describes what this site collects; if that is now nothing, delete the note.'
+    );
+  } else if (!tag[1].startsWith('/_vercel/')) {
+    problems.push(
+      `The analytics script is loaded from "${tag[1]}", which is not the same-origin ` +
+        `/_vercel/ path. docs/analytics.md's "no third-party host" claim, and the decision ` +
+        `not to ship a consent banner, both rest on that path.`
+    );
+  }
+
+  // The event properties are typed as scalars, which the note leans on as the
+  // reason no free text can be sent. A widened type would make that a guess.
+  const service = read('src/app/services/analytics.service.ts');
+  if (!/AnalyticsProperties\s*=\s*Record<string,[^>]*>/.test(service)) {
+    problems.push(
+      'AnalyticsProperties is no longer a Record of scalars. docs/analytics.md cites that ' +
+        'type as the reason nothing a visitor typed can be sent; widen it and that stops ' +
+        'being true by construction.'
+    );
+  }
+
+  // The resume link is the only call site for `resume_downloaded`, and the file
+  // it points at is not imported by anything, so nothing else would catch it
+  // going missing.
+  const resume = read('src/app/resume/resume.html');
+  const href = resume.match(/href="\/([^"]+\.pdf)"/);
+  if (!href) {
+    problems.push(
+      'The contact section no longer links a resume PDF, but analytics.service.ts still ' +
+        'defines `resume_downloaded`. One of the two is stale.'
+    );
+  } else if (!exists(`public/${href[1]}`)) {
+    problems.push(
+      `The contact section links /${href[1]}, which is not in public/. The link 404s in ` +
+        `production, and the download event counts clicks on it.`
+    );
+  }
+
+  return problems;
+});
+
 // `npm audit --audit-level=high` and pip-audit's `--ignore-vuln` are both ways
 // of saying "this advisory is open and we are shipping anyway". That is a
 // defensible thing to say, exactly once you have said why — ROADMAP item 11 put

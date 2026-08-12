@@ -6,7 +6,8 @@
  * the only three things this needs beyond `fs` are a correct `Content-Type`, a
  * directory index, and an SPA fallback. The fallback is not optional — a client
  * route with no file behind it would otherwise 404 and the scan would silently
- * audit an error page instead of the page it named.
+ * audit an error page instead of the page it named — but it stops at anything
+ * with a file extension; see the comment on it below.
  *
  * The directory index is what makes this server match Vercel rather than merely
  * work: `scripts/emit-route-meta.mjs` writes a real `dashboard/index.html` with
@@ -78,9 +79,17 @@ async function resolveFile(urlPath) {
 const server = createServer(async (req, res) => {
   const urlPath = new URL(req.url ?? '/', 'http://localhost').pathname;
 
-  // Any path without a file behind it is a client route: hand back index.html
-  // and let the Angular router sort it out.
-  const file = (await resolveFile(urlPath)) ?? (await resolveFile('/index.html'));
+  // A path without a file behind it is a client route: hand back index.html and
+  // let the Angular router sort it out. A path with a *file extension* is not —
+  // it is a missing asset, and answering it with the SPA shell is how a 404
+  // turns into "Unexpected token '<'", an error that points at the bundle
+  // instead of at the file that is not there. Vite's dev server draws the same
+  // line, so this keeps `ng serve` and the Playwright run agreeing about which
+  // requests are real. `/_vercel/insights/script.js` is the case that found
+  // this: it exists only on Vercel, and here it has to be absent rather than
+  // pretend.
+  const file =
+    (await resolveFile(urlPath)) ?? (extname(urlPath) ? null : await resolveFile('/index.html'));
 
   if (!file) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

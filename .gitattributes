@@ -11,6 +11,7 @@
 *.jpg binary
 *.gif binary
 *.ico binary
+*.pdf   binary
 *.woff  binary
 *.woff2 binary
 *.db    binary

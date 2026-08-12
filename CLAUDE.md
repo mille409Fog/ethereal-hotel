@@ -162,6 +162,11 @@ mistake for bugs:
 - The metrics grid is deliberately **not** an `aria-live` region — a throttled `role="status"`
   digest replaces it. README §Accessibility has the reasoning.
 - Health is mounted twice (`/` and `/api/health`) on purpose: one handler, two deployment shapes.
+- **There is no cookie banner because there is nothing to consent to.** Vercel Analytics is loaded
+  from the same-origin `/_vercel/` path and sets no cookie; that is the reason it was chosen over
+  Plausible, and `@vercel/analytics` is deliberately not a dependency — it drags SvelteKit and Vite 8
+  into resolution and only `--legacy-peer-deps` gets past it. `docs/analytics.md` states what is
+  collected; `check:docs` fails if the events there and in `analytics.service.ts` disagree.
 
 ## Keeping this file honest
 

@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ANALYTICS_EVENTS, AnalyticsService } from '../services/analytics.service';
 import {
   BackendStatus,
   DashboardApiService,
@@ -30,6 +31,7 @@ import { MetricsGrid } from './metrics-grid/metrics-grid';
 export class Dashboard implements OnInit, OnDestroy {
   private readonly dashboardApi = inject(DashboardApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly analytics = inject(AnalyticsService);
 
   // Flag to toggle between the committed fixture and the real backend
   private useBackend = false;
@@ -45,6 +47,15 @@ export class Dashboard implements OnInit, OnDestroy {
   );
 
   public async ngOnInit(): Promise<void> {
+    // Fired before the health check rather than after it, because the question
+    // it answers is "did anyone open the dashboard", and a visitor who leaves
+    // while the probe is in flight opened it. The transport rides along because
+    // it is read from configuration, not from the visitor, and it says which
+    // deployment shape they actually reached.
+    this.analytics.track(ANALYTICS_EVENTS.dashboardReached, {
+      transport: this.dashboardApi.transport,
+    });
+
     if (!(await this.dashboardApi.checkBackendHealth())) {
       this.useOfflineFixture();
       return;

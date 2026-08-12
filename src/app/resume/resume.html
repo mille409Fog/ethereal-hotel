@@ -53,6 +53,22 @@
         </p>
       </div>
 
+      <!-- Resume -->
+      <div class="contact-block">
+        <h3 class="contact-block-title">Resume</h3>
+        <p>The same history as this page, on one page.</p>
+        <p>
+          <!-- The format is in the link text rather than only in the href,
+               because "Download" alone tells a screen reader nothing about what
+               is about to arrive. `download` rather than a new tab: a PDF that
+               opens in a viewer the visitor did not ask for is the more
+               annoying default of the two. -->
+          <a href="/jacob-miller-resume.pdf" download (click)="onResumeDownload()"
+            >Download the PDF →</a
+          >
+        </p>
+      </div>
+
       <!-- Case studies -->
       <div class="contact-block">
         <h3 class="contact-block-title">Case Studies</h3>

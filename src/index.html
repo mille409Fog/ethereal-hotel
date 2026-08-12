@@ -71,6 +71,17 @@
     <!-- Matches --color-bg, so mobile browser chrome extends the page rather
          than framing it in white. -->
     <meta name="theme-color" content="#1a1618" />
+
+    <!-- Vercel Web Analytics. Same-origin by construction — Vercel serves this
+         path from the deployment itself — so there is no third-party host, no
+         cookie, and nothing requiring a consent banner. `docs/analytics.md`
+         states what it collects and what it deliberately does not; the custom
+         events go through src/app/services/analytics.service.ts, which explains
+         why this is a script tag rather than the npm package.
+
+         404s under `ng serve` and in the Playwright run, which is fine: the
+         service buffers into `window.vaq` and nothing depends on the flush. -->
+    <script defer src="/_vercel/insights/script.js"></script>
   </head>
   <body>
     <app-root></app-root>

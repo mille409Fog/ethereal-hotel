@@ -34,6 +34,7 @@
           [id]="study.slug"
           tabindex="-1"
           [attr.aria-labelledby]="study.slug + '-title'"
+          [appStudyRead]="study.slug"
         >
           <header class="study-header">
             <span class="study-domain">{{ study.domain }}</span>
@@ -85,6 +86,13 @@
               <p class="study-outcome">{{ study.outcome }}</p>
             </section>
           </div>
+
+          <!-- The end of the study, as markup rather than as an inference.
+               `appStudyRead` watches this to know a reader got to the bottom;
+               deriving "the end" from the last child instead would quietly come
+               to mean something else the first time a section is appended.
+               Empty and aria-hidden: it is a position, not content. -->
+          <div class="study-end" data-study-end aria-hidden="true"></div>
         </article>
       }
     }
