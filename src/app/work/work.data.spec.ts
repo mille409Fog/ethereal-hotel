@@ -3,7 +3,7 @@ import { CASE_STUDIES, ICaseStudy } from './work.data';
 /**
  * The disclosure gate.
  *
- * ROADMAP item 3's DoD asks for three properties that are easy to assert and
+ * The case-studies ROADMAP item's DoD asked for three properties that are easy to assert and
  * easy to lose: the studies name nothing confidential, each one states what its
  * decision cost, and each ends on a number. Those are exactly the things that
  * erode under editing — a name gets added back for clarity, a cost gets folded

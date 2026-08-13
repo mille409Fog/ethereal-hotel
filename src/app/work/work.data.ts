@@ -2,8 +2,8 @@
  * The case studies behind `/work`.
  *
  * These describe work done under NDA, which is why they live in a typed
- * structure rather than in the template: the type is the skeleton from
- * ROADMAP item 3, and every field on it is required. A study cannot be
+ * structure rather than in the template: the type is the skeleton the
+ * case-studies ROADMAP item asked for, and every field on it is required. A study cannot be
  * committed with the constraint filled in and the cost left blank, which is
  * the specific way this kind of writing goes vague — the decision gets
  * described, the price of it quietly does not.
@@ -20,7 +20,7 @@
  * estimating.
  */
 
-/** One decision, told to the skeleton in ROADMAP item 3. */
+/** One decision, told to the skeleton the case-studies ROADMAP item specified. */
 export interface ICaseStudy {
   /** URL-safe id, used for the heading anchor and the in-page nav. */
   readonly slug: string;

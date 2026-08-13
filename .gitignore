@@ -60,6 +60,10 @@ __screenshots__/
 /blob-report
 /playwright/.cache
 
+# Lighthouse CI. The thresholds are source (lighthouserc.json); the measurements
+# are not — they are per-machine and differ on every run.
+/.lighthouseci
+
 # System files
 .DS_Store
 Thumbs.db

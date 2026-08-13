@@ -31,7 +31,7 @@ import { Injectable } from '@angular/core';
  */
 
 /**
- * The three things worth knowing, per ROADMAP item 10.
+ * The three things worth knowing, per the analytics ROADMAP item.
  *
  * A closed set rather than free strings. Vercel's dashboard groups by exact
  * name, so `case_study_read` and `caseStudyRead` would silently become two

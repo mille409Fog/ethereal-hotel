@@ -46,6 +46,31 @@ npm run test:backend      # pytest
 `npm run e2e` additionally builds and runs the Playwright suite (smoke + accessibility). It
 needs a browser once: `npx playwright install --only-shell chromium`.
 
+`npm run lighthouse` builds, serves `dist/` on :4173 and audits `/` and `/dashboard`, failing
+below the thresholds in `lighthouserc.json`. It drives whatever Chrome you already have and
+fetches the Lighthouse CLI at a pinned version rather than installing it — `lighthouse` depends
+on `puppeteer-core`, which carries an open high-severity advisory with no fix, and a measurement
+tool that never ships is not worth suppressing the dependency audit for.
+
+**On Windows that command audits correctly and then dies cleaning up.** Chrome's crash handler
+outlives the `taskkill` that `chrome-launcher` uses and keeps a handle on the temp profile
+directory, so `destroyTmp()` throws `EPERM` *after* the audit has run and the report has been
+written. `lhci` treats that non-zero exit as a failed collection and never reaches its assertion
+step. It is a race rather than a setting — `--disable-breakpad` and `--disable-crash-reporter`
+change how often it happens and not whether it can — and the flags cannot be routed through
+`lhci` anyway: it writes `chromeFlags` into a `--cli-flags-path` file, where yargs' own default
+for `--chrome-flags` overrides them.
+
+So on Windows, read the scores from a direct run instead. The report is written before the
+cleanup fails, so it is there regardless of the exit code:
+
+```bash
+node scripts/serve-dist.mjs &                     # or run it in a second terminal
+npx lighthouse http://localhost:4173/dashboard --preset=desktop --view
+```
+
+The thresholds are enforced by the CI job, which runs on Linux and does not hit this.
+
 `npm run audit` runs the dependency scanners CI runs — `npm audit` at high and above, then
 `pip-audit` over both Python lists. You only need it when you have touched a dependency, but a
 PR that adds one will fail on it if the pin carries a known advisory. Anything left open has to

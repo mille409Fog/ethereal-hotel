@@ -62,6 +62,7 @@ check('files CLAUDE.md points at still exist', () => {
     'pyproject.toml',
     'eslint.config.mjs',
     'angular.json',
+    'lighthouserc.json',
     'src/app/app.routes.ts',
   ];
   return referenced
@@ -346,7 +347,7 @@ check('the social preview set is intact', () => {
 // checked against the files that would have to change for them to stop holding.
 check('the analytics doc lists exactly the events the code sends', () => {
   if (!exists('docs/analytics.md') || !exists('src/app/services/analytics.service.ts')) {
-    return ['docs/analytics.md or the analytics service is missing; ROADMAP item 10 shipped both.'];
+    return ['docs/analytics.md or the analytics service is missing; the analytics item shipped both.'];
   }
 
   const problems = [];
@@ -439,10 +440,167 @@ check('the analytics claims that are structural still hold', () => {
   return problems;
 });
 
+// A performance budget is a promise about a number, and a promise about a number
+// is the easiest kind to keep loosely: the README says the site holds itself to
+// 90, someone finds the gate inconvenient, the config quietly says 80, and the
+// README goes on saying 90 because nothing reads it. That is worse than never
+// having claimed a number, because now the claim is doing the reassuring and the
+// gate is doing nothing.
+//
+// So the three places that carry these numbers are checked against each other:
+// README.md states them, lighthouserc.json asserts the Lighthouse categories,
+// and angular.json's production budgets cap the bundle. The README is the
+// *source* of the expected values here, the same way CLAUDE.md is elsewhere in
+// this file — editing the sentence a reader sees is what updates the check.
+//
+// The severity is part of the claim, not decoration. The ROADMAP asked for a
+// budget that **fails** the build rather than warning, so an assertion demoted
+// from `error` to `warn` counts as an unenforced claim even when its number is
+// still right.
+
+/** How the README states a Lighthouse threshold: `**performance 90**`. */
+const CATEGORY_CLAIM = /\*\*(performance|accessibility|best practices) (\d+)\*\*/g;
+
+/** How the README states a bundle ceiling: `**all scripts at 650 kB**`. */
+const BUDGET_CLAIM = /\*\*(initial payload|all scripts) at (\d+) kB\*\*/g;
+
+/** README label → the `type` angular.json uses for that budget. */
+const BUDGET_TYPES = { 'initial payload': 'initial', 'all scripts': 'allScript' };
+
+/**
+ * Find performance and size numbers README.md states that nothing enforces.
+ *
+ * Both directions, like `unjustifiedSuppressions` below: a number the README
+ * states but no config asserts is a false promise, and a Lighthouse category
+ * asserted but never stated is a gate the reader was not told about.
+ *
+ * @param {string} readme - the full text of README.md. It states each Lighthouse
+ *   threshold as `**<category> <score>**` (`**performance 90**`, where the score
+ *   is out of 100 and the category is one of `performance`, `accessibility`,
+ *   `best practices`), and each bundle ceiling as `**<label> at <n> kB**`
+ *   (`**initial payload at 15 kB**`, `**all scripts at 650 kB**`).
+ * @param {Record<string, [string, {minScore: number}]>} assertions -
+ *   lighthouserc.json's `ci.assert.assertions`. Keys are Lighthouse audit ids;
+ *   the category ones look like `categories:best-practices` — the README's
+ *   label with its spaces turned into hyphens. Each value is a
+ *   `[severity, options]` pair, where `severity` must be `'error'` for the job
+ *   to fail rather than warn, and `options.minScore` is a fraction of 1.
+ * @param {Array<{type: string, maximumWarning?: string, maximumError?: string}>} budgets -
+ *   the production `budgets` array from angular.json. `type` is Angular's budget
+ *   type (`initial`, `allScript`, `any`, `anyComponentStyle`); the sizes are
+ *   strings like `'650kB'`. Only `maximumError` fails a build — `maximumWarning`
+ *   prints and carries on — and only the two types the README names are this
+ *   function's business.
+ * @returns {string[]} one message per claim that is not enforced, each naming
+ *   the number the README states, what the config actually says, and which file
+ *   to fix; empty when every stated number is enforced as an error and every
+ *   asserted category is stated.
+ */
+const unenforcedBudgetClaims = (readme, assertions, budgets) => {
+  const problems = [];
+
+  // Direction one: every Lighthouse number the README states has to be asserted,
+  // at `error`, at that number.
+  const stated = new Set();
+
+  for (const [, label, score] of readme.matchAll(CATEGORY_CLAIM)) {
+    const key = `categories:${label.replace(/ /g, '-')}`;
+    stated.add(key);
+
+    const assertion = assertions[key];
+    if (!assertion) {
+      problems.push(
+        `README.md says the build fails below ${label} ${score}, but lighthouserc.json ` +
+          `asserts nothing for \`${key}\`. Add the assertion or drop the claim — a number ` +
+          `nothing checks is doing the reassuring while the gate does nothing.`
+      );
+      continue;
+    }
+
+    const [severity, options] = assertion;
+    if (severity !== 'error') {
+      problems.push(
+        `lighthouserc.json asserts \`${key}\` at "${severity}", so a regression prints and ` +
+          `the job passes anyway. README.md says the build **fails** below ${label} ` +
+          `${score}; put it back to "error" or stop claiming it fails.`
+      );
+    }
+
+    const enforced = Math.round(options.minScore * 100);
+    if (enforced !== Number(score)) {
+      problems.push(
+        `README.md states ${label} ${score}; lighthouserc.json enforces ${enforced}. ` +
+          `Whichever one moved, move the other — the README is the one a reader believes.`
+      );
+    }
+  }
+
+  // The other direction: a threshold the reader was never told about. Not a lie,
+  // but the README's Gates section is where this site says what it holds itself
+  // to, and a gate missing from it is one nobody can hold it to.
+  for (const key of Object.keys(assertions)) {
+    if (key.startsWith('categories:') && !stated.has(key)) {
+      problems.push(
+        `lighthouserc.json asserts \`${key}\`, which README.md never states. Add it to the ` +
+          `Gates section, or drop an assertion the site does not claim.`
+      );
+    }
+  }
+
+  // The bundle ceilings. `maximumWarning` prints and carries on, so a budget
+  // without a `maximumError` is not a ceiling no matter what number it names.
+  for (const [, label, size] of readme.matchAll(BUDGET_CLAIM)) {
+    const type = BUDGET_TYPES[label];
+    const budget = budgets.find((entry) => entry.type === type);
+
+    if (!budget) {
+      problems.push(
+        `README.md caps the ${label} at ${size} kB, but angular.json has no \`${type}\` ` +
+          `budget in the production configuration. Add it or drop the claim.`
+      );
+      continue;
+    }
+
+    if (!budget.maximumError) {
+      problems.push(
+        `angular.json's \`${type}\` budget sets no maximumError, so exceeding it warns and ` +
+          `builds. README.md caps the ${label} at ${size} kB as a ceiling that fails.`
+      );
+      continue;
+    }
+
+    const enforced = Number(budget.maximumError.replace(/kB$/i, ''));
+    if (enforced !== Number(size)) {
+      problems.push(
+        `README.md caps the ${label} at ${size} kB; angular.json's \`${type}\` budget ` +
+          `errors at ${budget.maximumError}. Update whichever is stale.`
+      );
+    }
+  }
+
+  return problems;
+};
+
+check('the performance numbers the README states are the ones enforced', () => {
+  if (!exists('lighthouserc.json')) {
+    return [
+      'lighthouserc.json is missing, but README.md states the thresholds it holds and ' +
+        'code-quality.yml runs a job against it. Restore it or drop the claim.',
+    ];
+  }
+
+  const { assertions } = JSON.parse(read('lighthouserc.json')).ci.assert;
+  const { budgets } =
+    JSON.parse(read('angular.json')).projects['ethereal-hotel'].architect.build.configurations
+      .production;
+
+  return unenforcedBudgetClaims(read('README.md'), assertions, budgets);
+});
+
 // `npm audit --audit-level=high` and pip-audit's `--ignore-vuln` are both ways
 // of saying "this advisory is open and we are shipping anyway". That is a
-// defensible thing to say, exactly once you have said why — ROADMAP item 11 put
-// it plainly: an open advisory with no note is worse than no scanner. So the
+// defensible thing to say, exactly once you have said why — the supply-chain
+// item put it plainly: an open advisory with no note is worse than no scanner. So the
 // note is required rather than encouraged. And, like the stale-claims check
 // below, it fails in the other direction too: a note left behind after its
 // suppression is gone is how a file of reasons becomes a file of fiction.
@@ -549,7 +707,7 @@ check('every advisory suppression carries a dated exception', () => {
 // A document that tells a reader to run a command which does not exist is the
 // cheapest kind of wrong to ship and the most expensive kind to hit: the reader
 // is following instructions, in a fresh clone, at the exact moment they have the
-// least context to work out what was meant. ROADMAP item 6 required that every
+// least context to work out what was meant. The docs-rewrite item required that every
 // code block in the docs actually runs, and then cut those docs down to the
 // commands worth keeping — this is what holds that true afterwards, because the
 // realistic way it breaks is a script being renamed in package.json by someone
@@ -561,8 +719,8 @@ check('every advisory suppression carries a dated exception', () => {
 
 // Documents that *instruct* a reader. ROADMAP.md and AUBADE.md are deliberately
 // absent: they describe intentions, and both name scripts that do not exist yet
-// on purpose — ROADMAP item 9 specifies `npm run resume:pdf` as the thing it
-// will add. Checking them would punish planning.
+// on purpose — the ROADMAP's resume item specifies `npm run resume:pdf` as the
+// thing it will add. Checking them would punish planning.
 const INSTRUCTIONAL_DOCS = [
   'README.md',
   'ARCHITECTURE.md',

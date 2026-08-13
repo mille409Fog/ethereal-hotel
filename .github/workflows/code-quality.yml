@@ -127,6 +127,64 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # The accessibility work was protected by one axe scan, which catches markup
+  # that is wrong and nothing that is merely slow or degraded. This job puts a
+  # number on both and fails under it, so a regression shows up here rather than
+  # in someone's browser. Thresholds live in lighthouserc.json, not in this
+  # file: the config is what `npm run lighthouse` reads locally, and a gate you
+  # cannot reproduce on your own machine is a gate you learn to ignore.
+  #
+  # `npx --yes @lhci/cli@<pinned>` rather than a devDependency, deliberately.
+  # lighthouse pulls puppeteer-core, which pulls extract-zip, which carries an
+  # open high-severity advisory with no fixed version. In the lockfile that
+  # would fail `npm audit --audit-level=high` in supply-chain.yml, and the only
+  # ways out are raising the floor to `critical` for every package at once or
+  # carrying a permanent EXCEPTION note. Neither is worth it for a measurement
+  # tool that never touches the shipped artefact: keeping it out of the
+  # dependency graph costs one network fetch per run and keeps the audit gate
+  # meaning what it says. The version is pinned in package.json.
+  lighthouse:
+    name: Budgets (Lighthouse — performance, a11y, best practices)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # chrome-launcher finds this on PATH by itself. Naming it in its own step
+      # means a runner image that stops shipping Chrome fails here, with the
+      # version it could not find, instead of somewhere inside a Lighthouse run.
+      - name: Show the Chrome the audit will drive
+        run: google-chrome --version
+
+      # Builds, serves dist/ on 4173 and audits `/` and `/dashboard` — the same
+      # server and the same production build the Playwright suite uses, for the
+      # same reason: a dev build ships different CSS and skips the production
+      # fileReplacements. Three runs per URL, asserted against the median.
+      - name: Run Lighthouse CI (fails below the thresholds in lighthouserc.json)
+        run: npm run lighthouse
+
+      # Only interesting when the step above failed, and then it is the only
+      # thing that is: the assertion output names the audit, and the report
+      # names the element or the request that caused it.
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci/
+          retention-days: 7
+          if-no-files-found: ignore
+
   backend:
     name: Backend (lint, types, pytest)
     runs-on: ubuntu-latest

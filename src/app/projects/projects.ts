@@ -57,7 +57,7 @@ export class Projects {
     // The three below are the NDA engagements. Their descriptions are
     // deliberately thin — the argument they make is in the case study, not on
     // the card, and a card that tried to carry it would be the vague-paragraph
-    // failure ROADMAP item 3 exists to remove.
+    // failure the case-studies ROADMAP item existed to remove.
     {
       name: 'Revenue Analytics Platform',
       description: 'One CI/CD pipeline, six frontends, and a framework upgrade that split them',

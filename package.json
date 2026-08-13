@@ -12,6 +12,7 @@
     "test:backend": "node scripts/py-tool.mjs pytest backend/",
     "e2e": "npm run build && playwright test",
     "a11y": "npm run build && playwright test a11y.spec.ts",
+    "lighthouse": "npm run build && npx --yes @lhci/cli@0.15.1 autorun",
     "lint": "eslint . --ext .ts,.html --max-warnings 0",
     "lint:fix": "eslint . --ext .ts,.html --fix",
     "format": "prettier --write \"src/**/*.{ts,html,css,scss,json}\"",

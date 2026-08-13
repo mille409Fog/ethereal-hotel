@@ -58,15 +58,17 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | `ARCHITECTURE.md`   | 22K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 16K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
 | `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project, spec'd but **not built** — no `src/aubade/` exists yet).                |
-| `CONTRIBUTING.md`   | 3K   | Setup and the four gates. This is where "how do I run it" lives; the README only links here.                                          |
+| `CONTRIBUTING.md`   | 4K   | Setup and the four gates. This is where "how do I run it" lives; the README only links here.                                          |
 
-**`ROADMAP.md` deletes items as they land** rather than checking them off, so it opens partway down
-and the numbering has gaps. A missing number is a finished item, not a lost one — the reasoning that
-survived it moved into the code or the config it describes. Read the preamble before proposing work;
-it carries the constraints the items assume.
+**`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
+left from 1 so the list always reads 1, 2, 3, 4. The reasoning that survived a finished item moved
+into the code or the config it describes. Two consequences: the numbers are positions in a queue,
+not stable ids, so never cite one from outside the file — describe the item instead — and any
+cross-reference *inside* the file has to be re-pointed when you renumber. Read the preamble before
+proposing work; it carries the constraints the items assume.
 
-The docs no longer carry a known-stale list: ROADMAP item 6 rewrote `README.md` down to one page and
-made `ARCHITECTURE.md` the reference doc, fixing the drift that section used to warn about. Two
+The docs no longer carry a known-stale list: a finished ROADMAP item rewrote `README.md` down to one
+page and made `ARCHITECTURE.md` the reference doc, fixing the drift that section used to warn about. Two
 habits are what let that rot set in, so avoid both. Don't explain what FastAPI or RxJS *are* — the
 reader knows. And don't restate the backend test count in another document: it was quoted in three
 places and disagreed with itself in all three. There are 26 test functions in `backend/tests/`
@@ -95,6 +97,16 @@ it needs no running server.
 A sixth job runs `npm run check:docs`, which fails when this file's claims stop matching the repo.
 See §Keeping this file honest — if you change something documented here, that check is how you find
 out.
+
+A seventh runs `npm run lighthouse`: it builds, serves `dist/` on 4173 and audits `/` and
+`/dashboard`, failing below performance 90, accessibility 100 and best-practices 95 — the
+thresholds live in `lighthouserc.json` and the README states them. It fetches `@lhci/cli` at a
+version pinned in `package.json` instead of declaring it, because `lighthouse` → `puppeteer-core` →
+`extract-zip` carries an unfixable high advisory that would otherwise force `npm run audit` down to
+`critical` for every package at once. Do not "tidy" it into `devDependencies`. Size is gated
+separately by `angular.json` budgets, which are set just above the current build and **fail** it,
+not warn — the numbers in the README, `lighthouserc.json` and `angular.json` are checked against
+each other by `check:docs`.
 
 `.github/workflows/supply-chain.yml` is a second workflow. `npm run audit` is its local twin: npm
 advisories at **high and above**, then `pip-audit` over both Python lists. CodeQL runs there too,
@@ -130,8 +142,15 @@ not leave the note behind when the suppression goes.
   Vercel and pins the build to 3.14, where `pydantic-core` has no wheel. This has broken the deploy
   before.
 - **The Vercel project must stay on Node 24.x.** Its default 22.x is too old for Angular 22.
+- **`npm run lighthouse` cannot pass locally on this box, and that is not a regression.** The
+  audits run and the reports land in `.lighthouseci/`; then `chrome-launcher` fails to delete
+  Chrome's temp profile (the crash handler outlives its `taskkill`), exits non-zero, and `lhci`
+  calls the collection failed before asserting anything. It is a race, no flag closes it, and
+  `lhci` cannot forward Chrome flags regardless. CONTRIBUTING has the direct-run command that
+  shows the scores. The thresholds are enforced by the Linux CI job — do not loosen them, and do
+  not conclude the site regressed, on the strength of a local `EPERM`.
 - Windows box. `run.bat` and `start-dev.bat` exist alongside their `.sh` twins. Ports in play:
-  4200 (ng serve), 8000 (FastAPI), 4173 (`scripts/serve-dist.mjs` for Playwright).
+  4200 (ng serve), 8000 (FastAPI), 4173 (`scripts/serve-dist.mjs` for Playwright and Lighthouse).
 
 ## Conventions
 
@@ -188,6 +207,7 @@ The script deliberately does not check prose. These are the parts it cannot see,
 | A degradation path, badge, or fallback           | §What this repo is, §Don't helpfully add these                   |
 | Deployment target, `create_app` flags, Vercel    | §Traps — the Python split and the `requirements.txt` landmine    |
 | A gate, threshold, or CI job                     | §The four gates                                                  |
+| A Lighthouse threshold or an `angular.json` budget | §The four gates, and the README's Gates section — it states them |
 | Anything in `ROADMAP.md` §Deliberately not doing | §Don't helpfully add these — it mirrors that list                |
 | Finishing a ROADMAP item that removes a section  | The doc-map row for whatever the item rewrote, and its size      |
 

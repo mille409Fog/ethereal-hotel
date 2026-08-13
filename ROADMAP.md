@@ -2,6 +2,8 @@
 
 Work these in order. Each item has a **Definition of Done (DoD)** so a separate instance can
 implement it and this instance can verify it. Effort is a rough estimate.
+When finished with a task remove it from the list and alter the remaining
+list in an ascending order of natural numbers e.g. 1, 2, 3, 4 ...;
 
 The bar for every item: _would a senior engineer reviewing this repo in an interview see judgment,
 or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
@@ -18,8 +20,12 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 - `requires-python`/`.python-version` are only consulted when `pyproject.toml` is the dependency
   source; a root `requirements.txt` silently overrode both and pinned the build to 3.14, where
   our `pydantic-core` has no wheel. That is why there is no `requirements.txt` at the root.
+- The Lighthouse gate asserts the **desktop** profile, and the README says so rather than
+  implying more. On mobile emulation the same build scores 86 on `/` and 76 on `/dashboard` — the
+  dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
+  bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 5. Buy the domain
+## 1. Buy the domain
 
 **Effort:** S · **Why:** `ethereal-hotel-pink.vercel.app` reads as a scratch deploy. A name you
 own reads as a thing you maintain. This is an hour and it changes how every other item is
@@ -32,30 +38,13 @@ received.
 - [ ] `og:url`, canonical, and any absolute URLs in the README updated.
 - [ ] `README.md`, resume, and GitHub profile point at the new domain.
 
-## 7. A performance and accessibility budget that fails the build
-
-**Effort:** M · **Why:** The a11y work is already done and already good — the reasoning in
-`styles.css` about focus-ring contrast and the reduced-motion block is the kind of comment that
-gets someone hired. It is currently protected by one axe scan and nothing else, which means the
-next change quietly regresses it and no one finds out.
-
-**DoD:**
-
-- [ ] Lighthouse CI in `.github/workflows/`, asserting against the built site: performance ≥ 90,
-      accessibility = 100, best-practices ≥ 95 on both `/` and `/dashboard`.
-- [ ] Thresholds are committed as config, and the job **fails** below them — not a warning, not
-      an artifact nobody opens.
-- [ ] A bundle-size ceiling in `angular.json` budgets, set just above current actual size so the
-      next regression trips it.
-- [ ] The README's one-page version states the numbers the site holds itself to.
-
-## 8. Show the WebSocket, do not assert it
+## 2. Show the WebSocket, do not assert it
 
 **Effort:** S · **Why:** The serverless/container split is the most interesting decision in the
 repo and the live site cannot demonstrate half of it. The `/ws` path exists, is tested
 (`test_websocket.py`), and is invisible to anyone who does not read Python.
 
-**Needs item 12 first** — that one gets the container running and verified; this one only has to
+**Needs item 4 first** — that one gets the container running and verified; this one only has to
 point a camera at it.
 
 **DoD:**
@@ -66,7 +55,7 @@ point a camera at it.
 - [ ] The dashboard's connection badge is captured in both states, so the degradation is legible
       as a designed behaviour rather than a bug.
 
-## 9. One resume, one source
+## 3. One resume, one source
 
 **Effort:** M · **Why:** A site and a PDF that drift apart is a small, visible correctness bug in
 the artifact whose entire job is being correct. Generating one from the other is a legitimately
@@ -81,7 +70,7 @@ nice piece of engineering and costs less than maintaining both.
       stale.
 - [ ] The PDF is genuinely presentable at A4 and US Letter, and text is selectable.
 
-## 12. Run the container path, do not just document it
+## 4. Run the container path, do not just document it
 
 **Effort:** S, once Docker is installed — which is the actual cost here. **Why:** Item 6 required
 that every code block in the docs had been executed. Every one was, except the `docker build` /
@@ -104,9 +93,9 @@ the live demo cannot show, which makes it exactly the half a curious reviewer wi
       ARCHITECTURE's project tree, but no CI job, gate or verified instruction touches it — so it
       is either a second supported way in, or it is decoration.
 
-Deliberately **before item 8** despite the higher number: 8 wants a screen recording of the
+Deliberately **before item 2** despite the higher number: 2 wants a screen recording of the
 container pushing live updates, and recording something that has never been run is how a short task
-turns into a debugging session. Do this first and 8 is just the capture.
+turns into a debugging session. Do this first and 2 is just the capture.
 
 ## Deliberately not doing
 
@@ -116,7 +105,8 @@ Recorded so the next instance does not helpfully add them:
   reviewer a click and teaches them nothing.
 - **Kubernetes, Prometheus, multi-tenancy.** Infrastructure with no load behind it is cosplay.
   The Dockerfile plus the serverless function already show the deployment reasoning.
-- **A fourth and fifth CRUD screen.** See item 2. Breadth here reads as padding.
+- **A fourth and fifth CRUD screen.** The case studies already carry the breadth argument; more
+  screens here read as padding.
 - **Rewriting the frontend in another framework.** The Angular is fine and the time is better
   spent on `AUBADE.md`.
 
