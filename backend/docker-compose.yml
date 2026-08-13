@@ -1,4 +1,7 @@
-version: '3.8'
+# Compose is the second supported way in, and it exists to demonstrate the one
+# property the bare `docker run` in ARCHITECTURE.md §Container cannot: a database
+# that outlives the container. Everything here is read by something — see the
+# Configuration table in ARCHITECTURE.md for the full set of env vars.
 
 services:
   backend:
@@ -7,13 +10,21 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - HOST=0.0.0.0
-      - PORT=8000
-      - DEBUG=True
+      # Cross-origin applies here, unlike the same-origin serverless demo, so the
+      # frontend's origin has to be named. Points at the Angular dev server;
+      # change it for anything else.
+      - ALLOWED_ORIGINS=http://localhost:4200
+      # Move the SQLite file off the container's writable layer and onto the
+      # named volume below. Without this the DB is discarded by `docker rm`,
+      # which would make ARCHITECTURE's "Database: persistent" row false.
+      # Four slashes: sqlite:// + the absolute path /data/ethereal_hotel.db.
+      - DATABASE_URL=sqlite:////data/ethereal_hotel.db
+    volumes:
+      - hotel-db:/data
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
+    # No healthcheck override: the Dockerfile's own HEALTHCHECK uses stdlib
+    # urllib precisely because the slim base image has no curl. Re-specifying
+    # one here with `curl` — as this file used to — can only ever fail.
+
+volumes:
+  hotel-db:

@@ -53,7 +53,7 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 
 | File                | Size | Read it when                                                                                                                          |
 | ------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROADMAP.md`        | 7K   | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here. |
+| `ROADMAP.md`        | 5K   | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here. |
 | `README.md`         | 4K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
 | `ARCHITECTURE.md`   | 22K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 16K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |

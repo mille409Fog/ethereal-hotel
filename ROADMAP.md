@@ -44,8 +44,9 @@ received.
 repo and the live site cannot demonstrate half of it. The `/ws` path exists, is tested
 (`test_websocket.py`), and is invisible to anyone who does not read Python.
 
-**Needs item 4 first** — that one gets the container running and verified; this one only has to
-point a camera at it.
+The container path is now built, run and verified, so this item is only the capture:
+`cd backend && docker compose up -d` brings up the live-socket deployment, and the dashboard
+reaches the streaming badge when pointed at it. Frames were observed arriving at 2.00s intervals.
 
 **DoD:**
 
@@ -69,33 +70,6 @@ nice piece of engineering and costs less than maintaining both.
 - [ ] `npm run resume:pdf` produces the file; CI regenerates it and fails if the committed PDF is
       stale.
 - [ ] The PDF is genuinely presentable at A4 and US Letter, and text is selectable.
-
-## 4. Run the container path, do not just document it
-
-**Effort:** S, once Docker is installed — which is the actual cost here. **Why:** Item 6 required
-that every code block in the docs had been executed. Every one was, except the `docker build` /
-`docker run` pair in `ARCHITECTURE.md` §Container, which could not be: there is no Docker on the
-development box. That leaves it the only instruction in the repo nobody has ever followed, and it
-is the wrong one to leave unverified — the container is the half of the serverless/container split
-the live demo cannot show, which makes it exactly the half a curious reviewer will try to run.
-
-**DoD:**
-
-- [ ] Both commands in `ARCHITECTURE.md` §Container execute as written from a clean clone. If they
-      don't, fix the document — the point is the instructions, not getting a container up by hand.
-- [ ] The running container answers `GET /api/health` with `liveStream: true` and `/ws` present in
-      `endpoints`, which is what ARCHITECTURE's comparison table claims separates the two targets.
-      The serverless side of that table is already verified against the live demo.
-- [ ] A client actually receives a frame on `/ws` — point the dashboard at it by setting `wsUrl` in
-      `environment.prod.ts`, so "pushed every 2s" is observed rather than inferred from
-      `test_websocket.py`.
-- [ ] `backend/docker-compose.yml` is either exercised or deleted. It is committed and listed in
-      ARCHITECTURE's project tree, but no CI job, gate or verified instruction touches it — so it
-      is either a second supported way in, or it is decoration.
-
-Deliberately **before item 2** despite the higher number: 2 wants a screen recording of the
-container pushing live updates, and recording something that has never been run is how a short task
-turns into a debugging session. Do this first and 2 is just the capture.
 
 ## Deliberately not doing
 

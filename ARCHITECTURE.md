@@ -252,6 +252,18 @@ persists. Point a frontend at it by setting `apiUrl`/`wsUrl`/`healthUrl` in
 `environment.prod.ts` to its origin, and add that origin to `ALLOWED_ORIGINS` — cross-origin
 means CORS applies again, which the same-origin demo avoids entirely.
 
+`backend/docker-compose.yml` is the other supported way in, and the one that makes the
+*persistent* and *durable* rows above literally true:
+
+```bash
+cd backend && docker compose up -d
+```
+
+It puts the SQLite file on a named volume mounted at `/data`, so writes outlive
+`docker compose down`. The bare `docker run` above leaves the database in the
+container's writable layer, where `docker rm` discards it — fine for a look around,
+wrong for anything you want to still be there tomorrow.
+
 Run under multiple workers and each worker gets its own broadcaster and its own in-memory
 connection list. That is correct — each worker only fans out to the clients it holds — but it
 does mean the "one query per tick" property is per worker rather than per cluster.
