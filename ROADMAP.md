@@ -40,24 +40,6 @@ received.
       `contact.site` in `src/app/resume/resume.data.ts` — change it there and run
       `npm run resume:pdf`, or CI will fail on the stale PDF.
 
-## 2. Show the WebSocket, do not assert it
-
-**Effort:** S · **Why:** The serverless/container split is the most interesting decision in the
-repo and the live site cannot demonstrate half of it. The `/ws` path exists, is tested
-(`test_websocket.py`), and is invisible to anyone who does not read Python.
-
-The container path is now built, run and verified, so this item is only the capture:
-`cd backend && docker compose up -d` brings up the live-socket deployment, and the dashboard
-reaches the streaming badge when pointed at it. Frames were observed arriving at 2.00s intervals.
-
-**DoD:**
-
-- [ ] A short screen recording (or animated WebP under 2MB) of the container deployment pushing
-      live updates, committed to `docs/images/` and embedded in the README beside the polling
-      explanation.
-- [ ] The dashboard's connection badge is captured in both states, so the degradation is legible
-      as a designed behaviour rather than a bug.
-
 ## Deliberately not doing
 
 Recorded so the next instance does not helpfully add them:

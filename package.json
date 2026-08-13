@@ -7,6 +7,7 @@
     "start:backend": "cd backend && python main.py",
     "build": "ng build && node scripts/emit-route-meta.mjs",
     "gen:social": "node scripts/gen-social-assets.mjs",
+    "capture:stream": "node scripts/capture-stream.mjs",
     "resume:pdf": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/render-resume.mjs",
     "resume:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/render-resume.mjs --check",
     "watch": "ng build --watch --configuration development",

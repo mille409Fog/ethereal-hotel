@@ -39,6 +39,13 @@ deliberately has *no* fixture fallback: a form whose entire claim is that it wri
 row cannot honestly fake one.
 → [Transport and degradation](ARCHITECTURE.md#transport-and-degradation)
 
+![The dashboard running against the container deployment. The header badge reads "Live data · streaming from the API" and the guests-in-house figure changes every two seconds as broadcasts arrive](docs/images/websocket-stream.webp)
+
+*Fifteen unedited seconds of the container deployment — `cd backend && docker compose up -d`. The
+guests-in-house figure moves on each broadcast tick and nothing else does, because nothing else in
+the database changed. `npm run capture:stream` records this.*
+
+![The connection badge in both of its live states, side by side: the container deployment reads "Live data · streaming from the API", the deployed Vercel demo reads "Live data · polled from the API every few seconds"](docs/images/connection-badge-states.png)
 **The booking rule exists once, on the server, and its error knows which field it belongs to.**
 Check-out must be at least one night after check-in. That rule lives in
 `backend/services/bookings.py` and has no counterpart in the browser, so the message in the
