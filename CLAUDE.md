@@ -53,12 +53,12 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 
 | File                | Size | Read it when                                                                                                                          |
 | ------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROADMAP.md`        | 5K   | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here. |
-| `README.md`         | 4K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
-| `ARCHITECTURE.md`   | 22K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
-| `backend/README.md` | 16K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
+| `ROADMAP.md`        | 4K   | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here. |
+| `README.md`         | 5K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
+| `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
+| `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
 | `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project, spec'd but **not built** — no `src/aubade/` exists yet).                |
-| `CONTRIBUTING.md`   | 4K   | Setup and the four gates. This is where "how do I run it" lives; the README only links here.                                          |
+| `CONTRIBUTING.md`   | 5K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
 left from 1 so the list always reads 1, 2, 3, 4. The reasoning that survived a finished item moved
@@ -79,26 +79,29 @@ here: `api/index.py`, `backend/main.py`, `src/environments/environment.prod.ts`,
 `scripts/py-tool.mjs`, `e2e/support/backend.ts` and `.gitattributes` each open by explaining why
 they are the way they are. Read the header before changing the file; the answer is usually there.
 
-## The four gates
+## The five gates
 
 CI (`.github/workflows/code-quality.yml`) runs these. Run them before claiming done:
 
 ```bash
 npm run code-quality      # Prettier --check + ESLint --max-warnings 0
 npm test                  # Vitest + coverage thresholds from angular.json
+npm run test:scripts      # node --test over scripts/*.test.mjs — no browser, no dependency
 npm run code-quality:py   # ruff format --check, ruff check, mypy --strict
 npm run test:backend      # pytest
 ```
 
-`npm run e2e` (build + Playwright smoke/axe) is a fifth CI job. It needs
+`npm run e2e` (build + Playwright smoke/axe) is a separate CI job. It needs
 `npx playwright install --only-shell chromium` once. It stubs the backend at the network layer, so
-it needs no running server.
+it needs no running server. `npm run resume:check` runs in that same job because it needs the same
+Chromium — it re-renders the résumé and fails when the committed PDF has drifted from
+`src/app/resume/resume.data.ts`.
 
-A sixth job runs `npm run check:docs`, which fails when this file's claims stop matching the repo.
+Another job runs `npm run check:docs`, which fails when this file's claims stop matching the repo.
 See §Keeping this file honest — if you change something documented here, that check is how you find
 out.
 
-A seventh runs `npm run lighthouse`: it builds, serves `dist/` on 4173 and audits `/` and
+A further job runs `npm run lighthouse`: it builds, serves `dist/` on 4173 and audits `/` and
 `/dashboard`, failing below performance 90, accessibility 100 and best-practices 95 — the
 thresholds live in `lighthouserc.json` and the README states them. It fetches `@lhci/cli` at a
 version pinned in `package.json` instead of declaring it, because `lighthouse` → `puppeteer-core` →
@@ -118,6 +121,13 @@ not leave the note behind when the suppression goes.
 
 ## Traps that have cost previous instances time
 
+- **`public/jacob-miller-resume.pdf` is generated — never edit it, and never edit the résumé in
+  two places.** Its single source is `src/app/resume/resume.data.ts`, which the experience, skills
+  and contact sections also read; `npm run resume:pdf` re-renders the PDF and `npm run resume:check`
+  fails CI when the committed one has drifted. The fonts it embeds are vendored in
+  `scripts/resume-fonts/` because text metrics decide the PDF's bytes, and a render using whatever
+  fonts are installed would differ between this box and CI. It was a hand-built LibreOffice document
+  until a ROADMAP item replaced it; that is the drift being prevented.
 - **Never rewrite files with `sed`/`perl`/PowerShell redirection.** `.gitattributes` sets
   `* text=auto eol=lf`; scripted rewrites reintroduce CRLF, `npm run format:check` fails, and
   `git checkout --` does not reliably revert it. Use the Edit and Write tools.
@@ -206,8 +216,8 @@ The script deliberately does not check prose. These are the parts it cannot see,
 | What `/dashboard` or `/booking` actually do      | §What this repo is — the two-routes claim is the whole framing   |
 | A degradation path, badge, or fallback           | §What this repo is, §Don't helpfully add these                   |
 | Deployment target, `create_app` flags, Vercel    | §Traps — the Python split and the `requirements.txt` landmine    |
-| A gate, threshold, or CI job                     | §The four gates                                                  |
-| A Lighthouse threshold or an `angular.json` budget | §The four gates, and the README's Gates section — it states them |
+| A gate, threshold, or CI job                     | §The five gates                                                  |
+| A Lighthouse threshold or an `angular.json` budget | §The five gates, and the README's Gates section — it states them |
 | Anything in `ROADMAP.md` §Deliberately not doing | §Don't helpfully add these — it mirrors that list                |
 | Finishing a ROADMAP item that removes a section  | The doc-map row for whatever the item rewrote, and its size      |
 

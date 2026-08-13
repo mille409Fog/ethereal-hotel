@@ -34,17 +34,38 @@ database and labels itself "simulated data".
 
 ## Before you open a PR
 
-Run the same gates CI does. All four must pass:
+Run the same gates CI does. All five must pass:
 
 ```bash
 npm run code-quality      # Prettier + ESLint (--max-warnings 0)
 npm test                  # Vitest + coverage thresholds
+npm run test:scripts      # node --test over scripts/*.test.mjs
 npm run code-quality:py   # ruff format --check, ruff check, mypy --strict
 npm run test:backend      # pytest
 ```
 
 `npm run e2e` additionally builds and runs the Playwright suite (smoke + accessibility). It
 needs a browser once: `npx playwright install --only-shell chromium`.
+
+## The résumé
+
+The site's experience, skills and contact sections and the downloadable PDF are one structure:
+`src/app/resume/resume.data.ts`. Edit that, then:
+
+```bash
+npm run resume:pdf        # re-render public/jacob-miller-resume.pdf
+npm run resume:check      # what CI runs — fails if the committed PDF is stale
+```
+
+`resume:check` runs in the Playwright job because it needs the same Chromium. Never edit the PDF
+directly, and never edit it in a word processor — it is a build output, and the check will catch
+it. If the check fails right after a Playwright upgrade, that is correct rather than spurious: the
+PDF records the renderer that produced it. Re-render and commit.
+
+Note that `resume:pdf` always leaves the file looking modified in `git status`, because Chromium
+stamps the render time into every PDF it writes. `resume:check` ignores exactly those two
+timestamps, so it — not `git diff` — is what tells you whether anything really changed. If the
+check passes, `git checkout -- public/jacob-miller-resume.pdf` and keep the diff clean.
 
 `npm run lighthouse` builds, serves `dist/` on :4173 and audits `/` and `/dashboard`, failing
 below the thresholds in `lighthouserc.json`. It drives whatever Chrome you already have and

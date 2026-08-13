@@ -36,7 +36,9 @@ received.
 - [ ] Custom domain live on the Vercel project, HTTPS, apex and `www` both resolving with one
       redirecting to the other.
 - [ ] `og:url`, canonical, and any absolute URLs in the README updated.
-- [ ] `README.md`, resume, and GitHub profile point at the new domain.
+- [ ] `README.md`, résumé, and GitHub profile point at the new domain. The résumé's copy is
+      `contact.site` in `src/app/resume/resume.data.ts` — change it there and run
+      `npm run resume:pdf`, or CI will fail on the stale PDF.
 
 ## 2. Show the WebSocket, do not assert it
 
@@ -55,21 +57,6 @@ reaches the streaming badge when pointed at it. Frames were observed arriving at
       explanation.
 - [ ] The dashboard's connection badge is captured in both states, so the degradation is legible
       as a designed behaviour rather than a bug.
-
-## 3. One resume, one source
-
-**Effort:** M · **Why:** A site and a PDF that drift apart is a small, visible correctness bug in
-the artifact whose entire job is being correct. Generating one from the other is a legitimately
-nice piece of engineering and costs less than maintaining both.
-
-**DoD:**
-
-- [ ] Resume content lives in one typed structure (JSON or TS) consumed by the site.
-- [ ] A script renders that structure to a PDF (print stylesheet + headless Chromium via the
-      Playwright already installed — do not add a PDF dependency).
-- [ ] `npm run resume:pdf` produces the file; CI regenerates it and fails if the committed PDF is
-      stale.
-- [ ] The PDF is genuinely presentable at A4 and US Letter, and text is selectable.
 
 ## Deliberately not doing
 

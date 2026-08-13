@@ -36,6 +36,14 @@ jobs:
       - name: Run frontend tests (fails below coverage thresholds)
         run: npm run test
 
+      # Node's own test runner over scripts/*.test.mjs — no browser, no
+      # dependency, so it belongs here rather than in the Playwright job. It
+      # covers the PDF normaliser that the résumé staleness gate rests on: if
+      # that function is wrong, `resume:check` either passes everything or fails
+      # everything, and both look like the gate working.
+      - name: Run build-script tests
+        run: npm run test:scripts
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
@@ -112,6 +120,14 @@ jobs:
       # never touches the real API host.
       - name: Run end-to-end suite
         run: npm run e2e
+
+      # The résumé on the site and the PDF people download are one structure and
+      # one renderer; this re-renders it and fails if the committed PDF has
+      # drifted. It runs here because it needs the Chromium installed above, and
+      # for the same reason as everything else in this job: paying the browser
+      # download twice to learn two things is worse than learning both once.
+      - name: Check the committed résumé PDF is current
+        run: npm run resume:check
 
       # `if: always()` because these only matter when the step above failed:
       # the config records a trace and a screenshot on failure, and without the

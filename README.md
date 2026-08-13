@@ -56,9 +56,11 @@ the linters target 3.11 — the CI matrix runs both rather than assuming the gap
 
 ## Gates
 
-Four commands, all of them CI jobs: `npm run code-quality`, `npm test`, `npm run code-quality:py`,
-`npm run test:backend`. Plus Playwright and axe (`npm run e2e`), dependency audits over both
-languages, and `npm run check:docs`, which fails when the docs stop matching the repo.
+Five commands, all of them CI jobs: `npm run code-quality`, `npm test`, `npm run test:scripts`,
+`npm run code-quality:py`, `npm run test:backend`. Plus Playwright and axe (`npm run e2e`),
+dependency audits over both languages, `npm run check:docs`, which fails when the docs stop
+matching the repo, and `npm run resume:check`, which fails when the committed résumé PDF has
+drifted from the structure it is rendered from.
 [CONTRIBUTING.md](CONTRIBUTING.md) has the commands; accessibility is a build gate and the
 reasoning behind the two non-obvious choices is in
 [Accessibility](ARCHITECTURE.md#accessibility).

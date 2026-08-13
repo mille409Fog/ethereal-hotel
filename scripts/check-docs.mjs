@@ -64,10 +64,87 @@ check('files CLAUDE.md points at still exist', () => {
     'angular.json',
     'lighthouserc.json',
     'src/app/app.routes.ts',
+    'src/app/resume/resume.data.ts',
+    'scripts/resume-fonts',
+    'public/jacob-miller-resume.pdf',
   ];
   return referenced
     .filter((file) => !exists(file))
     .map((file) => `CLAUDE.md references ${file}, which no longer exists.`);
+});
+
+// The doc map's size column, which CLAUDE.md has always claimed was checked and
+// which was not: four of its six rows had drifted, one of them by 3K. The number
+// is a routing hint — "is this a page or an afternoon" — so it is asserted to
+// the nearest kilobyte with a kilobyte of slack either side. That is wide enough
+// that ordinary edits do not fail the build and narrow enough to catch a
+// document that has doubled, which is the only thing the column is for.
+check('the doc map states each document\'s real size', () => {
+  const ROW = /^\|\s*`([\w./-]+\.md)`\s*\|\s*(\d+)K\s*\|/gm;
+  const problems = [];
+
+  for (const [, file, claimed] of CLAUDE_MD.matchAll(ROW)) {
+    if (!exists(file)) continue; // reported by the existence check above
+    const actual = Math.round(readFileSync(path.join(repoRoot, file)).length / 1024);
+    if (Math.abs(actual - Number(claimed)) > 1) {
+      problems.push(
+        `CLAUDE.md's doc map calls ${file} ${claimed}K; it is ${actual}K. ` +
+          `Update the table — the column is there to say whether a file is a page or an afternoon.`
+      );
+    }
+  }
+
+  return problems;
+});
+
+// The résumé's whole point is that it exists once. CLAUDE.md says the PDF is
+// generated from `resume.data.ts` and that the site's sections read the same
+// structure — claims that stop being true the moment somebody pastes a job back
+// into a component, which is exactly how it got to four copies the first time.
+check('the résumé still has a single source', () => {
+  const problems = [];
+
+  const scripts = JSON.parse(read('package.json')).scripts;
+  for (const script of ['resume:pdf', 'resume:check']) {
+    if (!(script in scripts)) {
+      problems.push(`CLAUDE.md documents \`npm run ${script}\`; package.json has no such script.`);
+    }
+  }
+
+  // Every section that shows résumé content must read it, not restate it.
+  for (const consumer of [
+    'src/app/experience/experience.ts',
+    'src/app/skills/skills.ts',
+    'src/app/resume/resume.ts',
+  ]) {
+    if (!exists(consumer)) {
+      problems.push(`${consumer} is gone; CLAUDE.md says it reads the résumé structure.`);
+    } else if (!/from '(\.\.\/resume|\.)\/resume\.data'/.test(read(consumer))) {
+      problems.push(
+        `${consumer} no longer imports resume.data. CLAUDE.md says the résumé lives in one ` +
+          `place; either restore the import or stop making the claim.`
+      );
+    }
+  }
+
+  // The renderer embeds these by name. A missing face silently falls back to a
+  // system font, which changes the PDF's bytes on one machine and not another.
+  if (exists('scripts/render-resume.mjs')) {
+    const renderer = read('scripts/render-resume.mjs');
+    for (const [, file] of renderer.matchAll(/'([\w-]+\.woff2)'/g)) {
+      if (!exists(path.join('scripts', 'resume-fonts', file))) {
+        problems.push(`scripts/render-resume.mjs embeds ${file}, which is not in scripts/resume-fonts/.`);
+      }
+    }
+    // OFL 1.1 requires the licence travel with the font.
+    for (const licence of ['OFL-Cinzel.txt', 'OFL-CrimsonPro.txt']) {
+      if (!exists(path.join('scripts', 'resume-fonts', licence))) {
+        problems.push(`scripts/resume-fonts/${licence} is missing; the OFL requires it be kept.`);
+      }
+    }
+  }
+
+  return problems;
 });
 
 // Things CLAUDE.md asserts are *absent*. Both have bitten this repo before: a
@@ -208,7 +285,15 @@ check('quoted config values still match the files they came from', () => {
   );
 
   const scripts = JSON.parse(read('package.json')).scripts;
-  for (const gate of ['code-quality', 'test', 'code-quality:py', 'test:backend', 'e2e', 'audit']) {
+  for (const gate of [
+    'code-quality',
+    'test',
+    'test:scripts',
+    'code-quality:py',
+    'test:backend',
+    'e2e',
+    'audit',
+  ]) {
     expect(
       gate in scripts,
       `CLAUDE.md documents \`npm run ${gate}\` as a gate; package.json has no such script.`

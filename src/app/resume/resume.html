@@ -11,9 +11,9 @@
       <div class="contact-block">
         <h3 class="contact-block-title">Contact Information</h3>
         <ul class="contact-list">
-          <li><span class="contact-icon">&#9993;</span> millerjacob67&#64;gmail.com</li>
-          <li><span class="contact-icon">&#128222;</span> 720-636-1085</li>
-          <li><span class="contact-icon">&#128205;</span> Denver, CO</li>
+          <li><span class="contact-icon">&#9993;</span> {{ contact.email }}</li>
+          <li><span class="contact-icon">&#128222;</span> {{ contact.phone }}</li>
+          <li><span class="contact-icon">&#128205;</span> {{ contact.location }}</li>
         </ul>
       </div>
 
@@ -23,15 +23,11 @@
         <ul class="contact-list">
           <li>
             <span class="contact-icon">&#128279;</span>
-            <a href="https://linkedin.com/in/jacob-miller-485603146" target="_blank" rel="noopener"
-              >LinkedIn Profile</a
-            >
+            <a [href]="linkedinHref" target="_blank" rel="noopener">LinkedIn Profile</a>
           </li>
           <li>
             <span class="contact-icon">&#128736;</span>
-            <a href="https://github.com/mille409Fog" target="_blank" rel="noopener"
-              >GitHub Projects</a
-            >
+            <a [href]="githubHref" target="_blank" rel="noopener">GitHub Projects</a>
           </li>
         </ul>
       </div>
@@ -39,18 +35,18 @@
       <!-- Education -->
       <div class="contact-block">
         <h3 class="contact-block-title">Education</h3>
-        <p><strong>B.S. Mathematics</strong></p>
-        <p class="text-muted">Western Washington University, 2016</p>
-        <p class="text-muted" style="margin-top: 0.5rem">SOA Exam P (2017), SOA Exam FM (2018)</p>
+        <p>
+          <strong>{{ education.degree }}</strong>
+        </p>
+        <p class="text-muted">{{ education.institution }}, {{ education.year }}</p>
+        <p class="text-muted" style="margin-top: 0.5rem">{{ certifications }}</p>
       </div>
 
       <!-- Availability -->
       <div class="contact-block">
         <h3 class="contact-block-title">Availability</h3>
-        <p>Currently employed and open to discussing new opportunities.</p>
-        <p class="text-muted">
-          Preferred roles: Senior Software Engineer, Tech Lead, Solution Architect
-        </p>
+        <p>{{ availability }}</p>
+        <p class="text-muted">Preferred roles: {{ preferredRoles }}</p>
       </div>
 
       <!-- Resume -->
