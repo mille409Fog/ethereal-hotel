@@ -11,7 +11,7 @@ import {
 /**
  * The astronomy, checked against an almanac rather than against itself.
  *
- * AUBADE's Phase 0 asks for eight cities across latitudes and hemispheres, within
+ * AUBADE's clock phase asked for eight cities across latitudes and hemispheres, within
  * two minutes of published times, and names Reykjavík in June and Singapore as
  * the two that break naive implementations. Both are here, and both break things
  * for reasons worth stating:

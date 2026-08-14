@@ -1,0 +1,90 @@
+<!-- ===== HÔTEL AUBADE · FLOOR 0 · THE DESK =====
+     `main` rather than `section`, matching the site's other routes: this
+     renders nothing else, so without it the page is content outside any
+     landmark.
+
+     Two bands, and the split is deliberate. The first is the height of the
+     viewport and holds nothing but the name plate, so the room gets the whole
+     frame — the phase's Definition of Done is that a stranger shown a
+     screenshot asks where it is, and that is not a thing a screenshot can do
+     with half of it under a wall of prose. The second band is the room written
+     out, one scroll down, over the same still-fixed render.
+
+     The prose is real DOM and always present, not a fallback that appears when
+     something fails. A WebGL piece whose only content is a canvas is unreadable
+     to a screen reader, unsearchable, and gone the moment a driver says no. The
+     Reader's Edition proper is its own phase; this is what has to be good
+     enough until then. -->
+<main class="lobby" [attr.data-mode]="mode()">
+  @if (mode() !== 'closed') {
+    <!-- role="img" with a name, because to assistive technology this is one
+         picture and not a drawing surface. The long description is the prose
+         below, which is visible to everyone rather than hidden in an attribute. -->
+    <canvas
+      #stage
+      class="lobby__stage"
+      role="img"
+      aria-label="A hotel lobby at night, drawn in real time. Moonlight through a transom window
+        crosses the room and lands on the marble floor in front of the reception desk."
+    ></canvas>
+  }
+
+  <div class="lobby__band">
+    <div class="lobby__plate">
+      <h1 class="lobby__name">Hôtel&nbsp;Aubade</h1>
+      <p class="lobby__floor">Floor 0 &mdash; The Desk</p>
+
+      @switch (mode()) {
+        @case ('opening') {
+          <p class="lobby__state">Unlocking the lobby&hellip;</p>
+        }
+        @case ('still') {
+          <p class="lobby__state">You asked for less motion, so the room is holding its breath.</p>
+        }
+        @case ('closed') {
+          <p class="lobby__state">
+            This browser has no WebGL2, so the lobby will not open for it. The room is written out
+            below instead; it is the same room.
+          </p>
+        }
+      }
+
+      @if (note(); as reduction) {
+        <p class="lobby__state lobby__state--quiet">{{ reduction }}</p>
+      }
+
+      @if (mode() !== 'closed') {
+        <!-- The path is spelled out rather than left as a bare `#lobby-prose`,
+             and that is not belt and braces. `src/index.html` sets
+             `<base href="/">`, and a fragment-only href resolves against the
+             *base* URL rather than the current one — so `#lobby-prose` on this
+             route means `/#lobby-prose`, which the router matches as the home
+             page. It silently navigates away from the piece.
+
+             A real anchor rather than a click handler, for the reason the
+             portfolio's nav gives: the browser both scrolls and moves focus,
+             and it works on middle click and copy-link. -->
+        <a class="lobby__cue" href="/aubade#lobby-prose">The room, in words</a>
+      }
+    </div>
+  </div>
+
+  <div class="lobby__band lobby__band--prose">
+    <!-- tabindex="-1" so the cue above actually lands focus here rather than
+         only scrolling, which is what leaves a keyboard user's focus stranded
+         back in the plate. Same pattern as the portfolio's sections. -->
+    <div class="lobby__prose" id="lobby-prose" tabindex="-1">
+      <p>
+        Three in the morning. The door to the street is shut and the transom above it is not, so the
+        only light that gets in arrives in one hard diagonal, crosses the room, and lands on the
+        marble in front of the desk. Dust turns over inside it.
+      </p>
+      <p>
+        On the counter: a brass bell nobody rings, the register lying open at today, and a lamp with
+        a green shade, lit. Behind it, thirty-five pigeonholes and a key in none of them. The camera
+        does not circle the room. It stands in it, and breathes.
+      </p>
+      <p class="lobby__aside">Floor 0 of six. The lift is not running yet.</p>
+    </div>
+  </div>
+</main>

@@ -129,6 +129,16 @@ jobs:
       - name: Check the committed résumé PDF is current
         run: npm run resume:check
 
+      # AUBADE's shaders are the only code in this repository whose compiler
+      # runs after deployment: a bad token in the GLSL passes tsc, passes the
+      # unit tests (which drive a stub context that never reads the source),
+      # deploys, and shows a visitor a blank page. This compiles the real source
+      # in the Chromium installed above and renders a frame, so the shader gets
+      # a build-time compiler like everything else. It says nothing about speed
+      # — SwiftShader is a CPU rasteriser — only about correctness.
+      - name: Compile and render the Aubade shaders
+        run: npm run verify:shader
+
       # `if: always()` because these only matter when the step above failed:
       # the config records a trace and a screenshot on failure, and without the
       # upload a red CI run gives you a stack trace and no way to see the page.

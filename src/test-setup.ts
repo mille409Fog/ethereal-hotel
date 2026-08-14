@@ -23,3 +23,18 @@ class MockIntersectionObserver {
 
 globalThis.IntersectionObserver =
   MockIntersectionObserver as unknown as typeof IntersectionObserver;
+
+/**
+ * jsdom does not implement `ResizeObserver` either, and `src/aubade/aubade.ts`
+ * constructs one to keep the canvas's drawing buffer in step with its laid-out
+ * size. Same reasoning as above: a no-op stub is what makes the component
+ * mountable, and the tests that care about resizing drive `measure()` directly
+ * rather than waiting for an observation jsdom would never make.
+ */
+class MockResizeObserver {
+  public observe(): void {}
+  public unobserve(): void {}
+  public disconnect(): void {}
+}
+
+globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;

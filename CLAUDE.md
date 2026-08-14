@@ -15,6 +15,10 @@ product; it is a hiring artifact. That distinction decides most arguments:
 - **Two routes carry the whole technical argument**: `/dashboard` (reads, degrades from WebSocket →
   polling → committed fixture) and `/booking` (writes, renders server-side validation on the field
   that caused it). Everything else is a portfolio section.
+- **`/aubade` is not part of that argument and must not be folded into it.** It is a separate work
+  living in `src/aubade/`, sharing this deployment and nothing else — no styles, no services, no
+  tokens, and imports that only ever point one way. `AUBADE.md` is its spec; treat it as a second
+  repository that happens to be in this folder.
 - The owner writes and thinks in long form. `ROADMAP.md` and `AUBADE.md` are the actual planning
   documents — they carry reasoning, not just tasks. Read the relevant one before proposing work.
 
@@ -57,7 +61,7 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | `README.md`         | 5K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
 | `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
-| `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project). Phase 0 has landed — `src/aubade/solar/` is the clock. No renderer, no route, no pixels. |
+| `AUBADE.md`         | 16K  | Only if the task touches `/aubade` (a separate WebGL project). Two phases have landed: `src/aubade/solar/` is the clock, and the lobby is on the route. Nothing yet connects them. |
 | `CONTRIBUTING.md`   | 5K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
@@ -78,6 +82,9 @@ Code-level intent lives in module docstrings and file-header comments, and it is
 here: `api/index.py`, `backend/main.py`, `src/environments/environment.prod.ts`,
 `scripts/py-tool.mjs`, `e2e/support/backend.ts` and `.gitattributes` each open by explaining why
 they are the way they are. Read the header before changing the file; the answer is usually there.
+`src/aubade/rooms/lobby.frag.ts` is the densest and the one where it matters most: GLSL has no
+types, no linter and no reviewer, so its header carries the coordinate conventions and the three
+decisions that buy the frame rate.
 
 ## The five gates
 
@@ -93,9 +100,13 @@ npm run test:backend      # pytest
 
 `npm run e2e` (build + Playwright smoke/axe) is a separate CI job. It needs
 `npx playwright install --only-shell chromium` once. It stubs the backend at the network layer, so
-it needs no running server. `npm run resume:check` runs in that same job because it needs the same
-Chromium — it re-renders the résumé and fails when the committed PDF has drifted from
-`src/app/resume/resume.data.ts`.
+it needs no running server. Two more commands ride in that job because they need the same Chromium:
+`npm run resume:check` re-renders the résumé and fails when the committed PDF has drifted from
+`src/app/resume/resume.data.ts`, and `npm run verify:shader` compiles AUBADE's GLSL and renders a
+frame. That last one exists because the shaders are the only code here whose compiler would
+otherwise first run in production — `tsc` cannot read them and the unit tests drive a stub context
+that never looks at the source. Add `-- --out some.png` to look at the frame; it renders through
+SwiftShader, so it says nothing about speed.
 
 Another job runs `npm run check:docs`, which fails when this file's claims stop matching the repo.
 See §Keeping this file honest — if you change something documented here, that check is how you find
@@ -128,6 +139,10 @@ not leave the note behind when the suppression goes.
   `scripts/resume-fonts/` because text metrics decide the PDF's bytes, and a render using whatever
   fonts are installed would differ between this box and CI. It was a hand-built LibreOffice document
   until a ROADMAP item replaced it; that is the drift being prevented.
+- **GLSL lives inside a template literal, so a backtick in a shader comment ends the string** and
+  the error lands thirty lines away. Same family: GLSL ES 3.00 reserves `half`, `sample`, `input`,
+  `output` and a long tail more, and rejects them with a line number and no reason. Run
+  `npm run verify:shader` after any GLSL edit — four seconds, and it catches both.
 - **Never rewrite files with `sed`/`perl`/PowerShell redirection.** `.gitattributes` sets
   `* text=auto eol=lf`; scripted rewrites reintroduce CRLF, `npm run format:check` fails, and
   `git checkout --` does not reliably revert it. Use the Edit and Write tools.
@@ -187,6 +202,13 @@ mistake for bugs:
 - The metrics grid is deliberately **not** an `aria-live` region — a throttled `role="status"`
   digest replaces it. ARCHITECTURE §Accessibility has the reasoning.
 - Health is mounted twice (`/` and `/api/health`) on purpose: one handler, two deployment shapes.
+- **`src/aubade/solar/` is tested and deliberately unused** — the lobby is lit by a fixed moon, and
+  wiring the clock to it is the next AUBADE phase. Likewise `src/aubade/reduced-motion.ts`
+  duplicates its `src/app/` twin, and `aubade.css` re-declares colours that already exist: a shared
+  helper is precisely how a separate work stops being one. `check:docs` gates the import direction.
+- The renderer is behind a dynamic `import()` in `aubade.ts` so no WebGL code is fetched, and no
+  context created, before someone opens the route. A static import would work and quietly cost
+  AUBADE's second non-negotiable; `check:docs` fails if it happens.
 - **There is no cookie banner because there is nothing to consent to.** Vercel Analytics is loaded
   from the same-origin `/_vercel/` path and sets no cookie; that is the reason it was chosen over
   Plausible, and `@vercel/analytics` is deliberately not a dependency — it drags SvelteKit and Vite 8
@@ -220,6 +242,7 @@ The script deliberately does not check prose. These are the parts it cannot see,
 | A Lighthouse threshold or an `angular.json` budget | §The five gates, and the README's Gates section — it states them |
 | Anything in `ROADMAP.md` §Deliberately not doing | §Don't helpfully add these — it mirrors that list                |
 | Finishing a ROADMAP item that removes a section  | The doc-map row for whatever the item rewrote, and its size      |
+| Finishing an AUBADE phase                        | Its doc-map row; delete the phase and renumber the rest          |
 
 **Two failure modes to avoid.** Do not let this file grow into a seventh long document — it earns
 its place by being the short one, and anything over ~250 lines has stopped routing and started

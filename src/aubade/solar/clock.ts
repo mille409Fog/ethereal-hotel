@@ -39,7 +39,8 @@ export interface IAubadeClock {
 
   /**
    * The next sunrise after `at`, or `null` under a polar day or night that
-   * outlasts the search window. The end of the piece; see AUBADE's Phase 10.
+   * outlasts the search window. The end of the piece: see AUBADE's last phase,
+   * Dawn.
    */
   readonly nextRise: Date | null;
 
@@ -93,7 +94,8 @@ function nextCrossing(
  *
  * @param at The instant to read. Defaults to now.
  * @param zone IANA zone. Defaults to the browser's. Passed explicitly by the
- *   dev-only `?t=` fake clock in Phase 2 and by every test here.
+ *   dev-only `?t=` fake clock that arrives with the day/night states, and by
+ *   every test here.
  */
 export function readClock(at: Date = new Date(), zone: string = resolvedZone()): IAubadeClock {
   const location = locationForZone(zone, at);

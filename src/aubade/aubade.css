@@ -1,0 +1,214 @@
+/* ===================================================
+   HÔTEL AUBADE — Floor 0
+   ===================================================
+
+   This file shares nothing with `src/styles.css`, and that is a requirement
+   rather than a preference. AUBADE is a separate work that happens to be
+   deployed from the same repository; the moment it reads one of the portfolio's
+   design tokens it has become a section of the portfolio. Every value it needs
+   is declared here, on `:host`, even where the number is the same one the other
+   stylesheet uses.
+
+   One consequence worth knowing up front: the font stack is system faces only.
+   The portfolio loads Cinzel and Crimson Pro from Google Fonts, and using them
+   here would be both a shared dependency and a network request this route has
+   no business making. */
+
+:host {
+  /* Ink. Every pairing below clears 7:1 on --lobby-panel, which matters because
+     these sit over a canvas whose colour no contrast checker can compute — so
+     the panels are opaque and the ratios are real rather than assumed. */
+  --lobby-ink: #e9e3d6;
+  --lobby-ink-quiet: #a99f8c;
+  --lobby-brass: #c9a24a;
+
+  --lobby-panel: #0a0b0d;
+  --lobby-rule: #2c2720;
+
+  /* The colour behind everything before the first frame lands. Close to the
+     shader's own darkest value, so the canvas appearing is not a flash. */
+  --lobby-void: #05060a;
+
+  --lobby-face-display:
+    'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --lobby-face-plate: ui-sans-serif, 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --lobby-gutter: clamp(1rem, 4vw, 3rem);
+
+  display: block;
+  background: var(--lobby-void);
+  color: var(--lobby-ink);
+  font-family: var(--lobby-face-display);
+  line-height: 1.55;
+}
+
+/* Fixed rather than absolute so the room stays put while the prose scrolls over
+   it — a page that scrolls its own render is a page that reads as a screenshot. */
+.lobby__stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The drawing buffer is often smaller than the element and upscaled by the
+     compositor; see MAX_DRAWING_BUFFER_PIXELS in gl/viewport.ts. Smooth
+     interpolation is what makes that read as softness rather than as pixels. */
+  image-rendering: auto;
+}
+
+/* Each band is one viewport tall, so the first screen is the room and nothing
+   else. `svh` rather than `vh` because on mobile `vh` is the *largest* viewport
+   height, which puts the plate under the browser's own chrome. */
+.lobby__band {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: end;
+  min-height: 100svh;
+  padding: var(--lobby-gutter);
+  box-sizing: border-box;
+}
+
+.lobby__band--prose {
+  align-content: center;
+  justify-items: end;
+}
+
+/* No canvas, no room to keep clear: the prose becomes the page and the second
+   band collapses into the first. */
+.lobby[data-mode='closed'] .lobby__band {
+  min-height: 0;
+}
+
+.lobby[data-mode='closed'] {
+  display: grid;
+  align-content: center;
+  min-height: 100svh;
+}
+
+.lobby[data-mode='closed'] .lobby__band--prose {
+  justify-items: start;
+}
+
+/* ----- The plate ----- */
+
+.lobby__plate,
+.lobby__prose {
+  width: fit-content;
+  max-width: min(32rem, 100%);
+  padding: clamp(0.8rem, 1.8vw, 1.2rem) clamp(1rem, 2.2vw, 1.5rem);
+  background: var(--lobby-panel);
+  border: 1px solid var(--lobby-rule);
+  border-left: 2px solid var(--lobby-brass);
+}
+
+.lobby__name {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.6vw, 1.7rem);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.lobby__floor {
+  margin: 0.15rem 0 0;
+  font-family: var(--lobby-face-plate);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+}
+
+.lobby__state {
+  margin: 0.7rem 0 0;
+  max-width: 26rem;
+  font-size: 0.9rem;
+  color: var(--lobby-ink-quiet);
+  text-wrap: pretty;
+}
+
+.lobby__state--quiet {
+  margin-top: 0.35rem;
+  font-style: italic;
+}
+
+/* The one control on the first screen. The prose is always in the DOM and a
+   screen reader reaches it regardless; this is what tells a sighted visitor it
+   is there, which is the half an `aria-describedby` would not have covered. */
+.lobby__cue {
+  display: inline-block;
+  margin-top: 0.8rem;
+  font-family: var(--lobby-face-plate);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.35em;
+}
+
+.lobby__cue::after {
+  content: ' ↓';
+  text-decoration: none;
+}
+
+.lobby__cue:focus-visible {
+  outline: 2px solid var(--lobby-brass);
+  outline-offset: 4px;
+}
+
+/* ----- The room, in words ----- */
+
+.lobby__prose {
+  max-width: min(34rem, 100%);
+}
+
+/* It is focusable only as a scroll target, so the default ring would appear on
+   a mouse click and never be useful. `:focus-visible` keeps it for the keyboard
+   path, which is the one that needs it. */
+.lobby__prose:focus {
+  outline: none;
+}
+
+.lobby__prose:focus-visible {
+  outline: 2px solid var(--lobby-brass);
+  outline-offset: 4px;
+}
+
+.lobby__prose p {
+  margin: 0 0 0.8rem;
+  font-size: clamp(0.95rem, 1.5vw, 1.05rem);
+  text-wrap: pretty;
+}
+
+.lobby__prose p:last-child {
+  margin-bottom: 0;
+}
+
+.lobby__aside {
+  font-family: var(--lobby-face-plate);
+  font-size: 0.72rem !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lobby-ink-quiet);
+}
+
+/* ----- Motion -----
+
+   There is none here, and that is the finding rather than an omission.
+
+   The plate and the prose used to fade in over 900ms. Any animation of opacity
+   or transform promotes the element to its own composited layer, and a
+   composited layer stacked over a fixed, continuously-repainting WebGL canvas
+   is mis-painted by Chromium: the panel's opaque background appears a second
+   time, at the top of its containing block instead of the bottom. It renders as
+   a hard black rectangle across the door — alarming, entirely convincing as a
+   shader bug, and nothing to do with the shader. It survived removing the
+   transform and only went when the animation went.
+
+   So: no CSS animation on anything that overlaps the canvas. If chrome ever
+   needs to arrive rather than simply be there, animate a child that has no
+   background of its own, and check it against a running render before believing
+   it. There is deliberately no `prefers-reduced-motion` block, because there is
+   now nothing for it to switch off — the camera is stopped in TypeScript, which
+   is the only place a "the room holds still" instruction can be expressed. */

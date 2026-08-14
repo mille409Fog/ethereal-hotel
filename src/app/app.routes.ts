@@ -26,6 +26,17 @@ export const routes: Routes = [
     title: meta.work.title,
   },
   {
+    // A separate work, and the only route whose component lives outside
+    // `src/app/`. See AUBADE.md: it shares this deployment and nothing else —
+    // no styles, no services, no tokens — and the import direction only ever
+    // points this way. Lazy like the rest, and the component defers the
+    // renderer behind a second dynamic import so no WebGL code is fetched, and
+    // no context created, unless someone opens this route.
+    path: meta.aubade.path,
+    loadComponent: () => import('../aubade/aubade').then((m) => m.Aubade),
+    title: meta.aubade.title,
+  },
+  {
     path: meta.home.path,
     loadComponent: () => import('./app').then((m) => m.App),
     title: meta.home.title,

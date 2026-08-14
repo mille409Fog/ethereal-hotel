@@ -22,6 +22,11 @@
       "path": "work",
       "title": "Case Studies - Jacob Miller",
       "description": "Three decisions from work I cannot show you the code for. The code is the part under NDA; the reasoning is not, and the reasoning is the part worth reading."
+    },
+    "aubade": {
+      "path": "aubade",
+      "title": "Hôtel Aubade - Floor 0, The Desk",
+      "description": "A hotel lobby raymarched in a fragment shader. No 3D library, no meshes, no geometry — an interior that exists only as mathematics, lit by one shaft of moonlight through a transom."
     }
   }
 }

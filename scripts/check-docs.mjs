@@ -147,9 +147,8 @@ check('the résumé still has a single source', () => {
   return problems;
 });
 
-// Things CLAUDE.md asserts are *absent*. Both have bitten this repo before: a
-// root requirements.txt silently overrides the interpreter pin on Vercel, and
-// AUBADE.md is a spec for a project that has not been started.
+// Things CLAUDE.md asserts are *absent*. This has bitten the repo before: a
+// root requirements.txt silently overrides the interpreter pin on Vercel.
 check('claimed-absent paths are still absent', () => {
   const problems = [];
   if (exists('requirements.txt')) {
@@ -159,12 +158,90 @@ check('claimed-absent paths are still absent', () => {
         'build to 3.14, where pydantic-core has no wheel.'
     );
   }
-  if (exists('src/aubade') && CLAUDE_MD.includes('no `src/aubade/` exists yet')) {
-    problems.push(
-      'src/aubade/ now exists, but CLAUDE.md still says it does not. Update the ' +
-        'AUBADE.md row of the doc map — the project has been started.'
-    );
+  return problems;
+});
+
+// AUBADE is specified as a separate work that shares this deployment and
+// nothing else, and CLAUDE.md repeats that in three places. It is the single
+// easiest claim in the repository to break by accident and the hardest to
+// notice: importing one helper from `src/app/` costs nothing, breaks no test,
+// and is invisible in a diff that is mostly shader. So the boundary is a gate.
+//
+// Three separate properties, because they fail in different ways:
+//
+//   1. Imports only ever point out of `src/aubade/`, never in.
+//   2. The renderer is behind a dynamic `import()`. A static one still works —
+//      it just puts 34KB of shader into the router's graph and lets a WebGL
+//      context exist before anyone asked for the route, which is AUBADE's
+//      second non-negotiable gone with nothing on fire.
+//   3. The route is wired everywhere a route has to be wired here: the shared
+//      metadata, the router, and vercel.json.
+
+/** Files under `src/aubade/`, recursively. */
+const aubadeSources = (dir = 'src/aubade') =>
+  readdirSync(path.join(repoRoot, dir), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory()
+      ? aubadeSources(`${dir}/${entry.name}`)
+      : entry.name.endsWith('.ts')
+        ? [`${dir}/${entry.name}`]
+        : []
+  );
+
+check('AUBADE stays a separate work', () => {
+  if (!exists('src/aubade')) {
+    return ['src/aubade/ is gone, but CLAUDE.md and AUBADE.md both describe it.'];
   }
+
+  const problems = [];
+
+  for (const file of aubadeSources()) {
+    for (const [, specifier] of read(file).matchAll(/from\s+'([^']+)'/g)) {
+      if (specifier.includes('app/') || specifier.endsWith('/styles.css')) {
+        problems.push(
+          `${file} imports '${specifier}'. Nothing in src/aubade/ may import from src/app/ — ` +
+            `AUBADE shares this deployment and nothing else, and a shared helper is how a ` +
+            `separate work quietly becomes a subsection of the portfolio.`
+        );
+      }
+    }
+  }
+
+  for (const file of readdirSync(path.join(repoRoot, 'src/app'), { recursive: true })) {
+    const relative = `src/app/${String(file).replace(/\\/g, '/')}`;
+    if (!relative.endsWith('.ts') || !exists(relative)) continue;
+    if (/from\s+'[^']*aubade\/(?!aubade')/.test(read(relative))) {
+      problems.push(
+        `${relative} imports from src/aubade/. The only permitted reference is the lazy ` +
+          `loadComponent in app.routes.ts; everything else points the other way.`
+      );
+    }
+  }
+
+  if (exists('src/aubade/aubade.ts')) {
+    const component = read('src/aubade/aubade.ts');
+    if (!/await import\('\.\/renderer'\)/.test(component)) {
+      problems.push(
+        "src/aubade/aubade.ts no longer defers the renderer behind `await import('./renderer')`. " +
+          'CLAUDE.md and the README both say the shaders reach a browser only when someone opens ' +
+          'the route, and that only holds while the import is dynamic.'
+      );
+    }
+    if (/^import\s+\{[^}]*LobbyRenderer/m.test(component)) {
+      problems.push(
+        'src/aubade/aubade.ts imports LobbyRenderer as a value. It must stay an `import type`, ' +
+          'which the compiler erases — a value import pulls the shaders back into this chunk.'
+      );
+    }
+  }
+
+  const meta = JSON.parse(read('src/route-meta.json'));
+  if (meta.routes.aubade?.path !== 'aubade') {
+    problems.push('src/route-meta.json no longer defines the /aubade route.');
+  }
+  if (!read('src/app/app.routes.ts').includes('meta.aubade.path')) {
+    problems.push('/aubade is not registered in app.routes.ts.');
+  }
+
   return problems;
 });
 

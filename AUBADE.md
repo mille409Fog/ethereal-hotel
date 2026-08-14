@@ -7,12 +7,14 @@ modification, the tragedy of the vampire — the one creature for whom sunrise i
 This document specifies a second project, deliberately unlike the first. `ROADMAP.md` is about
 making a competent thing credible. This is about making something that does not exist elsewhere.
 
+When a task is completed, remove it from the list and then renumber the remaining tasks from the natural numbers onward e.g. 1,2,3 ...;
+
 ---
 
 ## The concept, in one paragraph
 
 **Hôtel Aubade** is a hotel that keeps the guest's hours. It opens itself at astronomical
-twilight, is fully alive at local midnight, and shutters at dawn — dawn where *you* are, computed
+twilight, is fully alive at local midnight, and shutters at dawn — dawn where _you_ are, computed
 from the real position of the real sun at your real longitude. A visitor in Lisbon at 03:00 and a
 visitor in Tokyo at 14:00 open the same URL and are shown two different works. Neither is a
 degraded version of the other. Most people arrive during the day, find the hotel closed, and are
@@ -26,7 +28,7 @@ correct construction technique for a building that is only there at night.
 
 The web is saturated with WebGL portfolio pieces and they are all findable, because they are all
 the same three things: a particle field that follows the cursor, a distorted image gallery, a
-blob. They are technically fine and completely forgettable, because none of them is *about*
+blob. They are technically fine and completely forgettable, because none of them is _about_
 anything and none of them could not have been made by anyone else.
 
 This one has three properties that are hard to copy:
@@ -50,14 +52,14 @@ is: _"it's a hotel that's only open when it's actually night where you are."_
 Six floors, descending, because a vampire's hotel keeps the good rooms underground. Each floor is
 one shader and one idea.
 
-| Floor  | Room                     | Idea                                                                                                                                                                                     |
-| ------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **0**  | **The Desk**             | The lobby. Raymarched interior, volumetric light through the transom, dust. The register lists prior guests — real ones, anonymised to city and duration. "A guest from Lisbon, 4h ago, stayed 11 minutes." |
-| **−1** | **The Mirror Corridor**  | A mirrored wall, rendered by a second march. Everything in the corridor reflects. Your light does not. You will notice this about four seconds later than you think you will.               |
-| **−2** | **The Library**          | One sentence, migrating across eight writing systems — Latin, Greek, Cyrillic, Arabic, Devanagari, Hebrew, Han, Hangul — glyphs dissolving into one another rather than cutting.           |
-| **−3** | **The Cellar**           | Meditation. Near-silence. The render loop slows to a breath cycle and the room resolves only if you stay. The one place that rewards patience, and therefore the only one anybody remembers. |
-| **−4** | **The Projection Room**  | Film. The post-processing stack *is* the exhibit: gate weave, halation, grain, 24fps judder, splice flashes, reel-change cue dots. Exposed as a projectionist's bench you can operate.      |
-| **−5** | **The Box**              | Opera. A single aria drives the geometry. Silent by default — must be beautiful with the sound off, because for most visitors it will be.                                                  |
+| Floor  | Room                    | Idea                                                                                                                                                                                                        |
+| ------ | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **0**  | **The Desk**            | The lobby. Raymarched interior, volumetric light through the transom, dust. The register lists prior guests — real ones, anonymised to city and duration. "A guest from Lisbon, 4h ago, stayed 11 minutes." |
+| **−1** | **The Mirror Corridor** | A mirrored wall, rendered by a second march. Everything in the corridor reflects. Your light does not. You will notice this about four seconds later than you think you will.                               |
+| **−2** | **The Library**         | One sentence, migrating across eight writing systems — Latin, Greek, Cyrillic, Arabic, Devanagari, Hebrew, Han, Hangul — glyphs dissolving into one another rather than cutting.                            |
+| **−3** | **The Cellar**          | Meditation. Near-silence. The render loop slows to a breath cycle and the room resolves only if you stay. The one place that rewards patience, and therefore the only one anybody remembers.                |
+| **−4** | **The Projection Room** | Film. The post-processing stack _is_ the exhibit: gate weave, halation, grain, 24fps judder, splice flashes, reel-change cue dots. Exposed as a projectionist's bench you can operate.                      |
+| **−5** | **The Box**             | Opera. A single aria drives the geometry. Silent by default — must be beautiful with the sound off, because for most visitors it will be.                                                                   |
 
 The elevator between floors is not a transition, it is a room. It is where the morph between two
 distance fields happens in full view, and it is the cheapest place in the piece to be spectacular.
@@ -80,13 +82,13 @@ Everything else is decoration on top of one function: **given the browser, what 
 
 **Thresholds — the state machine:**
 
-| Solar elevation      | State           | The hotel                                                                     |
-| -------------------- | --------------- | ------------------------------------------------------------------------------ |
-| below −18°           | **Open**        | Astronomical night. Everything unlocked, everything alive.                     |
-| −18° to −12°         | **Late**        | Rooms begin closing behind you. Lights go out in the order you are not looking. |
-| −12° to −6°          | **The warning** | Nautical twilight. The desk clerk starts mentioning the time.                   |
-| −6° to −0.833°       | **Aubade**      | Civil twilight. A countdown to the exact minute of sunrise. The piece's climax. |
-| above −0.833°        | **Shuttered**   | Day. See below — this is not a failure state.                                  |
+| Solar elevation | State           | The hotel                                                                       |
+| --------------- | --------------- | ------------------------------------------------------------------------------- |
+| below −18°      | **Open**        | Astronomical night. Everything unlocked, everything alive.                      |
+| −18° to −12°    | **Late**        | Rooms begin closing behind you. Lights go out in the order you are not looking. |
+| −12° to −6°     | **The warning** | Nautical twilight. The desk clerk starts mentioning the time.                   |
+| −6° to −0.833°  | **Aubade**      | Civil twilight. A countdown to the exact minute of sunrise. The piece's climax. |
+| above −0.833°   | **Shuttered**   | Day. See below — this is not a failure state.                                   |
 
 `−0.833°` rather than `0°` is the standard sunrise definition: atmospheric refraction plus the
 solar radius. Getting this right costs nothing and is the sort of detail the piece is made of.
@@ -149,6 +151,11 @@ block, and about 400 lines of TypeScript for context, resize, timing, and hot-sw
 Not on principle: a fully raymarched interior needs no scene graph, no loader, and no material
 system, so a 600KB dependency would buy nothing and cost the sentence "I wrote the renderer."
 
+That estimate came in at roughly 500 once built (`src/aubade/gl/`, `camera/`, `renderer.ts`), and
+the overrun is one thing: the quality ladder that non-negotiable 4 asks for. There is no shader
+hot-swap and there does not need to be — `npm run verify:shader` compiles the real source in
+headless Chromium and writes a PNG, which is a faster edit loop than reloading a page.
+
 ---
 
 ## Phases
@@ -156,62 +163,49 @@ system, so a 600KB dependency would buy nothing and cost the sentence "I wrote t
 Ship in this order. Each phase is deployable and each one is worth showing on its own. Do not
 start a phase before the previous one is live.
 
-### Phase 0 — The clock, with no pixels at all
+Two phases have landed and been deleted from this list, per the rule at the top: **the clock**
+(`src/aubade/solar/`, checked against published almanac times for eight cities) and **the lobby**
+(`/aubade` — `src/aubade/gl/`, `camera/`, `rooms/`, `renderer.ts`). Their reasoning moved into
+those files' header comments, which are dense and are the thing to read before touching either.
+The lobby is lit by a fixed moon at a fixed angle: nothing yet reads the clock, which is what
+Phase 1 is.
 
-The astronomy is the risk and it is pure functions, so it goes first and gets tested hardest.
+### Phase 1 — Day, night, and the invitation
 
-- `src/aubade/solar/` — zone→coordinates table, NOAA solar position, elevation→state mapping.
-- **DoD:** unit tests assert computed sunrise/sunset against published almanac times for eight
-  cities across latitudes and hemispheres, within two minutes. Include Reykjavík in June and
-  Singapore, which is where naive implementations break. Every state boundary has a test. Zero
-  rendering code exists yet.
-
-### Phase 1 — The Desk
-
-One room, finished, gorgeous.
-
-- WebGL2 bootstrap, fullscreen triangle, render loop with a fixed-step accumulator.
-- SDF lobby: floor, ceiling, desk, transom window, one door. Soft shadows, one volumetric shaft.
-- The camera drifts. It does not orbit; it breathes.
-- **DoD:** live on `/aubade`. 60fps at 1440p on integrated graphics. `/` Lighthouse unchanged. A
-  stranger shown a screenshot says "where is that" rather than "nice gradient."
-
-### Phase 2 — Day, night, and the invitation
-
-- Wire the Phase 0 clock to the Phase 1 room. Five states, five palettes, five light rigs.
+- Wire the clock to the lobby. Five states, five palettes, five light rigs.
 - Build the shuttered daytime piece properly — it is a design job, not an if-statement.
 - The invitation control, and the sunset countdown card.
 - **DoD:** a fake-clock query param (`?t=`, dev-only) renders all five states; screenshot all five
   into `docs/images/`. The daytime state stands alone as an image you would post.
 
-### Phase 3 — The Reader's Edition
+### Phase 2 — The Reader's Edition
 
-Before more rooms. Doing this third rather than last is the entire difference between an
+Before more rooms. Doing this early rather than last is the entire difference between an
 accessible work and a bolted-on apology.
 
 - **DoD:** the prose exists and is good. Full keyboard path, axe clean, readable at 200% zoom, no
   WebGL context created on that route at all. Someone who reads only this has read a real thing.
 
-### Phase 4 — Descent, and the Mirror Corridor
+### Phase 3 — Descent, and the Mirror Corridor
 
 - The elevator: a timed morph between two distance fields, visible and unhurried.
 - The corridor and its mirror. The absent reflection.
 - **DoD:** the reflection reads as intentional within ten seconds, unprompted, to someone who was
   not told the theme. Test this on an actual human before merging.
 
-### Phases 5–8 — One room each
+### Phases 4–7 — One room each
 
 In this order, by ratio of impact to risk:
 
-5. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
+4. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
    Devanagari shaping right or cut those two; broken shaping is an insult, not an effect.
-6. **The Cellar** — breath pacing, 4-7-8 cycle, the room resolving over ~90 seconds of stillness.
+5. **The Cellar** — breath pacing, 4-7-8 cycle, the room resolving over ~90 seconds of stillness.
    The hardest thing here is nerve: it must actually be quiet and actually be slow.
-7. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.
-8. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
+6. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.
+7. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
    are the two things most likely to eat a week.
 
-### Phase 9 — The register
+### Phase 8 — The register
 
 Where the existing backend skills come back. `POST /api/aubade/visits` on arrival, `GET` for the
 register: city (from timezone, never IP), duration, floors reached, local solar state at arrival.
@@ -220,7 +214,7 @@ register: city (from timezone, never IP), duration, floors reached, local solar 
   Rate-limited. The register is legible as a feature of the fiction and defensible as a privacy
   decision in the same breath — say so in the README.
 
-### Phase 10 — Dawn
+### Phase 9 — Dawn
 
 The ending. A visitor present through actual civil twilight into actual sunrise at their location
 sees the hotel close: the countdown, the light arriving, the rooms shuttering in order, the last
@@ -254,22 +248,8 @@ Recorded now, while it is still cheap to avoid:
 - **It is impressive and unreadable.** If a visitor cannot tell where they are or what to do
   within eight seconds, the atmosphere has eaten the work. Ambiguity is a choice; confusion is a
   bug.
-- **It never ships.** Six rooms is an ambition, not a commitment. **Phases 0–4 are the project.**
-  Everything from Phase 5 on is optional, and a finished four-floor hotel beats an abandoned
+- **It never ships.** Six rooms is an ambition, not a commitment. **Phases 1–3 are the project.**
+  Everything from Phase 4 on is optional, and a finished four-floor hotel beats an abandoned
   six-floor one by an enormous margin.
 
 ---
-
-## If the spine is wrong
-
-The solar clock is the load-bearing idea; the rooms are interchangeable and the theme is
-negotiable. Two alternates that keep the same "indexed to something real, refuses to be
-screenshot" property, if the vampire hotel is one degree too on-the-nose:
-
-- **A piece indexed to the weather at the viewer's location** — the same architecture, but rain,
-  pressure, and wind drive the room instead of the sun. Warmer, less dramatic, no closed hours.
-- **A piece indexed to the viewer's stillness** — it resolves only while the cursor does not move,
-  and dissolves the instant it does. Pure meditation, one room, far smaller, and the most likely
-  of the three to actually get finished.
-
-Pick one and stop. The worst outcome available here is a beautiful spec and no building.

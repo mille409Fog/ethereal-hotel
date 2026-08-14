@@ -10,6 +10,7 @@
     "capture:stream": "node scripts/capture-stream.mjs",
     "resume:pdf": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/render-resume.mjs",
     "resume:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/render-resume.mjs --check",
+    "verify:shader": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-shader.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:backend": "node scripts/py-tool.mjs pytest backend/",

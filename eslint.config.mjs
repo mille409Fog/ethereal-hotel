@@ -54,6 +54,10 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         clearTimeout: 'readonly',
+        // AUBADE's render loop schedules on vsync rather than on a timer; see
+        // src/aubade/gl/loop.ts for why that distinction is load-bearing.
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
         // Test globals (Vitest)
         describe: 'readonly',
         it: 'readonly',
@@ -196,12 +200,13 @@ export default [
   },
 
   // Playwright config and specs. These run in Node, not the browser, so they
-  // get `process`; the app code deliberately does not.
+  // get `process` and `Buffer`; the app code deliberately does not.
   {
     files: ['e2e/**/*.ts', 'playwright.config.ts'],
     languageOptions: {
       globals: {
         process: 'readonly',
+        Buffer: 'readonly',
       },
     },
   },

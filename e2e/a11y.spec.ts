@@ -4,16 +4,21 @@ import type { Result } from 'axe-core';
 import { stubBookingApi } from './support/backend';
 
 /**
- * The four routes the app actually has. `/` is the portfolio page;
+ * The five routes the app actually has. `/` is the portfolio page;
  * `/dashboard` and `/booking` are the live demos and `/work` is the case
- * studies, all three of which the scan reaches through the SPA fallback in
- * `scripts/serve-dist.mjs`.
+ * studies. `/aubade` is the separate WebGL work, and it is scanned for a reason
+ * the others are not: a canvas is opaque to assistive technology, so the whole
+ * a11y surface of that route is the prose and the plate around it. If those
+ * ever stop being real DOM the scan is the only thing that would notice.
+ *
+ * All five are reached through the SPA fallback in `scripts/serve-dist.mjs`.
  */
 const ROUTES = [
   { path: '/', name: 'landing page' },
   { path: '/dashboard', name: 'dashboard' },
   { path: '/booking', name: 'booking' },
   { path: '/work', name: 'case studies' },
+  { path: '/aubade', name: 'aubade' },
 ] as const;
 
 /**
@@ -60,6 +65,21 @@ async function waitForSettledBooking(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: 'Create booking' })).toBeEnabled();
 }
 
+/**
+ * Aubade fetches its renderer chunk before it knows what it can show, so the
+ * plate says "Unlocking the lobby…" for a moment. Scanning then would audit a
+ * state no visitor sees for long, and — worse — would miss whichever of the
+ * three real states this browser lands in.
+ *
+ * Headless Chromium renders WebGL through SwiftShader, so it usually reaches
+ * the canvas; the wait is written to accept the closed state too, because
+ * whether a CI runner has a working GL stack is not something this suite should
+ * depend on. Both states are supposed to pass the audit, which is the point.
+ */
+async function waitForSettledAubade(page: Page): Promise<void> {
+  await expect(page.getByText('Unlocking the lobby')).toBeHidden();
+}
+
 test.describe('accessibility', () => {
   for (const route of ROUTES) {
     test(`${route.name} has no critical or serious axe violations`, async ({ page }, testInfo) => {
@@ -84,6 +104,9 @@ test.describe('accessibility', () => {
       }
       if (route.path === '/booking') {
         await waitForSettledBooking(page);
+      }
+      if (route.path === '/aubade') {
+        await waitForSettledAubade(page);
       }
 
       const results = await new AxeBuilder({ page }).analyze();

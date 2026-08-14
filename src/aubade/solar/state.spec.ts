@@ -11,7 +11,7 @@ import {
 /**
  * The state machine, boundary by boundary.
  *
- * AUBADE's Phase 0 DoD asks that every state boundary have a test, and there are
+ * AUBADE's clock phase asked that every state boundary have a test, and there are
  * only four of them, so this is exhaustive rather than representative: each
  * boundary is checked exactly on the threshold, one ten-thousandth of a degree
  * below it, and one above. A ten-thousandth of a degree is about six seconds of
