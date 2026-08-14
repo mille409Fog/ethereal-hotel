@@ -57,7 +57,7 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | `README.md`         | 5K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
 | `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
-| `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project, spec'd but **not built** — no `src/aubade/` exists yet).                |
+| `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project). Phase 0 has landed — `src/aubade/solar/` is the clock. No renderer, no route, no pixels. |
 | `CONTRIBUTING.md`   | 5K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
