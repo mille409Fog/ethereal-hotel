@@ -14,19 +14,19 @@
      something fails. A WebGL piece whose only content is a canvas is unreadable
      to a screen reader, unsearchable, and gone the moment a driver says no. The
      Reader's Edition proper is its own phase; this is what has to be good
-     enough until then. -->
-<main class="lobby" [attr.data-mode]="mode()">
+     enough until then.
+
+     `data-state` carries the hour onto the element so the stylesheet can dress
+     the plate for it. It is the same value the shader is being lit by — one
+     signal, read twice, so the words and the light can never disagree. -->
+<main class="lobby" [attr.data-mode]="mode()" [attr.data-state]="state()">
   @if (mode() !== 'closed') {
     <!-- role="img" with a name, because to assistive technology this is one
-         picture and not a drawing surface. The long description is the prose
-         below, which is visible to everyone rather than hidden in an attribute. -->
-    <canvas
-      #stage
-      class="lobby__stage"
-      role="img"
-      aria-label="A hotel lobby at night, drawn in real time. Moonlight through a transom window
-        crosses the room and lands on the marble floor in front of the reception desk."
-    ></canvas>
+         picture and not a drawing surface. The name changes with the hour: an
+         alt text describing moonlight to somebody looking at a shuttered room
+         is worse than none. The long description is the prose below, which is
+         visible to everyone rather than hidden in an attribute. -->
+    <canvas #stage class="lobby__stage" role="img" [attr.aria-label]="copy().picture"></canvas>
   }
 
   <div class="lobby__band">
@@ -34,15 +34,21 @@
       <h1 class="lobby__name">Hôtel&nbsp;Aubade</h1>
       <p class="lobby__floor">Floor 0 &mdash; The Desk</p>
 
+      <!-- What the sun is doing, in the desk clerk's voice. Present at every
+           hour, including the two where the room cannot be drawn at all. -->
+      <p class="lobby__state">{{ copy().plate }}</p>
+
       @switch (mode()) {
         @case ('opening') {
-          <p class="lobby__state">Unlocking the lobby&hellip;</p>
+          <p class="lobby__state lobby__state--quiet">Unlocking the lobby&hellip;</p>
         }
         @case ('still') {
-          <p class="lobby__state">You asked for less motion, so the room is holding its breath.</p>
+          <p class="lobby__state lobby__state--quiet">
+            You asked for less motion, so the room is holding its breath.
+          </p>
         }
         @case ('closed') {
-          <p class="lobby__state">
+          <p class="lobby__state lobby__state--quiet">
             This browser has no WebGL2, so the lobby will not open for it. The room is written out
             below instead; it is the same room.
           </p>
@@ -51,6 +57,41 @@
 
       @if (note(); as reduction) {
         <p class="lobby__state lobby__state--quiet">{{ reduction }}</p>
+      }
+
+      <!-- The card on the desk. Only in daylight: a countdown to sunset shown
+           to somebody standing in the dark answers a question nobody asked.
+
+           Two sentences, because there are two situations. Almost everywhere the
+           sun goes down today and the card counts to it. Above the Arctic Circle
+           in summer it does not, and the next sunset is two months out — there
+           is no time to print at the top of the card, and a bare countdown of
+           "in 62 days" would read as broken rather than as the fact it is. Same
+           phrase from `describeCountdown` either way; the sentence around it is
+           what changes. -->
+      @if (sunsetCard(); as card) {
+        <p class="lobby__card">
+          <span class="lobby__card-time">{{ card.heading }}</span>
+          <span class="lobby__card-body">{{ card.body }}</span>
+        </p>
+      }
+
+      <!-- The invitation. AUBADE is explicit that this is mandatory and must be
+           obvious: a hiring manager opening the link at two on a Tuesday has to
+           reach the whole work in one click, because the refusal is the concept
+           and locking people out is just rudeness.
+
+           A real button, and one way. A door with a handle on both sides is a
+           toggle, and the refusal stops being a position and becomes a
+           preference. -->
+      @if (offering()) {
+        <p class="lobby__offer">{{ invitation.offer }}</p>
+        <button type="button" class="lobby__invite" (click)="accept()">
+          {{ invitation.action }}
+        </button>
+      }
+      @if (marked()) {
+        <p class="lobby__state lobby__state--quiet">{{ invitation.taken }}</p>
       }
 
       @if (mode() !== 'closed') {
@@ -74,15 +115,19 @@
          only scrolling, which is what leaves a keyboard user's focus stranded
          back in the plate. Same pattern as the portfolio's sections. -->
     <div class="lobby__prose" id="lobby-prose" tabindex="-1">
+      <!-- One sentence of this changes with the hour and the rest does not,
+           because the rest is furniture and the light is the only thing the sun
+           moves. Nothing in it states a clock time: "three in the morning" is a
+           lie to a visitor in a Norwegian summer. -->
+      <p>{{ copy().opening }}</p>
       <p>
-        Three in the morning. The door to the street is shut and the transom above it is not, so the
-        only light that gets in arrives in one hard diagonal, crosses the room, and lands on the
-        marble in front of the desk. Dust turns over inside it.
+        The door to the street is shut, and the transom above it is the only opening in the room.
+        Everything that happens to the light in here happens through it.
       </p>
       <p>
         On the counter: a brass bell nobody rings, the register lying open at today, and a lamp with
-        a green shade, lit. Behind it, thirty-five pigeonholes and a key in none of them. The camera
-        does not circle the room. It stands in it, and breathes.
+        a green shade. Behind it, thirty-five pigeonholes and a key in none of them. The camera does
+        not circle the room. It stands in it, and breathes.
       </p>
       <p class="lobby__aside">Floor 0 of six. The lift is not running yet.</p>
     </div>

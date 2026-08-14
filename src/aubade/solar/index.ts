@@ -3,12 +3,13 @@
  * functions, so it shipped first and got tested hardest — before a single pixel
  * existed.
  *
- * **Nothing reads this yet.** The room on `/aubade` is lit by a fixed moon at a
- * fixed angle; wiring the five solar states to five palettes and five light rigs
- * is the next phase, and until it lands this module is a tested library with no
- * caller. That is the intended order: the clock is the load-bearing idea and the
- * rooms are decoration on top of it, so the clock is the thing that had to be
- * right first. `readClock` is the entry point when that wiring happens.
+ * The room reads it. `aubade.ts` calls `readClock` on arrival and again once a
+ * minute; `rooms/light-rig.ts` turns the state it returns into a palette and a
+ * light rig, and `desk.ts` turns the same state into what the hotel says. That
+ * order was the point of shipping this first: the clock is the load-bearing idea
+ * and the rooms are decoration on top of it, so the clock is the thing that had
+ * to be right before anything could be built on it. `readClock` is the entry
+ * point.
  *
  * Nothing here imports from `src/app/` or from `src/styles.css`, and nothing
  * there imports from anywhere in `src/aubade/`. That isolation is a requirement

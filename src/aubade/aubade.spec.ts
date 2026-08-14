@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Aubade } from './aubade';
 import { StubWebGL2 } from './gl/webgl.testing';
+import type { AubadeState } from './solar/state';
 
 /**
  * `/aubade` — the route, not the room.
@@ -17,11 +18,32 @@ import { StubWebGL2 } from './gl/webgl.testing';
  * frame ever fires: what happens inside a frame belongs to `gl/loop.spec.ts` and
  * `renderer.spec.ts`, and a component test that waits on real animation frames
  * is a component test that fails on a loaded CI box once a fortnight.
+ *
+ * ## Every test here pins the hour
+ *
+ * The component reads the real sun at the real moment, which would make this
+ * file's results depend on what time of day CI happened to run — green all night
+ * and red over lunch, or the reverse, with nothing in the diff to explain it. So
+ * `setHour` drives the same dev-only `?t=` back door the Definition of Done
+ * calls for, and the default is astronomical night so that the majority of these
+ * tests, which are about WebGL and not about the sun, have one fixed hour to be
+ * about.
  */
 
 describe('the aubade route', () => {
   let fixture: ComponentFixture<Aubade>;
   let gl: StubWebGL2 | null;
+
+  /**
+   * Put the visitor at a given hour of the sun.
+   *
+   * Through the URL rather than through a spy, because that is the mechanism
+   * that ships and the one the phase's Definition of Done names. Must be called
+   * before the component is created: the state is read in a field initialiser.
+   */
+  const setHour = (state: AubadeState): void => {
+    window.history.replaceState({}, '', `/aubade?t=${state}`);
+  };
 
   /** Pretend the browser has, or has not, WebGL2. */
   const setWebGL2 = (available: boolean): void => {
@@ -77,6 +99,8 @@ describe('the aubade route', () => {
   const text = (): string => (fixture.nativeElement as HTMLElement).textContent ?? '';
   const canvas = (): HTMLCanvasElement | null =>
     (fixture.nativeElement as HTMLElement).querySelector('canvas');
+  const button = (): HTMLButtonElement | null =>
+    (fixture.nativeElement as HTMLElement).querySelector('button');
 
   beforeEach(async () => {
     // No frames ever fire; see the file comment.
@@ -84,12 +108,14 @@ describe('the aubade route', () => {
     vi.stubGlobal('cancelAnimationFrame', () => undefined);
     setReducedMotion(false);
     setWebGL2(true);
+    setHour('open');
 
     await TestBed.configureTestingModule({ imports: [Aubade] }).compileComponents();
   });
 
   afterEach(() => {
     fixture?.destroy();
+    window.history.replaceState({}, '', '/');
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -125,6 +151,132 @@ describe('the aubade route', () => {
     it('says how far into the hotel this is', async () => {
       await render();
       expect(text()).toContain('Floor 0 of six');
+    });
+  });
+
+  describe('what the sun is doing', () => {
+    it('says so, in the desk clerk’s voice', async () => {
+      await render();
+      expect(text()).toContain('Astronomical night');
+    });
+
+    it('says something different at a different hour', async () => {
+      // The whole phase in one assertion: the room and the words are both
+      // functions of the same solar state, so they cannot disagree.
+      setHour('shuttered');
+      await render();
+
+      expect(text()).toContain('The hotel is shut');
+      expect(text()).not.toContain('Astronomical night');
+    });
+
+    it('names the picture for the hour it is actually drawing', async () => {
+      // An alt text describing moonlight to somebody looking at a shuttered room
+      // is worse than none.
+      setHour('shuttered');
+      await render();
+
+      expect(canvas()?.getAttribute('aria-label') ?? '').toContain('shutter');
+    });
+
+    it('opens the room out in prose for the hour too', async () => {
+      setHour('aubade');
+      await render();
+
+      expect(text()).toContain('The last of the dark');
+    });
+
+    it('ignores a query parameter it does not understand', async () => {
+      // A mistyped URL shows the real hour rather than an error page. Which hour
+      // that is depends on when this runs, so what is asserted is that a plate
+      // line exists at all.
+      window.history.replaceState({}, '', '/aubade?t=half+past+four');
+      await render();
+
+      expect(fixture.componentInstance.state()).toBeTruthy();
+    });
+  });
+
+  describe('the invitation', () => {
+    it('is offered while the hotel is shut', async () => {
+      // Mandatory, per AUBADE, and it must be obvious: a hiring manager opening
+      // the link at two on a Tuesday has to reach the whole work in one click.
+      setHour('shuttered');
+      await render();
+
+      expect(text()).toContain('The night rooms can be opened for you');
+      expect(button()).not.toBeNull();
+    });
+
+    it('is not offered at an hour the hotel opens by itself', async () => {
+      await render();
+      expect(button()).toBeNull();
+    });
+
+    it('opens the night rooms, and says what it left behind', async () => {
+      setHour('shuttered');
+      await render();
+
+      button()?.click();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.invited()).toBe(true);
+      expect(text()).toContain('under the door');
+      // One way. A door with a handle on both sides is a toggle, and the refusal
+      // stops being a position and becomes a preference.
+      expect(button()).toBeNull();
+    });
+
+    it('repaints a held frame when it is taken', async () => {
+      // A reduced-motion visitor just asked for a different room, and a stopped
+      // loop is not going to draw one on its own.
+      setReducedMotion(true);
+      setHour('shuttered');
+      await render();
+      expect(gl?.callsTo('drawArrays')).toHaveLength(1);
+
+      button()?.click();
+
+      expect(gl?.callsTo('drawArrays')).toHaveLength(2);
+    });
+  });
+
+  describe('the card on the desk', () => {
+    it('is there in daylight, with a countdown', async () => {
+      setHour('shuttered');
+      await render();
+
+      expect(text()).toContain('The sun goes down');
+      expect(text()).toContain('The hotel opens later');
+    });
+
+    it('says a different thing where the sun does not go down today', async () => {
+      // Midsummer at 78°N. The countdown is still a real number — `readClock`
+      // searches forward for 400 days and finds a sunset in August — but it is
+      // two months out, so there is no time to print at the top and a bare
+      // countdown would read as broken rather than as the fact it is.
+      //
+      // The instant is pinned as well as the zone: this is the one assertion in
+      // the file whose answer depends on the season, and it would flip in
+      // September.
+      window.history.replaceState({}, '', '/aubade?t=2026-06-21T12:00:00Z&tz=Arctic/Longyearbyen');
+      await render();
+
+      const card = fixture.componentInstance.sunsetCard();
+      expect(fixture.componentInstance.state()).toBe('shuttered');
+      expect(card?.today).toBe(false);
+      expect(text()).toContain('The sun does not go down here today');
+      expect(text()).toContain('No sunset today');
+      expect(text()).not.toContain('The hotel opens later');
+    });
+
+    it('is not there in the dark', async () => {
+      // A countdown to sunset shown to somebody standing in the dark answers a
+      // question nobody asked.
+      await render();
+
+      expect(fixture.componentInstance.sunsetCard()).toBeNull();
+      expect(text()).not.toContain('The sun goes down');
     });
   });
 

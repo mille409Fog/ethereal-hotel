@@ -275,6 +275,89 @@ check('AUBADE stays a separate work', () => {
   return problems;
 });
 
+// The clock, and the five hours it drives.
+//
+// AUBADE's first failure mode is the piece becoming a demo reel — six rooms of
+// unrelated effects with a hotel painted on — and the stated fix is that every
+// room responds to the same solar state. That is a claim about wiring, and
+// wiring is exactly the kind of thing that survives a refactor as a dangling
+// import nobody notices, because a lobby lit by a constant looks fine.
+//
+// So three properties, each of which fails silently on its own:
+//
+//   1. Every state has a rig and a committed frame. A state added to
+//      `solar/state.ts` and forgotten in `rooms/light-rig.ts` is an unlit room
+//      at one hour of the day, in one part of the world.
+//   2. The route actually reads the clock. Nothing else notices if it stops.
+//   3. The `?t=` back door stays behind `isDevMode()`. A visitor who can type
+//      `?t=open` has been handed the whole work, and the refusal — which is the
+//      concept — becomes a URL parameter.
+
+/** The state names `solar/state.ts` declares, read out of the union type. */
+const solarStates = () => {
+  const source = read('src/aubade/solar/state.ts');
+  const union = source.match(/export type AubadeState =([^;]+);/);
+  return union === null ? [] : [...union[1].matchAll(/'([a-z]+)'/g)].map(([, name]) => name);
+};
+
+check('the lobby is lit by the clock, at every hour', () => {
+  for (const file of ['src/aubade/rooms/light-rig.ts', 'src/aubade/desk.ts']) {
+    if (!exists(file)) {
+      return [`${file} is gone; CLAUDE.md and AUBADE.md both say the lobby reads the solar state.`];
+    }
+  }
+
+  const problems = [];
+  const states = solarStates();
+
+  if (states.length === 0) {
+    return ['Could not read the AubadeState union out of src/aubade/solar/state.ts.'];
+  }
+
+  const rigs = read('src/aubade/rooms/light-rig.ts');
+  const copy = read('src/aubade/desk.ts');
+
+  for (const state of states) {
+    if (!new RegExp(`^\\s{2}${state}:\\s*\\{`, 'm').test(rigs)) {
+      problems.push(
+        `LIGHT_RIGS has no rig for '${state}'. Every solar state needs one — a missing entry ` +
+          `is an unlit room at one hour of the day, in one part of the world.`
+      );
+    }
+    if (!new RegExp(`^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
+      problems.push(`DESK_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
+    }
+    // The phase's Definition of Done. `npm run verify:shader -- --out
+    // docs/images/aubade-lobby.webp` writes all five in one run.
+    if (!exists(`docs/images/aubade-lobby-${state}.webp`)) {
+      problems.push(
+        `docs/images/aubade-lobby-${state}.webp is missing. AUBADE's day-and-night phase ` +
+          `requires a committed frame per state; regenerate with ` +
+          `\`npm run verify:shader -- --out docs/images/aubade-lobby.webp\`.`
+      );
+    }
+  }
+
+  const component = read('src/aubade/aubade.ts');
+  if (!/from '\.\/solar'/.test(component) || !/readClock/.test(component)) {
+    problems.push(
+      'src/aubade/aubade.ts no longer calls readClock. CLAUDE.md and AUBADE.md both say the ' +
+        'lobby is lit by the real sun; without this it is lit by whatever constant was left ' +
+        'behind, which looks entirely fine and is the concept gone.'
+    );
+  }
+
+  if (exists('src/aubade/fake-clock.ts') && !/isDevMode\(\)/.test(component)) {
+    problems.push(
+      'src/aubade/aubade.ts reads the `?t=` fake clock without gating it on isDevMode(). In ' +
+        'production that hands every visitor the night rooms from the address bar, and the ' +
+        'refusal that AUBADE is built on becomes a URL parameter.'
+    );
+  }
+
+  return problems;
+});
+
 // The sizes in the doc map are how a reader decides what to open. A generous
 // tolerance keeps ordinary edits from failing the build while still catching a
 // document that has doubled or been gutted.

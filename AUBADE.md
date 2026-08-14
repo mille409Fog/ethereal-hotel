@@ -163,22 +163,22 @@ headless Chromium and writes a PNG, which is a faster edit loop than reloading a
 Ship in this order. Each phase is deployable and each one is worth showing on its own. Do not
 start a phase before the previous one is live.
 
-Two phases have landed and been deleted from this list, per the rule at the top: **the clock**
-(`src/aubade/solar/`, checked against published almanac times for eight cities) and **the lobby**
-(`/aubade` — `src/aubade/gl/`, `camera/`, `rooms/`, `renderer.ts`). Their reasoning moved into
-those files' header comments, which are dense and are the thing to read before touching either.
-The lobby is lit by a fixed moon at a fixed angle: nothing yet reads the clock, which is what
-Phase 1 is.
+Three phases have landed and been deleted from this list, per the rule at the top: **the clock**
+(`src/aubade/solar/`, checked against published almanac times for eight cities), **the lobby**
+(`/aubade` — `src/aubade/gl/`, `camera/`, `rooms/`, `renderer.ts`), and **day, night and the
+invitation** (`rooms/light-rig.ts`, `desk.ts`, `fake-clock.ts`, and the shutter in
+`rooms/lobby.frag.ts`). Their reasoning moved into those files' header comments, which are dense
+and are the thing to read before touching any of them.
 
-### Phase 1 — Day, night, and the invitation
+The room now reads the clock: one shader, five sets of uniforms, five palettes and five light
+rigs, with the daytime state built as its own picture — the louvres are geometry, the bars they
+cut are the only direct light in the room, and the palette is faded rather than the night frame
+over-exposed. The five frames are committed as `docs/images/aubade-lobby-<state>.webp` and
+`npm run verify:shader` renders all five, asserting they brighten in the order the sun does. The
+dev-only fake clock is `?t=<state|instant>` with an optional `?tz=`; it is gated on `isDevMode()`,
+so the only way into the night rooms in production is the invitation, which is the point.
 
-- Wire the clock to the lobby. Five states, five palettes, five light rigs.
-- Build the shuttered daytime piece properly — it is a design job, not an if-statement.
-- The invitation control, and the sunset countdown card.
-- **DoD:** a fake-clock query param (`?t=`, dev-only) renders all five states; screenshot all five
-  into `docs/images/`. The daytime state stands alone as an image you would post.
-
-### Phase 2 — The Reader's Edition
+### Phase 1 — The Reader's Edition
 
 Before more rooms. Doing this early rather than last is the entire difference between an
 accessible work and a bolted-on apology.
@@ -186,26 +186,26 @@ accessible work and a bolted-on apology.
 - **DoD:** the prose exists and is good. Full keyboard path, axe clean, readable at 200% zoom, no
   WebGL context created on that route at all. Someone who reads only this has read a real thing.
 
-### Phase 3 — Descent, and the Mirror Corridor
+### Phase 2 — Descent, and the Mirror Corridor
 
 - The elevator: a timed morph between two distance fields, visible and unhurried.
 - The corridor and its mirror. The absent reflection.
 - **DoD:** the reflection reads as intentional within ten seconds, unprompted, to someone who was
   not told the theme. Test this on an actual human before merging.
 
-### Phases 4–7 — One room each
+### Phases 3–6 — One room each
 
 In this order, by ratio of impact to risk:
 
-4. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
+3. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
    Devanagari shaping right or cut those two; broken shaping is an insult, not an effect.
-5. **The Cellar** — breath pacing, 4-7-8 cycle, the room resolving over ~90 seconds of stillness.
+4. **The Cellar** — breath pacing, 4-7-8 cycle, the room resolving over ~90 seconds of stillness.
    The hardest thing here is nerve: it must actually be quiet and actually be slow.
-6. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.
-7. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
+5. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.
+6. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
    are the two things most likely to eat a week.
 
-### Phase 8 — The register
+### Phase 7 — The register
 
 Where the existing backend skills come back. `POST /api/aubade/visits` on arrival, `GET` for the
 register: city (from timezone, never IP), duration, floors reached, local solar state at arrival.
@@ -214,7 +214,7 @@ register: city (from timezone, never IP), duration, floors reached, local solar 
   Rate-limited. The register is legible as a feature of the fiction and defensible as a privacy
   decision in the same breath — say so in the README.
 
-### Phase 9 — Dawn
+### Phase 8 — Dawn
 
 The ending. A visitor present through actual civil twilight into actual sunrise at their location
 sees the hotel close: the countdown, the light arriving, the rooms shuttering in order, the last
@@ -248,8 +248,8 @@ Recorded now, while it is still cheap to avoid:
 - **It is impressive and unreadable.** If a visitor cannot tell where they are or what to do
   within eight seconds, the atmosphere has eaten the work. Ambiguity is a choice; confusion is a
   bug.
-- **It never ships.** Six rooms is an ambition, not a commitment. **Phases 1–3 are the project.**
-  Everything from Phase 4 on is optional, and a finished four-floor hotel beats an abandoned
-  six-floor one by an enormous margin.
+- **It never ships.** Six rooms is an ambition, not a commitment. **Phases 1 and 2 are the rest of
+  the project.** Everything from Phase 3 on is optional, and a finished four-floor hotel beats an
+  abandoned six-floor one by an enormous margin.
 
 ---

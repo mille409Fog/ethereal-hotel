@@ -57,6 +57,23 @@ export const STUB_UNIFORM_NAMES = [
   'uMarchSteps',
   'uShadowSteps',
   'uVolumetricSamples',
+  // The light rig — see rooms/light-rig.ts. This half of the list is checked
+  // against the real program by `npm run verify:shader`, which links the actual
+  // GLSL and reads its reflection back; here it only has to stay in step, and a
+  // uniform missing from it presents as "never written" in renderer.spec.ts.
+  'uKeyDirection',
+  'uKeyColour',
+  'uKeyStrength',
+  'uPaneColour',
+  'uPaneStrength',
+  'uLampStrength',
+  'uAmbientFloor',
+  'uAmbientSky',
+  'uDust',
+  'uShutter',
+  'uBleach',
+  'uExposure',
+  'uThreshold',
 ] as const;
 
 export class StubWebGL2 {

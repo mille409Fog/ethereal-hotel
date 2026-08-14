@@ -76,7 +76,7 @@ Performance and accessibility are budgets rather than aspirations. `npm run ligh
 production build on `/` and `/dashboard` — the desktop profile, three runs, asserted against the
 median — and the build **fails** below **performance 90**, **accessibility 100** and
 **best practices 95**. Size has a ceiling in the same spirit: `angular.json` caps the
-**initial payload at 15 kB** and **all scripts at 675 kB**, set just above what the build produces
+**initial payload at 15 kB** and **all scripts at 695 kB**, set just above what the build produces
 today so the next regression trips it rather than being absorbed. `npm run check:docs` fails if
 these numbers and the configs that enforce them ever disagree.
 

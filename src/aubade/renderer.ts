@@ -37,6 +37,7 @@ import {
 } from './gl/quality';
 import { drawingBufferSize, resizeDrawingBuffer } from './gl/viewport';
 import { FULLSCREEN_VERTEX_SHADER } from './rooms/fullscreen.vert';
+import type { ILightRig } from './rooms/light-rig';
 import { LOBBY_FRAGMENT_SHADER } from './rooms/lobby.frag';
 
 /** What the renderer will say about itself, for the caption under the canvas. */
@@ -135,12 +136,17 @@ export class LobbyRenderer {
   /**
    * Draw one frame.
    *
+   * @param frame Timing from the fixed-step loop.
+   * @param rig The hour's light rig — see `rooms/light-rig.ts`. Passed per frame
+   *   rather than held, because the renderer has no business knowing when the
+   *   sun moved and the whole rig is thirteen uniform writes, which is nothing
+   *   next to a single `mapScene` call.
    * @returns Whether anything was drawn. `false` means the context was lost or
    *   the renderer disposed — the caller stops the loop rather than spinning on
    *   a dead context, which otherwise burns a core for as long as the tab is
    *   open.
    */
-  public render(frame: IFrame): boolean {
+  public render(frame: IFrame, rig: ILightRig): boolean {
     if (this.disposed || this.gl.isContextLost()) {
       return false;
     }
@@ -176,6 +182,25 @@ export class LobbyRenderer {
     gl.uniform1i(this.at('uMarchSteps'), tier.marchSteps);
     gl.uniform1i(this.at('uShadowSteps'), tier.shadowSteps);
     gl.uniform1i(this.at('uVolumetricSamples'), tier.volumetricSamples);
+
+    gl.uniform3f(
+      this.at('uKeyDirection'),
+      rig.keyDirection.x,
+      rig.keyDirection.y,
+      rig.keyDirection.z
+    );
+    gl.uniform3f(this.at('uKeyColour'), ...rig.keyColour);
+    gl.uniform1f(this.at('uKeyStrength'), rig.keyStrength);
+    gl.uniform3f(this.at('uPaneColour'), ...rig.paneColour);
+    gl.uniform1f(this.at('uPaneStrength'), rig.paneStrength);
+    gl.uniform1f(this.at('uLampStrength'), rig.lampStrength);
+    gl.uniform3f(this.at('uAmbientFloor'), ...rig.ambientFloor);
+    gl.uniform3f(this.at('uAmbientSky'), ...rig.ambientSky);
+    gl.uniform1f(this.at('uDust'), rig.dust);
+    gl.uniform1f(this.at('uShutter'), rig.shutter);
+    gl.uniform1f(this.at('uBleach'), rig.bleach);
+    gl.uniform1f(this.at('uExposure'), rig.exposure);
+    gl.uniform1f(this.at('uThreshold'), rig.threshold);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     return true;

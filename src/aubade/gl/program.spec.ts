@@ -1,5 +1,5 @@
 import { annotate, compileShader, linkProgram, ShaderError, uniformLocations } from './program';
-import { StubWebGL2 } from './webgl.testing';
+import { STUB_UNIFORM_NAMES, StubWebGL2 } from './webgl.testing';
 
 /**
  * Compiling and linking.
@@ -194,7 +194,11 @@ describe('reflecting the uniforms', () => {
     const program = linkProgram(gl.asContext(), VERTEX, FRAGMENT);
     const locations = uniformLocations(gl.asContext(), program);
 
-    expect(locations.size).toBe(8);
+    // Against the stub's own list rather than a literal: the shader grew from
+    // eight uniforms to twenty-one when the room started reading the clock, and
+    // a number written out here would have failed for that with a message about
+    // arithmetic rather than about uniforms.
+    expect(locations.size).toBe(STUB_UNIFORM_NAMES.length);
     expect(locations.has('uResolution')).toBe(true);
     expect(locations.get('uTime')).not.toBeUndefined();
   });

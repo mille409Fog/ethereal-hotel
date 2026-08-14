@@ -61,7 +61,7 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | `README.md`         | 5K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
 | `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
-| `AUBADE.md`         | 16K  | Only if the task touches `/aubade` (a separate WebGL project). Two phases have landed: `src/aubade/solar/` is the clock, and the lobby is on the route. Nothing yet connects them. |
+| `AUBADE.md`         | 16K  | Only if the task touches `/aubade` (a separate WebGL project). Three phases have landed: the clock (`src/aubade/solar/`), the lobby, and the five solar states that now light it. |
 | `CONTRIBUTING.md`   | 6K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
@@ -208,10 +208,15 @@ mistake for bugs:
 - The metrics grid is deliberately **not** an `aria-live` region — a throttled `role="status"`
   digest replaces it. ARCHITECTURE §Accessibility has the reasoning.
 - Health is mounted twice (`/` and `/api/health`) on purpose: one handler, two deployment shapes.
-- **`src/aubade/solar/` is tested and deliberately unused** — the lobby is lit by a fixed moon, and
-  wiring the clock to it is the next AUBADE phase. Likewise `src/aubade/reduced-motion.ts`
-  duplicates its `src/app/` twin, and `aubade.css` re-declares colours that already exist: a shared
-  helper is precisely how a separate work stops being one. `check:docs` gates the import direction.
+- **The lobby is lit by the real sun**, so five things about it look like duplication and are not.
+  `rooms/light-rig.ts` holds five rigs for one shader — five compiles would stall a driver at the
+  moment the sky changes — and `check:docs` fails if a state loses its rig or its committed frame
+  in `docs/images/`. `src/aubade/reduced-motion.ts` duplicates its `src/app/` twin and `aubade.css`
+  re-declares colours that already exist, because a shared helper is precisely how a separate work
+  stops being one; `check:docs` gates the import direction.
+- **`?t=` is dev-only on purpose.** A visitor who can type `?t=open` has been handed the whole work
+  and the refusal stops being the concept. The invitation control is the production door, and it is
+  mandatory. `check:docs` fails if the back door escapes `isDevMode()`.
 - The renderer is behind a dynamic `import()` in `aubade.ts` so no WebGL code is fetched, and no
   context created, before someone opens the route. A static import would work and quietly cost
   AUBADE's second non-negotiable; `check:docs` fails if it happens.

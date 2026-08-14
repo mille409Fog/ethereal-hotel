@@ -105,6 +105,20 @@ test.describe('the aubade route', () => {
     await expect(page.locator('#lobby-prose')).toBeFocused();
   });
 
+  test('is lit by whatever the sun is doing where the visitor is', async ({ page }) => {
+    // The one end-to-end assertion that the clock reaches the room. It cannot
+    // name an hour: this runs against a production build, where the dev-only
+    // `?t=` back door is closed, so which of the five states CI gets depends on
+    // when it ran. What every one of them shares is that the picture is
+    // described as a picture — see `desk.ts` — and what none of them shares is
+    // the description itself, so a hard-coded label here would fail twice a day.
+    await openStill(page);
+
+    const label = await page.locator('canvas').getAttribute('aria-label');
+    expect(label).toContain('drawn in real time');
+    expect(label).toContain('lobby');
+  });
+
   test('is reachable from the portfolio', async ({ page }) => {
     // A route nothing links to is a route nobody finds. The link is in the
     // footer rather than the nav on purpose — see footer.html.

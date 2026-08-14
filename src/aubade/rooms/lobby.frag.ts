@@ -29,6 +29,24 @@
  * for its absence to be noticeable gets an analytic ray-box intersection instead
  * of a march. Everything smaller is below the noise floor of the dust.
  *
+ * ## One shader, five hours
+ *
+ * The room is lit by the sun's real position at the visitor's real longitude, so
+ * it has to be five lighting states without being five shaders. Recompiling a
+ * raymarcher is a black frame and a stalled driver, and doing it at the moment
+ * the sky changes would put the stall exactly where the piece is supposed to be
+ * at its best. So every part of the rig that differs between night and noon is a
+ * uniform, and the five sets of values live in \`rooms/light-rig.ts\` where they
+ * can be read as five palettes rather than as scattered constants.
+ *
+ * Two of those uniforms buy the daytime picture on their own. \`uShutter\` puts
+ * louvres in front of the transom — real geometry, seen from inside, and the same
+ * pitch cuts the beam into bars — and \`uBleach\` pulls the albedo towards
+ * sun-faded before any light touches it, which is what a century of afternoons
+ * does to mahogany and what no amount of exposure can imitate. \`uThreshold\` is
+ * the third and is not an hour at all: it is the hairline of daylight under the
+ * door left by a visitor who let themselves in.
+ *
  * ## What is deliberately absent
  *
  * No bloom, no depth of field, no temporal accumulation — no second pass at all.
@@ -62,6 +80,19 @@
  *   uMarchSteps         primary march iteration cap    ┐ the quality ladder,
  *   uShadowSteps        soft-shadow iteration cap      │ from `gl/quality.ts`
  *   uVolumetricSamples  samples along the view ray     ┘
+ *   uKeyDirection       unit vector the key light travels along  ┐
+ *   uKeyColour          moonlight, pre-dawn sky, sunrise, or day │
+ *   uKeyStrength        pre-tonemap drive on the key             │
+ *   uPaneColour         what the transom itself reads as         │ the light rig,
+ *   uPaneStrength       the pane's emitted strength              │ from
+ *   uLampStrength       the desk lamp; 0 in daylight             │ `rooms/
+ *   uAmbientFloor       warm half of the ambient hemisphere      │ light-rig.ts`
+ *   uAmbientSky         cool half, driven by the sky             │
+ *   uDust               scattering in the air, night = 1         │
+ *   uShutter            louvres over the transom, 0 or 1         │
+ *   uBleach             how sun-faded the palette is             │
+ *   uExposure           stop into the tonemap                    ┘
+ *   uThreshold          daylight under the door — the invitation's mark
  */
 export const LOBBY_FRAGMENT_SHADER = `#version 300 es
 precision highp float;
@@ -75,6 +106,21 @@ uniform float uRoll;
 uniform int   uMarchSteps;
 uniform int   uShadowSteps;
 uniform int   uVolumetricSamples;
+
+// The light rig. One set of values per solar state; see rooms/light-rig.ts.
+uniform vec3  uKeyDirection;
+uniform vec3  uKeyColour;
+uniform float uKeyStrength;
+uniform vec3  uPaneColour;
+uniform float uPaneStrength;
+uniform float uLampStrength;
+uniform vec3  uAmbientFloor;
+uniform vec3  uAmbientSky;
+uniform float uDust;
+uniform float uShutter;
+uniform float uBleach;
+uniform float uExposure;
+uniform float uThreshold;
 
 out vec4 fragColour;
 
@@ -116,31 +162,44 @@ const float MAX_DISTANCE    = 34.0;
 const float BOUND_SLACK = 0.22;
 
 // ---------------------------------------------------------------------------
-// The light rig: a moon and a lamp, which is what a closed room at night has
+// The light rig
 // ---------------------------------------------------------------------------
 
-// Pre-normalised. A const initialiser calling normalize() is legal ES 3.00 but
-// has tripped older mobile compilers, and this is not a thing to discover on
-// someone else's phone.
+// The key light's direction, colour and strength are uniforms, because the hour
+// decides them. Only two things about the rig are fixed.
 //
-// The aim took three attempts and is worth recording, because the mistake is
-// not obvious from the numbers. The light travels towards −z, which means it
-// lights the faces *pointing away* from the camera — so a beam aimed at the
-// desk lands entirely on surfaces nobody can see, and the room reads as though
-// the window is not doing anything. What has to be in shot is where the beam
-// *stops*.
-//
-// So it is aimed at the floor at (−0.4, 0, 0.6): open marble, left of centre,
-// clear of the desk. Steeper than it first was, because a shallow beam puts its
-// pool almost under the camera where the frame crops it off — the flatter the
-// angle, the further towards the viewer the light lands.
-const vec3  MOON_DIRECTION = vec3(0.4175, -0.7833, -0.4607);
-const vec3  MOON_COLOUR    = vec3(0.42, 0.58, 0.92);
-const float MOON_STRENGTH  = 3.4;
+// The lamp is one of them: a tungsten bulb under a green shade is the same
+// colour at every hour it is switched on, so only its *strength* varies — to
+// zero, in daylight.
+const vec3 LAMP_POSITION = vec3(2.45, 1.442, -0.35);
+const vec3 LAMP_COLOUR   = vec3(1.00, 0.55, 0.20);
 
-const vec3  LAMP_POSITION = vec3(2.45, 1.442, -0.35);
-const vec3  LAMP_COLOUR   = vec3(1.00, 0.55, 0.20);
-const float LAMP_STRENGTH = 3.4;
+// The other is the aim, and it is worth recording because the mistake is not
+// obvious from the numbers. The light travels towards −z, which means it lights
+// the faces *pointing away* from the camera — so a beam aimed at the desk lands
+// entirely on surfaces nobody can see, and the room reads as though the window
+// is not doing anything. What has to be in shot is where the beam *stops*, so
+// every direction in light-rig.ts is derived from the point it lands on and that
+// point is what is written down there. A shallow beam puts its pool almost under
+// the camera where the frame crops it; a steep one puts it at the foot of the
+// door.
+
+// The shutter. Louvres at 34° across a 680mm pane: pitch 115mm gives six blades,
+// and the gap left between them is what cuts the beam into bars. SLAT_BLOCK is
+// the half-width the bars are missing from — not derived from the geometry,
+// because the projection of a tilted blade onto the floor depends on the light's
+// angle and the picture wanted four clean bars rather than an honest penumbra
+// study.
+const float SLAT_TILT  = 0.593;
+const float SLAT_PITCH = 0.115;
+const float SLAT_HALF  = 0.044;
+const float SLAT_BLOCK = 0.039;
+
+// How far the edge of a bar of light is smeared, for the two things that ask.
+// See the note in transomBeam: these are not two settings of one taste, they are
+// a hard-edged shadow and an anti-aliasing filter.
+const float SLAT_EDGE_SURFACE = 0.014;
+const float SLAT_EDGE_AIR     = 0.045;
 
 // 46 degrees of vertical field of view: wide enough to hold a room, narrow
 // enough that the near corner of the desk is not distorted into a wedge.
@@ -229,6 +288,38 @@ vec2 mapDoorway(vec3 p) {
   vec3 bar = q - vec3(0.0, 2.72, 2.155);
   bar.x = abs(bar.x) - 0.183;
   res = nearer(res, vec2(sdBox(bar, vec3(0.012, 0.340, 0.016)), MAT_TIMBER));
+
+  // The shutter, on the hours that have it down. Seven blades in front of the
+  // glass, on the room side, where a shutter on a street door actually is.
+  //
+  // Repeat first, tilt second. The other order is the obvious one to write and it
+  // is wrong in a way that renders as a single blade: rotating before the
+  // repetition tilts the *stacking axis* too, so each successive blade steps
+  // 66mm further out of the pane's plane and the third one is 190mm clear of a
+  // slab 55mm deep, where the intersection below trims it out of existence.
+  // Repeating in the plane and tilting each blade about its own centre is what a
+  // shutter actually is.
+  //
+  // The intersection is not optional either: without it the outermost blades
+  // overhang the mullion and the architrave, which reads instantly as a shutter
+  // that does not fit its window. The clamp is the same precaution the key rack
+  // takes — repeating without one tiles the room and breaks the bound the march
+  // depends on.
+  //
+  // A branch on a uniform, so every pixel in the frame takes the same side of it
+  // and it costs nothing but the compare.
+  if (uShutter > 0.5) {
+    vec3 blade = q - vec3(0.0, TRANSOM_CENTRE.y, 2.120);
+    float within = sdBox(blade, vec3(0.550, 0.345, 0.048));
+
+    blade.y -= clamp(floor(blade.y / SLAT_PITCH + 0.5), -3.0, 3.0) * SLAT_PITCH;
+    float tiltCos = cos(SLAT_TILT);
+    float tiltSin = sin(SLAT_TILT);
+    blade.yz = mat2(tiltCos, -tiltSin, tiltSin, tiltCos) * blade.yz;
+
+    float louvres = sdBox(blade, vec3(0.545, SLAT_HALF, 0.009));
+    res = nearer(res, vec2(max(louvres, within), MAT_TIMBER));
+  }
 
   return res;
 }
@@ -452,16 +543,47 @@ float ambientOcclusion(vec3 p, vec3 n) {
  * boundary on a beam of light is the single most reliable way to make an image
  * read as computer graphics rather than as a photograph of a room.
  *
+ * @param slatSoftness How far the louvre edges are smeared, metres. Two callers,
+ *   two very different answers — see the note on the mask below.
  * @return x: admittance in [0, 1]. y: metres back to the pane, or 0 behind it.
  */
-vec2 transomBeam(vec3 p) {
-  float travel = (p.z - BACK_WALL_Z) / MOON_DIRECTION.z;
+vec2 transomBeam(vec3 p, float slatSoftness) {
+  float travel = (p.z - BACK_WALL_Z) / uKeyDirection.z;
   if (travel <= 0.0) {
     return vec2(0.0);
   }
-  vec2 onPane  = p.xy - MOON_DIRECTION.xy * travel;
+  vec2 onPane  = p.xy - uKeyDirection.xy * travel;
   vec2 outside = abs(onPane - TRANSOM_CENTRE) - TRANSOM_HALF;
-  return vec2(1.0 - smoothstep(-0.055, 0.015, max(outside.x, outside.y)), travel);
+  float admitted = 1.0 - smoothstep(-0.055, 0.015, max(outside.x, outside.y));
+
+  // The louvres, in light rather than in geometry. The blades are cut by the
+  // same pitch the shutter is built from, so the bars on the floor line up with
+  // the shutter a viewer can see above them — which is the whole difference
+  // between a shuttered room and a striped one.
+  //
+  // How soft that edge is depends entirely on who is asking, which is why it is
+  // a parameter and not a constant.
+  //
+  // A surface wants it hard: a bar of sunlight on marble has an edge you could
+  // measure, and softening it is what turns a shuttered room into a room with a
+  // gradient in it.
+  //
+  // The air wants it soft, and not for atmosphere. The volumetric integral
+  // evaluates this twenty times along a view ray spanning thirteen metres, so a
+  // structure repeating every 115mm is sampled two orders of magnitude below its
+  // own frequency — and the start offset is dithered per pixel, so neighbouring
+  // pixels land on different phases of it. A hard edge there does not alias into
+  // a stair, it aliases into a fine diagonal moiré across every wall the shaft
+  // passes in front of: the most obviously computer-generated thing this shader
+  // is capable of producing, and it took a rendered frame to recognise as
+  // aliasing rather than as a shadow.
+  if (uShutter > 0.5) {
+    float acrossPane = (onPane.y - TRANSOM_CENTRE.y) / SLAT_PITCH;
+    float fromBlade  = abs(fract(acrossPane + 0.5) - 0.5) * SLAT_PITCH;
+    admitted *= smoothstep(SLAT_BLOCK - slatSoftness, SLAT_BLOCK + slatSoftness, fromBlade);
+  }
+
+  return vec2(admitted, travel);
 }
 
 /**
@@ -473,7 +595,7 @@ vec2 transomBeam(vec3 p) {
  * keeping dark, and the shaft stops looking like it is made of light.
  */
 float deskShadow(vec3 p) {
-  vec3 inverseDirection = 1.0 / (-MOON_DIRECTION);
+  vec3 inverseDirection = 1.0 / (-uKeyDirection);
   vec3 a = (DESK_MIN - p) * inverseDirection;
   vec3 b = (DESK_MAX - p) * inverseDirection;
   vec3 low  = min(a, b);
@@ -547,6 +669,32 @@ vec3 surfaceAlbedo(float id, vec3 p, out float roughness, out float metallic) {
   return vec3(0.1);
 }
 
+/**
+ * Pull a colour towards a warm, faded pale, by uBleach.
+ *
+ * The daytime piece's palette, and non-zero at no other hour. It is a choice
+ * rather than a simulation — a genuinely sun-faded surface would be just as faded
+ * at midnight — so what has to be defended is where it is applied, not whether it
+ * is true.
+ *
+ * It is applied to albedo, before any light. Fading the *material* leaves the
+ * shadows exactly where they are and takes the colour only out of what the light
+ * actually lands on. Fading the *frame* lifts the shadows with everything else,
+ * which is how the first version of the daytime state came out as a uniformly
+ * white room with no light in it: a rendering of the word "bright" rather than a
+ * picture of an afternoon.
+ *
+ * Towards a warm grey rather than towards white, and only partway: mixing to pure
+ * white flattens every material in the room to the same value at the same rate,
+ * and a shuttered lobby where the marble, the mahogany and the enamel shade are
+ * indistinguishable is not a bleached picture, it is a lost one.
+ */
+vec3 faded(vec3 albedo) {
+  float grey = dot(albedo, vec3(0.299, 0.587, 0.114));
+  vec3 pale = mix(vec3(grey), vec3(0.74, 0.70, 0.63), 0.72);
+  return mix(albedo, pale, uBleach);
+}
+
 /** Blinn-Phong specular. Cheap, and the right shape for a room lit by two soft sources. */
 float specularLobe(vec3 n, vec3 viewDirection, vec3 lightDirection, float roughness) {
   vec3 halfway = normalize(lightDirection - viewDirection);
@@ -560,19 +708,21 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id) {
   // emitters, not surfaces; lighting them would only make them grey.
   if (id == MAT_GLASS) {
     float up = clamp((p.y - TRANSOM_CENTRE.y + TRANSOM_HALF.y) / (TRANSOM_HALF.y * 2.0), 0.0, 1.0);
-    return MOON_COLOUR * (1.5 + up * 1.4);
+    return uPaneColour * uPaneStrength * (1.0 + up * 0.9);
   }
   if (id == MAT_FILAMENT) {
-    return LAMP_COLOUR * 5.0;
+    // Out with the lamp. A filament still glowing under an unlit shade is the
+    // kind of detail nobody names and everybody sees.
+    return LAMP_COLOUR * 5.0 * step(0.01, uLampStrength);
   }
 
   float roughness;
   float metallic;
-  vec3 albedo = surfaceAlbedo(id, p, roughness, metallic);
+  vec3 albedo = faded(surfaceAlbedo(id, p, roughness, metallic));
 
-  vec3 toMoon = -MOON_DIRECTION;
-  float moonFacing = max(dot(n, toMoon), 0.0);
-  vec2 beam = transomBeam(p);
+  vec3 toKey = -uKeyDirection;
+  float keyFacing = max(dot(n, toKey), 0.0);
+  vec2 beam = transomBeam(p, SLAT_EDGE_SURFACE);
   float admitted = beam.x;
 
   // Both gates are needed and they do different jobs: admittance decides whether
@@ -595,10 +745,10 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id) {
   //
   // Fifteen percent also, conveniently, blinds the march to the architrave's
   // reveal, whose shadow the softened aperture edge is already drawing.
-  float moonShadow = (admitted > 0.001 && moonFacing > 0.0)
-    ? softShadow(p, toMoon, beam.y * 0.85)
+  float keyShadow = (admitted > 0.001 && keyFacing > 0.0)
+    ? softShadow(p, toKey, beam.y * 0.85)
     : 0.0;
-  float moon = moonFacing * admitted * moonShadow;
+  float keyLight = keyFacing * admitted * keyShadow;
 
   vec3 toLamp = LAMP_POSITION - p;
   float lampRange = length(toLamp);
@@ -610,33 +760,58 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id) {
   float lamp = max(dot(n, toLamp), 0.0) * shadeMask / (1.0 + lampRange * lampRange * 1.35);
 
   // Ambient: a hemisphere, cool from the ceiling and faintly warm off the floor.
-  // Two constants standing in for a bounce solution, which at these light levels
-  // is all anyone can tell apart.
+  // Two colours standing in for a bounce solution, which at night is all anyone
+  // can tell apart — and by day is the only thing lighting most of the room,
+  // since four bars of sun through a shutter light almost nothing directly.
+  //
+  // Kept very low at night on purpose. Ambient is the enemy of a single-source
+  // room: raise it until everything is legible and the shaft stops being the
+  // brightest thing in the frame, at which point the picture is a lit room with
+  // a window in it rather than a dark room the moon has got into. That the same
+  // two uniforms carry the daytime fill an order of magnitude higher is the
+  // cheapest part of the rig and does the most work in it.
   float sky = n.y * 0.5 + 0.5;
-  // Kept low on purpose. Ambient is the enemy of a single-source room: raise it
-  // until everything is legible and the shaft stops being the brightest thing
-  // in the frame, at which point the picture is a lit room with a window in it
-  // rather than a dark room the moon has got into.
-  vec3 ambient = mix(vec3(0.022, 0.019, 0.024), vec3(0.027, 0.033, 0.050), sky);
+  vec3 ambient = mix(uAmbientFloor, uAmbientSky, sky);
 
   float occlusion = ambientOcclusion(p, n);
 
   vec3 diffuse = albedo * (
-    MOON_COLOUR * MOON_STRENGTH * moon +
-    LAMP_COLOUR * LAMP_STRENGTH * lamp +
+    uKeyColour * uKeyStrength * keyLight +
+    LAMP_COLOUR * uLampStrength * lamp +
     ambient * occlusion * 3.0
   );
 
-  vec3 gloss =
-    MOON_COLOUR * MOON_STRENGTH * moon * specularLobe(n, viewDirection, toMoon, roughness) +
-    LAMP_COLOUR * LAMP_STRENGTH * lamp * specularLobe(n, viewDirection, toLamp, roughness);
+  // The invitation's mark: a hairline of the day under a shut door, in a room
+  // that is otherwise three in the morning. Two smoothsteps on the floor —
+  // across the doorway's width, and back from the face of the door — and no
+  // light source at all, because there is nothing in the room for it to light.
+  // A visitor should find this rather than be shown it.
+  if (uThreshold > 0.0 && id == MAT_FLOOR) {
+    float acrossDoor = 1.0 - smoothstep(0.42, 0.58, abs(p.x - DOOR_X));
+    float fromDoor   = 1.0 - smoothstep(0.015, 0.22, abs(p.z - 2.06));
+    diffuse += vec3(1.00, 0.94, 0.82) * uThreshold * acrossDoor * fromDoor * 0.85;
+  }
 
-  // Metals have no diffuse term at all; their colour lives in the specular.
+  vec3 gloss =
+    uKeyColour * uKeyStrength * keyLight * specularLobe(n, viewDirection, toKey, roughness) +
+    LAMP_COLOUR * uLampStrength * lamp * specularLobe(n, viewDirection, toLamp, roughness);
+
+  // Metals have no diffuse term at all; their colour lives in the specular. What
+  // they do have is the room: a metal with no lobe pointed at it reflects
+  // whatever is around it, which is the ambient, tinted by the metal.
+  //
+  // That term used to be a flat zero, and it was invisible for as long as the
+  // room was only ever lit at three in the morning — a black brass nosing in a
+  // black room is a black room. Under daylight the same zero draws a hard black
+  // bar along the front of the desk, the single most conspicuous thing in the
+  // frame and the one nobody would read as brass.
+  vec3 roomInMetal = albedo * ambient * occlusion * 3.0;
+
   vec3 specularTint = mix(vec3(1.0), albedo, metallic);
   float fresnel = pow(1.0 - max(dot(n, -viewDirection), 0.0), 5.0);
   float reflectivity = mix(0.04 + fresnel * 0.5, 1.0, metallic);
 
-  return mix(diffuse, vec3(0.0), metallic) + gloss * specularTint * reflectivity * occlusion;
+  return mix(diffuse, roomInMetal, metallic) + gloss * specularTint * reflectivity * occlusion;
 }
 
 // ---------------------------------------------------------------------------
@@ -686,14 +861,16 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
   for (int i = 0; i < sampleCount; i++) {
     vec3 p = origin + rayDirection * ((float(i) + dither) * stepLength);
 
-    float beam = transomBeam(p).x;
+    float beam = transomBeam(p, SLAT_EDGE_AIR).x;
     if (beam > 0.002) {
       float glint = 0.85 + 0.5 * hash13(floor(p * 26.0) + floor(uTime * 3.0));
-      accumulated += MOON_COLOUR * beam * deskShadow(p) * dustDensity(p) * glint * 0.055;
+      accumulated += uKeyColour * beam * deskShadow(p) * dustDensity(p) * glint * 0.055 * uDust;
     }
 
     float lampRange = length(LAMP_POSITION - p);
-    accumulated += LAMP_COLOUR * 0.010 / (1.0 + lampRange * lampRange * lampRange * 2.2);
+    accumulated +=
+      LAMP_COLOUR * 0.010 * min(uLampStrength, 1.0) /
+      (1.0 + lampRange * lampRange * lampRange * 2.2);
   }
 
   return accumulated * stepLength;
@@ -705,10 +882,13 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
 
 /** Narkowicz's ACES fit. One polynomial, and it keeps the moon from going cyan. */
 vec3 tonemap(vec3 colour) {
-  // Exposure. Set by eye against a 3am interior and then left alone: this is the
-  // knob that is tempting to reach for whenever anything looks wrong, and almost
-  // never the one that is actually wrong.
-  colour *= 1.15;
+  // Exposure, from the rig. It was a constant set by eye against a 3am interior,
+  // and all five night-side rigs still use that number: this is the knob that is
+  // tempting to reach for whenever anything looks wrong, and almost never the one
+  // that is actually wrong. The day is the exception, and deliberately over —
+  // holding the highlights in a shuttered room is the technically correct way to
+  // make the picture boring.
+  colour *= uExposure;
   return clamp((colour * (2.51 * colour + 0.03)) / (colour * (2.43 * colour + 0.59) + 0.14), 0.0, 1.0);
 }
 

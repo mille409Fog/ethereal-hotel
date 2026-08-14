@@ -132,6 +132,78 @@
   font-style: italic;
 }
 
+/* ----- The card on the desk -----
+
+   Shown only while the hotel is shut. It is the one piece of chrome that
+   carries a number a visitor can check against their own clock, so it is set
+   apart from the clerk's prose rather than folded into it: a countdown that
+   reads as atmosphere is a countdown nobody acts on, and the whole purpose of
+   this card is to send somebody back after dark. */
+.lobby__card {
+  display: block;
+  margin: 0.9rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--lobby-rule);
+  background: #101115;
+  font-size: 0.88rem;
+  text-wrap: pretty;
+}
+
+.lobby__card-time {
+  display: block;
+  font-family: var(--lobby-face-plate);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+}
+
+.lobby__card-body {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--lobby-ink);
+}
+
+/* ----- The invitation -----
+
+   AUBADE requires this to be obvious: the refusal is the concept, and locking
+   people out is just rudeness. So it is a real button with a border and a
+   brass rule, not a text link pretending to be reluctant. */
+.lobby__offer {
+  margin: 0.9rem 0 0;
+  max-width: 26rem;
+  font-size: 0.9rem;
+  color: var(--lobby-ink);
+  text-wrap: pretty;
+}
+
+.lobby__invite {
+  display: inline-block;
+  margin-top: 0.55rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--lobby-brass);
+  background: transparent;
+  color: var(--lobby-brass);
+  font-family: var(--lobby-face-plate);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* No transition, for the reason the Motion note at the foot of this file gives:
+   nothing that overlaps the canvas may animate. A flat swap of two opaque
+   colours is a repaint, not a composited layer. */
+.lobby__invite:hover {
+  background: var(--lobby-brass);
+  color: var(--lobby-panel);
+}
+
+.lobby__invite:focus-visible {
+  outline: 2px solid var(--lobby-brass);
+  outline-offset: 3px;
+}
+
 /* The one control on the first screen. The prose is always in the DOM and a
    screen reader reaches it regardless; this is what tells a sighted visitor it
    is there, which is the half an `aria-describedby` would not have covered. */
