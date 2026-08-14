@@ -59,13 +59,17 @@ npm run resume:check      # what CI runs — fails if the committed PDF is stale
 
 `resume:check` runs in the Playwright job because it needs the same Chromium. Never edit the PDF
 directly, and never edit it in a word processor — it is a build output, and the check will catch
-it. If the check fails right after a Playwright upgrade, that is correct rather than spurious: the
-PDF records the renderer that produced it. Re-render and commit.
+it.
 
-Note that `resume:pdf` always leaves the file looking modified in `git status`, because Chromium
-stamps the render time into every PDF it writes. `resume:check` ignores exactly those two
-timestamps, so it — not `git diff` — is what tells you whether anything really changed. If the
-check passes, `git checkout -- public/jacob-miller-resume.pdf` and keep the diff clean.
+The check compares the PDF's **text layer and page size**, not its bytes: Chromium renders the same
+résumé to 210KB here and 97KB on the Linux CI runner, so a byte comparison could only ever pass on
+the machine that produced the committed file. `scripts/pdf-text.mjs` has the measurements. On
+failure it prints where the two documents first diverge, with context either side.
+
+`resume:pdf` still leaves the file looking modified in `git status`, because Chromium stamps the
+render time into every PDF it writes. `resume:check` — not `git diff` — is what tells you whether
+anything really changed. If it passes, `git checkout -- public/jacob-miller-resume.pdf` and keep
+the diff clean.
 
 `npm run lighthouse` builds, serves `dist/` on :4173 and audits `/` and `/dashboard`, failing
 below the thresholds in `lighthouserc.json`. It drives whatever Chrome you already have and

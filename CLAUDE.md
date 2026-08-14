@@ -62,7 +62,7 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
 | `AUBADE.md`         | 16K  | Only if the task touches `/aubade` (a separate WebGL project). Two phases have landed: `src/aubade/solar/` is the clock, and the lobby is on the route. Nothing yet connects them. |
-| `CONTRIBUTING.md`   | 5K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
+| `CONTRIBUTING.md`   | 6K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
 left from 1 so the list always reads 1, 2, 3, 4. The reasoning that survived a finished item moved
@@ -136,9 +136,15 @@ not leave the note behind when the suppression goes.
   two places.** Its single source is `src/app/resume/resume.data.ts`, which the experience, skills
   and contact sections also read; `npm run resume:pdf` re-renders the PDF and `npm run resume:check`
   fails CI when the committed one has drifted. The fonts it embeds are vendored in
-  `scripts/resume-fonts/` because text metrics decide the PDF's bytes, and a render using whatever
-  fonts are installed would differ between this box and CI. It was a hand-built LibreOffice document
-  until a ROADMAP item replaced it; that is the drift being prevented.
+  `scripts/resume-fonts/` because text metrics decide the layout, and a render using whatever fonts
+  are installed would wrap the lines differently on this box and on CI. It was a hand-built
+  LibreOffice document until a ROADMAP item replaced it; that is the drift being prevented.
+- **The résumé gate compares the PDF's text, not its bytes.** Chromium's output is deterministic
+  per machine and structurally different across machines — 210KB in 364 objects on Windows, 97KB in
+  163 on Linux CI, because Skia cannot embed Crimson Pro and decomposes it into a platform-specific
+  number of Type3 fonts. A byte comparison could never pass in CI and re-rendering could never fix
+  it. `scripts/pdf-text.mjs` reads the text layer, which *is* identical everywhere; its one rule is
+  that it never reads a coordinate, because glyph advances are not.
 - **GLSL lives inside a template literal, so a backtick in a shader comment ends the string** and
   the error lands thirty lines away. Same family: GLSL ES 3.00 reserves `half`, `sample`, `input`,
   `output` and a long tail more, and rejects them with a line number and no reason. Run

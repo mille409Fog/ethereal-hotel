@@ -29,20 +29,25 @@
  *
  * `scripts/resume-fonts/` holds the two brand faces as woff2, embedded into the
  * print HTML as data URIs rather than fetched from Google Fonts the way
- * `src/styles.css` does. Two reasons, and the second is the load-bearing one:
- * a build gate should not need the network, and — more importantly — text
- * metrics decide the bytes. Rendering with whatever fonts happen to be installed
- * would lay the page out one way on the author's Windows box and another way on
- * ubuntu CI, so `resume:check` would fail on every push for reasons that have
- * nothing to do with the résumé. Embedding the faces makes the render identical
- * everywhere. Their OFL licences sit beside them, as that licence requires.
+ * `src/styles.css` does. Two reasons: a build gate should not need the network,
+ * and text metrics decide the layout. Rendering with whatever fonts happen to be
+ * installed would wrap the lines one way on the author's Windows box and another
+ * way on ubuntu CI, at which point the one-page check below would mean something
+ * different on each. Embedding the faces makes the *layout* the same everywhere.
+ * Their OFL licences sit beside them, as that licence requires.
+ *
+ * It does not make the *bytes* the same everywhere, and a previous version of
+ * this file claimed it did. It does not come close — the same source renders to
+ * 210KB in 364 objects here and 97KB in 163 objects on the Linux CI image, which
+ * is why `resume:check` compares the text layer rather than the file. The
+ * measurements and the reason are in `scripts/pdf-text.mjs`.
  */
 import { chromium } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { RESUME, formatPeriod } from '../src/app/resume/resume.data.ts';
-import { normalizePdf } from './pdf-normalize.mjs';
+import { extractText, pageSizes } from './pdf-text.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fontDir = path.join(repoRoot, 'scripts', 'resume-fonts');
@@ -370,6 +375,45 @@ async function measureOverflow(page) {
 
 const relative = (file) => path.relative(process.cwd(), file);
 
+/**
+ * Say *where* the two documents stop agreeing, not just that they do.
+ *
+ * The old byte-comparison gate could not do this — a diff of two Flate streams
+ * is noise — so it printed a list of possible causes and left you to guess.
+ * Comparing text means the failure can name the sentence that moved, which is
+ * usually enough to tell "I edited the résumé and forgot to re-render" from
+ * "something about the layout changed" without opening either file.
+ */
+function describeDrift(committedText, renderedText, committedPages, renderedPages) {
+  if (committedPages !== renderedPages) {
+    return (
+      `The page geometry changed:\n` +
+      `  committed: ${committedPages}\n` +
+      `  rendered:  ${renderedPages}\n` +
+      `(width x height in points, one entry per page.)`
+    );
+  }
+
+  let at = 0;
+  while (
+    at < committedText.length &&
+    at < renderedText.length &&
+    committedText[at] === renderedText[at]
+  ) {
+    at += 1;
+  }
+
+  // A window either side of the divergence: enough left-hand context to locate
+  // the sentence, enough right-hand text to see what replaced what.
+  const window = (text) => text.slice(Math.max(0, at - 40), at + 60).replace(/\s+/g, ' ');
+
+  return (
+    `They first differ ${at} characters in:\n` +
+    `  committed: …${window(committedText)}…\n` +
+    `  rendered:  …${window(renderedText)}…`
+  );
+}
+
 async function main() {
   const checking = process.argv.includes('--check');
   const rendered = await render();
@@ -390,7 +434,12 @@ async function main() {
     process.exit(1);
   }
 
-  if (normalizePdf(committed).equals(normalizePdf(rendered))) {
+  const committedText = extractText(committed);
+  const renderedText = extractText(rendered);
+  const committedPages = pageSizes(committed).join(', ');
+  const renderedPages = pageSizes(rendered).join(', ');
+
+  if (committedText === renderedText && committedPages === renderedPages) {
     process.stdout.write(`${relative(outputPath)} is up to date.\n`);
     return;
   }
@@ -398,11 +447,10 @@ async function main() {
   process.stderr.write(
     `\n${relative(outputPath)} does not match src/app/resume/resume.data.ts.\n\n` +
       `Run \`npm run resume:pdf\` and commit the regenerated file.\n\n` +
-      `Three things cause this, and all three are fixed the same way:\n` +
+      `Two things cause this, and both are fixed the same way:\n` +
       `  1. The résumé data changed and the PDF was not re-rendered. The usual one.\n` +
-      `  2. Playwright — and with it Chromium — was upgraded. The PDF embeds its\n` +
-      `     renderer version, so it genuinely is stale; regenerating is correct.\n` +
-      `  3. This script's layout or the fonts in scripts/resume-fonts/ changed.\n\n`
+      `  2. This script's layout changed what the page says or how big it is.\n\n` +
+      `${describeDrift(committedText, renderedText, committedPages, renderedPages)}\n`
   );
   process.exit(1);
 }

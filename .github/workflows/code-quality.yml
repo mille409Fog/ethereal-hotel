@@ -38,9 +38,11 @@ jobs:
 
       # Node's own test runner over scripts/*.test.mjs — no browser, no
       # dependency, so it belongs here rather than in the Playwright job. It
-      # covers the PDF normaliser that the résumé staleness gate rests on: if
-      # that function is wrong, `resume:check` either passes everything or fails
-      # everything, and both look like the gate working.
+      # covers the PDF text extractor the résumé staleness gate rests on: if
+      # that is wrong, `resume:check` either passes everything or fails
+      # everything, and both look like the gate working. The first of those is
+      # the one that has actually happened, so the extractor throws rather than
+      # returning an empty string it could not parse.
       - name: Run build-script tests
         run: npm run test:scripts
 

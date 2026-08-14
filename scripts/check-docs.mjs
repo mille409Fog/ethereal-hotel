@@ -128,9 +128,39 @@ check('the résumé still has a single source', () => {
   }
 
   // The renderer embeds these by name. A missing face silently falls back to a
-  // system font, which changes the PDF's bytes on one machine and not another.
+  // system font, which wraps the lines one way on one machine and another way
+  // on the next.
   if (exists('scripts/render-resume.mjs')) {
     const renderer = read('scripts/render-resume.mjs');
+
+    // CLAUDE.md claims the gate compares the PDF's *text*. That claim is only
+    // true while the renderer actually rests on the extractor: a check that
+    // went back to comparing bytes would pass every other assertion here and
+    // fail every CI run, which is the exact failure this replaced.
+    if (!exists('scripts/pdf-text.mjs')) {
+      problems.push(
+        'scripts/pdf-text.mjs is gone; CLAUDE.md says the résumé gate compares the PDF text.'
+      );
+    } else if (!/from '\.\/pdf-text\.mjs'/.test(renderer)) {
+      problems.push(
+        'scripts/render-resume.mjs no longer imports pdf-text.mjs. CLAUDE.md says the gate ' +
+          'compares text rather than bytes; either restore the import or stop making the claim.'
+      );
+    }
+
+    // The one rule pdf-text.mjs exists to obey. Positions differ across
+    // platforms, so a comparison that reads one is unsatisfiable in CI.
+    if (exists('scripts/pdf-text.mjs')) {
+      const extractor = read('scripts/pdf-text.mjs');
+      const readsPositions = /parseFloat|Number\(\s*(?:kern|offset|advance|tx|ty)/i.test(extractor);
+      if (readsPositions) {
+        problems.push(
+          'scripts/pdf-text.mjs looks like it reads a coordinate. Glyph advances differ between ' +
+            'platforms; CLAUDE.md says the extractor never reads one.'
+        );
+      }
+    }
+
     for (const [, file] of renderer.matchAll(/'([\w-]+\.woff2)'/g)) {
       if (!exists(path.join('scripts', 'resume-fonts', file))) {
         problems.push(`scripts/render-resume.mjs embeds ${file}, which is not in scripts/resume-fonts/.`);
