@@ -27,6 +27,7 @@
  * look for is decoration. So the line after the invitation says where to look.
  */
 
+import type { Floor } from './descent';
 import type { AubadeState } from './solar/state';
 
 /** What the desk says at one hour of the sun. */
@@ -104,6 +105,175 @@ export const DESK_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
       'The shutter is down. Six flat bars of daylight lie across the marble and go no further, ' +
       'and the lamp is out.',
   },
+};
+
+/**
+ * The five hours on Floor −1.
+ *
+ * The corridor has no window, so its hours are told by what is left of its own
+ * light rather than by what is coming through the wall — see
+ * `rooms/corridor-rig.ts`, which is the same five states as numbers. The clerk's
+ * voice is the same; what it has to report is the opposite. Upstairs the sky is
+ * arriving. Down here the gas is going out.
+ *
+ * The same rule as everywhere else in this file: nothing states a clock time, and
+ * nothing describes the missing reflection. That last one is not an oversight and
+ * it is the most important sentence in the file. The phase's Definition of Done is
+ * that a stranger reads the absence as deliberate *unprompted*, within ten
+ * seconds; a plate that says "your light does not reflect" hands them the answer
+ * and there is nothing left to notice. The prose describes the mirror, at length,
+ * and never once says what is not in it.
+ */
+export const CORRIDOR_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
+  open: {
+    plate: 'Floor −1, at full gas. The doors are all shut and none of them are locked.',
+    picture:
+      'A hotel corridor below ground, drawn in real time. Seven gas sconces recede down the ' +
+      'right-hand wall above a line of numbered doors; the whole left-hand wall is mirror in ' +
+      'brass beading, and the corridor runs down it a second time.',
+    opening:
+      'The gas is up. Seven sconces down the right-hand wall, a door between each pair, and a ' +
+      'red runner laid over the marble the length of the floor.',
+  },
+
+  late: {
+    plate: 'The gas is being turned down. It starts at the far end, where you are not looking.',
+    picture:
+      'A hotel corridor below ground with its lamps dimmed, drawn in real time. The sconces at ' +
+      'the far end have gone down first, and the end of the corridor is dark.',
+    opening:
+      'The gas has started going down, and it went at the far end first — which is the end you ' +
+      'were not looking at.',
+  },
+
+  warning: {
+    plate: 'Nautical twilight, five floors up. Down here the pools of light no longer meet.',
+    picture:
+      'A hotel corridor below ground, lit low. Each sconce now throws a separate pool with dark ' +
+      'between them, and the mirrored wall repeats the line of them.',
+    opening:
+      'The pools under the sconces have stopped meeting. The corridor is a row of separate ' +
+      'lights now, with dark between them, and twice as many of them in the glass.',
+  },
+
+  aubade: {
+    plate: 'Civil twilight. The gas is nearly out, and something else is arriving.',
+    picture:
+      'A hotel corridor below ground, almost dark, drawn in real time. The last of the gas is ' +
+      'orange and low, and a faint rose light lies across the runner at the far end where it ' +
+      'has come down the lift shaft.',
+    opening:
+      'The gas is nearly out. At the far end, across the runner, there is a light on the floor ' +
+      'the colour of the horizon, and it did not come from in here.',
+  },
+
+  shuttered: {
+    plate: 'The gas is out. The lift shaft is letting the day in, and it is the only light left.',
+    picture:
+      'A hotel corridor below ground with its lamps out, drawn in real time. One hard blade of ' +
+      'daylight comes through the gap above the lift doors at the far end and lies across the ' +
+      'red runner. The mirrored wall carries it back down the corridor.',
+    opening:
+      'The gas is out. One blade of daylight through the gap above the lift doors, lying across ' +
+      'the runner, and nothing else — the building went six floors down to be away from the sun ' +
+      'and the sun came down the lift.',
+  },
+};
+
+/**
+ * The rooms in prose, one paragraph per element, per floor.
+ *
+ * Moved out of `aubade.html` when the second floor arrived, and not only because
+ * two floors of hardcoded paragraphs behind an `@if` puts the template over the
+ * complexity limit. The reason it belongs here is the one at the top of this file:
+ * this is the file where the writing lives, and prose scattered through a template
+ * is prose nobody reads end to end.
+ *
+ * The first paragraph of each is `opening` from the copy above, which is the only
+ * part the sun moves; these are the rest, and they are true at every hour because
+ * furniture is.
+ */
+export const FLOOR_PROSE: Readonly<Record<Floor, readonly string[]>> = {
+  0: [
+    'The door to the street is shut, and the transom above it is the only opening in the room. ' +
+      'Everything that happens to the light in here happens through it.',
+    'On the counter: a brass bell nobody rings, the register lying open at today, and a lamp ' +
+      'with a green shade. Behind it, thirty-five pigeonholes and a key in none of them. The ' +
+      'camera does not circle the room. It stands in it, and breathes.',
+  ],
+
+  '-1': [
+    'The whole of the left-hand wall is mirror — not a mirror hung on a wall, a wall made of ' +
+      'mirror, in sheets of plate the width of a door with brass beading between them and the ' +
+      'silvering going at the edges. It runs the length of the floor. The corridor happens ' +
+      'twice.',
+    'On the right: seven doors with brass numbers, a sconce between each pair, a dado rail, and ' +
+      'a runner worn paler down the middle by people who are not here. At the far end, the lift ' +
+      'you came down in, with a gap above its doors.',
+    'You are carrying a light. It is the only thing on this floor that is yours.',
+  ],
+};
+
+/**
+ * The lift, in the two directions it goes and the one state it will not be argued
+ * with in.
+ *
+ * AUBADE calls the elevator a room rather than a transition and asks for the morph
+ * to be "visible and unhurried". The control is disabled while the car is moving,
+ * and the line that replaces it says so in the building's own voice rather than as
+ * a status message, because a piece that lets you skip its one transition has
+ * decided the transition was in the way.
+ */
+export const LIFT_COPY = {
+  /** The offer, at the desk. */
+  down: 'Take the lift down',
+
+  /** The offer, in the corridor. */
+  up: 'Take the lift up',
+
+  /** While the car is moving, in place of the control. */
+  moving: 'The lift is moving. It will not be hurried.',
+
+  /**
+   * Shown at the desk while the hotel is shut and the visitor has not let
+   * themselves in. The lift is the one thing the invitation actually gates, and
+   * that is the point of it: the refusal has to cost something or it is set
+   * dressing.
+   */
+  shut: 'The lift does not run while the hotel is shut.',
+} as const;
+
+/**
+ * What the plate says about the state of the render itself, or `null` when the
+ * room is simply running and there is nothing to report.
+ *
+ * Here rather than in the template for the reason at the top of this file, and
+ * because three of these are the only sentences in the piece that describe the
+ * software rather than the building — which makes them the three most likely to be
+ * written carelessly. They are the hotel's voice about its own machinery, and the
+ * last one is load-bearing: AUBADE's fourth non-negotiable is that the piece tells
+ * the visitor what it did rather than degrading quietly.
+ */
+export const RENDER_NOTES = {
+  /** The renderer's chunk is in flight. */
+  opening: 'Unlocking the lobby…',
+
+  /** The room, breathing. Nothing to say. */
+  running: null,
+
+  /** `prefers-reduced-motion`. The camera has stopped, not slowed. */
+  still: 'You asked for less motion, so the rooms are holding their breath.',
+
+  /** No WebGL2, or a driver that would not take the shader. */
+  closed:
+    'This browser has no WebGL2, so the rooms will not open for it. They are written out below ' +
+    'instead; they are the same rooms.',
+} as const;
+
+/** What each floor calls itself, on the plate over the room. */
+export const FLOOR_NAMES: Readonly<Record<Floor, string>> = {
+  0: 'Floor 0 — The Desk',
+  '-1': 'Floor −1 — The Mirror Corridor',
 };
 
 /**

@@ -149,9 +149,11 @@ export const EDITION: readonly IEditionSection[] = [
         floor: 'Floor −1',
         name: 'The Mirror Corridor',
         body:
-          'A long wall of mirror, and in it the runner, the sconces, the doors, the dust, ' +
-          'everything. Everything except the one thing you came down here carrying. Most ' +
-          'people notice about four seconds later than they expect to.',
+          'A wall of mirror — not a mirror on a wall, sheets of plate the width of a door with ' +
+          'brass beading between them, running the length of the floor from the skirting to the ' +
+          'picture rail. In it: the runner, the sconces, the seven numbered doors, the dust. ' +
+          'Everything. Everything except the one thing you came down here carrying. Most people ' +
+          'notice about four seconds later than they expect to.',
       },
       {
         floor: 'Floor −2',
@@ -190,12 +192,19 @@ export const EDITION: readonly IEditionSection[] = [
     ],
     coda: [
       'The lift between them is not a corridor with a wait in it. It is a room in its own ' +
-        'right, and it is where one shape becomes another in front of you.',
-      'At the time of writing, Floor 0 exists and the lift is not running. The five floors ' +
-        'below it are written and not built, which is exactly why you can read them here and ' +
-        'not walk into them. The distinction is kept on purpose: this is a place that tells you ' +
-        'what it can and cannot do, and a hotel advertising rooms it does not have is worse ' +
-        'than a hotel with one very good lobby.',
+        'right, and it is where one shape becomes another in front of you. It takes seven and a ' +
+        'half seconds and it cannot be hurried. The ceiling comes down, the walls draw in, the ' +
+        'desk lengthens into a runner and the far wall opens into a corridor, and none of it is ' +
+        'a cross-fade between two pictures — it is one piece of arithmetic becoming another ' +
+        'piece of arithmetic, in full view, which is the only honest way to move between two ' +
+        'rooms that are made of nothing but arithmetic.',
+      'At the time of writing, Floor 0 and Floor −1 exist and the lift runs between them. The ' +
+        'four floors below are written and not built, which is exactly why you can read them ' +
+        'here and not walk into them. The distinction is kept on purpose: this is a place that ' +
+        'tells you what it can and cannot do, and a hotel advertising rooms it does not have is ' +
+        'worse than a hotel with two very good ones.',
+      'The lift does not run while the hotel is shut. If you are here in daylight there is a ' +
+        'control at the desk that opens the place anyway, and it opens the lift with it.',
     ],
   },
 

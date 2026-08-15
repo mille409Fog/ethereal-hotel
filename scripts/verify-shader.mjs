@@ -1,10 +1,12 @@
 /**
- * Compile AUBADE's shaders in a real browser and render the hotel's five hours.
+ * Compile AUBADE's shader in a real browser and render the hotel's floors and
+ * hours.
  *
- *     npm run verify:shader                      # compile, link, draw all five, assert
- *     npm run verify:shader -- --state shuttered # just the one
- *     npm run verify:shader -- --out docs/images/aubade-lobby.png
- *                                                # …and write each state out
+ *     npm run verify:shader                      # compile, link, draw everything, assert
+ *     npm run verify:shader -- --state shuttered # just the one hour
+ *     npm run verify:shader -- --floor corridor  # just the one floor
+ *     npm run verify:shader -- --out docs/images/aubade.webp
+ *                                                # …and write each frame out
  *     npm run verify:shader -- --invited --out /tmp/invited.png
  *                                                # the night rooms opened by hand
  *
@@ -13,38 +15,47 @@
  * The GLSL in `src/aubade/rooms/` is the only code in this repository whose
  * compiler runs after deployment. Everything else is checked before it ships —
  * TypeScript by `tsc`, the Python by `mypy --strict`, the templates by
- * `angular-eslint`. A misplaced semicolon in the fragment shader passes every
- * one of those gates, passes the unit tests (which drive a stub context that
- * never looks at the source), deploys, and then shows a visitor a blank page
- * with one line in a console they will not open.
+ * `angular-eslint`. A misplaced semicolon in the fragment shader passes every one
+ * of those gates, passes the unit tests (which drive a stub context that never
+ * looks at the source), deploys, and then shows a visitor a blank page with one
+ * line in a console they will not open.
  *
- * So the shader gets a compiler too. Playwright's Chromium renders WebGL2
- * through SwiftShader in headless mode, which is a real ANGLE front end over a
- * real GLSL compiler: if it rejects the source, so will a driver.
+ * So the shader gets a compiler too. Playwright's Chromium renders WebGL2 through
+ * SwiftShader in headless mode, which is a real ANGLE front end over a real GLSL
+ * compiler: if it rejects the source, so will a driver.
  *
  * ## What it does and does not prove
  *
- * It proves the source compiles and links, that every uniform the renderer
- * writes actually exists in the program, that a draw call produces no GL error,
- * and that the result is an image rather than a flat colour — which is the
- * usual symptom of a raymarch whose camera ended up inside a wall, and is
- * otherwise indistinguishable from "the page did not load".
+ * It proves the source compiles and links, that every uniform the renderer writes
+ * actually exists in the program, that a draw call produces no GL error, and that
+ * the result is an image rather than a flat colour — which is the usual symptom of
+ * a raymarch whose camera ended up inside a wall, and is otherwise
+ * indistinguishable from "the page did not load".
  *
- * Since the room started reading the clock it proves one more thing, and it is
- * the only automatic check on the whole point of the piece: that the five solar
- * states are five *different* pictures, and that they run from dark to light in
- * the order the sun does. A rig wired to the wrong state, a uniform left
- * unwritten, or a daytime frame that came out as the night frame with the
- * brightness up all read as an ordering failure here, and none of them would
- * fail anything else in the repository.
+ * Since the rooms started reading the clock it proves two more things, and they
+ * are the only automatic checks on the whole point of the piece.
  *
- * It proves nothing about **speed**. SwiftShader is a CPU rasteriser and its
- * frame times have no relationship to a GPU's. The frame budget is a separate
- * claim, checked by looking at the thing on real hardware.
+ * **The lobby brightens in the order the sun does.** Five states, five pictures,
+ * running dark to light. A rig wired to the wrong state, a uniform left unwritten,
+ * or a daytime frame that came out as the night frame with the brightness up all
+ * read as an ordering failure here, and none of them would fail anything else.
+ *
+ * **The corridor darkens instead.** Floor −1 has no window and its light is its
+ * own; AUBADE's `late` state is "rooms begin closing behind you, lights go out in
+ * the order you are not looking", so the corridor's gas goes down as the lobby's
+ * sky comes up. Asserting the lobby's ordering on the corridor would be asserting
+ * the opposite of the truth, so the two floors are checked against their own
+ * claims. See `rooms/corridor-rig.ts`.
+ *
+ * It proves nothing about **speed**. SwiftShader is a CPU rasteriser and its frame
+ * times have no relationship to a GPU's. The frame budget is a separate claim,
+ * checked by looking at the thing on real hardware.
  *
  * Nor does it prove the image is *good*. That is a judgement, it is the actual
- * Definition of Done for this phase, and no script is going to make it — which
- * is what `--out` is for.
+ * Definition of Done for these phases, and no script is going to make it — which
+ * is what `--out` is for. It is emphatically not going to make the judgement Floor
+ * −1's Definition of Done asks for, which is whether a stranger reads the missing
+ * reflection as deliberate inside ten seconds. That needs a stranger.
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -52,9 +63,10 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 import { FULLSCREEN_VERTEX_SHADER } from '../src/aubade/rooms/fullscreen.vert.ts';
-import { LOBBY_FRAGMENT_SHADER } from '../src/aubade/rooms/lobby.frag.ts';
-import { ANCHOR_EYE, ANCHOR_TARGET, breathe } from '../src/aubade/camera/drift.ts';
+import { HOTEL_FRAGMENT_SHADER } from '../src/aubade/rooms/hotel.frag.ts';
+import { breathe } from '../src/aubade/camera/drift.ts';
 import { QUALITY_TIERS } from '../src/aubade/gl/quality.ts';
+import { corridorRigFor } from '../src/aubade/rooms/corridor-rig.ts';
 import { rigFor } from '../src/aubade/rooms/light-rig.ts';
 import { AUBADE_STATES } from '../src/aubade/solar/state.ts';
 
@@ -76,41 +88,83 @@ const outPath = readFlag('out', null);
 const tier = QUALITY_TIERS[Number(readFlag('tier', '0'))];
 const invited = hasFlag('invited');
 
-const only = readFlag('state', null);
-if (only !== null && !AUBADE_STATES.includes(only)) {
-  process.stderr.write(`\nNo such state: ${only}. The five are ${AUBADE_STATES.join(', ')}.\n\n`);
+/**
+ * The three positions of the lift that get a committed frame.
+ *
+ * `lift` is not a floor and that is exactly why it is here. It is the descent
+ * caught halfway, where both distance fields are being evaluated and mixed, and it
+ * is the one thing in the piece whose whole justification is that it looks like
+ * something. A phase whose spectacle has no committed frame has no way of
+ * noticing when the spectacle stops working.
+ */
+const FLOORS = [
+  { name: 'lobby', morph: 0 },
+  { name: 'lift', morph: 0.5 },
+  { name: 'corridor', morph: 1 },
+];
+
+const onlyState = readFlag('state', null);
+if (onlyState !== null && !AUBADE_STATES.includes(onlyState)) {
+  process.stderr.write(`\nNo such state: ${onlyState}. The five are ${AUBADE_STATES.join(', ')}.\n\n`);
   process.exit(1);
 }
-const states = only === null ? AUBADE_STATES : [only];
+
+const onlyFloor = readFlag('floor', null);
+if (onlyFloor !== null && !FLOORS.some((floor) => floor.name === onlyFloor)) {
+  const names = FLOORS.map((floor) => floor.name).join(', ');
+  process.stderr.write(`\nNo such floor: ${onlyFloor}. The three are ${names}.\n\n`);
+  process.exit(1);
+}
+
+const states = onlyState === null ? AUBADE_STATES : [onlyState];
+const floors = onlyFloor === null ? FLOORS : FLOORS.filter((floor) => floor.name === onlyFloor);
+
+// An override, for looking at the ride at some other point than halfway.
+const morphOverride = readFlag('morph', null);
 
 /**
  * Everything the page needs, gathered here so the browser side stays a pure
  * function of its argument and can be read without cross-referencing.
+ *
+ * The camera is per-frame rather than global, because it is a function of the lift
+ * as well as of the clock — `breathe(seconds, morph)` interpolates between the two
+ * floors' anchors and sags in the middle of the ride. A single camera would put
+ * the corridor's frames in the lobby's eye position, which is inside a wall.
  */
 const job = {
   vertexSource: FULLSCREEN_VERTEX_SHADER,
-  fragmentSource: LOBBY_FRAGMENT_SHADER,
+  fragmentSource: HOTEL_FRAGMENT_SHADER,
   width,
   height,
-  camera: breathe(seconds),
   seconds,
   tier,
-  rigs: states.map((state) => rigFor(state, invited)),
-  // The extension decides the encoding. Five 1280×720 PNGs of this room are
-  // 7.5MB, which is not a thing to commit for the sake of five screenshots; the
-  // same five as WebP are a twentieth of that and the difference is invisible on
-  // an image that is mostly one dark interior. PNG is still there for anyone who
+  frames: floors.flatMap((floor) => {
+    const morph = morphOverride === null ? floor.morph : Number(morphOverride);
+    return states.map((state) => ({
+      state,
+      floor: floor.name,
+      morph,
+      camera: breathe(seconds, morph),
+      lobby: rigFor(state, invited),
+      corridor: corridorRigFor(state, invited),
+    }));
+  }),
+  // The extension decides the encoding. Five 1280×720 PNGs of this room are 7.5MB,
+  // which is not a thing to commit for the sake of a few screenshots; the same
+  // five as WebP are a twentieth of that and the difference is invisible on an
+  // image that is mostly one dark interior. PNG is still there for anyone who
   // wants a lossless frame to look at.
   mimeType: outPath !== null && outPath.endsWith('.webp') ? 'image/webp' : 'image/png',
-  // Asserted against the program's own reflection: a uniform the renderer
-  // writes but the shader does not declare is a silent no-op, and a renamed one
-  // is how a piece ends up frozen at time zero with nothing in the console.
+  // Asserted against the program's own reflection: a uniform the renderer writes
+  // but the shader does not declare is a silent no-op, and a renamed one is how a
+  // piece ends up frozen at time zero with nothing in the console.
   expected: [
     'uResolution',
     'uTime',
     'uEye',
     'uTarget',
     'uRoll',
+    'uMorph',
     'uMarchSteps',
     'uShadowSteps',
     'uVolumetricSamples',
@@ -127,20 +181,29 @@ const job = {
     'uBleach',
     'uExposure',
     'uThreshold',
+    'uSconceColour',
+    'uSconceStrength',
+    'uShaftDirection',
+    'uShaftColour',
+    'uShaftStrength',
+    'uCorridorFloor',
+    'uCorridorSky',
+    'uCorridorDust',
   ],
 };
 
 /**
- * Compile, link, draw every rig, and report. Runs inside the page.
+ * Compile, link, draw every frame, and report. Runs inside the page.
  *
  * Written in a loose style on purpose: this function is serialised and evaluated
- * in the browser, so it can close over nothing, must not use anything the
- * bundler would have to resolve, and reads `input` as untyped.
+ * in the browser, so it can close over nothing, must not use anything the bundler
+ * would have to resolve, and reads `input` as untyped.
  *
- * One context and one program for all five states, which is not just economy: it
- * is the same claim the renderer makes. Five hours out of one compiled program is
- * what keeps the piece from stalling a driver at the exact moment the sky
- * changes, and a script that compiled five times would not be testing what ships.
+ * One context and one program for every floor and every hour, which is not just
+ * economy: it is the same claim the renderer makes. Two rooms and five hours out
+ * of one compiled program is what keeps the piece from stalling a driver at the
+ * exact moment the sky changes or the lift doors close, and a script that compiled
+ * twice would not be testing what ships.
  *
  * @param {typeof job} input
  */
@@ -194,32 +257,46 @@ function renderInPage(input) {
   const at = (name) => gl.getUniformLocation(program, name);
   gl.uniform2f(at('uResolution'), input.width, input.height);
   gl.uniform1f(at('uTime'), input.seconds);
-  gl.uniform3f(at('uEye'), input.camera.eye.x, input.camera.eye.y, input.camera.eye.z);
-  gl.uniform3f(at('uTarget'), input.camera.target.x, input.camera.target.y, input.camera.target.z);
-  gl.uniform1f(at('uRoll'), input.camera.roll);
   gl.uniform1i(at('uMarchSteps'), input.tier.marchSteps);
   gl.uniform1i(at('uShadowSteps'), input.tier.shadowSteps);
   gl.uniform1i(at('uVolumetricSamples'), input.tier.volumetricSamples);
 
   gl.viewport(0, 0, input.width, input.height);
 
-  const frames = [];
+  const rendered = [];
   const pixels = new Uint8Array(input.width * input.height * 4);
 
-  for (const rig of input.rigs) {
-    gl.uniform3f(at('uKeyDirection'), rig.keyDirection.x, rig.keyDirection.y, rig.keyDirection.z);
-    gl.uniform3f(at('uKeyColour'), rig.keyColour[0], rig.keyColour[1], rig.keyColour[2]);
-    gl.uniform1f(at('uKeyStrength'), rig.keyStrength);
-    gl.uniform3f(at('uPaneColour'), rig.paneColour[0], rig.paneColour[1], rig.paneColour[2]);
-    gl.uniform1f(at('uPaneStrength'), rig.paneStrength);
-    gl.uniform1f(at('uLampStrength'), rig.lampStrength);
-    gl.uniform3f(at('uAmbientFloor'), rig.ambientFloor[0], rig.ambientFloor[1], rig.ambientFloor[2]);
-    gl.uniform3f(at('uAmbientSky'), rig.ambientSky[0], rig.ambientSky[1], rig.ambientSky[2]);
-    gl.uniform1f(at('uDust'), rig.dust);
-    gl.uniform1f(at('uShutter'), rig.shutter);
-    gl.uniform1f(at('uBleach'), rig.bleach);
-    gl.uniform1f(at('uExposure'), rig.exposure);
-    gl.uniform1f(at('uThreshold'), rig.threshold);
+  for (const frame of input.frames) {
+    const camera = frame.camera;
+    gl.uniform3f(at('uEye'), camera.eye.x, camera.eye.y, camera.eye.z);
+    gl.uniform3f(at('uTarget'), camera.target.x, camera.target.y, camera.target.z);
+    gl.uniform1f(at('uRoll'), camera.roll);
+    gl.uniform1f(at('uMorph'), frame.morph);
+
+    const lobby = frame.lobby;
+    gl.uniform3f(at('uKeyDirection'), lobby.keyDirection.x, lobby.keyDirection.y, lobby.keyDirection.z);
+    gl.uniform3f(at('uKeyColour'), lobby.keyColour[0], lobby.keyColour[1], lobby.keyColour[2]);
+    gl.uniform1f(at('uKeyStrength'), lobby.keyStrength);
+    gl.uniform3f(at('uPaneColour'), lobby.paneColour[0], lobby.paneColour[1], lobby.paneColour[2]);
+    gl.uniform1f(at('uPaneStrength'), lobby.paneStrength);
+    gl.uniform1f(at('uLampStrength'), lobby.lampStrength);
+    gl.uniform3f(at('uAmbientFloor'), lobby.ambientFloor[0], lobby.ambientFloor[1], lobby.ambientFloor[2]);
+    gl.uniform3f(at('uAmbientSky'), lobby.ambientSky[0], lobby.ambientSky[1], lobby.ambientSky[2]);
+    gl.uniform1f(at('uDust'), lobby.dust);
+    gl.uniform1f(at('uShutter'), lobby.shutter);
+    gl.uniform1f(at('uBleach'), lobby.bleach);
+    gl.uniform1f(at('uExposure'), lobby.exposure);
+    gl.uniform1f(at('uThreshold'), lobby.threshold);
+
+    const corridor = frame.corridor;
+    gl.uniform3f(at('uSconceColour'), corridor.sconceColour[0], corridor.sconceColour[1], corridor.sconceColour[2]);
+    gl.uniform1f(at('uSconceStrength'), corridor.sconceStrength);
+    gl.uniform3f(at('uShaftDirection'), corridor.shaftDirection.x, corridor.shaftDirection.y, corridor.shaftDirection.z);
+    gl.uniform3f(at('uShaftColour'), corridor.shaftColour[0], corridor.shaftColour[1], corridor.shaftColour[2]);
+    gl.uniform1f(at('uShaftStrength'), corridor.shaftStrength);
+    gl.uniform3f(at('uCorridorFloor'), corridor.ambientFloor[0], corridor.ambientFloor[1], corridor.ambientFloor[2]);
+    gl.uniform3f(at('uCorridorSky'), corridor.ambientSky[0], corridor.ambientSky[1], corridor.ambientSky[2]);
+    gl.uniform1f(at('uCorridorDust'), corridor.dust);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     const glError = gl.getError();
@@ -229,12 +306,11 @@ function renderInPage(input) {
     // matter to a person waiting for a gate.
     gl.readPixels(0, 0, input.width, input.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-    // Distinct *luma levels*, not distinct colours. Four of these five frames are
-    // night interiors: they live in the bottom eighth of the range, so binning
-    // RGB counts almost nothing however good the picture is, and a threshold on
-    // it would only ever measure how dark the room was. The number of separate
-    // brightness steps present is what actually distinguishes an image from a
-    // flat fill.
+    // Distinct *luma levels*, not distinct colours. Most of these frames are night
+    // interiors: they live in the bottom eighth of the range, so binning RGB counts
+    // almost nothing however good the picture is, and a threshold on it would only
+    // ever measure how dark the room was. The number of separate brightness steps
+    // present is what actually distinguishes an image from a flat fill.
     let min = 255;
     let max = 0;
     let total = 0;
@@ -252,8 +328,10 @@ function renderInPage(input) {
       }
     }
 
-    frames.push({
-      state: rig.state,
+    rendered.push({
+      state: frame.state,
+      floor: frame.floor,
+      morph: frame.morph,
       glError,
       min,
       max,
@@ -263,7 +341,7 @@ function renderInPage(input) {
     });
   }
 
-  return { ok: true, declared, frames };
+  return { ok: true, declared, frames: rendered };
 }
 const browser = await chromium.launch();
 const page = await browser.newPage();
@@ -295,9 +373,14 @@ for (const name of job.expected) {
   }
 }
 
+/** The frames for one floor, in the order the states are declared. */
+const floorFrames = (name) => result.frames.filter((frame) => frame.floor === name);
+
 for (const frame of result.frames) {
+  const label = `${frame.floor} ${frame.state}`;
+
   if (frame.glError !== 0) {
-    problems.push(`The ${frame.state} draw left GL error 0x${frame.glError.toString(16)} set.`);
+    problems.push(`The ${label} draw left GL error 0x${frame.glError.toString(16)} set.`);
   }
 
   // A raymarch that ends up inside a wall, or whose camera is NaN, renders a
@@ -305,55 +388,98 @@ for (const frame of result.frames) {
   // this is worth asserting rather than eyeballing.
   if (frame.max - frame.min < 12) {
     problems.push(
-      `The ${frame.state} frame is nearly uniform (luma ${frame.min.toFixed(1)}–${frame.max.toFixed(1)}). ` +
+      `The ${label} frame is nearly uniform (luma ${frame.min.toFixed(1)}–${frame.max.toFixed(1)}). ` +
         `That is what a camera inside a wall looks like, and what a NaN uniform looks like.`
     );
   }
   if (frame.distinct < 60) {
     problems.push(
-      `Only ${frame.distinct} distinct brightness levels in the ${frame.state} frame; expected ` +
+      `Only ${frame.distinct} distinct brightness levels in the ${label} frame; expected ` +
         `an image. A flat fill scores 1, a two-tone gradient a handful.`
     );
   }
   if (frame.mean < 2) {
-    problems.push(`The ${frame.state} frame is essentially black (mean luma ${frame.mean.toFixed(2)}).`);
+    problems.push(`The ${label} frame is essentially black (mean luma ${frame.mean.toFixed(2)}).`);
   }
   if (frame.mean > 220) {
-    problems.push(`The ${frame.state} frame is blown out (mean luma ${frame.mean.toFixed(2)}).`);
+    problems.push(`The ${label} frame is blown out (mean luma ${frame.mean.toFixed(2)}).`);
   }
 }
 
-// The claim the whole phase rests on: the five hours are five pictures, and they
-// brighten in the order the sun does. Asserted as an ordering rather than as five
-// luma bands, because bands would have to be re-tuned every time a rig was
-// nudged, and the thing actually worth defending is not any one number — it is
-// that the hotel gets lighter as the night ends. A rig assigned to the wrong
-// state fails this and nothing else in the repository.
-if (only === null && !invited) {
-  const means = result.frames.map((frame) => frame.mean);
+// The claim the day-and-night phase rests on: the lobby's five hours are five
+// pictures, and they brighten in the order the sun does. Asserted as an ordering
+// rather than as five luma bands, because bands would have to be re-tuned every
+// time a rig was nudged, and the thing actually worth defending is not any one
+// number — it is that the hotel gets lighter as the night ends.
+if (onlyState === null && !invited) {
+  const lobby = floorFrames('lobby');
 
-  for (let i = 1; i < result.frames.length; i += 1) {
-    if (means[i] <= means[i - 1]) {
+  if (lobby.length === AUBADE_STATES.length) {
+    const means = lobby.map((frame) => frame.mean);
+
+    for (let i = 1; i < lobby.length; i += 1) {
+      if (means[i] <= means[i - 1]) {
+        problems.push(
+          `The lobby's ${lobby[i].state} frame (mean luma ${means[i].toFixed(1)}) is no brighter ` +
+            `than ${lobby[i - 1].state} (${means[i - 1].toFixed(1)}). The five states are ` +
+            `ordered darkest to brightest in solar/state.ts; the rigs in rooms/light-rig.ts have ` +
+            `stopped agreeing with that order.`
+        );
+      }
+    }
+
+    // And the two ends are not merely ordered but different pictures. Three times
+    // is well inside the gap the rigs actually produce and well outside anything
+    // an accidentally-shared rig could reach.
+    const [night] = means;
+    const day = means[means.length - 1];
+    if (day < night * 3) {
       problems.push(
-        `The ${result.frames[i].state} frame (mean luma ${means[i].toFixed(1)}) is no brighter ` +
-          `than ${result.frames[i - 1].state} (${means[i - 1].toFixed(1)}). The five states are ` +
-          `ordered darkest to brightest in solar/state.ts; the rigs in rooms/light-rig.ts have ` +
-          `stopped agreeing with that order.`
+        `Day (mean luma ${day.toFixed(1)}) is less than three times as bright as astronomical ` +
+          `night (${night.toFixed(1)}). AUBADE asks for a daytime piece that stands alone, not ` +
+          `the night frame with the exposure raised.`
       );
     }
   }
 
-  // And the two ends are not merely ordered but different pictures. Two-thirds
-  // is well inside the gap the rigs actually produce and well outside anything
-  // an accidentally-shared rig could reach.
-  const [night] = means;
-  const day = means[means.length - 1];
-  if (day < night * 3) {
-    problems.push(
-      `Day (mean luma ${day.toFixed(1)}) is less than three times as bright as astronomical ` +
-        `night (${night.toFixed(1)}). AUBADE asks for a daytime piece that stands alone, not ` +
-        `the night frame with the exposure raised.`
-    );
+  // The corridor's own claim, and it is the opposite one. Floor −1 has no window;
+  // its light is seven gas sconces that are turned down as the night ends, which is
+  // AUBADE's "rooms begin closing behind you" with numbers in it. Checked over the
+  // three states before the sun is in play at all — from `aubade` onwards the blade
+  // down the lift shaft starts adding light back, and the interesting fact about
+  // those two frames is not their brightness but where it is coming from.
+  const corridor = floorFrames('corridor');
+  const closing = ['open', 'late', 'warning']
+    .map((state) => corridor.find((frame) => frame.state === state))
+    .filter((frame) => frame !== undefined);
+
+  for (let i = 1; i < closing.length; i += 1) {
+    if (closing[i].mean >= closing[i - 1].mean) {
+      problems.push(
+        `The corridor's ${closing[i].state} frame (mean luma ${closing[i].mean.toFixed(1)}) is no ` +
+          `darker than ${closing[i - 1].state} (${closing[i - 1].mean.toFixed(1)}). Floor −1 has ` +
+          `no window: its gas goes down as the night ends, which is what "rooms begin closing ` +
+          `behind you" means in rooms/corridor-rig.ts. A corridor that brightens with the sun has ` +
+          `been wired to the lobby's rig.`
+      );
+    }
+  }
+
+  // The lift is between the two floors and has to look like neither. A ride whose
+  // halfway frame matches one of its endpoints is a cut with a delay in it, which
+  // is the one thing "visible and unhurried" rules out — and it is exactly what a
+  // morph curve that saturates at an endpoint produces.
+  for (const lift of floorFrames('lift')) {
+    for (const floor of ['lobby', 'corridor']) {
+      const settled = floorFrames(floor).find((frame) => frame.state === lift.state);
+      if (settled !== undefined && Math.abs(settled.mean - lift.mean) < 0.5) {
+        problems.push(
+          `Halfway through the descent the ${lift.state} frame is indistinguishable from the ` +
+            `settled ${floor} (mean luma ${lift.mean.toFixed(1)} against ${settled.mean.toFixed(1)}). ` +
+            `The lift is supposed to be a mix of two distance fields, not a cut between them.`
+        );
+      }
+    }
   }
 }
 
@@ -362,22 +488,23 @@ if (outPath !== null) {
   await mkdir(parsed.dir, { recursive: true });
 
   for (const frame of result.frames) {
-    // One file per state, always suffixed — even for a single `--state`, so the
-    // name says which hour is in the picture. A screenshot of a piece whose whole
-    // subject is the hour should not have to be identified by eye.
-    const target = path.join(parsed.dir, `${parsed.name}-${frame.state}${parsed.ext}`);
+    // One file per floor per state, always suffixed — even for a single `--state`,
+    // so the name says which hour and which floor is in the picture. A screenshot
+    // of a piece whose whole subject is the hour should not have to be identified
+    // by eye.
+    const target = path.join(parsed.dir, `${parsed.name}-${frame.floor}-${frame.state}${parsed.ext}`);
     await writeFile(target, Buffer.from(frame.dataUrl.split(',')[1], 'base64'));
     process.stdout.write(`wrote ${path.relative(repoRoot, target)}\n`);
   }
 }
 
 process.stdout.write(
-  `lobby.frag: compiled and linked, ${result.declared.length} uniforms, ` +
-    `${result.frames.length} state${result.frames.length === 1 ? '' : 's'} at ${width}×${height}.\n`
+  `hotel.frag: compiled and linked, ${result.declared.length} uniforms, ` +
+    `${result.frames.length} frame${result.frames.length === 1 ? '' : 's'} at ${width}×${height}.\n`
 );
 for (const frame of result.frames) {
   process.stdout.write(
-    `  ${frame.state.padEnd(10)} luma ${frame.min.toFixed(1)}–${frame.max.toFixed(1)} ` +
+    `  ${frame.floor.padEnd(9)} ${frame.state.padEnd(10)} luma ${frame.min.toFixed(1)}–${frame.max.toFixed(1)} ` +
       `(mean ${frame.mean.toFixed(1)}), ${frame.distinct} levels\n`
   );
 }
@@ -388,10 +515,10 @@ if (problems.length > 0) {
     process.stderr.write(`  ${problem}\n`);
   }
   process.stderr.write(
-    `\nRe-run with \`-- --out docs/images/aubade-lobby.png\` and look at them.\n` +
+    `\nRe-run with \`-- --out docs/images/aubade.png\` and look at them.\n` +
       `Note that this renders through SwiftShader, so it says nothing about speed.\n\n`
   );
   process.exit(1);
 }
 
-process.stdout.write('The lobby renders, at every hour.\n');
+process.stdout.write('The hotel renders, on every floor, at every hour.\n');

@@ -1,4 +1,12 @@
-import { ANCHOR_EYE, ANCHOR_TARGET, breathe, type ICameraPose, type IVec3 } from './drift';
+import {
+  ANCHOR_EYE,
+  ANCHOR_TARGET,
+  breathe,
+  CORRIDOR_EYE,
+  CORRIDOR_TARGET,
+  type ICameraPose,
+  type IVec3,
+} from './drift';
 
 /**
  * The camera.
@@ -176,6 +184,80 @@ describe('the breathing camera', () => {
       const pose = breathe(-4);
       expect(Number.isFinite(pose.eye.x)).toBe(true);
       expect(magnitude(subtract(pose.eye, ANCHOR_EYE))).toBeLessThan(0.25);
+    });
+  });
+});
+
+describe('the camera descends', () => {
+  describe('at each settled floor', () => {
+    it('sits exactly on the lobby anchor at the top of the lift', () => {
+      // The reduced-motion still on Floor 0 is this frame, and the shader's
+      // scene-skipping branch only fires at exactly 0 — so "near enough" is not.
+      const pose = breathe(0, 0);
+
+      expect(pose.eye).toEqual(ANCHOR_EYE);
+      expect(pose.target).toEqual(ANCHOR_TARGET);
+    });
+
+    it('sits exactly on the corridor anchor at the bottom', () => {
+      const pose = breathe(0, 1);
+
+      expect(pose.eye).toEqual(CORRIDOR_EYE);
+      expect(pose.target).toEqual(CORRIDOR_TARGET);
+    });
+
+    it('treats a missing or impossible lift as the lobby', () => {
+      // `morph` arrives from the shader's own uniform and a NaN there is a black
+      // screen with nothing in the console. Out-of-range values are clamped
+      // rather than extrapolated, which would put the camera past the corridor
+      // and inside the far wall.
+      for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -3]) {
+        expect(breathe(0, bad).eye).toEqual(ANCHOR_EYE);
+      }
+      expect(breathe(0, 4).eye).toEqual(CORRIDOR_EYE);
+    });
+  });
+
+  describe('during the ride', () => {
+    it('sinks below the straight line between the two floors', () => {
+      // The sag is what makes the descent read as travel rather than as a
+      // cross-fade. Halfway down the camera is lower than either anchor and lower
+      // than the midpoint of them.
+      const midpoint = (ANCHOR_EYE.y + CORRIDOR_EYE.y) / 2;
+
+      expect(breathe(0, 0.5).eye.y).toBeLessThan(midpoint);
+    });
+
+    it('gives the sag back by the time it arrives', () => {
+      // Or the settled floor is not the composition its anchor describes, which
+      // is the same requirement the reduced-motion still has.
+      expect(breathe(0, 1).eye.y).toBe(CORRIDOR_EYE.y);
+      expect(breathe(0, 0).eye.y).toBe(ANCHOR_EYE.y);
+    });
+
+    it('turns the gaze by moving the target, not by rotating anything', () => {
+      // The file's whole claim, held across the one moment the view direction
+      // genuinely changes. The view direction swings a long way; the distance
+      // between eye and target stays the same order of magnitude, which a
+      // rotation about the eye would not preserve and a pivot about the target
+      // would collapse.
+      const above = breathe(0, 0);
+      const below = breathe(0, 1);
+
+      const swing = magnitude(subtract(below.target, above.target));
+      expect(swing).toBeGreaterThan(1);
+
+      const reach = (pose: ICameraPose): number => magnitude(subtract(pose.target, pose.eye));
+      expect(reach(below)).toBeGreaterThan(reach(above) * 0.5);
+    });
+
+    it('still breathes while it travels', () => {
+      // The lift does not suspend the camera. A descent that holds perfectly
+      // still and then resumes breathing on arrival reads as two shots.
+      const early = breathe(2.5, 0.5);
+      const later = breathe(6.5, 0.5);
+
+      expect(magnitude(subtract(early.eye, later.eye))).toBeGreaterThan(0.01);
     });
   });
 });

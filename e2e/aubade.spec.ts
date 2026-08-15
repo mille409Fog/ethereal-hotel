@@ -105,6 +105,59 @@ test.describe('the aubade route', () => {
     await expect(page.locator('#lobby-prose')).toBeFocused();
   });
 
+  test('the lift reaches the floor below', async ({ page }) => {
+    // The one end-to-end assertion that Floor −1 exists in a real browser. Every
+    // other check on the corridor is blind to a different half of it: the unit
+    // tests drive a stub context that never reads the shader, `verify:shader`
+    // compiles the shader against its own canvas and never loads the app, and
+    // `check:docs` reads the source without running any of it. A corridor that
+    // threw on arrival, or a lift wired to a control the build tree-shook away,
+    // would pass all three.
+    //
+    // Under reduced motion the descent is a cut rather than a seven-second morph
+    // — see the file comment for why nothing here runs the loop if it can avoid
+    // it — which is also the shortest way to stand in the corridor.
+    //
+    // Small viewport for the same reason the two camera tests use one. This draws
+    // two frames rather than one, because arriving on a floor repaints the held
+    // still, and both of them are a raymarch on a CPU rasteriser with nine other
+    // workers wanting the same core.
+    await page.setViewportSize({ width: 420, height: 280 });
+
+    const errors: Error[] = [];
+    page.on('pageerror', (error) => errors.push(error));
+
+    await openStill(page);
+
+    const lift = page.getByRole('button', { name: /lift/i });
+
+    // The hotel may be shut where CI is: the `?t=` back door is closed in a
+    // production build, so the hour is whatever it happens to be. When it is,
+    // the lift is disabled and the invitation is the way through — which is the
+    // rule this route is built on, and worth asserting rather than skipping.
+    if (!(await lift.isEnabled())) {
+      await page.getByRole('button', { name: /Open the night rooms/ }).click();
+    }
+
+    await expect(lift).toBeEnabled();
+    await lift.click();
+
+    await expect(page.getByText('The Mirror Corridor')).toBeVisible();
+    await expect(page.getByText(/wall made of mirror/)).toBeVisible();
+
+    // Still a picture, and still described as one. The canvas is never torn down
+    // and rebuilt across floors — the whole point of the lift being a uniform is
+    // that the context outlives the descent.
+    const label = await page.locator('canvas').getAttribute('aria-label');
+    expect(label).toContain('corridor');
+    expect(label).toContain('drawn in real time');
+
+    // And the way back. A one-way lift is a room you cannot leave.
+    await expect(page.getByRole('button', { name: /Take the lift up/ })).toBeEnabled();
+
+    expect(errors).toEqual([]);
+  });
+
   test('is lit by whatever the sun is doing where the visitor is', async ({ page }) => {
     // The one end-to-end assertion that the clock reaches the room. It cannot
     // name an hour: this runs against a production build, where the dev-only

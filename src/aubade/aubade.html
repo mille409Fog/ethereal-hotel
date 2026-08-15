@@ -19,7 +19,12 @@
      `data-state` carries the hour onto the element so the stylesheet can dress
      the plate for it. It is the same value the shader is being lit by — one
      signal, read twice, so the words and the light can never disagree. -->
-<main class="lobby" [attr.data-mode]="mode()" [attr.data-state]="state()">
+<main
+  class="lobby"
+  [attr.data-mode]="mode()"
+  [attr.data-state]="state()"
+  [attr.data-floor]="floor()"
+>
   @if (mode() !== 'closed') {
     <!-- role="img" with a name, because to assistive technology this is one
          picture and not a drawing surface. The name changes with the hour: an
@@ -32,27 +37,19 @@
   <div class="lobby__band">
     <div class="lobby__plate">
       <h1 class="lobby__name">Hôtel&nbsp;Aubade</h1>
-      <p class="lobby__floor">Floor 0 &mdash; The Desk</p>
+      <p class="lobby__floor">{{ floorName() }}</p>
 
       <!-- What the sun is doing, in the desk clerk's voice. Present at every
            hour, including the two where the room cannot be drawn at all. -->
       <p class="lobby__state">{{ copy().plate }}</p>
 
-      @switch (mode()) {
-        @case ('opening') {
-          <p class="lobby__state lobby__state--quiet">Unlocking the lobby&hellip;</p>
-        }
-        @case ('still') {
-          <p class="lobby__state lobby__state--quiet">
-            You asked for less motion, so the room is holding its breath.
-          </p>
-        }
-        @case ('closed') {
-          <p class="lobby__state lobby__state--quiet">
-            This browser has no WebGL2, so the lobby will not open for it. The room is written out
-            below instead; it is the same room.
-          </p>
-        }
+      <!-- What the render is doing, when that is worth saying — the chunk still
+           loading, the camera stopped for reduced motion, or a browser with no
+           WebGL2 at all. The strings live in `desk.ts` with the rest of the
+           writing, which is also what keeps this template under the complexity
+           limit now that there are two floors and a lift in it. -->
+      @if (modeNote(); as line) {
+        <p class="lobby__state lobby__state--quiet">{{ line }}</p>
       }
 
       @if (note(); as reduction) {
@@ -94,6 +91,29 @@
         <p class="lobby__state lobby__state--quiet">{{ invitation.taken }}</p>
       }
 
+      <!-- The lift. A room rather than a transition, per AUBADE, which is why
+           taking it is a deliberate act with a control rather than a scroll
+           position or a hover.
+
+           Disabled rather than hidden while the car is moving, so the control
+           does not jump out from under a pointer mid-ride, and replaced by a line
+           in the building's voice rather than a spinner. The ride cannot be
+           hurried or cancelled: "visible and unhurried" is a refusal as much as a
+           pace, and a piece that lets you skip its one transition has decided the
+           transition was in the way.
+
+           While the hotel is shut and uninvited the lift does not run at all.
+           That is the one thing the invitation actually gates — the refusal has
+           to cost something or it is set dressing — and the line says so plainly
+           next to a control that opens the whole work in one click. -->
+      @if (liftControl(); as control) {
+        <p class="lobby__lift">
+          <button type="button" class="lobby__call" [disabled]="!control.enabled" (click)="call()">
+            {{ control.text }}
+          </button>
+        </p>
+      }
+
       <!-- Two cues, two destinations, and they are not the same offer. The
            first goes one screen down to this room written out at this hour; the
            second leaves for the Reader's Edition, which is the whole hotel and
@@ -128,18 +148,20 @@
       <!-- One sentence of this changes with the hour and the rest does not,
            because the rest is furniture and the light is the only thing the sun
            moves. Nothing in it states a clock time: "three in the morning" is a
-           lie to a visitor in a Norwegian summer. -->
+           lie to a visitor in a Norwegian summer.
+
+           The rest of the room comes from `FLOOR_PROSE` rather than from this
+           template, which is where the writing lives — and, since there are two
+           floors of it, also what keeps this file under the template complexity
+           limit. Note what the corridor's paragraphs describe at length and never
+           once mention: the phase's Definition of Done is that a stranger notices
+           the absent reflection unprompted, and prose that names it has answered
+           the question for them. -->
       <p>{{ copy().opening }}</p>
-      <p>
-        The door to the street is shut, and the transom above it is the only opening in the room.
-        Everything that happens to the light in here happens through it.
-      </p>
-      <p>
-        On the counter: a brass bell nobody rings, the register lying open at today, and a lamp with
-        a green shade. Behind it, thirty-five pigeonholes and a key in none of them. The camera does
-        not circle the room. It stands in it, and breathes.
-      </p>
-      <p class="lobby__aside">Floor 0 of six. The lift is not running yet.</p>
+      @for (paragraph of prose(); track paragraph) {
+        <p>{{ paragraph }}</p>
+      }
+      <p class="lobby__aside">Two floors of six. The other four are written and not built.</p>
 
       <!-- The second of the two required links, and the one that is actually
            earned: somebody who has read this far has read about this room and

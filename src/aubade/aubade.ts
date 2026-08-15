@@ -9,17 +9,32 @@ import {
   viewChild,
 } from '@angular/core';
 import {
+  CORRIDOR_COPY,
   DESK_COPY,
+  FLOOR_NAMES,
+  FLOOR_PROSE,
   INVITATION,
+  LIFT_COPY,
   READER_CUE,
+  RENDER_NOTES,
   SUNSET_CARD,
   describeCountdown,
   formatClockTime,
 } from './desk';
+import {
+  floorAfter,
+  liftHasArrived,
+  morphAt,
+  morphForFloor,
+  type Floor,
+  type ILift,
+  type LiftDirection,
+} from './descent';
 import { FrameLoop, type IFrame } from './gl/loop';
 import { forcedState, readTheSun, SUN_INTERVAL_MS } from './hour';
 import { prefersReducedMotion } from './reduced-motion';
-import type { LobbyRenderer } from './renderer';
+import type { HotelRenderer } from './renderer';
+import { corridorRigFor } from './rooms/corridor-rig';
 import { rigFor } from './rooms/light-rig';
 import type { IAubadeClock } from './solar';
 
@@ -119,6 +134,9 @@ export class Aubade implements AfterViewInit, OnDestroy {
   /** What the detail ladder has done, in the register's voice, or `null`. */
   public readonly note = signal<string | null>(null);
 
+  /** What the render itself is doing, when that is worth saying. */
+  public readonly modeNote = computed<string | null>(() => RENDER_NOTES[this.mode()]);
+
   /**
    * The sun, where this visitor is. Re-read on a timer; every other signal on
    * this component is derived from it.
@@ -131,8 +149,86 @@ export class Aubade implements AfterViewInit, OnDestroy {
   /** What the hotel is doing, after the dev-only `?t=` override has its say. */
   public readonly state = computed(() => this.forced ?? this.clock().state);
 
-  /** The clerk's line, the picture's name, and the prose's first sentence. */
-  public readonly copy = computed(() => DESK_COPY[this.state()]);
+  /**
+   * Which floor the visitor is standing on. Only changes when the lift arrives —
+   * during the ride this is still the floor they left, because the floor is where
+   * somebody *is* and for seven and a half seconds they are not anywhere.
+   */
+  public readonly floor = signal<Floor>(0);
+
+  /** True while the car is moving. The control is replaced by a line for the duration. */
+  public readonly riding = signal(false);
+
+  /**
+   * The clerk's line, the picture's name, and the prose's first sentence, for the
+   * floor the visitor is on.
+   *
+   * One lookup rather than a branch in the template, and it is the same shape on
+   * both floors so nothing downstream has to know which one it got.
+   */
+  public readonly copy = computed(() =>
+    this.floor() === -1 ? CORRIDOR_COPY[this.state()] : DESK_COPY[this.state()]
+  );
+
+  /** What the plate over the room calls this floor. */
+  public readonly floorName = computed(() => FLOOR_NAMES[this.floor()]);
+
+  /** The rest of the room in words — everything the sun does not move. */
+  public readonly prose = computed(() => FLOOR_PROSE[this.floor()]);
+
+  /** The lift's labels. */
+  public readonly lift = LIFT_COPY;
+
+  /**
+   * Whether the lift can be called right now.
+   *
+   * Shut while the hotel is shut and the visitor has not let themselves in, which
+   * is the one thing the invitation actually gates. AUBADE requires the invitation
+   * to be obvious and to reach the whole work in one click; it does not require the
+   * refusal to be free, and a door that costs nothing to be turned away from is set
+   * dressing rather than a position.
+   */
+  public readonly liftAvailable = computed(
+    () =>
+      !this.riding() &&
+      this.mode() !== 'closed' &&
+      !(this.state() === 'shuttered' && !this.invited())
+  );
+
+  /** Which way the lift would go if it were called. */
+  public readonly liftDirection = computed<LiftDirection>(() =>
+    this.floor() === -1 ? 'up' : 'down'
+  );
+
+  /**
+   * The lift's control: what it says, and whether it can be pressed.
+   *
+   * `null` when there is no render to move between — a browser without WebGL2 gets
+   * the prose for both floors and no lift, because a control that changes a picture
+   * nobody can see is worse than no control.
+   *
+   * One button in three states rather than a button that is sometimes a line of
+   * text, and that is a decision about behaviour before it is one about template
+   * complexity. Swapping the element out mid-ride reflows the plate under whatever
+   * the visitor is pointing at, and a screen reader gets a removal and an insertion
+   * where what actually happened is that one control became unavailable. Disabling
+   * it says that, and says it in the building's own voice.
+   */
+  public readonly liftControl = computed<{ text: string; enabled: boolean } | null>(() => {
+    if (this.mode() === 'closed') {
+      return null;
+    }
+    if (this.riding()) {
+      return { text: LIFT_COPY.moving, enabled: false };
+    }
+    if (this.state() === 'shuttered' && !this.invited()) {
+      return { text: LIFT_COPY.shut, enabled: false };
+    }
+    return {
+      text: this.liftDirection() === 'up' ? LIFT_COPY.up : LIFT_COPY.down,
+      enabled: true,
+    };
+  });
 
   /** The offer, the control, and what taking it leaves behind. */
   public readonly invitation = INVITATION;
@@ -183,10 +279,29 @@ export class Aubade implements AfterViewInit, OnDestroy {
     };
   });
 
-  private renderer: LobbyRenderer | null = null;
+  private renderer: HotelRenderer | null = null;
   private loop: FrameLoop | null = null;
   private observer: ResizeObserver | null = null;
   private ticker: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * The ride in progress, or `null` at rest.
+   *
+   * Not a signal. It is read once a frame by `draw` and written twice a ride, and
+   * a signal here would schedule change detection sixty times a second for a value
+   * no template reads — the template reads `riding`, which changes twice.
+   */
+  private car: ILift | null = null;
+
+  /**
+   * The room's clock at the last frame drawn.
+   *
+   * The lift is timed in simulated seconds rather than wall-clock ones, so calling
+   * it needs to know what time it is *in the room*. Tracked here rather than
+   * exposed by `FrameLoop`, because this is the only caller that has ever wanted
+   * it and a getter on the loop would imply the loop's clock were public API.
+   */
+  private lastSeconds = 0;
 
   /** From the dev-only `?t=`; `null` in production and in the ordinary case. */
   private readonly forced = forcedState();
@@ -204,8 +319,8 @@ export class Aubade implements AfterViewInit, OnDestroy {
     // The dynamic import is the point — see the class comment. It also means
     // this method is the first place in the application where a WebGL context
     // can possibly exist.
-    const { LobbyRenderer } = await import('./renderer');
-    const renderer = LobbyRenderer.create(canvas);
+    const { HotelRenderer } = await import('./renderer');
+    const renderer = HotelRenderer.create(canvas);
 
     if (renderer === null) {
       this.mode.set('closed');
@@ -265,6 +380,35 @@ export class Aubade implements AfterViewInit, OnDestroy {
     }
   }
 
+  /**
+   * Call the lift.
+   *
+   * Two paths, and the second one is not a degradation. With the loop running the
+   * descent is the morph AUBADE asks for: seven and a half seconds of two distance
+   * fields mixing in full view. Under `prefers-reduced-motion` the loop is not
+   * running at all, and the piece's third non-negotiable is explicit that the
+   * answer there is not a slower animation but a series of still compositions that
+   * change on interaction — which is exactly what a cut between two floors is. So
+   * a reduced-motion visitor gets both rooms and no ride, rather than a ride they
+   * asked not to be given.
+   */
+  public call(): void {
+    if (!this.liftAvailable()) {
+      return;
+    }
+
+    const direction = this.liftDirection();
+
+    if (this.loop?.running !== true) {
+      this.floor.set(floorAfter(direction));
+      this.loop?.renderOnce();
+      return;
+    }
+
+    this.car = { direction, startedAtSeconds: this.lastSeconds };
+    this.riding.set(true);
+  }
+
   /** One frame, plus whatever the renderer wants said about it. */
   private draw(frame: IFrame): void {
     const renderer = this.renderer;
@@ -272,7 +416,18 @@ export class Aubade implements AfterViewInit, OnDestroy {
       return;
     }
 
-    if (!renderer.render(frame, rigFor(this.state(), this.invited()))) {
+    this.lastSeconds = frame.simulatedSeconds;
+
+    const state = this.state();
+    const invited = this.invited();
+
+    if (
+      !renderer.render(frame, {
+        lobby: rigFor(state, invited),
+        corridor: corridorRigFor(state, invited),
+        morph: this.morphNow(frame.simulatedSeconds),
+      })
+    ) {
       // A lost context, or a disposed renderer. Stop rather than spin: a loop
       // calling into a dead context burns a core for as long as the tab is open
       // and draws nothing at all.
@@ -280,10 +435,47 @@ export class Aubade implements AfterViewInit, OnDestroy {
       return;
     }
 
+    this.settle(frame.simulatedSeconds);
+
     const tier = renderer.report.tier;
     if (tier.note !== this.note()) {
       this.note.set(tier.note);
     }
+  }
+
+  /**
+   * Where the lift is, this frame.
+   *
+   * @param seconds The room's clock.
+   * @returns `uMorph` — the settled floor's endpoint at rest, and the eased
+   *   progress of the ride while the car is moving.
+   */
+  private morphNow(seconds: number): number {
+    const car = this.car;
+    if (car === null) {
+      return morphForFloor(this.floor());
+    }
+    return morphAt(seconds - car.startedAtSeconds, car.direction);
+  }
+
+  /**
+   * Retire a finished ride and put the visitor on a floor.
+   *
+   * Checked after the draw rather than before it, so the last frame of the descent
+   * is rendered as part of the descent. Doing it first lands the visitor on the new
+   * floor one frame early, which is invisible on the render — `morphAt` and
+   * `morphForFloor` agree exactly at the endpoint, which `descent.spec.ts` asserts
+   * — and wrong on the plate, which would change while the room was still moving.
+   */
+  private settle(seconds: number): void {
+    const car = this.car;
+    if (car === null || !liftHasArrived(seconds - car.startedAtSeconds)) {
+      return;
+    }
+
+    this.car = null;
+    this.floor.set(floorAfter(car.direction));
+    this.riding.set(false);
   }
 
   /**
@@ -314,7 +506,7 @@ export class Aubade implements AfterViewInit, OnDestroy {
    * swap, none of which resize the window. It is also why `render()` never
    * touches the DOM — see the renderer's file comment.
    */
-  private watchSize(canvas: HTMLCanvasElement, renderer: LobbyRenderer): void {
+  private watchSize(canvas: HTMLCanvasElement, renderer: HotelRenderer): void {
     this.observer = new ResizeObserver(() => {
       renderer.measure();
       // A stopped loop still has to repaint, or a reduced-motion visitor who

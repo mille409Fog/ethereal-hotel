@@ -49,7 +49,7 @@ export type Rgb = readonly [number, number, number];
  *
  * One rig is one complete lighting state: the aperture, what comes through it,
  * what the room does with it, and how the whole thing is exposed. Adding a field
- * here means adding a uniform in `renderer.ts` and reading it in `lobby.frag.ts`;
+ * here means adding a uniform in `renderer.ts` and reading it in `hotel.frag.ts`;
  * `npm run verify:shader` fails if the three ever disagree.
  */
 export interface ILightRig {

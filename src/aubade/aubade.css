@@ -173,6 +173,56 @@
   outline-offset: 3px;
 }
 
+/* The lift. Its own line above the cues, because it is the only control on the
+   plate that changes which room you are in — the cues below it move you around
+   one page, and the invitation above it changes the hour. Three different kinds
+   of offer, so three lines rather than a row of buttons. */
+.lobby__lift {
+  margin: 0.9rem 0 0;
+}
+
+/* Deliberately the same brass as the invitation and deliberately not the same
+   shape: filled rather than outlined, because on the shuttered screen both are
+   visible at once and two identical controls a line apart is how a visitor ends
+   up pressing the wrong one. */
+.lobby__call {
+  display: inline-block;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--lobby-brass);
+  background: var(--lobby-brass);
+  color: var(--lobby-panel);
+  font-family: var(--lobby-face-plate);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* No transition, for the reason the Motion note at the foot of this file gives:
+   nothing that overlaps the canvas may animate. */
+.lobby__call:hover {
+  background: transparent;
+  color: var(--lobby-brass);
+}
+
+.lobby__call:focus-visible {
+  outline: 2px solid var(--lobby-brass);
+  outline-offset: 3px;
+}
+
+/* Unavailable, not absent — the lift is moving, or the hotel is shut. Outlined
+   and dimmed rather than removed, so the plate does not reflow under a pointer
+   mid-ride and a screen reader is told the control changed state rather than that
+   one element left and another arrived. `default` rather than `not-allowed`: the
+   line already explains itself, and a slashed circle over a piece of set dressing
+   is an error message the building would not use. */
+.lobby__call:disabled {
+  border-color: color-mix(in srgb, var(--lobby-brass) 45%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--lobby-brass) 60%, transparent);
+  cursor: default;
+}
+
 /* The two cues on the first screen. The prose is always in the DOM and a screen
    reader reaches it regardless; the first of these is what tells a sighted
    visitor it is there, which is the half an `aria-describedby` would not have

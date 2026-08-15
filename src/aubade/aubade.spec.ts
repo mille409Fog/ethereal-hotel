@@ -99,8 +99,11 @@ describe('the aubade route', () => {
   const text = (): string => (fixture.nativeElement as HTMLElement).textContent ?? '';
   const canvas = (): HTMLCanvasElement | null =>
     (fixture.nativeElement as HTMLElement).querySelector('canvas');
+  // The invitation's control specifically. There are two buttons on the plate
+  // now — this one and the lift — and a bare `querySelector('button')` quietly
+  // started matching whichever came first in the DOM.
   const button = (): HTMLButtonElement | null =>
-    (fixture.nativeElement as HTMLElement).querySelector('button');
+    (fixture.nativeElement as HTMLElement).querySelector('.lobby__invite');
 
   beforeEach(async () => {
     // No frames ever fire; see the file comment.
@@ -150,7 +153,237 @@ describe('the aubade route', () => {
 
     it('says how far into the hotel this is', async () => {
       await render();
-      expect(text()).toContain('Floor 0 of six');
+      expect(text()).toContain('Two floors of six');
+    });
+  });
+
+  describe('the lift', () => {
+    /**
+     * The lift's own control, which is not the invitation's.
+     *
+     * Both are brass buttons on the same plate a line apart, which is exactly why
+     * they are told apart by class here rather than by order or by label.
+     */
+    const lift = (): HTMLButtonElement | null =>
+      (fixture.nativeElement as HTMLElement).querySelector('.lobby__call');
+
+    /**
+     * Every animation-frame callback outstanding, captured rather than fired.
+     *
+     * The file's default stub swallows frames entirely, which is right for every
+     * other test here — but the descent is the one thing in this component that
+     * only advances inside a frame, so these tests need to be able to hand the
+     * loop a clock. Driven by hand, never by a real `requestAnimationFrame`, so
+     * nothing here waits on a vsync.
+     *
+     * A queue rather than a single slot, and that is not defensive. Angular's own
+     * change-detection scheduler also calls `requestAnimationFrame`, so it and
+     * `FrameLoop` are both in flight at once and whichever asks second overwrites
+     * the first. Holding one callback silently dropped the loop's tick and fired
+     * Angular's scheduler in its place — the frames all appeared to run, the ride
+     * never advanced by a millisecond, and the component looked broken rather
+     * than the test.
+     */
+    let pendingFrames: Array<(timestampMs: number) => void> = [];
+
+    /** Swap the swallowing stub for a capturing one. Call before `render()`. */
+    const captureFrames = (): void => {
+      pendingFrames = [];
+      vi.stubGlobal('requestAnimationFrame', (callback: (timestampMs: number) => void) => {
+        pendingFrames.push(callback);
+        return pendingFrames.length;
+      });
+    };
+
+    /**
+     * Run the loop far enough for a ride to finish.
+     *
+     * Each frame is charged at most `MAX_FRAME_MS` of simulated time — the
+     * accumulator's clamp, which exists so a backgrounded tab does not teleport
+     * the room — so seven and a half seconds of lift cannot be jumped in one frame
+     * however large a timestamp is handed over. Forty frames of a quarter second
+     * is comfortably past the end and still instant.
+     */
+    const rideOut = (frames = 40): void => {
+      for (let index = 1; index <= frames; index += 1) {
+        const due = pendingFrames;
+        pendingFrames = [];
+        for (const callback of due) {
+          callback(index * 250);
+        }
+      }
+      fixture.detectChanges();
+    };
+
+    it('is offered at the desk when the hotel is open', async () => {
+      await render();
+
+      expect(lift()).not.toBeNull();
+      expect(lift()?.disabled).toBe(false);
+      expect(lift()?.textContent).toContain('down');
+    });
+
+    it('does not run while the hotel is shut and nobody has been invited', async () => {
+      // The one thing the invitation actually gates. A refusal that costs the
+      // visitor nothing is set dressing rather than a position.
+      setHour('shuttered');
+      await render();
+
+      expect(lift()?.disabled).toBe(true);
+      expect(text()).toContain('does not run while the hotel is shut');
+    });
+
+    it('starts running once the visitor lets themselves in', async () => {
+      setHour('shuttered');
+      await render();
+
+      button()?.click();
+      fixture.detectChanges();
+
+      expect(lift()?.disabled).toBe(false);
+    });
+
+    it('is not offered at all when the browser cannot draw either room', async () => {
+      // A control that changes a picture nobody can see is worse than no control.
+      setWebGL2(false);
+      await render();
+
+      expect(lift()).toBeNull();
+    });
+
+    describe('the ride', () => {
+      it('will not be hurried, and says so', async () => {
+        captureFrames();
+        await render();
+
+        lift()?.click();
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.riding()).toBe(true);
+        expect(lift()?.disabled).toBe(true);
+        expect(text()).toContain('will not be hurried');
+      });
+
+      it('leaves the visitor on the floor they departed until it arrives', async () => {
+        // The floor is where somebody *is*, and for seven and a half seconds they
+        // are not anywhere. A plate that changed on departure would name a room
+        // the render has not reached.
+        captureFrames();
+        await render();
+
+        lift()?.click();
+        rideOut(4);
+
+        expect(fixture.componentInstance.floor()).toBe(0);
+        expect(fixture.componentInstance.riding()).toBe(true);
+      });
+
+      it('arrives at the corridor and gives the control back', async () => {
+        captureFrames();
+        await render();
+
+        lift()?.click();
+        rideOut();
+
+        expect(fixture.componentInstance.floor()).toBe(-1);
+        expect(fixture.componentInstance.riding()).toBe(false);
+        expect(lift()?.disabled).toBe(false);
+      });
+
+      it('offers the way back up once it is there', async () => {
+        captureFrames();
+        await render();
+
+        lift()?.click();
+        rideOut();
+        expect(lift()?.textContent).toContain('up');
+
+        lift()?.click();
+        rideOut();
+        expect(fixture.componentInstance.floor()).toBe(0);
+      });
+
+      it('ignores a second call while the car is moving', async () => {
+        captureFrames();
+        await render();
+
+        lift()?.click();
+        rideOut(4);
+        // The control is disabled, so this is the belt to the template's braces —
+        // and the one that would still hold if the disabled attribute were lost.
+        fixture.componentInstance.call();
+        rideOut();
+
+        expect(fixture.componentInstance.floor()).toBe(-1);
+      });
+    });
+
+    describe('on the floor below', () => {
+      /**
+       * Take the lift without a ride.
+       *
+       * Under `prefers-reduced-motion` the loop never starts, so the descent is a
+       * cut between two still compositions rather than a morph — AUBADE's third
+       * non-negotiable asks for exactly that, and it is also the shortest way to
+       * put these tests in the corridor.
+       */
+      const goDown = async (): Promise<void> => {
+        setReducedMotion(true);
+        await render();
+        fixture.componentInstance.call();
+        fixture.detectChanges();
+      };
+
+      it('cuts straight there when the visitor asked for less motion', async () => {
+        await goDown();
+
+        expect(fixture.componentInstance.mode()).toBe('still');
+        expect(fixture.componentInstance.floor()).toBe(-1);
+      });
+
+      it('renames the floor on the plate', async () => {
+        await goDown();
+
+        expect(text()).toContain('The Mirror Corridor');
+        expect(text()).not.toContain('The Desk');
+      });
+
+      it('says what the corridor is doing at this hour, not what the lobby is', async () => {
+        await goDown();
+
+        expect(text()).toContain('full gas');
+        expect(text()).not.toContain('nobody at the desk');
+      });
+
+      it('writes the corridor out in prose', async () => {
+        await goDown();
+
+        expect(text()).toContain('mirror');
+        expect(text()).toContain('runner');
+        expect(text()).not.toContain('brass bell');
+      });
+
+      it('never tells the visitor what is missing from the mirror', async () => {
+        // The phase's Definition of Done is that a stranger notices the absent
+        // reflection unprompted and within ten seconds. Prose that names it has
+        // answered the question for them, and there is then nothing to notice.
+        await goDown();
+
+        const prose = text().toLowerCase();
+        expect(prose).not.toContain('reflect');
+        expect(prose).not.toContain('does not appear');
+      });
+
+      it('still carries the link to the Reader’s Edition', async () => {
+        // AUBADE's first non-negotiable asks for it on every screen, and the
+        // corridor is two more of them.
+        await goDown();
+
+        const links = (fixture.nativeElement as HTMLElement).querySelectorAll(
+          'a[href="/aubade/reader"]'
+        );
+        expect(links.length).toBeGreaterThanOrEqual(2);
+      });
     });
   });
 
@@ -330,7 +563,7 @@ describe('the aubade route', () => {
       setReducedMotion(true);
       await render();
 
-      expect(text()).toContain('holding its breath');
+      expect(text()).toContain('holding their breath');
     });
   });
 

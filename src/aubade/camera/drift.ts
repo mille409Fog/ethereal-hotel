@@ -10,7 +10,10 @@
  * difference in two seconds without being able to say why.
  *
  * So: no rotation term at all. Everything below is a translation, and the gaze
- * moves with the head rather than against it.
+ * moves with the head rather than against it. That survives the lift, which is the
+ * one moment the view direction genuinely changes: the descent swings it through
+ * about twenty degrees by moving the point being looked at, not by rotating
+ * anything.
  *
  * The other decision is periods that do not divide into one another. Three
  * sinusoids at 11, 23.7 and 41.3 seconds have a common period measured in hours,
@@ -52,7 +55,7 @@ export interface ICameraPose {
  * something to cross the frame diagonally against.
  *
  * These two are the composition, and they are load-bearing on the shader's
- * layout in `rooms/lobby.frag.ts`: they were chosen so that the transom, the
+ * layout in `rooms/hotel.frag.ts`: they were chosen so that the transom, the
  * pool of light it throws on the floor, the desk lamp and the key rack are all
  * inside a 46° frame at once. Move either and check all four are still in shot.
  */
@@ -60,6 +63,35 @@ export const ANCHOR_EYE: IVec3 = { x: -0.7, y: 1.62, z: -3.6 };
 
 /** Aimed between the door and the desk, and a little down — the floor is lit. */
 export const ANCHOR_TARGET: IVec3 = { x: 0.9, y: 0.95, z: 2.0 };
+
+/**
+ * Where a person stands on Floor −1: right of the corridor's axis, so the mirrored
+ * wall on the left is seen along its length rather than head-on.
+ *
+ * Head-on is the one placement that does not work, and it fails for a reason worth
+ * recording. A mirror viewed square returns the viewer's own position, so the
+ * reflection is dominated by the part of the room directly behind the camera —
+ * which is a blank near wall — and the sconces and doors that make the reflection
+ * legible as a corridor slide out of it. Standing off to one side puts the whole
+ * receding line of them in the glass, which is what the phase's Definition of Done
+ * needs there before it can take anything away.
+ *
+ * Lower than the lobby's eye by 70mm, and that is the descent rather than a
+ * different person: the camera sinks as the lift travels and this is where it
+ * stops.
+ */
+export const CORRIDOR_EYE: IVec3 = { x: 0.42, y: 1.55, z: -3.1 };
+
+/**
+ * Aimed down the corridor's length, a little towards the mirror and a little down.
+ *
+ * The gaze is what actually turns during the descent — there is still no rotation
+ * term anywhere in this file. Moving the target from the lobby's back wall to a
+ * point twelve metres down a corridor swings the view direction through about
+ * twenty degrees, and it does it by translation, which is the same thing every
+ * other motion here is made of.
+ */
+export const CORRIDOR_TARGET: IVec3 = { x: -0.34, y: 1.05, z: 4.6 };
 
 /**
  * Seconds per cycle. Coprime enough that the sum has no useful period.
@@ -100,24 +132,69 @@ const GAZE_FOLLOW = 0.34;
 /** Radians. Roughly a quarter of a degree; felt rather than seen. */
 const ROLL_AMPLITUDE = 0.0045;
 
+/**
+ * Metres the camera drops *below* the straight line between the two floors,
+ * peaking halfway through the ride and zero at both ends.
+ *
+ * A lift that interpolates its way between two heights arrives correctly and feels
+ * like nothing at all. The extra sag in the middle is where the travel is fastest,
+ * and eleven centimetres of it is the difference between descending and
+ * cross-fading. It has to vanish at both endpoints or the settled floors are not
+ * the compositions their anchors describe — which is the same requirement the
+ * reduced-motion still has, for the same reason.
+ */
+const DESCENT_SAG = 0.11;
+
 /** Turn seconds into radians for a cycle of `period` seconds. */
 function phase(seconds: number, period: number): number {
   return (seconds * 2 * Math.PI) / period;
 }
 
 /**
- * The camera pose at a given moment of the room's clock.
+ * Straight-line interpolation between two points, exact at both ends.
+ *
+ * Written as `(1 − t)·a + t·b` rather than the more obvious `a + (b − a)·t`, and
+ * the difference is not style. The obvious form is not exact at t = 1: with the
+ * lobby at x = −0.7 and the corridor at 0.42 it returns 0.41999999999999993, so
+ * the camera never quite arrives. That is a hundredth of a micrometre and it would
+ * not matter at all except that the whole lift is built on its endpoints being
+ * exact — the shader skips a scene at 0 and 1, the reduced-motion still is
+ * `breathe(0, morph)` and has to be the composition the anchors describe, and
+ * `descent.spec.ts` asserts the same property of `morphAt` with `toBe`. A camera
+ * that is arbitrarily close to arriving is the one part of that chain where
+ * "close enough" would have been true, which is exactly why it is worth closing.
+ */
+function between(from: IVec3, to: IVec3, t: number): IVec3 {
+  const s = 1 - t;
+  return {
+    x: s * from.x + t * to.x,
+    y: s * from.y + t * to.y,
+    z: s * from.z + t * to.z,
+  };
+}
+
+/**
+ * The camera pose at a given moment of the room's clock, on a given floor.
  *
  * @param seconds Simulated seconds since the loop started — `IFrame.simulatedSeconds`,
- *   not `performance.now()`. Non-finite input falls back to the anchor pose
- *   rather than producing `NaN` uniforms, which a driver renders as a black
- *   screen with no error anywhere.
- * @returns Eye, target and roll. Deterministic: the same second always gives the
- *   same pose, which is what makes the fixed-step loop worth having.
+ *   not `performance.now()`. Non-finite input falls back to the anchor pose rather
+ *   than producing `NaN` uniforms, which a driver renders as a black screen with
+ *   no error anywhere.
+ * @param morph Where the lift is: 0 in the lobby, 1 in the corridor, in between
+ *   during the descent. The same number the shader mixes its two distance fields
+ *   by, so the camera and the room can never disagree about which floor they are
+ *   on. Clamped, and non-finite input is treated as the lobby.
+ * @returns Eye, target and roll. Deterministic: the same second on the same floor
+ *   always gives the same pose, which is what makes the fixed-step loop worth
+ *   having.
  */
-export function breathe(seconds: number): ICameraPose {
+export function breathe(seconds: number, morph = 0): ICameraPose {
+  const t = Number.isFinite(morph) ? Math.min(Math.max(morph, 0), 1) : 0;
+  const eyeAnchor = between(ANCHOR_EYE, CORRIDOR_EYE, t);
+  const targetAnchor = between(ANCHOR_TARGET, CORRIDOR_TARGET, t);
+
   if (!Number.isFinite(seconds)) {
-    return { eye: ANCHOR_EYE, target: ANCHOR_TARGET, roll: 0 };
+    return { eye: eyeAnchor, target: targetAnchor, roll: 0 };
   }
 
   const breath = Math.sin(phase(seconds, BREATH_PERIOD));
@@ -126,19 +203,19 @@ export function breathe(seconds: number): ICameraPose {
   const driftDepth = Math.sin(phase(seconds, DRIFT_DEPTH_PERIOD));
 
   const offsetX = sway * SWAY_LATERAL + drift * DRIFT_LATERAL;
-  const offsetY = breath * BREATH_RISE;
+  const offsetY = breath * BREATH_RISE - Math.sin(Math.PI * t) * DESCENT_SAG;
   const offsetZ = breath * BREATH_PUSH + driftDepth * DRIFT_DEPTH;
 
   return {
     eye: {
-      x: ANCHOR_EYE.x + offsetX,
-      y: ANCHOR_EYE.y + offsetY,
-      z: ANCHOR_EYE.z + offsetZ,
+      x: eyeAnchor.x + offsetX,
+      y: eyeAnchor.y + offsetY,
+      z: eyeAnchor.z + offsetZ,
     },
     target: {
-      x: ANCHOR_TARGET.x + offsetX * GAZE_FOLLOW,
-      y: ANCHOR_TARGET.y + offsetY * GAZE_FOLLOW,
-      z: ANCHOR_TARGET.z + offsetZ * GAZE_FOLLOW,
+      x: targetAnchor.x + offsetX * GAZE_FOLLOW,
+      y: targetAnchor.y + offsetY * GAZE_FOLLOW,
+      z: targetAnchor.z + offsetZ * GAZE_FOLLOW,
     },
     roll: Math.sin(phase(seconds, SWAY_PERIOD * 1.31)) * ROLL_AMPLITUDE,
   };

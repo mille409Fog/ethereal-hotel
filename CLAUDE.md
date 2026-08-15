@@ -61,7 +61,7 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | `README.md`         | 5K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
 | `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
-| `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project). Four phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, and the Reader's Edition (`src/aubade/reader/`). |
+| `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project). Five phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), and the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`). |
 | `CONTRIBUTING.md`   | 6K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
@@ -82,7 +82,7 @@ Code-level intent lives in module docstrings and file-header comments, and it is
 here: `api/index.py`, `backend/main.py`, `src/environments/environment.prod.ts`,
 `scripts/py-tool.mjs`, `e2e/support/backend.ts` and `.gitattributes` each open by explaining why
 they are the way they are. Read the header before changing the file; the answer is usually there.
-`src/aubade/rooms/lobby.frag.ts` is the densest and the one where it matters most: GLSL has no
+`src/aubade/rooms/hotel.frag.ts` is the densest and the one where it matters most: GLSL has no
 types, no linter and no reviewer, so its header carries the coordinate conventions and the three
 decisions that buy the frame rate.
 
@@ -214,6 +214,16 @@ mistake for bugs:
   in `docs/images/`. `src/aubade/reduced-motion.ts` duplicates its `src/app/` twin and
   `aubade/tokens.css` re-declares colours that already exist, because a shared helper is precisely
   how a separate work stops being one; `check:docs` gates the import direction.
+- **Floor −1 runs the clock backwards.** `rooms/corridor-rig.ts` dims its sconces as the lobby's
+  sky brightens — no window, so the sun reaches the corridor by turning its gas out and then
+  coming down the lift shaft at noon. `verify:shader` asserts both opposite orderings.
+- **The lift is one uniform.** `uMorph` mixes the two distance fields; its endpoints must be
+  *exactly* 0 and 1, because the shader skips a scene there and the mirror's second march only
+  wakes at 1. `MORPH_EPSILON` is declared twice (`descent.ts`, and GLSL, which cannot import) and
+  `check:docs` fails on drift — a drifted pair looks fine and silently costs the mirror.
+- **The absent reflection is one argument**: `shadeSurface`'s `carried`, 1 in the room and 0 in
+  the mirror. Deliberately unphysical — a correct mirror would show the lit floor — so passing
+  1.0 gives a beautiful corridor about nothing. No test sees that, so `check:docs` does.
 - **`/aubade/reader` is a second route, not a section of the lobby.** Its whole point is that no
   WebGL context is created on it — `check:docs` walks its import graph and fails if it can reach
   `gl/`, `rooms/`, `camera/` or `renderer.ts`, so folding it back into `/aubade` costs the phase

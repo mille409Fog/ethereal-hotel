@@ -256,9 +256,9 @@ check('AUBADE stays a separate work', () => {
           'the route, and that only holds while the import is dynamic.'
       );
     }
-    if (/^import\s+\{[^}]*LobbyRenderer/m.test(component)) {
+    if (/^import\s+\{[^}]*HotelRenderer/m.test(component)) {
       problems.push(
-        'src/aubade/aubade.ts imports LobbyRenderer as a value. It must stay an `import type`, ' +
+        'src/aubade/aubade.ts imports HotelRenderer as a value. It must stay an `import type`, ' +
           'which the compiler erases — a value import pulls the shaders back into this chunk.'
       );
     }
@@ -300,10 +300,14 @@ const solarStates = () => {
   return union === null ? [] : [...union[1].matchAll(/'([a-z]+)'/g)].map(([, name]) => name);
 };
 
-check('the lobby is lit by the clock, at every hour', () => {
-  for (const file of ['src/aubade/rooms/light-rig.ts', 'src/aubade/desk.ts']) {
+check('both floors are lit by the clock, at every hour', () => {
+  for (const file of [
+    'src/aubade/rooms/light-rig.ts',
+    'src/aubade/rooms/corridor-rig.ts',
+    'src/aubade/desk.ts',
+  ]) {
     if (!exists(file)) {
-      return [`${file} is gone; CLAUDE.md and AUBADE.md both say the lobby reads the solar state.`];
+      return [`${file} is gone; CLAUDE.md and AUBADE.md both say the rooms read the solar state.`];
     }
   }
 
@@ -315,26 +319,46 @@ check('the lobby is lit by the clock, at every hour', () => {
   }
 
   const rigs = read('src/aubade/rooms/light-rig.ts');
+  const corridorRigs = read('src/aubade/rooms/corridor-rig.ts');
   const copy = read('src/aubade/desk.ts');
+  const entry = (state) => new RegExp(`^\\s{2}${state}:\\s*\\{`, 'm');
 
   for (const state of states) {
-    if (!new RegExp(`^\\s{2}${state}:\\s*\\{`, 'm').test(rigs)) {
+    if (!entry(state).test(rigs)) {
       problems.push(
         `LIGHT_RIGS has no rig for '${state}'. Every solar state needs one — a missing entry ` +
           `is an unlit room at one hour of the day, in one part of the world.`
       );
     }
-    if (!new RegExp(`^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
+    if (!entry(state).test(corridorRigs)) {
+      problems.push(
+        `CORRIDOR_RIGS has no rig for '${state}'. Floor −1 has no window, so it answers to the ` +
+          `sun entirely through this table; a missing entry is a corridor that stopped keeping ` +
+          `the hotel's hours, which is AUBADE's first failure mode arriving one room at a time.`
+      );
+    }
+    if (!entry(state).test(copy)) {
       problems.push(`DESK_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
     }
-    // The phase's Definition of Done. `npm run verify:shader -- --out
-    // docs/images/aubade-lobby.webp` writes all five in one run.
-    if (!exists(`docs/images/aubade-lobby-${state}.webp`)) {
-      problems.push(
-        `docs/images/aubade-lobby-${state}.webp is missing. AUBADE's day-and-night phase ` +
-          `requires a committed frame per state; regenerate with ` +
-          `\`npm run verify:shader -- --out docs/images/aubade-lobby.webp\`.`
-      );
+    if (!new RegExp(`CORRIDOR_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
+      problems.push(`CORRIDOR_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
+    }
+
+    // The two phases' Definitions of Done, as pictures. One run writes all
+    // fifteen: `npm run verify:shader -- --out docs/images/aubade.webp`.
+    //
+    // `lift` is not a floor and is committed anyway, because it is the descent
+    // caught halfway — the one thing in the piece whose entire justification is
+    // that it looks like something, and therefore the one with no other way of
+    // noticing it has stopped.
+    for (const floor of ['lobby', 'lift', 'corridor']) {
+      if (!exists(`docs/images/aubade-${floor}-${state}.webp`)) {
+        problems.push(
+          `docs/images/aubade-${floor}-${state}.webp is missing. AUBADE commits a frame per ` +
+            `floor per state; regenerate with ` +
+            `\`npm run verify:shader -- --out docs/images/aubade.webp\`.`
+        );
+      }
     }
   }
 
@@ -375,6 +399,90 @@ check('the lobby is lit by the clock, at every hour', () => {
         );
       }
     }
+  }
+
+  return problems;
+});
+
+// Floor −1, and the two things about it that nothing else in the repository
+// would notice going wrong.
+//
+// The mirror's whole subject is a light that does not reflect, and that is
+// implemented as one argument: `shadeSurface` takes a `carried` weight which is 1
+// in the world and 0 inside the reflection. Pass 1.0 there instead and the room
+// still renders — beautifully, in fact, and entirely correctly as optics. It is
+// simply no longer about anything. No test can catch that, the shader gate cannot
+// catch it (both frames are images with the same statistics), and it is a
+// three-character diff.
+//
+// The other is `MORPH_EPSILON`, which is declared twice on purpose — once in
+// `descent.ts` for the lift's arithmetic and once as a GLSL constant, because a
+// shader cannot import. Two declarations of one value is exactly the arrangement
+// that drifts, and if they drift the failure is invisible: the corridor arrives,
+// the picture is right, and the mirror silently never wakes up because the
+// endpoint the shader is waiting for is not the one the lift reaches.
+check('the mirror is still missing something', () => {
+  const shader = 'src/aubade/rooms/hotel.frag.ts';
+  const descent = 'src/aubade/descent.ts';
+
+  for (const file of [shader, descent]) {
+    if (!exists(file)) {
+      return [`${file} is gone, but CLAUDE.md and AUBADE.md both describe Floor −1.`];
+    }
+  }
+
+  const problems = [];
+  const source = read(shader);
+
+  // The reflection is shaded with the visitor's lamp switched off. This is the
+  // room's entire idea and it is one argument wide.
+  if (!/shadeSurface\([^;]*?,\s*0\.0\s*\)/s.test(source)) {
+    problems.push(
+      `${shader} no longer shades the mirror's second march with carried = 0.0. That argument ` +
+        `is the whole of Floor −1: everything in the corridor reflects and the light the ` +
+        `visitor is carrying does not. Passing 1.0 gives a physically correct mirror, a room ` +
+        `that is no longer about anything, and nothing else in this repository fails.`
+    );
+  }
+
+  // And the second march only runs once the lift has finished, which is what
+  // keeps the frame's peak cost away from its peak spectacle.
+  if (!/hit\.y == MAT_MIRROR && uMorph > 1\.0 - MORPH_EPSILON/.test(source)) {
+    problems.push(
+      `${shader} no longer gates the mirror's march on the corridor being arrived at. The ` +
+        `second march is the most expensive thing in the piece and the descent already ` +
+        `evaluates two distance fields; running both at once puts the worst frame exactly ` +
+        `where the best one is supposed to be.`
+    );
+  }
+
+  // One value, two declarations, because a shader cannot import.
+  const inTypeScript = /export const MORPH_EPSILON = ([0-9.]+);/.exec(read(descent));
+  const inShader = /const float MORPH_EPSILON = ([0-9.]+);/.exec(source);
+
+  if (inTypeScript === null || inShader === null) {
+    problems.push(
+      `MORPH_EPSILON is missing from ${inTypeScript === null ? descent : shader}. The lift's ` +
+        `endpoints and the shader's scene-skipping branch are the same number and have to be ` +
+        `declared in both places.`
+    );
+  } else if (Number(inTypeScript[1]) !== Number(inShader[1])) {
+    problems.push(
+      `MORPH_EPSILON is ${inTypeScript[1]} in ${descent} and ${inShader[1]} in the shader. They ` +
+        `are one value written twice because GLSL cannot import; when they drift, the lift ` +
+        `arrives at an endpoint the shader does not recognise, so the corridor keeps paying for ` +
+        `a lobby nobody can see and the mirror never wakes up. Both look completely fine.`
+    );
+  }
+
+  // Reachable at all. The corridor is behind one control, and a lobby that lost
+  // it is a floor nobody can get to with no error anywhere.
+  const template = read('src/aubade/aubade.html');
+  if (!/\(click\)="call\(\)"/.test(template)) {
+    problems.push(
+      'src/aubade/aubade.html has no control that calls the lift. Floor −1 is reachable only ' +
+        'through it, and a corridor nobody can reach fails no test and throws no error.'
+    );
   }
 
   return problems;
