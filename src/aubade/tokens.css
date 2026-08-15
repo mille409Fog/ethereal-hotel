@@ -1,0 +1,52 @@
+/* ===================================================
+   HÔTEL AUBADE — the palette, and nothing else
+   ===================================================
+
+   This file shares nothing with `src/styles.css`, and that is a requirement
+   rather than a preference. AUBADE is a separate work that happens to be
+   deployed from the same repository; the moment it reads one of the portfolio's
+   design tokens it has become a section of the portfolio. Every value here is
+   declared here, even where the number is the same one the other stylesheet
+   uses.
+
+   Inside AUBADE, though, one palette. Both routes — the lobby and the Reader's
+   Edition — list this file first in their `styleUrls`, so `:host` resolves to
+   whichever component pulled it in and the two pages cannot drift apart in a way
+   nobody notices. Two hand-maintained copies of a brass would eventually be two
+   different brasses.
+
+   One consequence worth knowing up front: the font stack is system faces only.
+   The portfolio loads Cinzel and Crimson Pro from Google Fonts, and using them
+   here would be both a shared dependency and a network request these routes have
+   no business making. */
+
+:host {
+  /* Ink. Every pairing below clears 7:1 on --lobby-panel, which matters because
+     in the lobby these sit over a canvas whose colour no contrast checker can
+     compute — so the panels there are opaque and the ratios are real rather than
+     assumed. On --lobby-void, which is darker, every ratio is higher still. */
+  --lobby-ink: #e9e3d6;
+  --lobby-ink-quiet: #a99f8c;
+  --lobby-brass: #c9a24a;
+
+  --lobby-panel: #0a0b0d;
+  --lobby-rule: #2c2720;
+
+  /* In the lobby, the colour behind everything before the first frame lands —
+     close to the shader's own darkest value, so the canvas appearing is not a
+     flash. In the Reader's Edition there is no frame coming, and it is simply
+     the colour of the page. */
+  --lobby-void: #05060a;
+
+  --lobby-face-display:
+    'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --lobby-face-plate: ui-sans-serif, 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --lobby-gutter: clamp(1rem, 4vw, 3rem);
+
+  display: block;
+  background: var(--lobby-void);
+  color: var(--lobby-ink);
+  font-family: var(--lobby-face-display);
+  line-height: 1.55;
+}

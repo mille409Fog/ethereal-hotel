@@ -1,0 +1,240 @@
+/* ===================================================
+   HÔTEL AUBADE — The Reader's Edition
+   ===================================================
+
+   A page of type. The palette comes from `../tokens.css`, which this component
+   lists first in its `styleUrls`; everything here is layout, and almost all of
+   it is in service of one line of the phase's Definition of Done: readable at
+   200% zoom.
+
+   ## Why there is no `vw` in any font size
+
+   A browser at 200% zoom halves the viewport's width in CSS pixels. So a font
+   size expressed in `vw` *shrinks* as the reader zooms in, which is the precise
+   opposite of what they asked for, and a page built that way can satisfy a
+   contrast checker and still be unreadable to the person the zoom was for. The
+   lobby's plate uses `clamp(…, 1.5vw, …)` and gets away with it because the
+   floor of the clamp holds at the sizes that matter; a page whose entire content
+   is prose should not be relying on that. Every type size below is in `rem`, so
+   200% zoom is 200% larger, and that is the whole rule.
+
+   Spacing may use `vw` — a gutter that grows with the window is a gutter, not a
+   reading size — but it is capped so it cannot eat the column on a narrow one.
+
+   ## Why nothing here is a fixed height
+
+   The lobby's bands are `100svh` each, because the first screen there has to be
+   the room and nothing else. Nothing on this page is a composition; it is a
+   column that ends when the writing does. A fixed height on a page of text is a
+   clipped paragraph waiting for somebody with a large font and a small window.
+
+   ## Motion
+
+   There is none, and unlike the lobby's version of this note it is not a
+   workaround for a compositing bug — it is that a reading page has no business
+   moving. There is nothing here for `prefers-reduced-motion` to switch off. */
+
+.reader {
+  display: block;
+  padding: var(--lobby-gutter);
+}
+
+/* `ch` rather than `rem` for the measure: the line length that reads well is a
+   number of characters, not a number of pixels, and expressing it that way keeps
+   it right when the reader's font size is not the one this was written at. */
+.reader__work {
+  max-width: 68ch;
+  margin: 0 auto;
+  /* Zone names are long and unbreakable — `America/Argentina/Ushuaia` is
+     twenty-five characters with no space in it — and a narrow column at high
+     zoom is exactly where one would push the page sideways. The body must never
+     scroll horizontally; a word may break instead. */
+  overflow-wrap: break-word;
+}
+
+/* ----- The head ----- */
+
+.reader__kicker {
+  margin: 0;
+  font-family: var(--lobby-face-plate);
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+}
+
+.reader__title {
+  margin: 0.3rem 0 0;
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.reader__standfirst {
+  margin: 1rem 0 0;
+  font-size: 1.15rem;
+  color: var(--lobby-ink-quiet);
+  text-wrap: pretty;
+}
+
+/* ----- Contents -----
+
+   A list, and it stays a list for a screen reader: `list-style: none` on an
+   `ol` makes VoiceOver stop announcing it as one, so the markers are hidden by
+   moving them out rather than by removing them. */
+.reader__contents {
+  margin: 2.5rem 0;
+  padding: 1rem 0;
+  border-top: 1px solid var(--lobby-rule);
+  border-bottom: 1px solid var(--lobby-rule);
+  font-family: var(--lobby-face-plate);
+  font-size: 0.85rem;
+}
+
+.reader__contents ol {
+  margin: 0;
+  padding: 0;
+  list-style-position: inside;
+}
+
+.reader__contents li {
+  margin: 0.35rem 0;
+}
+
+.reader__contents li::marker {
+  color: var(--lobby-ink-quiet);
+}
+
+/* ----- The standing -----
+
+   Set apart because it is the only part of the page that is true of this minute
+   rather than true in general, and a reader is owed the distinction. */
+.reader__standing {
+  margin: 2.5rem 0;
+  padding: 1.1rem 1.3rem;
+  border: 1px solid var(--lobby-rule);
+  border-left: 2px solid var(--lobby-brass);
+  background: var(--lobby-panel);
+}
+
+.reader__standing h2 {
+  margin: 0 0 0.7rem;
+  font-family: var(--lobby-face-plate);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+}
+
+.reader__standing p {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+  color: var(--lobby-ink);
+  text-wrap: pretty;
+}
+
+.reader__standing p:last-child {
+  margin-bottom: 0;
+}
+
+/* ----- The work ----- */
+
+.reader__section {
+  margin: 2.5rem 0;
+}
+
+.reader__section h2 {
+  margin: 0 0 0.9rem;
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--lobby-brass);
+}
+
+.reader__section p {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  text-wrap: pretty;
+}
+
+/* ----- The floors -----
+
+   A description list, because that is what it is: six names and what is behind
+   each of them. The indent is on the `dd` alone, so the names stay flush and
+   read as a plate on a lift panel. */
+.reader__floors {
+  margin: 1.4rem 0;
+}
+
+.reader__floors dt {
+  margin-top: 1.2rem;
+  font-family: var(--lobby-face-plate);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+}
+
+.reader__floors dd {
+  margin: 0.45rem 0 0;
+  padding-left: 1rem;
+  border-left: 1px solid var(--lobby-rule);
+  font-size: 1.05rem;
+  text-wrap: pretty;
+}
+
+/* ----- The way back ----- */
+
+.reader__return {
+  margin-top: 3rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--lobby-rule);
+}
+
+.reader__return p {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+  color: var(--lobby-ink-quiet);
+  text-wrap: pretty;
+}
+
+.reader__door {
+  display: inline-block;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--lobby-brass);
+  color: var(--lobby-brass);
+  font-family: var(--lobby-face-plate);
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.reader__door:hover {
+  background: var(--lobby-brass);
+  color: var(--lobby-panel);
+}
+
+/* ----- Links and focus -----
+
+   Every anchor on this page is brass and underlined. Colour alone would fail
+   1.4.1 against body text that is nearly the same weight, and this is a page
+   where a reader is scanning rather than hunting. */
+.reader a {
+  color: var(--lobby-brass);
+  text-underline-offset: 0.25em;
+}
+
+.reader :focus-visible {
+  outline: 2px solid var(--lobby-brass);
+  outline-offset: 4px;
+}
+
+/* The sections are focusable only as jump targets, so the default ring would
+   appear on a mouse click and never be useful. `:focus-visible` above keeps it
+   for the keyboard path, which is the one that needs it. */
+.reader__section:focus,
+.reader__standing:focus {
+  outline: none;
+}

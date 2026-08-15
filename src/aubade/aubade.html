@@ -94,19 +94,29 @@
         <p class="lobby__state lobby__state--quiet">{{ invitation.taken }}</p>
       }
 
-      @if (mode() !== 'closed') {
-        <!-- The path is spelled out rather than left as a bare `#lobby-prose`,
-             and that is not belt and braces. `src/index.html` sets
-             `<base href="/">`, and a fragment-only href resolves against the
-             *base* URL rather than the current one — so `#lobby-prose` on this
-             route means `/#lobby-prose`, which the router matches as the home
-             page. It silently navigates away from the piece.
+      <!-- Two cues, two destinations, and they are not the same offer. The
+           first goes one screen down to this room written out at this hour; the
+           second leaves for the Reader's Edition, which is the whole hotel and
+           has no canvas on it at all. AUBADE's first non-negotiable requires
+           that second link on every screen, so it is here as well as at the
+           foot of the prose.
 
-             A real anchor rather than a click handler, for the reason the
-             portfolio's nav gives: the browser both scrolls and moves focus,
-             and it works on middle click and copy-link. -->
-        <a class="lobby__cue" href="/aubade#lobby-prose">The room, in words</a>
-      }
+           Both paths are spelled out rather than left as bare fragments, and
+           that is not belt and braces. `src/index.html` sets `<base href="/">`,
+           and a fragment-only href resolves against the *base* URL rather than
+           the current one — so `#lobby-prose` on this route means
+           `/#lobby-prose`, which the router matches as the home page. It
+           silently navigates away from the piece.
+
+           Real anchors rather than click handlers, for the reason the
+           portfolio's nav gives: the browser both scrolls and moves focus, and
+           they work on middle click and copy-link. -->
+      <p class="lobby__cues">
+        @if (mode() !== 'closed') {
+          <a class="lobby__cue lobby__cue--down" href="/aubade#lobby-prose">The room, in words</a>
+        }
+        <a class="lobby__cue lobby__cue--away" href="/aubade/reader">{{ reader.label }}</a>
+      </p>
     </div>
   </div>
 
@@ -130,6 +140,12 @@
         not circle the room. It stands in it, and breathes.
       </p>
       <p class="lobby__aside">Floor 0 of six. The lift is not running yet.</p>
+
+      <!-- The second of the two required links, and the one that is actually
+           earned: somebody who has read this far has read about this room and
+           is owed the other five floors. -->
+      <p class="lobby__offer">{{ reader.offer }}</p>
+      <a class="lobby__cue lobby__cue--away" href="/aubade/reader">{{ reader.label }}</a>
     </div>
   </div>
 </main>

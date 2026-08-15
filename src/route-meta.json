@@ -27,6 +27,11 @@
       "path": "aubade",
       "title": "Hôtel Aubade - Floor 0, The Desk",
       "description": "A hotel lobby raymarched in a fragment shader. No 3D library, no meshes, no geometry — an interior that exists only as mathematics, lit by one shaft of moonlight through a transom."
+    },
+    "aubadeReader": {
+      "path": "aubade/reader",
+      "title": "Hôtel Aubade - The Reader's Edition",
+      "description": "The hotel written out: six floors, the poem it is named after, and how a time zone and the equation of time decide whether it is open. No canvas, no WebGL, about twelve hundred words."
     }
   }
 }

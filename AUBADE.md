@@ -163,49 +163,58 @@ headless Chromium and writes a PNG, which is a faster edit loop than reloading a
 Ship in this order. Each phase is deployable and each one is worth showing on its own. Do not
 start a phase before the previous one is live.
 
-Three phases have landed and been deleted from this list, per the rule at the top: **the clock**
+Four phases have landed and been deleted from this list, per the rule at the top: **the clock**
 (`src/aubade/solar/`, checked against published almanac times for eight cities), **the lobby**
-(`/aubade` — `src/aubade/gl/`, `camera/`, `rooms/`, `renderer.ts`), and **day, night and the
+(`/aubade` — `src/aubade/gl/`, `camera/`, `rooms/`, `renderer.ts`), **day, night and the
 invitation** (`rooms/light-rig.ts`, `desk.ts`, `fake-clock.ts`, and the shutter in
-`rooms/lobby.frag.ts`). Their reasoning moved into those files' header comments, which are dense
-and are the thing to read before touching any of them.
+`rooms/lobby.frag.ts`), and **the Reader's Edition** (`/aubade/reader` — `src/aubade/reader/`, plus
+`hour.ts` and `tokens.css`, which the two routes now share). Their reasoning moved into those
+files' header comments, which are dense and are the thing to read before touching any of them.
 
-The room now reads the clock: one shader, five sets of uniforms, five palettes and five light
-rigs, with the daytime state built as its own picture — the louvres are geometry, the bars they
-cut are the only direct light in the room, and the palette is faded rather than the night frame
+The room reads the clock: one shader, five sets of uniforms, five palettes and five light rigs,
+with the daytime state built as its own picture — the louvres are geometry, the bars they cut are
+the only direct light in the room, and the palette is faded rather than the night frame
 over-exposed. The five frames are committed as `docs/images/aubade-lobby-<state>.webp` and
 `npm run verify:shader` renders all five, asserting they brighten in the order the sun does. The
 dev-only fake clock is `?t=<state|instant>` with an optional `?tz=`; it is gated on `isDevMode()`,
 so the only way into the night rooms in production is the invitation, which is the point.
 
-### Phase 1 — The Reader's Edition
+The Reader's Edition is the work in its other form rather than a summary of it: about twelve
+hundred words of fixed prose in `reader/edition.ts`, with the hotel's standing computed into three
+sentences at the top by `reader/standing.ts` — where the sun was read for and how confidently, how
+far it is from that horizon, and what changes next. It is a route of its own rather than a band on
+the lobby because the whole of its Definition of Done rested on no WebGL context being created on
+it, so all three layers check that: `check:docs` walks its import graph, an e2e test counts
+`getContext` calls on the live page, and the a11y sweep scans it with the other five routes. Both
+of the lobby's screens link to it. Note the two things it deliberately does *not* share with the
+lobby — it ignores `?t=<state>`, because a forced state next to a real elevation is the one lie
+this page cannot tell, and no font size on it is expressed in `vw`, because a `vw` size shrinks
+when a reader zooms in.
 
-Before more rooms. Doing this early rather than last is the entire difference between an
-accessible work and a bolted-on apology.
-
-- **DoD:** the prose exists and is good. Full keyboard path, axe clean, readable at 200% zoom, no
-  WebGL context created on that route at all. Someone who reads only this has read a real thing.
-
-### Phase 2 — Descent, and the Mirror Corridor
+### Phase 1 — Descent, and the Mirror Corridor
 
 - The elevator: a timed morph between two distance fields, visible and unhurried.
 - The corridor and its mirror. The absent reflection.
 - **DoD:** the reflection reads as intentional within ten seconds, unprompted, to someone who was
   not told the theme. Test this on an actual human before merging.
 
-### Phases 3–6 — One room each
+### Phases 2–5 — One room each
 
 In this order, by ratio of impact to risk:
 
-3. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
+2. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
    Devanagari shaping right or cut those two; broken shaping is an insult, not an effect.
-4. **The Cellar** — breath pacing, 4-7-8 cycle, the room resolving over ~90 seconds of stillness.
+3. **The Cellar** — breath pacing, 4-7-8 cycle, the room resolving over ~90 seconds of stillness.
    The hardest thing here is nerve: it must actually be quiet and actually be slow.
-5. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.
-6. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
+4. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.
+5. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
    are the two things most likely to eat a week.
 
-### Phase 7 — The register
+Each new room owes the Reader's Edition a paragraph. `reader/edition.ts` already describes all six
+floors in the present tense and then says plainly which are built — a room that ships without
+moving itself out of that list has quietly made the page lie.
+
+### Phase 6 — The register
 
 Where the existing backend skills come back. `POST /api/aubade/visits` on arrival, `GET` for the
 register: city (from timezone, never IP), duration, floors reached, local solar state at arrival.
@@ -214,7 +223,7 @@ register: city (from timezone, never IP), duration, floors reached, local solar 
   Rate-limited. The register is legible as a feature of the fiction and defensible as a privacy
   decision in the same breath — say so in the README.
 
-### Phase 8 — Dawn
+### Phase 7 — Dawn
 
 The ending. A visitor present through actual civil twilight into actual sunrise at their location
 sees the hotel close: the countdown, the light arriving, the rooms shuttering in order, the last
@@ -248,8 +257,8 @@ Recorded now, while it is still cheap to avoid:
 - **It is impressive and unreadable.** If a visitor cannot tell where they are or what to do
   within eight seconds, the atmosphere has eaten the work. Ambiguity is a choice; confusion is a
   bug.
-- **It never ships.** Six rooms is an ambition, not a commitment. **Phases 1 and 2 are the rest of
-  the project.** Everything from Phase 3 on is optional, and a finished four-floor hotel beats an
-  abandoned six-floor one by an enormous margin.
+- **It never ships.** Six rooms is an ambition, not a commitment. **Phase 1 — the descent and the
+  corridor — is the rest of the project.** Everything from Phase 2 on is optional, and a finished
+  two-floor hotel with a Reader's Edition beats an abandoned six-floor one by an enormous margin.
 
 ---

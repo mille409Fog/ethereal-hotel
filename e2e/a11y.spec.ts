@@ -4,14 +4,21 @@ import type { Result } from 'axe-core';
 import { stubBookingApi } from './support/backend';
 
 /**
- * The five routes the app actually has. `/` is the portfolio page;
+ * The six routes the app actually has. `/` is the portfolio page;
  * `/dashboard` and `/booking` are the live demos and `/work` is the case
- * studies. `/aubade` is the separate WebGL work, and it is scanned for a reason
- * the others are not: a canvas is opaque to assistive technology, so the whole
- * a11y surface of that route is the prose and the plate around it. If those
- * ever stop being real DOM the scan is the only thing that would notice.
+ * studies. The last two are the separate WebGL work.
  *
- * All five are reached through the SPA fallback in `scripts/serve-dist.mjs`.
+ * `/aubade` is scanned for a reason the first four are not: a canvas is opaque
+ * to assistive technology, so the whole a11y surface of that route is the prose
+ * and the plate around it. If those ever stop being real DOM the scan is the
+ * only thing that would notice.
+ *
+ * `/aubade/reader` is scanned because a clean axe run is written into its
+ * Definition of Done rather than assumed of it. It is the Reader's Edition —
+ * the text version AUBADE requires — and a text version with a serious
+ * violation in it is not serving the people it exists for.
+ *
+ * All six are reached through the SPA fallback in `scripts/serve-dist.mjs`.
  */
 const ROUTES = [
   { path: '/', name: 'landing page' },
@@ -19,6 +26,7 @@ const ROUTES = [
   { path: '/booking', name: 'booking' },
   { path: '/work', name: 'case studies' },
   { path: '/aubade', name: 'aubade' },
+  { path: '/aubade/reader', name: 'aubade reader' },
 ] as const;
 
 /**

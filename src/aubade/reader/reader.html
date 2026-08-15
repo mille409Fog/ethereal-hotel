@@ -1,0 +1,89 @@
+<!-- ===== HÔTEL AUBADE · THE READER'S EDITION =====
+     The hotel as a prose work. AUBADE's first non-negotiable: not a noscript
+     tag, not an ARIA description, and not a summary of the lobby — the same
+     work in the other of its two forms, at about twelve hundred words.
+
+     Nothing on this page can create a WebGL context. There is no canvas, and
+     `reader.ts` imports nothing that reaches `gl/`, `rooms/` or `renderer.ts`,
+     so the phase's Definition of Done — no WebGL context created on this route
+     at all — holds by construction rather than by care. `check:docs` gates the
+     import graph; an e2e test counts `getContext` calls on the live page.
+
+     Every in-page href is written out in full rather than left as a bare
+     fragment. `src/index.html` sets a base href of `/`, and a fragment-only
+     href resolves against the base URL rather than the current one — so
+     `#the-sun` on this route would mean `/#the-sun`, which the router matches
+     as the home page and silently navigates away from the work. That has
+     already happened once here, on the lobby's cue link. -->
+<main class="reader">
+  <article class="reader__work">
+    <header class="reader__head">
+      <p class="reader__kicker">The Reader&rsquo;s Edition</p>
+      <h1 class="reader__title">{{ title }}</h1>
+      <p class="reader__standfirst">{{ standfirst }}</p>
+    </header>
+
+    <!-- The contents. Here for the keyboard path as much as for the scanning
+         eye: twelve hundred words is far enough that arriving at the top with
+         no way forward but the scroll wheel is a worse page for everybody. Each
+         target takes focus rather than only scroll, which is the half a plain
+         anchor gets wrong. -->
+    <nav class="reader__contents" aria-label="Contents">
+      <ol>
+        <li>
+          <a href="/aubade/reader#standing">{{ standingHeading }}</a>
+        </li>
+        @for (section of edition; track section.id) {
+          <li>
+            <a [href]="'/aubade/reader#' + section.id">{{ section.heading }}</a>
+          </li>
+        }
+      </ol>
+    </nav>
+
+    <!-- The one part of this page the sun moves. Three sentences: where it was
+         computed for and how confidently, where the sun is against that
+         horizon, and what changes next.
+
+         Deliberately not an `aria-live` region. It changes at most five times
+         while somebody is reading, and interrupting a reader to announce that
+         the sun has moved two degrees would be hostile. -->
+    <section class="reader__standing" id="standing" tabindex="-1">
+      <h2>{{ standingHeading }}</h2>
+      <p>{{ standing().place }}</p>
+      <p>{{ standing().sun }}</p>
+      <p>{{ standing().next }}</p>
+    </section>
+
+    @for (section of edition; track section.id) {
+      <section class="reader__section" [id]="section.id" tabindex="-1">
+        <h2>{{ section.heading }}</h2>
+
+        @for (paragraph of section.paragraphs; track $index) {
+          <p>{{ paragraph }}</p>
+        }
+
+        @if (section.floors.length > 0) {
+          <dl class="reader__floors">
+            @for (floor of section.floors; track floor.name) {
+              <dt>{{ floor.floor }} &middot; {{ floor.name }}</dt>
+              <dd>{{ floor.body }}</dd>
+            }
+          </dl>
+        }
+
+        @for (paragraph of section.coda; track $index) {
+          <p>{{ paragraph }}</p>
+        }
+      </section>
+    }
+
+    <!-- The way back. A real anchor to a real route: following it is the one
+         action on this page that will ever ask a driver for a context, and it
+         does so because somebody chose to go and look. -->
+    <footer class="reader__return">
+      <p>{{ back.offer }}</p>
+      <a class="reader__door" href="/aubade">{{ back.action }}</a>
+    </footer>
+  </article>
+</main>

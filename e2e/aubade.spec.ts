@@ -119,6 +119,20 @@ test.describe('the aubade route', () => {
     expect(label).toContain('lobby');
   });
 
+  test('carries a link to the Reader’s Edition on both of its screens', async ({ page }) => {
+    // AUBADE's first non-negotiable: a visible link on every screen. The lobby
+    // is deliberately two of them — the plate over the room, and the prose one
+    // scroll down — so a single link at the bottom would satisfy the letter of
+    // it and none of the point.
+    await openStill(page);
+
+    const links = page.getByRole('link', { name: /The Reader’s Edition/ });
+    await expect(links).toHaveCount(2);
+
+    await expect(links.first()).toBeVisible();
+    await expect(links.first()).toHaveAttribute('href', '/aubade/reader');
+  });
+
   test('is reachable from the portfolio', async ({ page }) => {
     // A route nothing links to is a route nobody finds. The link is in the
     // footer rather than the nav on purpose — see footer.html.
@@ -128,6 +142,154 @@ test.describe('the aubade route', () => {
 
     await expect(page).toHaveURL(/\/aubade$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hôtel Aubade');
+  });
+});
+
+/**
+ * `/aubade/reader` — the Reader's Edition.
+ *
+ * AUBADE's first non-negotiable and its own phase: the hotel as a prose work,
+ * with a Definition of Done that is unusually checkable. Full keyboard path,
+ * axe clean, readable at 200% zoom, and no WebGL context created on the route at
+ * all. The axe half lives in `a11y.spec.ts`, which scans this route alongside
+ * the other five; the rest is here.
+ *
+ * The no-context assertion is the one that could not be written anywhere else.
+ * `reader.spec.ts` proves that mounting the component asks for nothing, and
+ * `check:docs` proves that nothing in its import graph could — but neither can
+ * see a real browser on a real page, where a stray canvas in a shared shell or a
+ * router preloading the lobby's chunk would create one without any of this
+ * project's source asking for it.
+ */
+/** Where the init script below parks its tally, on the page's own `window`. */
+interface IContextLog {
+  __contexts: string[];
+}
+
+test.describe('the reader’s edition', () => {
+  /**
+   * Count every `getContext` call the page makes, from before the first script
+   * on it runs.
+   *
+   * `addInitScript` lands in the page ahead of Angular, so the patched
+   * prototype method is the one every later caller finds. Recording on
+   * `window` rather than in a Playwright binding keeps it synchronous, which
+   * matters: a context can be created and released inside one microtask.
+   */
+  async function countContexts(page: Page): Promise<void> {
+    await page.addInitScript(() => {
+      const asked: string[] = [];
+      (window as unknown as IContextLog).__contexts = asked;
+
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (
+        this: HTMLCanvasElement,
+        ...args: Parameters<typeof original>
+      ): ReturnType<typeof original> {
+        asked.push(String(args[0]));
+        return original.apply(this, args);
+      };
+    });
+  }
+
+  /** Read the log back out of the page. */
+  const contexts = (page: Page): Promise<string[]> =>
+    page.evaluate(() => (window as unknown as IContextLog).__contexts);
+
+  test('creates no WebGL context, and no context of any other kind either', async ({ page }) => {
+    await countContexts(page);
+    await page.goto('/aubade/reader');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hôtel Aubade');
+
+    // A beat, so a late chunk or a deferred init has somewhere to go wrong.
+    await page.waitForTimeout(500);
+
+    expect(await contexts(page)).toEqual([]);
+    await expect(page.locator('canvas')).toHaveCount(0);
+  });
+
+  test('is a real thing to read on its own', async ({ page }) => {
+    // "Someone who reads only this has read a real thing." Not a claim a test
+    // can make, but the floor under it is: the words are on the page, in the
+    // hundreds, as text rather than as a picture of text.
+    await page.goto('/aubade/reader');
+
+    await expect(page).toHaveTitle("Hôtel Aubade - The Reader's Edition");
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hôtel Aubade');
+
+    const words = await page.locator('main').innerText();
+    expect(words.trim().split(/\s+/).length).toBeGreaterThan(1000);
+
+    // The six floors, including the five that do not exist yet — and the
+    // sentence that says which is which.
+    await expect(page.getByText('The Mirror Corridor')).toBeVisible();
+    await expect(page.getByText(/written and not built/)).toBeVisible();
+  });
+
+  test('says what the sun is doing, in words', async ({ page }) => {
+    // The state cannot be named: this runs against a production build with the
+    // `?t=` back door closed, so which hour CI gets depends on when it ran.
+    // What every hour shares is the shape of the statement.
+    await page.goto('/aubade/reader');
+
+    const standing = page.locator('#standing');
+    await expect(standing).toContainText('Your browser reports the time zone');
+    await expect(standing).toContainText(/\d+\.\d degrees (above|below) that horizon/);
+    await expect(standing).toContainText(/The sun (goes down|comes up)/);
+  });
+
+  test('has a keyboard path through the whole work', async ({ page }) => {
+    await page.goto('/aubade/reader');
+
+    // Every contents entry, by keyboard, in the order they are printed.
+    const entries = await page.locator('.reader__contents a').allInnerTexts();
+    expect(entries.length).toBeGreaterThan(5);
+
+    await page.getByRole('link', { name: 'How the hour is decided' }).press('Enter');
+
+    await expect(page).toHaveURL(/\/aubade\/reader#the-sun$/);
+    // Focus, not just scroll: a jump that only scrolls strands a keyboard
+    // user's focus back in the contents list.
+    await expect(page.locator('#the-sun')).toBeFocused();
+  });
+
+  test('goes back to the lobby, and the lobby comes back here', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/aubade/reader');
+
+    await page.getByRole('link', { name: 'Go up to the desk' }).click();
+    await expect(page).toHaveURL(/\/aubade$/);
+    await waitForTheLobby(page);
+
+    await page
+      .getByRole('link', { name: /The Reader’s Edition/ })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/aubade\/reader$/);
+  });
+
+  test('is readable at 200% zoom', async ({ page }) => {
+    // A browser at 200% zoom halves the viewport's width in CSS pixels, which
+    // is what the second viewport below is. Two things have to hold: the page
+    // must not start scrolling sideways, and the type must not shrink — a font
+    // size in `vw` gets *smaller* as a reader zooms in, which is the precise
+    // opposite of what they asked for and passes every other check here.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/aubade/reader');
+
+    const paragraph = page.locator('#the-sun p').first();
+    const unzoomed = await paragraph.evaluate((node) => window.getComputedStyle(node).fontSize);
+
+    await page.setViewportSize({ width: 640, height: 450 });
+    const zoomed = await paragraph.evaluate((node) => window.getComputedStyle(node).fontSize);
+
+    expect(zoomed).toBe(unzoomed);
+
+    const overflow = await page.evaluate(() => {
+      const root = document.documentElement;
+      return root.scrollWidth - root.clientWidth;
+    });
+    expect(overflow).toBeLessThanOrEqual(1);
   });
 });
 

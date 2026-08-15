@@ -26,12 +26,25 @@ export const routes: Routes = [
     title: meta.work.title,
   },
   {
-    // A separate work, and the only route whose component lives outside
+    // A separate work, and the only two routes whose components live outside
     // `src/app/`. See AUBADE.md: it shares this deployment and nothing else —
     // no styles, no services, no tokens — and the import direction only ever
-    // points this way. Lazy like the rest, and the component defers the
-    // renderer behind a second dynamic import so no WebGL code is fetched, and
-    // no context created, unless someone opens this route.
+    // points this way.
+    //
+    // This one is the Reader's Edition, AUBADE's first non-negotiable: the
+    // hotel as a prose work. It is a route of its own rather than a section of
+    // the lobby because its Definition of Done is that no WebGL context is
+    // created here at all, and the lobby creates one. Listed first for
+    // readability only — neither path is a prefix route, so the router matches
+    // the longer one either way.
+    path: meta.aubadeReader.path,
+    loadComponent: () => import('../aubade/reader/reader').then((m) => m.AubadeReader),
+    title: meta.aubadeReader.title,
+  },
+  {
+    // The lobby. Lazy like the rest, and the component defers the renderer
+    // behind a second dynamic import so no WebGL code is fetched, and no
+    // context created, unless someone opens this route.
     path: meta.aubade.path,
     loadComponent: () => import('../aubade/aubade').then((m) => m.Aubade),
     title: meta.aubade.title,

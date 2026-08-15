@@ -4,18 +4,24 @@ import {
   Component,
   computed,
   ElementRef,
-  isDevMode,
   OnDestroy,
   signal,
   viewChild,
 } from '@angular/core';
-import { DESK_COPY, INVITATION, SUNSET_CARD, describeCountdown, formatClockTime } from './desk';
-import { parseFakeClock } from './fake-clock';
+import {
+  DESK_COPY,
+  INVITATION,
+  READER_CUE,
+  SUNSET_CARD,
+  describeCountdown,
+  formatClockTime,
+} from './desk';
 import { FrameLoop, type IFrame } from './gl/loop';
+import { forcedState, readTheSun, SUN_INTERVAL_MS } from './hour';
 import { prefersReducedMotion } from './reduced-motion';
 import type { LobbyRenderer } from './renderer';
 import { rigFor } from './rooms/light-rig';
-import { readClock, type IAubadeClock } from './solar';
+import type { IAubadeClock } from './solar';
 
 /** Where the desk card stops counting hours and starts describing a season. */
 const MILLISECONDS_PER_DAY = 86_400_000;
@@ -78,16 +84,22 @@ const MILLISECONDS_PER_DAY = 86_400_000;
  * are AUBADE's fourth non-negotiable: silent degradation is how a portfolio
  * piece gets remembered as the one that ran badly on somebody's laptop.
  *
- * The prose here is a placeholder for the Reader's Edition, which is its own
- * phase and is a real piece of writing rather than an alt attribute. Until then
- * this is what a screen reader, a blocked context and a dying battery all get,
- * and it is written to be worth reading on its own terms because that is the
- * standard the eventual one has to clear.
+ * The prose in the second band is not the Reader's Edition and is not a summary
+ * of it. It is this room at this hour — four paragraphs, one of which the sun
+ * moves — and it is here because a page whose only content is a canvas is
+ * unreadable, unsearchable, and gone the moment a driver says no. The Reader's
+ * Edition is the whole hotel as a prose work, it lives at `/aubade/reader` where
+ * no WebGL context is ever created, and both of this route's screens carry a
+ * visible link to it because AUBADE's first non-negotiable requires one on every
+ * screen. Keeping them separate is what stops either from being an apology for
+ * the other.
  */
 @Component({
   selector: 'app-aubade',
   templateUrl: './aubade.html',
-  styleUrl: './aubade.css',
+  // `tokens.css` first: it declares the palette both AUBADE routes are drawn
+  // in, so the lobby and the Reader's Edition cannot drift into two brasses.
+  styleUrls: ['./tokens.css', './aubade.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Aubade implements AfterViewInit, OnDestroy {
@@ -111,19 +123,22 @@ export class Aubade implements AfterViewInit, OnDestroy {
    * The sun, where this visitor is. Re-read on a timer; every other signal on
    * this component is derived from it.
    */
-  public readonly clock = signal<IAubadeClock>(this.read());
+  public readonly clock = signal<IAubadeClock>(readTheSun());
 
   /** Whether the visitor opened the night rooms themselves. Never unset. */
   public readonly invited = signal(false);
 
   /** What the hotel is doing, after the dev-only `?t=` override has its say. */
-  public readonly state = computed(() => this.forcedState ?? this.clock().state);
+  public readonly state = computed(() => this.forced ?? this.clock().state);
 
   /** The clerk's line, the picture's name, and the prose's first sentence. */
   public readonly copy = computed(() => DESK_COPY[this.state()]);
 
   /** The offer, the control, and what taking it leaves behind. */
   public readonly invitation = INVITATION;
+
+  /** The link to the Reader's Edition, which both of this route's screens carry. */
+  public readonly reader = READER_CUE;
 
   /** True while the hotel is shut and the visitor has not let themselves in. */
   public readonly offering = computed(() => this.state() === 'shuttered' && !this.invited());
@@ -174,7 +189,7 @@ export class Aubade implements AfterViewInit, OnDestroy {
   private ticker: ReturnType<typeof setInterval> | null = null;
 
   /** From the dev-only `?t=`; `null` in production and in the ordinary case. */
-  private readonly forcedState = isDevMode() ? parseFakeClock(this.search()).state : null;
+  private readonly forced = forcedState();
 
   /**
    * Set before anything is torn down, and read by the async setup below. The
@@ -271,43 +286,24 @@ export class Aubade implements AfterViewInit, OnDestroy {
     }
   }
 
-  /** The sun now, honouring `?t=` in development and nothing else in production. */
-  private read(): IAubadeClock {
-    const asked = isDevMode() ? parseFakeClock(this.search()) : null;
-    return readClock(asked?.at ?? new Date(), asked?.zone ?? undefined);
-  }
-
-  /**
-   * `location.search`, or nothing at all.
-   *
-   * Guarded because this runs in the field initialiser above, which is the one
-   * place in the component that has no view and no lifecycle behind it — and
-   * because a route rendered outside a browser has no `location` to read.
-   */
-  private search(): string {
-    return typeof window === 'undefined' ? '' : window.location.search;
-  }
-
   /**
    * Re-read the sun once a minute.
    *
-   * Far finer than the states need, and that is not the point: the piece's
-   * ending is a visitor present through their own sunrise watching the hotel
-   * close, and it cannot be triggered on demand. A page that read the sun at load
-   * and never again would simply fail to have an ending.
-   *
-   * The redraw is conditional on the state actually changing, so a running loop
-   * is untouched sixty times an hour and a held one repaints five times a day.
+   * The interval and the reading itself both live in `hour.ts`, which the
+   * Reader's Edition shares — see that file for why the dev-only back door is
+   * written in one place. What is local is the consequence: the redraw is
+   * conditional on the state actually changing, so a running loop is untouched
+   * sixty times an hour and a held one repaints five times a day.
    */
   private watchTheSun(): void {
     this.ticker = setInterval(() => {
       const before = this.state();
-      this.clock.set(this.read());
+      this.clock.set(readTheSun());
 
       if (this.state() !== before && !this.loop?.running) {
         this.loop?.renderOnce();
       }
-    }, 60_000);
+    }, SUN_INTERVAL_MS);
   }
 
   /**

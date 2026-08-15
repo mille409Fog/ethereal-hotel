@@ -2,45 +2,14 @@
    HÔTEL AUBADE — Floor 0
    ===================================================
 
-   This file shares nothing with `src/styles.css`, and that is a requirement
-   rather than a preference. AUBADE is a separate work that happens to be
-   deployed from the same repository; the moment it reads one of the portfolio's
-   design tokens it has become a section of the portfolio. Every value it needs
-   is declared here, on `:host`, even where the number is the same one the other
-   stylesheet uses.
+   The palette lives in `tokens.css`, which this component lists first in its
+   `styleUrls` and shares with the Reader's Edition. That file carries the
+   reasoning for why none of it comes from `src/styles.css`. What is here is the
+   lobby: a fixed canvas, two full-height bands over it, and the plate.
 
-   One consequence worth knowing up front: the font stack is system faces only.
-   The portfolio loads Cinzel and Crimson Pro from Google Fonts, and using them
-   here would be both a shared dependency and a network request this route has
-   no business making. */
-
-:host {
-  /* Ink. Every pairing below clears 7:1 on --lobby-panel, which matters because
-     these sit over a canvas whose colour no contrast checker can compute — so
-     the panels are opaque and the ratios are real rather than assumed. */
-  --lobby-ink: #e9e3d6;
-  --lobby-ink-quiet: #a99f8c;
-  --lobby-brass: #c9a24a;
-
-  --lobby-panel: #0a0b0d;
-  --lobby-rule: #2c2720;
-
-  /* The colour behind everything before the first frame lands. Close to the
-     shader's own darkest value, so the canvas appearing is not a flash. */
-  --lobby-void: #05060a;
-
-  --lobby-face-display:
-    'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
-  --lobby-face-plate: ui-sans-serif, 'Segoe UI', system-ui, -apple-system, sans-serif;
-
-  --lobby-gutter: clamp(1rem, 4vw, 3rem);
-
-  display: block;
-  background: var(--lobby-void);
-  color: var(--lobby-ink);
-  font-family: var(--lobby-face-display);
-  line-height: 1.55;
-}
+   The one thing to know before editing: nothing that overlaps the canvas may
+   animate. See the Motion note at the foot of the file — it is a finding, not a
+   preference. */
 
 /* Fixed rather than absolute so the room stays put while the prose scrolls over
    it — a page that scrolls its own render is a page that reads as a screenshot. */
@@ -204,9 +173,21 @@
   outline-offset: 3px;
 }
 
-/* The one control on the first screen. The prose is always in the DOM and a
-   screen reader reaches it regardless; this is what tells a sighted visitor it
-   is there, which is the half an `aria-describedby` would not have covered. */
+/* The two cues on the first screen. The prose is always in the DOM and a screen
+   reader reaches it regardless; the first of these is what tells a sighted
+   visitor it is there, which is the half an `aria-describedby` would not have
+   covered. The second leaves for the Reader's Edition.
+
+   Stacked rather than set side by side: they are two different offers, and a
+   row of two links in the same brass reads as one control that has been split. */
+.lobby__cues {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 0.35rem;
+  margin: 0.8rem 0 0;
+}
+
 .lobby__cue {
   display: inline-block;
   margin-top: 0.8rem;
@@ -219,8 +200,20 @@
   text-underline-offset: 0.35em;
 }
 
-.lobby__cue::after {
+/* Inside the stack the gap does the spacing; the margin above is for the one at
+   the foot of the prose, which stands on its own. */
+.lobby__cues .lobby__cue {
+  margin-top: 0;
+}
+
+/* The arrow says which kind of link it is: down the page, or away from it. */
+.lobby__cue--down::after {
   content: ' ↓';
+  text-decoration: none;
+}
+
+.lobby__cue--away::after {
+  content: ' →';
   text-decoration: none;
 }
 

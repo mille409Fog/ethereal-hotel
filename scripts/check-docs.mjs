@@ -338,20 +338,140 @@ check('the lobby is lit by the clock, at every hour', () => {
     }
   }
 
-  const component = read('src/aubade/aubade.ts');
-  if (!/from '\.\/solar'/.test(component) || !/readClock/.test(component)) {
+  // Both routes read the sun through `hour.ts`, so that is where the reading
+  // and the back door's gate both have to be.
+  const hour = read('src/aubade/hour.ts');
+  if (!/from '\.\/solar'/.test(hour) || !/readClock/.test(hour)) {
     problems.push(
-      'src/aubade/aubade.ts no longer calls readClock. CLAUDE.md and AUBADE.md both say the ' +
+      'src/aubade/hour.ts no longer calls readClock. CLAUDE.md and AUBADE.md both say the ' +
         'lobby is lit by the real sun; without this it is lit by whatever constant was left ' +
         'behind, which looks entirely fine and is the concept gone.'
     );
   }
 
-  if (exists('src/aubade/fake-clock.ts') && !/isDevMode\(\)/.test(component)) {
+  for (const route of ['src/aubade/aubade.ts', 'src/aubade/reader/reader.ts']) {
+    if (!/readTheSun/.test(read(route))) {
+      problems.push(
+        `${route} no longer reads the sun. Both AUBADE routes state the solar hour — the lobby ` +
+          `by lighting the room with it and the Reader's Edition by writing it out in words — ` +
+          `and a route that stopped would look entirely fine.`
+      );
+    }
+  }
+
+  // The back door, wherever it is read from. This used to name `aubade.ts`
+  // alone, which was true until there were two routes; the point of gating it
+  // by import rather than by filename is that the third one is covered before
+  // it is written.
+  if (exists('src/aubade/fake-clock.ts')) {
+    for (const file of aubadeSources()) {
+      if (file.endsWith('.spec.ts') || file.endsWith('fake-clock.ts')) continue;
+      const source = read(file);
+      if (/from '[^']*\/fake-clock'/.test(source) && !/isDevMode\(\)/.test(source)) {
+        problems.push(
+          `${file} reads the \`?t=\` fake clock without gating it on isDevMode(). In production ` +
+            `that hands every visitor the night rooms from the address bar, and the refusal ` +
+            `that AUBADE is built on becomes a URL parameter.`
+        );
+      }
+    }
+  }
+
+  return problems;
+});
+
+// The Reader's Edition, and the one property of it that cannot be seen at
+// runtime: that no code able to create a WebGL context is reachable from it.
+//
+// AUBADE's first non-negotiable is a text version of the work, and the phase
+// that landed it has a Definition of Done ending "no WebGL context created on
+// that route at all". Three layers check that, because each is blind to the
+// others' failures. A unit test proves mounting the component asks for nothing.
+// An e2e test counts `getContext` calls against the real page. Neither would
+// notice a `renderer.ts` import added to a file three hops up the graph, which
+// would work perfectly, cost the route its whole reason for existing, and show
+// up in a diff as one line.
+//
+// So this walks the import graph from `reader.ts` and fails if it can reach the
+// renderer. The walk follows relative imports only — a package import cannot
+// reach `src/aubade/gl/`, and following them would mean resolving node_modules
+// for no gain.
+
+/** Resolve a relative import specifier to a repo path, or `null`. */
+const resolveImport = (fromFile, specifier) => {
+  const base = path.posix.join(path.posix.dirname(fromFile), specifier);
+  for (const candidate of [`${base}.ts`, `${base}/index.ts`]) {
+    if (exists(candidate)) return candidate;
+  }
+  return null;
+};
+
+/** Every module reachable from `entry` by relative import, `entry` included. */
+const importGraph = (entry) => {
+  const seen = new Set();
+  const queue = [entry];
+
+  while (queue.length > 0) {
+    const file = queue.pop();
+    if (seen.has(file) || !exists(file)) continue;
+    seen.add(file);
+
+    for (const [, specifier] of read(file).matchAll(/from\s+'(\.[^']*)'/g)) {
+      const target = resolveImport(file, specifier);
+      if (target !== null && !seen.has(target)) queue.push(target);
+    }
+  }
+
+  return seen;
+};
+
+check('the Reader’s Edition can reach no WebGL at all', () => {
+  const entry = 'src/aubade/reader/reader.ts';
+  if (!exists(entry)) {
+    return [
+      `${entry} is gone. It is AUBADE's first non-negotiable — the text version of the work — ` +
+        `and CLAUDE.md, AUBADE.md and the a11y suite all describe it.`,
+    ];
+  }
+
+  const problems = [];
+
+  // Anything that can hold a context, or compile a shader, or ask for either.
+  const forbidden = /^src\/aubade\/(gl|rooms|camera)\//;
+  for (const module of importGraph(entry)) {
+    if (forbidden.test(module) || module === 'src/aubade/renderer.ts') {
+      problems.push(
+        `${entry} can reach ${module} through its imports. The Reader's Edition exists so that ` +
+          `there is a version of AUBADE with no WebGL on it at all; a reachable renderer means ` +
+          `a chunk that can create a context, which is the phase's Definition of Done gone with ` +
+          `nothing visibly broken.`
+      );
+    }
+  }
+
+  if (/<canvas/i.test(read('src/aubade/reader/reader.html'))) {
+    problems.push('src/aubade/reader/reader.html has a canvas on it. That route has no pixels.');
+  }
+
+  // Wired where a route has to be wired. The generic route checks cover
+  // vercel.json and the static card; these two are the ones specific to it.
+  const meta = JSON.parse(read('src/route-meta.json'));
+  if (meta.routes.aubadeReader?.path !== 'aubade/reader') {
+    problems.push('src/route-meta.json no longer defines the /aubade/reader route.');
+  }
+  if (!read('src/app/app.routes.ts').includes('meta.aubadeReader.path')) {
+    problems.push('/aubade/reader is not registered in app.routes.ts.');
+  }
+
+  // "Reachable from a visible link on every screen" — and the lobby is two of
+  // them, the plate over the room and the prose one scroll down. One link at
+  // the bottom satisfies the letter of the requirement and none of the point.
+  const lobby = read('src/aubade/aubade.html');
+  const links = [...lobby.matchAll(/href="\/aubade\/reader"/g)].length;
+  if (links < 2) {
     problems.push(
-      'src/aubade/aubade.ts reads the `?t=` fake clock without gating it on isDevMode(). In ' +
-        'production that hands every visitor the night rooms from the address bar, and the ' +
-        'refusal that AUBADE is built on becomes a URL parameter.'
+      `src/aubade/aubade.html links to /aubade/reader ${links} time(s). AUBADE's first ` +
+        `non-negotiable asks for a visible link on every screen, and the lobby is two screens.`
     );
   }
 

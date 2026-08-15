@@ -106,6 +106,29 @@ export const DESK_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
   },
 };
 
+/**
+ * The way out of the lobby and into the Reader's Edition.
+ *
+ * AUBADE's first non-negotiable requires this link on *every* screen, and the
+ * lobby is deliberately two of them — the plate over the room, and the prose one
+ * scroll down. So it appears twice, with one label, because two labels for one
+ * destination is how a reader ends up wondering whether they are two places.
+ *
+ * The offer is for the second appearance only, where somebody has just finished
+ * the four paragraphs about this room and is owed a reason to want the other
+ * five floors. On the plate the label stands alone; the plate is spare on
+ * purpose.
+ */
+export const READER_CUE = {
+  /** The link text, in both places. */
+  label: 'The Reader’s Edition',
+
+  /** The line above it at the foot of the prose. */
+  offer:
+    'The rest of the hotel — the other five floors, the poem it is named after, and how the ' +
+    'hour is decided — is written out in full, and needs no graphics card at all.',
+} as const;
+
 /** The invitation, and what taking it leaves behind. */
 export const INVITATION = {
   /** The offer. AUBADE specifies this line; it is quoted rather than rewritten. */
