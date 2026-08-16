@@ -61,7 +61,7 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | `README.md`         | 5K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
 | `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
-| `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project). Five phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), and the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`). |
+| `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project). Five phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), and the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`). The Library's *room* has landed too (`rooms/library-rig.ts`, `mapLibrary`) — its phase has not, because the sentence in eight writing systems is what that phase is, so the item stays on the list. |
 | `CONTRIBUTING.md`   | 6K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
@@ -180,6 +180,12 @@ not leave the note behind when the suppression goes.
   `lhci` cannot forward Chrome flags regardless. CONTRIBUTING has the direct-run command that
   shows the scores. The thresholds are enforced by the Linux CI job — do not loosen them, and do
   not conclude the site regressed, on the strength of a local `EPERM`.
+- **Most of `e2e/aubade.spec.ts` cannot pass locally on this box either, and that is also not a
+  regression.** SwiftShader is a CPU rasteriser: one 1280×720 frame of this raymarcher costs
+  about 13s here against a 30s per-test budget, so under ten parallel workers most of the suite
+  times out. Measured at a clean `HEAD`, before any local change: 5 passed, 11 failed. Do not
+  "fix" it by shrinking viewports or raising timeouts on the strength of a local run — shrinking
+  the viewport is what `renders the lobby` exists to resist, and the Linux CI job is what decides.
 - Windows box. `run.bat` and `start-dev.bat` exist alongside their `.sh` twins. Ports in play:
   4200 (ng serve), 8000 (FastAPI), 4173 (`scripts/serve-dist.mjs` for Playwright and Lighthouse).
 
@@ -217,10 +223,22 @@ mistake for bugs:
 - **Floor −1 runs the clock backwards.** `rooms/corridor-rig.ts` dims its sconces as the lobby's
   sky brightens — no window, so the sun reaches the corridor by turning its gas out and then
   coming down the lift shaft at noon. `verify:shader` asserts both opposite orderings.
-- **The lift is one uniform.** `uMorph` mixes the two distance fields; its endpoints must be
-  *exactly* 0 and 1, because the shader skips a scene there and the mirror's second march only
-  wakes at 1. `MORPH_EPSILON` is declared twice (`descent.ts`, and GLSL, which cannot import) and
-  `check:docs` fails on drift — a drifted pair looks fine and silently costs the mirror.
+- **Floor −2 does not run the clock at all, and that is the room.** In `rooms/library-rig.ts`
+  five of six fields are one spread constant — the lamps are identical at every hour — and only
+  `inkStrength` moves, to *exactly* 0 at `shuttered`: a fully lit reading room with nothing
+  written in it. So `verify:shader` asserts a third, different claim, mean luma **flat** and the
+  frame's deviation falling, because a mean cannot see this floor's hour. The library carries its
+  own `exposure` too: `uExposure` is Floor 0's field and `tonemap` applies it to the whole frame,
+  so un-blended the lobby's noon stop reached two storeys down and brightened the library by 8%.
+- **The lift is one uniform, and it counts floors.** `uDepth` is 0 in the lobby, 1 in the
+  corridor, 2 in the library — depth is minus the floor, exactly — and `mapScene` branches on
+  which *pair* a ride is between, so a ride still evaluates two distance fields and a settled
+  floor one. AUBADE's phase note named the alternative (the lift becomes a fade) and it was
+  rejected. Every integer must be hit *exactly*, because the shader skips a scene there and the
+  mirror's second march only wakes inside `MORPH_EPSILON` of 1 — a two-sided band, not a
+  threshold, or it stays awake down to a floor with no mirror in it. `MORPH_EPSILON` is declared
+  twice (`descent.ts`, and GLSL, which cannot import) and `check:docs` fails on drift; a drifted
+  pair looks fine and silently costs the mirror.
 - **The absent reflection is one argument**: `shadeSurface`'s `carried`, 1 in the room and 0 in
   the mirror. Deliberately unphysical — a correct mirror would show the lit floor — so passing
   1.0 gives a beautiful corridor about nothing. No test sees that, so `check:docs` does.

@@ -5,6 +5,7 @@ import { StubWebGL2, stubCanvas } from './gl/webgl.testing';
 import { MAX_DRAWING_BUFFER_PIXELS } from './gl/viewport';
 import { HotelRenderer, type IHotelFrame } from './renderer';
 import { CORRIDOR_RIGS } from './rooms/corridor-rig';
+import { LIBRARY_RIGS } from './rooms/library-rig';
 import { INVITED_THRESHOLD, LIGHT_RIGS, rigFor } from './rooms/light-rig';
 
 /**
@@ -33,18 +34,18 @@ const frame = (overrides: Partial<IFrame> = {}): IFrame => ({
 const NIGHT = LIGHT_RIGS.open;
 
 /**
- * One frame's worth of hotel: a rig for Floor 0, one for Floor −1, and where the
- * lift is.
+ * One frame's worth of hotel: a rig per floor, and where the lift is.
  *
- * Most of these tests are about the renderer's plumbing rather than about either
+ * Most of these tests are about the renderer's plumbing rather than about any one
  * room, so they settle on the lobby and pass whichever lobby rig they are
- * interested in. The corridor's rig still travels on every frame, because it does
+ * interested in. The other two rigs still travel on every frame, because they do
  * in the real thing — see the note on IHotelFrame.
  */
-const at = (lobby = NIGHT, morph = 0): IHotelFrame => ({
+const at = (lobby = NIGHT, depth = 0): IHotelFrame => ({
   lobby,
   corridor: CORRIDOR_RIGS.open,
-  morph,
+  library: LIBRARY_RIGS.open,
+  depth,
 });
 
 /** A renderer over a stub, with the canvas laid out at a known size. */

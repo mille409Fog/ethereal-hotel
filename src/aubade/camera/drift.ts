@@ -94,6 +94,47 @@ export const CORRIDOR_EYE: IVec3 = { x: 0.42, y: 1.55, z: -3.1 };
 export const CORRIDOR_TARGET: IVec3 = { x: -0.34, y: 1.05, z: 4.6 };
 
 /**
+ * Where a person stands on Floor −2: back from the first pair of reading tables,
+ * a little left of the room's axis, and lower again than the corridor.
+ *
+ * The library is the widest room in the building and the only one with matching
+ * walls, so the composition cannot lean on asymmetry the way the other two do —
+ * the lobby puts the desk to one side of the door, the corridor puts every
+ * fitting opposite the mirror. What holds this one together instead is depth: the
+ * bays recede in a line down both sides and the reading lamps march away between
+ * them, so the camera stands slightly off axis and low, where the two runs of
+ * shelving converge fastest.
+ *
+ * Low also because that is where the descent has got to. The eye has come down
+ * 120mm from the lobby and 50mm from the corridor, and each drop is the lift
+ * rather than a different person.
+ */
+export const LIBRARY_EYE: IVec3 = { x: -0.55, y: 1.5, z: -4.2 };
+
+/**
+ * Aimed down the room, level with the shelving a person reads from.
+ *
+ * Higher off the floor than the corridor's target, which is the one place the
+ * descent stops descending: the corridor is a passage and is looked along, the
+ * library is a room and is looked *into*. Raising the gaze is what puts the
+ * shelves rather than the floor in the middle of the frame, and the shelves are
+ * where this floor's writing is.
+ */
+export const LIBRARY_TARGET: IVec3 = { x: 0.3, y: 1.15, z: 3.4 };
+
+/**
+ * The three floors' anchors, in the order the lift passes them — so the index is
+ * the depth, exactly, which is the same identity `descent.ts` is built on.
+ *
+ * A table rather than three named pairs threaded through a branch, because the
+ * interpolation below has to work between *whichever* pair the lift is straddling
+ * and there is no version of that written as a conditional which survives a
+ * fourth floor.
+ */
+const EYE_ANCHORS: readonly IVec3[] = [ANCHOR_EYE, CORRIDOR_EYE, LIBRARY_EYE];
+const TARGET_ANCHORS: readonly IVec3[] = [ANCHOR_TARGET, CORRIDOR_TARGET, LIBRARY_TARGET];
+
+/**
  * Seconds per cycle. Coprime enough that the sum has no useful period.
  *
  * Four of them rather than three, and `DRIFT_DEPTH_PERIOD` exists specifically
@@ -133,8 +174,8 @@ const GAZE_FOLLOW = 0.34;
 const ROLL_AMPLITUDE = 0.0045;
 
 /**
- * Metres the camera drops *below* the straight line between the two floors,
- * peaking halfway through the ride and zero at both ends.
+ * Metres the camera drops *below* the straight line between two floors, peaking
+ * halfway through a ride and zero at both ends.
  *
  * A lift that interpolates its way between two heights arrives correctly and feels
  * like nothing at all. The extra sag in the middle is where the travel is fastest,
@@ -142,6 +183,11 @@ const ROLL_AMPLITUDE = 0.0045;
  * cross-fading. It has to vanish at both endpoints or the settled floors are not
  * the compositions their anchors describe — which is the same requirement the
  * reduced-motion still has, for the same reason.
+ *
+ * Per leg, not per journey: it is driven by the fractional part of the depth, so
+ * a second floor's ride sags exactly as the first one did rather than inverting
+ * into a rise, which is what a term in the whole depth would have done between
+ * depths 1 and 2.
  */
 const DESCENT_SAG = 0.11;
 
@@ -174,24 +220,45 @@ function between(from: IVec3, to: IVec3, t: number): IVec3 {
 }
 
 /**
- * The camera pose at a given moment of the room's clock, on a given floor.
+ * The anchor a depth lands on, interpolating between the pair it straddles.
+ *
+ * The same construction the shader uses on its distance fields, and for the same
+ * reason: at every integer depth this returns one floor's anchor untouched, so a
+ * settled floor is the composition its constant describes rather than a mix that
+ * happens to be very close to it.
+ *
+ * @param anchors The three floors' poses, indexed by depth.
+ * @param depth Where the lift is. Already clamped by the caller.
+ * @returns The pose. Exact at every integer, including the last one — the upper
+ *   index is clamped rather than allowed off the end, which is what keeps depth 2
+ *   from reading an anchor that does not exist.
+ */
+function anchorAt(anchors: readonly IVec3[], depth: number): IVec3 {
+  const lower = Math.min(Math.floor(depth), anchors.length - 1);
+  const upper = Math.min(lower + 1, anchors.length - 1);
+  return between(anchors[lower], anchors[upper], depth - lower);
+}
+
+/**
+ * The camera pose at a given moment of the room's clock, at a given depth.
  *
  * @param seconds Simulated seconds since the loop started — `IFrame.simulatedSeconds`,
  *   not `performance.now()`. Non-finite input falls back to the anchor pose rather
  *   than producing `NaN` uniforms, which a driver renders as a black screen with
  *   no error anywhere.
- * @param morph Where the lift is: 0 in the lobby, 1 in the corridor, in between
- *   during the descent. The same number the shader mixes its two distance fields
- *   by, so the camera and the room can never disagree about which floor they are
- *   on. Clamped, and non-finite input is treated as the lobby.
- * @returns Eye, target and roll. Deterministic: the same second on the same floor
+ * @param depth Where the lift is: 0 in the lobby, 1 in the corridor, 2 in the
+ *   library, and in between during a descent. The same number the shader mixes
+ *   its distance fields by, so the camera and the room can never disagree about
+ *   which floor they are on. Clamped to the floors that exist, and non-finite
+ *   input is treated as the lobby.
+ * @returns Eye, target and roll. Deterministic: the same second at the same depth
  *   always gives the same pose, which is what makes the fixed-step loop worth
  *   having.
  */
-export function breathe(seconds: number, morph = 0): ICameraPose {
-  const t = Number.isFinite(morph) ? Math.min(Math.max(morph, 0), 1) : 0;
-  const eyeAnchor = between(ANCHOR_EYE, CORRIDOR_EYE, t);
-  const targetAnchor = between(ANCHOR_TARGET, CORRIDOR_TARGET, t);
+export function breathe(seconds: number, depth = 0): ICameraPose {
+  const t = Number.isFinite(depth) ? Math.min(Math.max(depth, 0), EYE_ANCHORS.length - 1) : 0;
+  const eyeAnchor = anchorAt(EYE_ANCHORS, t);
+  const targetAnchor = anchorAt(TARGET_ANCHORS, t);
 
   if (!Number.isFinite(seconds)) {
     return { eye: eyeAnchor, target: targetAnchor, roll: 0 };
@@ -203,7 +270,7 @@ export function breathe(seconds: number, morph = 0): ICameraPose {
   const driftDepth = Math.sin(phase(seconds, DRIFT_DEPTH_PERIOD));
 
   const offsetX = sway * SWAY_LATERAL + drift * DRIFT_LATERAL;
-  const offsetY = breath * BREATH_RISE - Math.sin(Math.PI * t) * DESCENT_SAG;
+  const offsetY = breath * BREATH_RISE - Math.sin(Math.PI * (t - Math.floor(t))) * DESCENT_SAG;
   const offsetZ = breath * BREATH_PUSH + driftDepth * DRIFT_DEPTH;
 
   return {

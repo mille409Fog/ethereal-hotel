@@ -300,10 +300,11 @@ const solarStates = () => {
   return union === null ? [] : [...union[1].matchAll(/'([a-z]+)'/g)].map(([, name]) => name);
 };
 
-check('both floors are lit by the clock, at every hour', () => {
+check('every floor is lit by the clock, at every hour', () => {
   for (const file of [
     'src/aubade/rooms/light-rig.ts',
     'src/aubade/rooms/corridor-rig.ts',
+    'src/aubade/rooms/library-rig.ts',
     'src/aubade/desk.ts',
   ]) {
     if (!exists(file)) {
@@ -320,6 +321,7 @@ check('both floors are lit by the clock, at every hour', () => {
 
   const rigs = read('src/aubade/rooms/light-rig.ts');
   const corridorRigs = read('src/aubade/rooms/corridor-rig.ts');
+  const libraryRigs = read('src/aubade/rooms/library-rig.ts');
   const copy = read('src/aubade/desk.ts');
   const entry = (state) => new RegExp(`^\\s{2}${state}:\\s*\\{`, 'm');
 
@@ -337,21 +339,31 @@ check('both floors are lit by the clock, at every hour', () => {
           `the hotel's hours, which is AUBADE's first failure mode arriving one room at a time.`
       );
     }
+    if (!entry(state).test(libraryRigs)) {
+      problems.push(
+        `LIBRARY_RIGS has no rig for '${state}'. Floor −2's answer to the sun is one field in ` +
+          `this table — the light does not move and the writing does — and it can only be made ` +
+          `by writing all five hours out, including the four that are identical.`
+      );
+    }
     if (!entry(state).test(copy)) {
       problems.push(`DESK_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
     }
     if (!new RegExp(`CORRIDOR_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
       problems.push(`CORRIDOR_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
     }
+    if (!new RegExp(`LIBRARY_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
+      problems.push(`LIBRARY_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
+    }
 
-    // The two phases' Definitions of Done, as pictures. One run writes all
-    // fifteen: `npm run verify:shader -- --out docs/images/aubade.webp`.
+    // The phases' Definitions of Done, as pictures. One run writes all
+    // twenty-five: `npm run verify:shader -- --out docs/images/aubade.webp`.
     //
-    // `lift` is not a floor and is committed anyway, because it is the descent
-    // caught halfway — the one thing in the piece whose entire justification is
-    // that it looks like something, and therefore the one with no other way of
-    // noticing it has stopped.
-    for (const floor of ['lobby', 'lift', 'corridor']) {
+    // `lift` and `descent` are not floors and are committed anyway, because they
+    // are the two rides caught halfway — the things in the piece whose entire
+    // justification is that they look like something, and therefore the ones with
+    // no other way of noticing they have stopped.
+    for (const floor of ['lobby', 'lift', 'corridor', 'descent', 'library']) {
       if (!exists(`docs/images/aubade-${floor}-${state}.webp`)) {
         problems.push(
           `docs/images/aubade-${floor}-${state}.webp is missing. AUBADE commits a frame per ` +
@@ -447,12 +459,18 @@ check('the mirror is still missing something', () => {
 
   // And the second march only runs once the lift has finished, which is what
   // keeps the frame's peak cost away from its peak spectacle.
-  if (!/hit\.y == MAT_MIRROR && uMorph > 1\.0 - MORPH_EPSILON/.test(source)) {
+  //
+  // Now that the shaft runs past Floor −1 this is a band rather than a threshold,
+  // and that matters: a gate written as "at or below depth 1" would leave the
+  // mirror awake all the way down to the library, where there is no mirror, and
+  // the second march would run for the whole of the second ride for nothing.
+  if (!/hit\.y == MAT_MIRROR && abs\(uDepth - 1\.0\) < MORPH_EPSILON/.test(source)) {
     problems.push(
-      `${shader} no longer gates the mirror's march on the corridor being arrived at. The ` +
-        `second march is the most expensive thing in the piece and the descent already ` +
-        `evaluates two distance fields; running both at once puts the worst frame exactly ` +
-        `where the best one is supposed to be.`
+      `${shader} no longer gates the mirror's march on the corridor being the floor the lift is ` +
+        `actually parked at. The second march is the most expensive thing in the piece and a ` +
+        `ride already evaluates two distance fields; running both at once puts the worst frame ` +
+        `exactly where the best one is supposed to be — and a gate that is not two-sided keeps ` +
+        `it running on a floor that has no mirror in it.`
     );
   }
 
@@ -478,10 +496,68 @@ check('the mirror is still missing something', () => {
   // Reachable at all. The corridor is behind one control, and a lobby that lost
   // it is a floor nobody can get to with no error anywhere.
   const template = read('src/aubade/aubade.html');
-  if (!/\(click\)="call\(\)"/.test(template)) {
+  if (!/\(click\)="call\(control\.direction\)"/.test(template)) {
     problems.push(
-      'src/aubade/aubade.html has no control that calls the lift. Floor −1 is reachable only ' +
-        'through it, and a corridor nobody can reach fails no test and throws no error.'
+      'src/aubade/aubade.html has no control that calls the lift. The floors below are reachable ' +
+        'only through it, and a corridor nobody can reach fails no test and throws no error.'
+    );
+  }
+
+  return problems;
+});
+
+// Floor −2's one idea, which is the only one of the three floors' that a rendered
+// frame cannot fail loudly about.
+//
+// The lobby brightens as the night ends and the corridor darkens, and
+// `verify-shader.mjs` asserts both as orderings over five committed frames. The
+// library does neither: its lamps are identical at all five hours and what the sun
+// takes is the writing. That claim lives in two places at once — five rig entries
+// that have to stay character-for-character identical apart from the ink, and a
+// tonemap that has to keep the lobby's daytime stop from reaching two floors
+// underground — and both fail silently. Four rigs that quietly drift apart, or a
+// library riding `uExposure`, still render a perfectly good library.
+check('the library keeps its light and loses its writing', () => {
+  const rig = 'src/aubade/rooms/library-rig.ts';
+  const shader = 'src/aubade/rooms/hotel.frag.ts';
+
+  if (!exists(rig)) {
+    return [`${rig} is gone, but CLAUDE.md and AUBADE.md both describe Floor −2.`];
+  }
+
+  const problems = [];
+  const source = read(rig);
+
+  // The ink is the only thing the hour moves, so it has to reach exactly nothing at
+  // the shuttered hour. Not nearly nothing: a library with a trace of gilt at noon
+  // is a library whose lettering got dim, and the claim is that it has stopped
+  // saying anything at all.
+  if (!/shuttered:\s*\{[\s\S]*?inkStrength:\s*0,/.test(source)) {
+    problems.push(
+      `${rig} no longer sets inkStrength to exactly 0 at the shuttered hour. Floor −2's whole ` +
+        `answer to the sun is that a fully lit room ends up with nothing written in it; a ` +
+        `residual value is a room that merely got harder to read.`
+    );
+  }
+
+  // Every field but the ink is shared, and is shared by construction rather than by
+  // five entries that happen to agree today.
+  if (!/const CONSTANT_LIGHT = \{/.test(source) || !/\.\.\.CONSTANT_LIGHT,/.test(source)) {
+    problems.push(
+      `${rig} no longer spreads one CONSTANT_LIGHT into all five rigs. The floor's claim is that ` +
+        `its light is identical at every hour, and five entries maintained separately are five ` +
+        `entries that will eventually disagree — silently, because a library that dims slightly ` +
+        `towards dawn looks entirely plausible.`
+    );
+  }
+
+  // And the stop, which is the one that actually bit. See the note in tonemap.
+  if (!/mix\(uExposure, uLibraryExposure, floorWeight\(2\.0\)\)/.test(read(shader))) {
+    problems.push(
+      `${shader} no longer blends the tonemap's exposure towards the library's own. uExposure is ` +
+        `Floor 0's rig field and is applied to the whole frame whatever floor is in it, so ` +
+        `without this the lobby's daytime stop reaches Floor −2 and the library measurably ` +
+        `brightens at noon — which is precisely what the room is built to refuse.`
     );
   }
 

@@ -106,11 +106,18 @@
            That is the one thing the invitation actually gates — the refusal has
            to cost something or it is set dressing — and the line says so plainly
            next to a control that opens the whole work in one click. -->
-      @if (liftControl(); as control) {
+      @if (liftControls().length > 0) {
         <p class="lobby__lift">
-          <button type="button" class="lobby__call" [disabled]="!control.enabled" (click)="call()">
-            {{ control.text }}
-          </button>
+          @for (control of liftControls(); track control.direction) {
+            <button
+              type="button"
+              class="lobby__call"
+              [disabled]="!control.enabled"
+              (click)="call(control.direction)"
+            >
+              {{ control.text }}
+            </button>
+          }
         </p>
       }
 
@@ -161,7 +168,7 @@
       @for (paragraph of prose(); track paragraph) {
         <p>{{ paragraph }}</p>
       }
-      <p class="lobby__aside">Two floors of six. The other four are written and not built.</p>
+      <p class="lobby__aside">Three floors of six. The other three are written and not built.</p>
 
       <!-- The second of the two required links, and the one that is actually
            earned: somebody who has read this far has read about this room and

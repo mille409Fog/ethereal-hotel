@@ -188,7 +188,7 @@ far it is from that horizon, and what changes next. It is a route of its own rat
 the lobby because the whole of its Definition of Done rested on no WebGL context being created on
 it, so all three layers check that: `check:docs` walks its import graph, an e2e test counts
 `getContext` calls on the live page, and the a11y sweep scans it with the other five routes. Both
-of the lobby's screens link to it. Note the two things it deliberately does *not* share with the
+of the lobby's screens link to it. Note the two things it deliberately does _not_ share with the
 lobby — it ignores `?t=<state>`, because a forced state next to a real elevation is the one lie
 this page cannot tell, and no font size on it is expressed in `vw`, because a `vw` size shrinks
 when a reader zooms in.
@@ -236,6 +236,19 @@ frame. It happens once a day, per person, and cannot be triggered on demand.
   else in this project is worth the trouble, that morning will be.
 
 ---
+
+## Additional Vampiric Improvements
+
+### Un - Make the morphing animation for gothic / vampiric
+
+Currently we handle certain movements from one room to another through morphing,
+the hotel guest does not move so much as the room twists and turns from one
+state to another. That is all well and good and is possibly in keeping with an
+enchanted gothic hotel. However the transition animation is a beige mess, it does not
+read as vampriric so much as blase undifferentiated mass. Alter this transition to become
+more gothic / vampiric and to appear more otherworldly.
+
+- **DoD:** The transition state reads as magical and vampiric, not an undifferntiated mass of beige.
 
 ## How you will know it worked
 

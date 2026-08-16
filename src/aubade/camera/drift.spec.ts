@@ -4,6 +4,8 @@ import {
   breathe,
   CORRIDOR_EYE,
   CORRIDOR_TARGET,
+  LIBRARY_EYE,
+  LIBRARY_TARGET,
   type ICameraPose,
   type IVec3,
 } from './drift';
@@ -199,22 +201,32 @@ describe('the camera descends', () => {
       expect(pose.target).toEqual(ANCHOR_TARGET);
     });
 
-    it('sits exactly on the corridor anchor at the bottom', () => {
+    it('sits exactly on the corridor anchor one floor down', () => {
       const pose = breathe(0, 1);
 
       expect(pose.eye).toEqual(CORRIDOR_EYE);
       expect(pose.target).toEqual(CORRIDOR_TARGET);
     });
 
+    it('sits exactly on the library anchor at the bottom', () => {
+      // The middle floor is the one that could go wrong quietly. An interpolation
+      // that took the fractional part of the depth without picking the right pair
+      // of anchors would land the camera on the lobby's pose at depth 1 and at
+      // depth 2, and only the endpoints of the shaft would look correct.
+      const pose = breathe(0, 2);
+
+      expect(pose.eye).toEqual(LIBRARY_EYE);
+      expect(pose.target).toEqual(LIBRARY_TARGET);
+    });
+
     it('treats a missing or impossible lift as the lobby', () => {
-      // `morph` arrives from the shader's own uniform and a NaN there is a black
+      // `depth` arrives from the shader's own uniform and a NaN there is a black
       // screen with nothing in the console. Out-of-range values are clamped
-      // rather than extrapolated, which would put the camera past the corridor
-      // and inside the far wall.
+      // rather than extrapolated, which would put the camera below the building.
       for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -3]) {
         expect(breathe(0, bad).eye).toEqual(ANCHOR_EYE);
       }
-      expect(breathe(0, 4).eye).toEqual(CORRIDOR_EYE);
+      expect(breathe(0, 4).eye).toEqual(LIBRARY_EYE);
     });
   });
 
@@ -228,11 +240,23 @@ describe('the camera descends', () => {
       expect(breathe(0, 0.5).eye.y).toBeLessThan(midpoint);
     });
 
+    it('sags on the second leg too, rather than rising', () => {
+      // The sag is driven by the fractional part of the depth, and the obvious
+      // mistake is to drive it by the whole depth: sin(pi * d) is positive on the
+      // first leg and *negative* on the second, so the camera would float up
+      // through the ceiling on the way to the library instead of sinking.
+      const midpoint = (CORRIDOR_EYE.y + LIBRARY_EYE.y) / 2;
+
+      expect(breathe(0, 1.5).eye.y).toBeLessThan(midpoint);
+    });
+
     it('gives the sag back by the time it arrives', () => {
       // Or the settled floor is not the composition its anchor describes, which
-      // is the same requirement the reduced-motion still has.
-      expect(breathe(0, 1).eye.y).toBe(CORRIDOR_EYE.y);
+      // is the same requirement the reduced-motion still has. Every floor, not
+      // just the ends — depth 1 is both an arrival and a departure.
       expect(breathe(0, 0).eye.y).toBe(ANCHOR_EYE.y);
+      expect(breathe(0, 1).eye.y).toBe(CORRIDOR_EYE.y);
+      expect(breathe(0, 2).eye.y).toBe(LIBRARY_EYE.y);
     });
 
     it('turns the gaze by moving the target, not by rotating anything', () => {

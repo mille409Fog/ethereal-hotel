@@ -67,6 +67,7 @@ import { HOTEL_FRAGMENT_SHADER } from '../src/aubade/rooms/hotel.frag.ts';
 import { breathe } from '../src/aubade/camera/drift.ts';
 import { QUALITY_TIERS } from '../src/aubade/gl/quality.ts';
 import { corridorRigFor } from '../src/aubade/rooms/corridor-rig.ts';
+import { libraryRigFor } from '../src/aubade/rooms/library-rig.ts';
 import { rigFor } from '../src/aubade/rooms/light-rig.ts';
 import { AUBADE_STATES } from '../src/aubade/solar/state.ts';
 
@@ -98,9 +99,11 @@ const invited = hasFlag('invited');
  * noticing when the spectacle stops working.
  */
 const FLOORS = [
-  { name: 'lobby', morph: 0 },
-  { name: 'lift', morph: 0.5 },
-  { name: 'corridor', morph: 1 },
+  { name: 'lobby', depth: 0 },
+  { name: 'lift', depth: 0.5 },
+  { name: 'corridor', depth: 1 },
+  { name: 'descent', depth: 1.5 },
+  { name: 'library', depth: 2 },
 ];
 
 const onlyState = readFlag('state', null);
@@ -119,8 +122,9 @@ if (onlyFloor !== null && !FLOORS.some((floor) => floor.name === onlyFloor)) {
 const states = onlyState === null ? AUBADE_STATES : [onlyState];
 const floors = onlyFloor === null ? FLOORS : FLOORS.filter((floor) => floor.name === onlyFloor);
 
-// An override, for looking at the ride at some other point than halfway.
-const morphOverride = readFlag('morph', null);
+// An override, for looking at a ride at some other point than halfway. Names the
+// depth, so 1.5 is halfway down the second leg rather than halfway down the shaft.
+const depthOverride = readFlag('depth', null);
 
 /**
  * Everything the page needs, gathered here so the browser side stays a pure
@@ -139,14 +143,15 @@ const job = {
   seconds,
   tier,
   frames: floors.flatMap((floor) => {
-    const morph = morphOverride === null ? floor.morph : Number(morphOverride);
+    const depth = depthOverride === null ? floor.depth : Number(depthOverride);
     return states.map((state) => ({
       state,
       floor: floor.name,
-      morph,
-      camera: breathe(seconds, morph),
+      depth,
+      camera: breathe(seconds, depth),
       lobby: rigFor(state, invited),
       corridor: corridorRigFor(state, invited),
+      library: libraryRigFor(state, invited),
     }));
   }),
   // The extension decides the encoding. Five 1280×720 PNGs of this room are 7.5MB,
@@ -164,7 +169,7 @@ const job = {
     'uEye',
     'uTarget',
     'uRoll',
-    'uMorph',
+    'uDepth',
     'uMarchSteps',
     'uShadowSteps',
     'uVolumetricSamples',
@@ -189,6 +194,13 @@ const job = {
     'uCorridorFloor',
     'uCorridorSky',
     'uCorridorDust',
+    'uReadingColour',
+    'uReadingStrength',
+    'uInk',
+    'uLibraryExposure',
+    'uLibraryFloor',
+    'uLibrarySky',
+    'uLibraryDust',
   ],
 };
 
@@ -271,7 +283,7 @@ function renderInPage(input) {
     gl.uniform3f(at('uEye'), camera.eye.x, camera.eye.y, camera.eye.z);
     gl.uniform3f(at('uTarget'), camera.target.x, camera.target.y, camera.target.z);
     gl.uniform1f(at('uRoll'), camera.roll);
-    gl.uniform1f(at('uMorph'), frame.morph);
+    gl.uniform1f(at('uDepth'), frame.depth);
 
     const lobby = frame.lobby;
     gl.uniform3f(at('uKeyDirection'), lobby.keyDirection.x, lobby.keyDirection.y, lobby.keyDirection.z);
@@ -298,6 +310,15 @@ function renderInPage(input) {
     gl.uniform3f(at('uCorridorSky'), corridor.ambientSky[0], corridor.ambientSky[1], corridor.ambientSky[2]);
     gl.uniform1f(at('uCorridorDust'), corridor.dust);
 
+    const library = frame.library;
+    gl.uniform3f(at('uReadingColour'), library.readingColour[0], library.readingColour[1], library.readingColour[2]);
+    gl.uniform1f(at('uReadingStrength'), library.readingStrength);
+    gl.uniform1f(at('uInk'), library.inkStrength);
+    gl.uniform1f(at('uLibraryExposure'), library.exposure);
+    gl.uniform3f(at('uLibraryFloor'), library.ambientFloor[0], library.ambientFloor[1], library.ambientFloor[2]);
+    gl.uniform3f(at('uLibrarySky'), library.ambientSky[0], library.ambientSky[1], library.ambientSky[2]);
+    gl.uniform1f(at('uLibraryDust'), library.dust);
+
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     const glError = gl.getError();
 
@@ -311,9 +332,15 @@ function renderInPage(input) {
     // almost nothing however good the picture is, and a threshold on it would only
     // ever measure how dark the room was. The number of separate brightness steps
     // present is what actually distinguishes an image from a flat fill.
+    // The spread is carried as well as the mean, and it exists for Floor −2. That
+    // floor's claim is that its light does not change and its *writing* does, so a
+    // mean is exactly the statistic that cannot see it — the room is the same
+    // brightness at every hour. What falls as the gilt goes is the variation
+    // between neighbouring pixels, which is what a standard deviation measures.
     let min = 255;
     let max = 0;
     let total = 0;
+    let totalSquares = 0;
     let samples = 0;
     const levels = new Set();
     for (let y = 0; y < input.height; y += 4) {
@@ -323,19 +350,23 @@ function renderInPage(input) {
         min = Math.min(min, luma);
         max = Math.max(max, luma);
         total += luma;
+        totalSquares += luma * luma;
         samples += 1;
         levels.add(Math.round(luma));
       }
     }
+    const mean = total / samples;
+    const deviation = Math.sqrt(Math.max(totalSquares / samples - mean * mean, 0));
 
     rendered.push({
       state: frame.state,
       floor: frame.floor,
-      morph: frame.morph,
+      depth: frame.depth,
       glError,
       min,
       max,
-      mean: total / samples,
+      mean,
+      deviation,
       distinct: levels.size,
       dataUrl: canvas.toDataURL(input.mimeType, 0.92),
     });
@@ -465,19 +496,76 @@ if (onlyState === null && !invited) {
     }
   }
 
-  // The lift is between the two floors and has to look like neither. A ride whose
-  // halfway frame matches one of its endpoints is a cut with a delay in it, which
-  // is the one thing "visible and unhurried" rules out — and it is exactly what a
-  // morph curve that saturates at an endpoint produces.
-  for (const lift of floorFrames('lift')) {
-    for (const floor of ['lobby', 'corridor']) {
-      const settled = floorFrames(floor).find((frame) => frame.state === lift.state);
-      if (settled !== undefined && Math.abs(settled.mean - lift.mean) < 0.5) {
+  // The library's claim, and it is a third different one rather than a third
+  // dimmer switch. Floor −2 has no window and no daylight ever reaches it, so its
+  // lamps burn at exactly the same strength at every hour — five of the six fields
+  // in rooms/library-rig.ts are identical across all five states on purpose. What
+  // the sun takes from this floor is the writing.
+  //
+  // So the mean is asserted *flat* rather than ordered, which is the one thing
+  // neither floor above it does…
+  const library = floorFrames('library');
+
+  if (library.length === AUBADE_STATES.length) {
+    const means = library.map((frame) => frame.mean);
+    const brightest = Math.max(...means);
+    const dimmest = Math.min(...means);
+
+    if (brightest - dimmest > brightest * 0.12) {
+      problems.push(
+        `The library's five frames span mean luma ${dimmest.toFixed(1)}–${brightest.toFixed(1)}, ` +
+          `which is more than a tenth of its own brightness. Floor −2 is lit identically at every ` +
+          `hour — see rooms/library-rig.ts, where five of six fields are the same in all five ` +
+          `rigs. A library that dims with the sun has been wired to another floor's rig, and the ` +
+          `whole point of the room is that it does not.`
+      );
+    }
+
+    // …and the spread is asserted falling, which is that writing going. It has to
+    // be a spread and not a mean precisely because the room does not get darker:
+    // the gilt is the only thing leaving, so the only thing that changes is how
+    // much a pixel differs from its neighbours.
+    const spreads = library.map((frame) => frame.deviation);
+    for (let i = 1; i < library.length; i += 1) {
+      if (spreads[i] >= spreads[i - 1]) {
         problems.push(
-          `Halfway through the descent the ${lift.state} frame is indistinguishable from the ` +
-            `settled ${floor} (mean luma ${lift.mean.toFixed(1)} against ${settled.mean.toFixed(1)}). ` +
-            `The lift is supposed to be a mix of two distance fields, not a cut between them.`
+          `The library's ${library[i].state} frame is no less varied than ${library[i - 1].state} ` +
+            `(luma deviation ${spreads[i].toFixed(2)} against ${spreads[i - 1].toFixed(2)}). uInk ` +
+            `is supposed to take the gilt off the spines as the night ends; a library whose ` +
+            `contrast holds through dawn still has its writing at noon.`
         );
+      }
+    }
+
+    if (spreads[0] < spreads[spreads.length - 1] * 1.15) {
+      problems.push(
+        `The library at astronomical night is barely more varied than at noon (deviation ` +
+          `${spreads[0].toFixed(2)} against ${spreads[spreads.length - 1].toFixed(2)}). uInk is ` +
+          `reaching the shader but is not doing enough to be seen, which makes the floor's one ` +
+          `answer to the clock invisible.`
+      );
+    }
+  }
+
+  // A ride is between two floors and has to look like neither. A ride whose halfway
+  // frame matches one of its endpoints is a cut with a delay in it, which is the
+  // one thing "visible and unhurried" rules out — and it is exactly what a morph
+  // curve that saturates at an endpoint produces. Both legs, against both of their
+  // own endpoints.
+  for (const [ride, ends] of [
+    ['lift', ['lobby', 'corridor']],
+    ['descent', ['corridor', 'library']],
+  ]) {
+    for (const moving of floorFrames(ride)) {
+      for (const floor of ends) {
+        const settled = floorFrames(floor).find((frame) => frame.state === moving.state);
+        if (settled !== undefined && Math.abs(settled.mean - moving.mean) < 0.5) {
+          problems.push(
+            `Halfway through the ${ride} the ${moving.state} frame is indistinguishable from the ` +
+              `settled ${floor} (mean luma ${moving.mean.toFixed(1)} against ${settled.mean.toFixed(1)}). ` +
+              `The lift is supposed to be a mix of two distance fields, not a cut between them.`
+          );
+        }
       }
     }
   }
@@ -505,7 +593,7 @@ process.stdout.write(
 for (const frame of result.frames) {
   process.stdout.write(
     `  ${frame.floor.padEnd(9)} ${frame.state.padEnd(10)} luma ${frame.min.toFixed(1)}–${frame.max.toFixed(1)} ` +
-      `(mean ${frame.mean.toFixed(1)}), ${frame.distinct} levels\n`
+      `(mean ${frame.mean.toFixed(1)}, sd ${frame.deviation.toFixed(2)}), ${frame.distinct} levels\n`
   );
 }
 

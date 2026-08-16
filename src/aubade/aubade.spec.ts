@@ -153,7 +153,7 @@ describe('the aubade route', () => {
 
     it('says how far into the hotel this is', async () => {
       await render();
-      expect(text()).toContain('Two floors of six');
+      expect(text()).toContain('Three floors of six');
     });
   });
 
@@ -311,7 +311,7 @@ describe('the aubade route', () => {
         rideOut(4);
         // The control is disabled, so this is the belt to the template's braces —
         // and the one that would still hold if the disabled attribute were lost.
-        fixture.componentInstance.call();
+        fixture.componentInstance.call('down');
         rideOut();
 
         expect(fixture.componentInstance.floor()).toBe(-1);
@@ -330,7 +330,7 @@ describe('the aubade route', () => {
       const goDown = async (): Promise<void> => {
         setReducedMotion(true);
         await render();
-        fixture.componentInstance.call();
+        fixture.componentInstance.call('down');
         fixture.detectChanges();
       };
 

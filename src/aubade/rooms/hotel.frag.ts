@@ -1,8 +1,8 @@
 /**
- * The hotel: two floors, one program, and the lift between them.
+ * The hotel: three floors, one program, and the lift between them.
  *
- * The whole program: shared primitives, both floors' geometry, the shading, and
- * the scene that mixes them. Five source strings, concatenated at the bottom in
+ * The whole program: shared primitives, every floor's geometry, the shading, and
+ * the scene that mixes them. Six source strings, concatenated at the bottom in
  * declaration order, because GLSL has no forward declarations and the compiler
  * reports the omission as an undeclared identifier a long way from anything a
  * person would think to look at.
@@ -20,11 +20,11 @@
  * keeping the comment it had when it was a file.
  *
  * The one thing to hold onto from the arrangement it replaced is the reason the
- * shading is split from the primitives and sits *below* both floors: the floors'
+ * shading is split from the primitives and sits *below* every floor: the floors'
  * geometry needs the primitives and the material identifiers, and `surfaceAlbedo`
- * needs the corridor's dimensions, so the order is
+ * needs the corridor's dimensions and the library's shelving, so the order is
  *
- *   header · PRIMITIVES · lobby · corridor · SHADING · scene
+ *   header · PRIMITIVES · lobby · corridor · library · SHADING · scene
  *
  * and it is not negotiable in either direction.
  *
@@ -33,12 +33,24 @@
  * AUBADE describes the lift as "a timed morph between two distance fields, visible
  * and unhurried", and as a room rather than a transition. Taken literally — which
  * is the correct way to take it — that settles the architecture on its own. Two
- * distance fields cannot be mixed across two compiled programs, so both floors are
- * in this one, and `uMorph` chooses between them:
+ * distance fields cannot be mixed across two compiled programs, so every floor is
+ * in this one, and `uDepth` chooses between them. It counts floors below the
+ * lobby, so it names a position in the building rather than progress through one
+ * ride:
  *
- *   uMorph = 0            the lobby's field, exactly
- *   0 < uMorph < 1        both evaluated, distances mixed — the ride
- *   uMorph = 1            the corridor's field, exactly
+ *   uDepth = 0            the lobby's field, exactly
+ *   0 < uDepth < 1        lobby and corridor evaluated and mixed — a ride
+ *   uDepth = 1            the corridor's field, exactly
+ *   1 < uDepth < 2        corridor and library evaluated and mixed — a ride
+ *   uDepth = 2            the library's field, exactly
+ *
+ * AUBADE's phase note says a third room does not extend a two-room design for
+ * free, and names the fork: either `mapScene` starts branching on which pair is
+ * being mixed, or the lift stops being a mix and becomes a fade. The branch is
+ * what was taken. The fade was rejected because a cross-fade between two rendered
+ * images is a dissolve, and the whole claim being made about this elevator is that
+ * it is not one — and because it would have doubled the cost of the frame rather
+ * than of the map.
  *
  * That the mix is a legitimate distance field is not luck and is worth writing
  * down, because the alternative fails in a way that looks like a driver bug. A
@@ -89,7 +101,7 @@
  *   uTime               the room's clock in seconds (simulated, not wall clock)
  *   uEye, uTarget       camera pose from `camera/drift.ts`
  *   uRoll               camera roll in radians
- *   uMorph              the lift: 0 is Floor 0, 1 is Floor −1
+ *   uDepth              the lift: 0 Floor 0, 1 Floor −1, 2 Floor −2
  *   uMarchSteps         primary march iteration cap    ┐ the quality ladder,
  *   uShadowSteps        soft-shadow iteration cap      │ from `gl/quality.ts`
  *   uVolumetricSamples  samples along the view ray     ┘
@@ -114,6 +126,16 @@
  *   uCorridorFloor      warm half of the corridor's ambient       │
  *   uCorridorSky        cool half                                 │
  *   uCorridorDust       scattering in the corridor's air          ┘
+ *   uReadingColour      the library's lamps                       ┐
+ *   uReadingStrength    how hard they are driven — every hour     │ Floor −2's rig,
+ *   uInk                how much writing is left; 0 at noon       │ from
+ *   uLibraryExposure    this floor's stop, which no hour moves    │
+ *   uLibraryFloor       warm half of the library's ambient        │ `rooms/
+ *   uLibrarySky         cool half                                 │ library-rig.ts`
+ *   uLibraryDust        scattering in the library's air           ┘
+ *
+ * Five of Floor −2's six never vary with the hour, and that is the floor's whole
+ * idea rather than an omission — see `rooms/library-rig.ts`.
  */
 /**
  * What both floors are made of: distance primitives, the material table, and the
@@ -219,6 +241,9 @@ const float MAT_RUNNER   = 10.0;
 const float MAT_MIRROR   = 11.0;
 const float MAT_SCONCE   = 12.0;
 const float MAT_SHAFT    = 13.0;
+const float MAT_SPINE    = 14.0;
+const float MAT_READING  = 15.0;
+const float MAT_BOARDS   = 16.0;
 
 // How far outside a bounding box a ray may be before the box stands in for its
 // contents. Comfortably above SURFACE_EPSILON, so a ray can never terminate on a
@@ -305,6 +330,78 @@ vec3 surfaceAlbedo(float id, vec3 p, out float roughness, out float metallic) {
     roughness = 0.96;
     return vec3(0.129, 0.026, 0.030) * worn + pile;
   }
+  if (id == MAT_BOARDS) {
+    // Oak boards running the length of the room, 180mm wide, with a dark line
+    // where each one meets the next. Two sines and a step: the grain is one
+    // stretched sine along the board, exactly the trick the mahogany uses, and it
+    // runs in z because that is the way a floor is laid in a room this shape.
+    float across = p.x / 0.18;
+    float board = floor(across);
+    float seam = smoothstep(0.46, 0.5, abs(fract(across) - 0.5));
+    float grain = sin(p.z * 6.3 + board * 2.7) * 0.004;
+    // Each board took the stain slightly differently, which is what stops a floor
+    // of identical planks reading as a texture.
+    float cut = 0.86 + 0.28 * hash13(vec3(board, 0.0, 0.0));
+
+    roughness = 0.58;
+    return vec3(0.052, 0.030, 0.019) * cut * (1.0 - seam * 0.45) + grain;
+  }
+
+  if (id == MAT_SPINE) {
+    // A book, and the writing on it.
+    //
+    // The cloth first. Three binder's colours, picked per book and then darkened
+    // or lifted a little, because a shelf of one colour is a prop and a shelf of
+    // many is a pattern — real shelving is two or three cloths and a lot of
+    // variation in how faded each copy is. All of them are dark: the brightest
+    // thing on this floor has to be the gilt, or the writing stops being what the
+    // eye goes to and the room loses its subject.
+    vec3 book = bookIndex(p);
+    float pick = hash13(book + 3.7);
+    vec3 cloth = pick < 0.34
+      ? vec3(0.112, 0.042, 0.038)
+      : (pick < 0.67 ? vec3(0.042, 0.074, 0.054) : vec3(0.058, 0.053, 0.090));
+    cloth *= 0.72 + 0.56 * hash13(book + 11.3);
+
+    // And the writing, which is the floor's one answer to the sun. Two blind
+    // bands and a block of lettering between them, which is how a spine is
+    // actually tooled — and the lettering runs *up* the spine, in y, because that
+    // is the axis a book has room in.
+    //
+    // Everything here is multiplied by uInk, and at the shuttered hour uInk is
+    // exactly zero: not dim gilt, no gilt. See rooms/library-rig.ts, where that
+    // is the only field in the table the hour moves.
+    // Two blind bands, the title between them, and a shelfmark down near the tail
+    // — which is the standard tooling on a library binding and, more to the point
+    // here, spreads the gilt over enough of the spine's height to be the thing that
+    // changes when it goes. An earlier version put all of it in a 40mm strip near
+    // the head, and although it read correctly at a metre it moved the frame's
+    // contrast by too little to be sure the uniform was even connected.
+    //
+    // Every book's tooling is jogged up or down by its own hash, and that one line
+    // is the difference between a library and a nightclub. Without it every book on
+    // a shelf carries its bands at exactly the same height, eighteen of them in a
+    // row, and they fuse into a continuous horizontal stripe running the length of
+    // the bay — which does not read as lettering at any distance. It reads as LED
+    // strip lighting under a shelf, which is a thing this building has never heard
+    // of. Real books are not the same height and their bands do not line up.
+    float up = withinShelf(p) - (hash13(book + 5.1) - 0.5) * 0.052;
+    float bandHigh = 1.0 - smoothstep(0.0045, 0.0075, abs(up - 0.058));
+    float bandLow  = 1.0 - smoothstep(0.0045, 0.0075, abs(up + 0.004));
+    float shelfmark = 1.0 - smoothstep(0.0060, 0.0100, abs(up + 0.116));
+    float ticks = step(0.42, hash13(vec3(book.z, floor(up * 265.0), book.x)));
+    float title = ticks * (1.0 - smoothstep(0.0, 0.030, abs(up - 0.028)));
+    float gilt = clamp(bandHigh + bandLow + shelfmark + title, 0.0, 1.0) * uInk;
+
+    // Gold against cloth at about five to one, which is roughly what leaf on
+    // buckram actually measures. It was twenty to one, and at that ratio the gilt
+    // stopped reading as a surface catching the light and started reading as
+    // self-luminous — yellow confetti glowing in a dark room, brighter than the
+    // lamps that were supposed to be lighting it. Gilt is reflective, not bright.
+    roughness = mix(0.86, 0.30, gilt);
+    return mix(cloth, vec3(0.40, 0.30, 0.13), gilt);
+  }
+
   if (id == MAT_MIRROR) {
     // The albedo under the reflection. Mercury glass a century old is not a
     // clean surface: it is backed silver that has begun to go, and what it goes
@@ -343,7 +440,7 @@ vec3 surfaceAlbedo(float id, vec3 p, out float roughness, out float metallic) {
 vec3 faded(vec3 albedo) {
   float grey = dot(albedo, vec3(0.299, 0.587, 0.114));
   vec3 pale = mix(vec3(grey), vec3(0.74, 0.70, 0.63), 0.72);
-  return mix(albedo, pale, uBleach * (1.0 - uMorph));
+  return mix(albedo, pale, uBleach * floorWeight(0.0));
 }
 
 /** Blinn-Phong specular. Cheap, and the right shape for a room lit by soft sources. */
@@ -373,7 +470,15 @@ vec3 tonemap(vec3 colour) {
   // and all five night-side rigs still use that number: this is the knob that is
   // tempting to reach for whenever anything looks wrong, and almost never the one
   // that is actually wrong.
-  colour *= uExposure;
+  //
+  // Blended towards the library's own stop by the lift, because this is applied to
+  // the whole frame whatever floor is in it — so the lobby's daytime stop, which
+  // opens up for a room full of sunlight, was reaching two floors underground and
+  // lifting the library at noon by about eight per cent. Eight per cent is nothing
+  // to look at and it was fatal: Floor −2's entire claim is that its light does not
+  // answer the sun, and it was measurably answering. Floor −1 still rides the
+  // lobby's stop, which is harmless because the sun genuinely does reach it.
+  colour *= mix(uExposure, uLibraryExposure, floorWeight(2.0));
   return clamp((colour * (2.51 * colour + 0.03)) / (colour * (2.43 * colour + 0.59) + 0.14), 0.0, 1.0);
 }
 
@@ -1124,6 +1229,315 @@ vec2 shaftBlade(vec3 p) {
 `;
 
 /**
+ * Floor −2 — The Library. The room whose subject is writing, and which loses it.
+ *
+ * AUBADE's floor table gives this room one sentence: "One sentence, migrating
+ * across eight writing systems — Latin, Greek, Cyrillic, Arabic, Devanagari,
+ * Hebrew, Han, Hangul — glyphs dissolving into one another rather than cutting."
+ * That sentence is a glyph atlas and a phase of its own. This file is the room it
+ * will be read in, and the room is not a waiting area for it.
+ *
+ * ## What the room says before the sentence arrives
+ *
+ * A library is already made of writing. Every spine on both walls is lettered,
+ * and `uInk` — the one uniform on this floor the sun moves — takes that lettering
+ * away as dawn comes. At astronomical night the gilt runs the length of both
+ * walls in two receding lines. At noon there is not a legible mark in the room,
+ * under lamps burning at exactly the strength they burned at midnight.
+ *
+ * That is this floor's answer to the clock, and it is deliberately a third
+ * different answer rather than a third dimmer switch. Floor 0 gets brighter as the
+ * night ends. Floor −1 goes dark. Floor −2 does neither: it keeps every lumen it
+ * had and stops meaning anything. `rooms/library-rig.ts` is where that is written
+ * as numbers, and it is worth reading before touching the lighting here, because
+ * five of its six fields being identical across all five hours is the claim rather
+ * than an oversight.
+ *
+ * When the sentence lands it reads the same uniform, so it will fade at dawn by
+ * the rule the spines already follow — which is the point of putting the rule in
+ * before the sentence.
+ *
+ * ## The grooves are carved, and that is not a detail
+ *
+ * A run of book spines is the one thing in this building that wants
+ * high-frequency, irregular, per-instance geometry, and it is the one thing a
+ * raymarcher cannot have cheaply. Domain repetition with per-cell variation
+ * over-estimates the distance — a taller or a prouder neighbour in the next cell
+ * is nearer than the cell being evaluated says it is — and an over-estimate is the
+ * one direction a march cannot survive: it steps past the surface and the shelf
+ * develops holes. The usual fix is to evaluate three cells and take the minimum,
+ * which triples the cost of the most-evaluated geometry on the floor.
+ *
+ * So the books are one box per shelf, and the spines are *carved* out of it. Carve
+ * under-estimates — it is `max(solid, -hole)` and the file's own primitive says so
+ * — and an under-estimate is always safe. Which means the groove between two books
+ * can be as irregular as a hash likes, per book, at no risk whatever: the width
+ * varies, the phase varies, and the march simply takes shorter steps near them.
+ *
+ * The repetition that generates the grooves is deliberately **not** clamped, which
+ * is the opposite of the rule the key rack and the door line follow. It can afford
+ * not to be: an unclamped carve tiles a hole through all of space, and everywhere
+ * outside the books box the box's own distance dominates the max. Clamping it
+ * would cost a comparison and buy nothing. This is the only unclamped repetition
+ * in the piece and it is the only one that is safe.
+ *
+ * ## Conventions
+ *
+ * Metres, +y up, +z away from the camera down the room's length. The floor plane
+ * at y = 0 is shared with both floors above on purpose — see the note at the foot
+ * of the lobby section. The room is the widest in the building at 6.20 across
+ * against the corridor's 2.90, and the ceiling comes back up to 3.30 from the
+ * corridor's 2.70, so the second leg of the descent opens out where the first one
+ * closed in. A visitor who has just come down a corridor should feel the room
+ * arrive.
+ */
+const LIBRARY_GLSL = `
+// ---------------------------------------------------------------------------
+// The library, in metres
+// ---------------------------------------------------------------------------
+const float LIBRARY_HALF_WIDTH = 3.10;
+const float LIBRARY_HEIGHT     = 3.30;
+const float LIBRARY_NEAR_Z     = -6.40;
+const float LIBRARY_FAR_Z      = 11.00;
+
+// The shelving. One run down each wall, identical, which is why the map folds on
+// abs(x) and builds one of them — a library is the one room in this building that
+// is genuinely symmetric, and the fold is exact rather than an approximation.
+const float CASE_DEPTH  = 0.34;
+const float CASE_BOTTOM = 0.16;
+const float CASE_TOP    = 2.55;
+const float CASE_NEAR_Z = -6.20;
+const float CASE_FAR_Z  = 9.40;
+
+const float CASE_MID_Y   = (CASE_BOTTOM + CASE_TOP) * 0.5;
+const float CASE_HALF_Y  = (CASE_TOP - CASE_BOTTOM) * 0.5;
+const float CASE_MID_Z   = (CASE_NEAR_Z + CASE_FAR_Z) * 0.5;
+const float CASE_HALF_Z  = (CASE_FAR_Z - CASE_NEAR_Z) * 0.5;
+const float CASE_CENTRE_X = LIBRARY_HALF_WIDTH - CASE_DEPTH * 0.5;
+
+// Bays along the run, pilasters between them, shelves within them. The openings
+// are smaller than their pitch in both axes, which is what leaves the joinery
+// between them solid: 0.78 < 1.90/2 across, 0.155 < 0.36/2 up. Overshoot either
+// and the case comes out as a grid of floating rectangles.
+const float BAY_PITCH   = 1.90;
+const float BAY_FIRST   = -3.0;
+const float BAY_LAST    = 5.0;
+const float BAY_HALF_Z  = 0.78;
+const float SHELF_PITCH = 0.36;
+const float SHELF_HALF_Y = 0.155;
+const float SHELF_FIRST = -3.0;
+const float SHELF_LAST  = 3.0;
+
+// One book. Narrow enough that a shelf holds about eighteen of them, which is
+// what a shelf holds.
+const float SPINE_PITCH = 0.043;
+
+// The reading tables down the middle, and the lamp on each. The pitch is wide
+// because a reading room is mostly floor — tables too close together read as a
+// refectory, and this room is meant to be quiet rather than busy.
+const float TABLE_PITCH  = 3.60;
+const float TABLE_FIRST  = -1.0;
+const float TABLE_LAST   = 2.0;
+const float TABLE_TOP_Y  = 0.76;
+const float TABLE_HALF_X = 0.62;
+const float TABLE_HALF_Z = 1.30;
+
+// Where the lamp's glass sits above the table top. Read by the geometry and by
+// the light, which is the same arrangement the sconces use and for the same
+// reason: two declarations of one position is a light that drifts out of its own
+// fitting the first time either is nudged.
+const float LAMP_RISE = 0.242;
+
+// ---------------------------------------------------------------------------
+// The fittings
+// ---------------------------------------------------------------------------
+
+/**
+ * Which book a point is on: bay index, shelf index, spine index.
+ *
+ * Shared by the geometry and by surfaceAlbedo, which needs the same three numbers
+ * to give the same book the same cloth. Two copies of this arithmetic would be a
+ * shelf whose books changed colour when the camera moved.
+ */
+vec3 bookIndex(vec3 p) {
+  float bay   = clamp(floor(p.z / BAY_PITCH + 0.5), BAY_FIRST, BAY_LAST);
+  float up    = p.y - CASE_MID_Y;
+  float shelf = clamp(floor(up / SHELF_PITCH + 0.5), SHELF_FIRST, SHELF_LAST);
+  float spine = floor((p.z - bay * BAY_PITCH) / SPINE_PITCH + 0.5);
+
+  // The two walls are folded onto one another by the map, so without an offset on
+  // one of them both sides of the room would hold the same books in the same
+  // order — which reads, unmistakably, as a mirror rather than as a library. 41 is
+  // coprime with nothing in particular and simply has to not be zero.
+  return vec3(bay + (p.x < 0.0 ? 41.0 : 0.0), shelf, spine);
+}
+
+/** How far up its own shelf a point is, folded the way the geometry folds it. */
+float withinShelf(vec3 p) {
+  float up = p.y - CASE_MID_Y;
+  return up - clamp(floor(up / SHELF_PITCH + 0.5), SHELF_FIRST, SHELF_LAST) * SHELF_PITCH;
+}
+
+/**
+ * The shelving down both walls: carcass, openings, and the books in them.
+ *
+ * Folded on abs(x) so that one run of arithmetic builds two runs of shelving. The
+ * fold is a union of a shape and its mirror image and is exact — see the file
+ * comment for why the books inside it are carved rather than repeated.
+ */
+vec2 mapShelving(vec3 p) {
+  vec3 q = p;
+  q.x = abs(q.x);
+
+  // The whole run as one box, tested first. Most rays in this room are looking
+  // down the middle of it and are nowhere near either wall.
+  float run = sdBox(
+    q - vec3(CASE_CENTRE_X, CASE_MID_Y, CASE_MID_Z),
+    vec3(CASE_DEPTH * 0.5, CASE_HALF_Y, CASE_HALF_Z)
+  );
+  if (run > BOUND_SLACK) {
+    return vec2(run, MAT_TIMBER);
+  }
+
+  // Fold into one bay, then into one shelf within it. Both clamped, for the usual
+  // reason: an unclamped repetition tiles the room and breaks the Lipschitz bound
+  // the march depends on.
+  vec3 cell = q;
+  float bay = clamp(floor(q.z / BAY_PITCH + 0.5), BAY_FIRST, BAY_LAST);
+  cell.z -= bay * BAY_PITCH;
+  cell.y -= CASE_MID_Y;
+  float shelf = clamp(floor(cell.y / SHELF_PITCH + 0.5), SHELF_FIRST, SHELF_LAST);
+  cell.y -= shelf * SHELF_PITCH;
+
+  // The opening is deeper than the carcass in x, so it punches through both faces.
+  // The back one is against the wall and is never seen.
+  float opening = sdBox(
+    cell - vec3(CASE_CENTRE_X, 0.0, 0.0),
+    vec3(CASE_DEPTH, SHELF_HALF_Y, BAY_HALF_Z)
+  );
+  vec2 res = vec2(carve(run, opening), MAT_TIMBER);
+
+  // The books: one box standing on the shelf, short of the front of the case.
+  float booksHalfX = CASE_DEPTH * 0.5 - 0.055;
+  float booksMidX  = LIBRARY_HALF_WIDTH - CASE_DEPTH + booksHalfX + 0.030;
+  float booksFront = booksMidX - booksHalfX;
+  float books = sdBox(
+    cell - vec3(booksMidX, -0.032, 0.0),
+    vec3(booksHalfX, SHELF_HALF_Y - 0.032, BAY_HALF_Z - 0.045)
+  );
+
+  // And the spines, carved. Unclamped on purpose — see the file comment. The
+  // width varies per book, which is what stops eighteen identical grooves reading
+  // as corduroy, the way the mahogany grain did before it was given a wobble.
+  float spine  = floor(cell.z / SPINE_PITCH + 0.5);
+  float offset = cell.z - spine * SPINE_PITCH;
+  // Indexed on the shelf rather than on cell.y, which is continuous: a width that
+  // varied up the height of a book would make the groove a curved surface and the
+  // spine a wedge.
+  float width  = 0.0032 + 0.0034 * hash13(vec3(spine, shelf, bay));
+  float groove = max(abs(offset) - width, abs(cell.x - booksFront) - 0.016);
+  res = nearer(res, vec2(carve(books, groove), MAT_SPINE));
+
+  return res;
+}
+
+/** Where the reading lamp on a given table hangs. Read by the geometry and the light. */
+vec3 readingLampPosition(float index) {
+  return vec3(0.0, TABLE_TOP_Y + LAMP_RISE, index * TABLE_PITCH);
+}
+
+/**
+ * The reading tables: a top, an apron, four legs, and a lamp.
+ *
+ * The lamp is the lobby's desk lamp again — brass base, brass stem, green enamel
+ * shade, a glow under it. Deliberately the same fitting two floors down, because
+ * it is the same hotel and somebody bought them at the same time, and because a
+ * visitor who has seen one on the desk recognises the room as furnished rather
+ * than decorated.
+ */
+vec2 mapReadingTables(vec3 p) {
+  float index = clamp(floor(p.z / TABLE_PITCH + 0.5), TABLE_FIRST, TABLE_LAST);
+  vec3 t = p - vec3(0.0, 0.0, index * TABLE_PITCH);
+
+  float bound = sdBox(t - vec3(0.0, 0.62, 0.0), vec3(0.74, 0.68, TABLE_HALF_Z + 0.08));
+  if (bound > BOUND_SLACK) {
+    return vec2(bound, MAT_TIMBER);
+  }
+
+  float top = sdBox(t - vec3(0.0, TABLE_TOP_Y - 0.024, 0.0),
+                    vec3(TABLE_HALF_X, 0.024, TABLE_HALF_Z)) - 0.008;
+  vec2 res = vec2(top, MAT_TIMBER);
+
+  res = nearer(res, vec2(
+    sdBox(t - vec3(0.0, TABLE_TOP_Y - 0.105, 0.0),
+          vec3(TABLE_HALF_X - 0.055, 0.052, TABLE_HALF_Z - 0.055)),
+    MAT_TIMBER
+  ));
+
+  // Four legs from one box: abs() folds the domain in both horizontal axes.
+  vec3 leg = t;
+  leg.x = abs(leg.x) - (TABLE_HALF_X - 0.095);
+  leg.z = abs(leg.z) - (TABLE_HALF_Z - 0.115);
+  res = nearer(res, vec2(
+    sdBox(leg - vec3(0.0, 0.355, 0.0), vec3(0.032, 0.355, 0.032)) - 0.006,
+    MAT_TIMBER
+  ));
+
+  vec3 lamp = t - vec3(0.0, TABLE_TOP_Y, 0.0);
+  float base = sdCylinderY(lamp - vec3(0.0, 0.014, 0.0), 0.014, 0.075);
+  float stem = sdCylinderY(lamp - vec3(0.0, 0.160, 0.0), 0.160, 0.011);
+  res = nearer(res, vec2(min(base, stem), MAT_BRASS));
+  res = nearer(res, vec2(
+    sdCappedCone(lamp - vec3(0.0, 0.316, 0.0), 0.072, 0.118, 0.048),
+    MAT_ENAMEL
+  ));
+  res = nearer(res, vec2(length(lamp - vec3(0.0, LAMP_RISE, 0.0)) - 0.030, MAT_READING));
+
+  return res;
+}
+
+/**
+ * Distance to the nearest surface of Floor −2, and what that surface is made of.
+ *
+ * Same construction as the two floors above: the shell is exact planes rather
+ * than a box, and everything with detail in it sits behind a bounding test.
+ */
+vec2 mapLibrary(vec3 p) {
+  // Boards, not the chequered marble the two floors above are laid with. The
+  // marble is a public floor — a lobby people walk across in outdoor shoes and a
+  // corridor with a runner down it — and under the lamps down here it read as a
+  // kitchen. Oak boards are what a reading room has, and they are darker, which is
+  // most of what this room needed.
+  vec2 res = vec2(p.y, MAT_BOARDS);
+  res = nearer(res, vec2(LIBRARY_HEIGHT - p.y, MAT_PLASTER));
+  res = nearer(res, vec2(p.z - LIBRARY_NEAR_Z, MAT_PLASTER));
+  res = nearer(res, vec2(LIBRARY_HALF_WIDTH - abs(p.x), MAT_PLASTER));
+  res = nearer(res, vec2(LIBRARY_FAR_Z - p.z, MAT_PLASTER));
+
+  // The lift the visitor came down in, seen from the other side. Same two leaves
+  // and the same carved seam as the corridor's, at the same height, because it is
+  // the same lift — and there is no opening above it here. No daylight reaches
+  // this floor at any hour, which is the whole reason its lighting does not move.
+  float leaves = sdBox(p - vec3(0.0, 1.05, LIBRARY_FAR_Z - 0.055), vec3(0.62, 1.05, 0.045));
+  float seam   = sdBox(p - vec3(0.0, 1.05, LIBRARY_FAR_Z - 0.055), vec3(0.006, 1.02, 0.090));
+  res = nearer(res, vec2(carve(leaves, seam), MAT_BRASS));
+
+  // Skirting along the foot of every wall. Same trick as the two floors above:
+  // intersect close-to-a-wall with at-this-height.
+  float toWall = min(
+    LIBRARY_HALF_WIDTH - abs(p.x),
+    min(LIBRARY_FAR_Z - p.z, p.z - LIBRARY_NEAR_Z)
+  );
+  res = nearer(res, vec2(max(toWall - 0.045, p.y - 0.145), MAT_TIMBER));
+
+  res = nearer(res, mapShelving(p));
+  res = nearer(res, mapReadingTables(p));
+
+  return res;
+}
+`;
+
+/**
  * The uniforms, and the precision the whole program is compiled at.
  *
  * `#version 300 es` has to be the very first characters of the source — not the
@@ -1139,7 +1553,7 @@ uniform float uTime;
 uniform vec3  uEye;
 uniform vec3  uTarget;
 uniform float uRoll;
-uniform float uMorph;
+uniform float uDepth;
 uniform int   uMarchSteps;
 uniform int   uShadowSteps;
 uniform int   uVolumetricSamples;
@@ -1169,13 +1583,51 @@ uniform vec3  uCorridorFloor;
 uniform vec3  uCorridorSky;
 uniform float uCorridorDust;
 
+// Floor −2's light rig; see rooms/library-rig.ts. Five of these six are the same
+// at all five hours on purpose — that floor answers the sun with uInk and with
+// nothing else.
+uniform vec3  uReadingColour;
+uniform float uReadingStrength;
+uniform float uInk;
+uniform float uLibraryExposure;
+uniform vec3  uLibraryFloor;
+uniform vec3  uLibrarySky;
+uniform float uLibraryDust;
+
 out vec4 fragColour;
 
 // How close to an endpoint counts as arrived. Declared again in descent.ts as
 // MORPH_EPSILON, because a shader cannot import; descent.spec.ts asserts the
-// progress curve reaches both endpoints exactly, which is what keeps the two
+// progress curve reaches every endpoint exactly, which is what keeps the two
 // declarations from ever needing to agree on anything finer than this.
 const float MORPH_EPSILON = 0.001;
+
+/**
+ * How much of a floor is in the frame, given where the lift is.
+ *
+ * The whole of the three-floor arrangement, in one line. uDepth counts floors
+ * below the lobby, so a floor's weight is one minus how far the lift is from it,
+ * clamped — which is 1 when the car is parked there, 0 whenever the car is a
+ * whole floor or more away, and a fraction only for the two floors a ride is
+ * between.
+ *
+ * Two properties are load-bearing and both are worth stating, because the
+ * alternatives look identical and are not. The weights **sum to exactly 1** at
+ * every depth, so every use below is a convex combination and nothing has to be
+ * renormalised. And at every integer depth exactly one of them is exactly 1 and
+ * the rest are exactly 0, so a settled floor is lit by its own rig alone rather
+ * than by its own rig plus a rounding error of the floor above.
+ *
+ * This replaced a pair of complementary weights called above and below, which was
+ * the same idea with the third floor's seat taken.
+ *
+ * The parameter is not named for what it is, because what it is, is a floor —
+ * and floor is a GLSL built-in, which the compiler refuses to let anything shadow
+ * and refuses with a line number and no reason.
+ */
+float floorWeight(float atDepth) {
+  return clamp(1.0 - abs(uDepth - atDepth), 0.0, 1.0);
+}
 
 const float SURFACE_EPSILON = 0.0013;
 const float MAX_DISTANCE    = 40.0;
@@ -1192,31 +1644,47 @@ const SCENE_GLSL = `
 // ---------------------------------------------------------------------------
 
 /**
- * Distance to the nearest surface of whichever room the lift is between, and what
- * that surface is made of.
+ * Distance to the nearest surface of whichever room the lift is in or between,
+ * and what that surface is made of.
  *
  * See the file comment for why the mix is a valid distance field and why the
- * material snaps rather than blends. The two branches are on a uniform, so every
- * pixel in the draw takes the same side and they cost one compare.
+ * material snaps rather than blends. Every branch here is on a uniform, so every
+ * pixel in the draw takes the same side of all of them and together they cost
+ * three compares.
+ *
+ * **A ride still evaluates exactly two fields, and a settled floor exactly one.**
+ * That is the whole reason the third floor is a branch on which pair is being
+ * mixed rather than a third term in one expression — AUBADE's phase note names
+ * both options and this is the one that keeps the cost where it was. Adding
+ * floors −3, −4 and −5 adds one early return and one arm each, and never adds a
+ * third field to any single frame, because a lift is only ever between two floors.
  */
 vec2 mapScene(vec3 p) {
-  if (uMorph < MORPH_EPSILON) {
+  if (uDepth < MORPH_EPSILON) {
     return mapLobby(p);
   }
-  if (uMorph > 1.0 - MORPH_EPSILON) {
+  if (abs(uDepth - 1.0) < MORPH_EPSILON) {
     return mapCorridor(p);
   }
+  if (uDepth > 2.0 - MORPH_EPSILON) {
+    return mapLibrary(p);
+  }
 
-  vec2 above = mapLobby(p);
-  vec2 below = mapCorridor(p);
+  // The leg the car is on, and how far along it. floor() is exact here because
+  // the endpoints were excluded above.
+  float leg = floor(uDepth);
+  float t = uDepth - leg;
 
-  // Whichever surface is nearer, biased by the lift. At uMorph 0 this is always
-  // the lobby and at 1 always the corridor, so the two early returns above are
-  // consistent with it rather than special cases; in between it is the nearer of
-  // the two, which is what keeps an emitter in frame the whole way down.
-  float pick = above.x * uMorph - below.x * (1.0 - uMorph);
+  vec2 above = leg < 0.5 ? mapLobby(p) : mapCorridor(p);
+  vec2 below = leg < 0.5 ? mapCorridor(p) : mapLibrary(p);
 
-  return vec2(mix(above.x, below.x, uMorph), pick < 0.0 ? above.y : below.y);
+  // Whichever surface is nearer, biased by the lift. At t = 0 this is always the
+  // departing room and at t = 1 always the arriving one, so the early returns
+  // above are consistent with it rather than special cases; in between it is the
+  // nearer of the two, which is what keeps an emitter in frame the whole way down.
+  float pick = above.x * t - below.x * (1.0 - t);
+
+  return vec2(mix(above.x, below.x, t), pick < 0.0 ? above.y : below.y);
 }
 
 /**
@@ -1403,9 +1871,18 @@ float silvering(vec3 p) {
  * window in it rather than a dark room the moon has got into.
  */
 vec3 roomAmbient(vec3 n) {
+  // A weighted sum rather than nested mixes, now that there are three of them.
+  // It is still a convex combination: floorWeight's three values sum to exactly 1
+  // at every depth, which is the property the function comment calls load-bearing
+  // and this is the place it is load-bearing for. If they did not, the ambient
+  // would dim in the middle of every ride for no reason anybody could name.
+  float w0 = floorWeight(0.0);
+  float w1 = floorWeight(1.0);
+  float w2 = floorWeight(2.0);
+
   return mix(
-    mix(uAmbientFloor, uCorridorFloor, uMorph),
-    mix(uAmbientSky, uCorridorSky, uMorph),
+    uAmbientFloor * w0 + uCorridorFloor * w1 + uLibraryFloor * w2,
+    uAmbientSky * w0 + uCorridorSky * w1 + uLibrarySky * w2,
     n.y * 0.5 + 0.5
   );
 }
@@ -1441,6 +1918,12 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
   if (id == MAT_SHAFT) {
     return uShaftColour * uShaftStrength * 1.4;
   }
+  if (id == MAT_READING) {
+    // Under a banker's shade, so it is only ever seen from below and from the two
+    // open ends. No hour term at all: this is the floor whose light does not
+    // answer the sun.
+    return uReadingColour * uReadingStrength * 2.6;
+  }
 
   float roughness;
   float metallic;
@@ -1461,8 +1944,9 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
     return albedo * roomAmbient(n) * 3.0 * (1.0 - silvering(p));
   }
 
-  float above = 1.0 - uMorph;
-  float below = uMorph;
+  float above = floorWeight(0.0);
+  float below = floorWeight(1.0);
+  float deeper = floorWeight(2.0);
 
   vec3 diffuse = vec3(0.0);
   vec3 gloss   = vec3(0.0);
@@ -1580,6 +2064,76 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
     }
   }
 
+  // --- Floor −2: the reading lamps, and the light along the top of the cases ---
+  //
+  // The lamp the visitor carried down the corridor is weighted out by the ride,
+  // which is the corridor taking it back: it was lent because that floor had none
+  // to spare, and the library has light of its own. What crosses the second leg
+  // of the descent is a hand going empty as a room comes up around it.
+  if (deeper > MORPH_EPSILON) {
+    // The tables repeat, so the nearest is arithmetic rather than a search — the
+    // same construction the sconces use, and the same three of them summed for
+    // the same reason.
+    float nearest = floor(p.z / TABLE_PITCH + 0.5);
+
+    for (float k = -1.0; k <= 1.0; k += 1.0) {
+      float index = nearest + k;
+      if (index < TABLE_FIRST || index > TABLE_LAST) {
+        continue;
+      }
+
+      vec3 toLamp = readingLampPosition(index) - p;
+      float range = length(toLamp);
+      toLamp /= max(range, 0.0001);
+
+      // A banker's shade is opaque over the top and open at both ends, so it
+      // throws down onto the table and sideways down the room, and nothing at all
+      // at the ceiling.
+      //
+      // Note which way round this runs. toLamp points *from the surface to the
+      // lamp*, so a table top under the shade sees it pointing straight up — and
+      // the mask therefore has to rise with toLamp.y, not fall with it. Written the
+      // other way it lights only what is above the lamp, which is a room with four
+      // lit ceilings and four dark tables, and it renders as a plausible dim
+      // library rather than as anything obviously wrong.
+      float shadeMask = smoothstep(-0.34, 0.24, toLamp.y);
+      float lit = max(dot(n, toLamp), 0.0) * shadeMask / (1.0 + range * range * 0.42);
+
+      diffuse += deeper * uReadingColour * uReadingStrength * lit;
+      gloss += deeper * uReadingColour * uReadingStrength * lit *
+        specularLobe(n, viewDirection, toLamp, roughness);
+    }
+
+    // The cornice: a continuous run of lamps along the top of each case, which is
+    // what actually lights a library and is the only reason the top shelf is
+    // legible. It is a *line* source rather than a point one, and that is worth
+    // modelling honestly rather than approximating with more point lights.
+    //
+    // The nearest point on a line parallel to z is directly abeam, so the whole
+    // thing is one subtraction per wall and no loop. And a line source falls off
+    // with 1/r rather than 1/r², which is exactly why a real library has its
+    // lighting arranged this way: it is what puts the bottom shelf and the top
+    // shelf within a stop of one another, so a reader can read both.
+    for (float side = -1.0; side <= 1.0; side += 2.0) {
+      vec3 onCornice = vec3(side * (LIBRARY_HALF_WIDTH - CASE_DEPTH * 0.55), CASE_TOP + 0.12, p.z);
+      vec3 toCornice = onCornice - p;
+      float range = length(toCornice);
+      toCornice /= max(range, 0.0001);
+
+      // Weak, and weaker than it looks like it should be. A line source with 1/r
+      // falloff reaches *everything*: the first version of this ran at a third of
+      // the lamp strength and turned the room into an evenly lit beige box with no
+      // light in it anywhere — the same failure the daytime lobby had before the
+      // bleach was moved onto the albedo, and the one AUBADE's own note about the
+      // morph being a beige mess is complaining about. Its job is to make the top
+      // shelf readable, not to light the room; the lamps light the room.
+      float lit = max(dot(n, toCornice), 0.0) / (1.0 + range * range * 0.55);
+      diffuse += deeper * uReadingColour * uReadingStrength * lit * 0.16;
+      gloss += deeper * uReadingColour * uReadingStrength * lit * 0.16 *
+        specularLobe(n, viewDirection, toCornice, roughness);
+    }
+  }
+
   vec3 ambient = roomAmbient(n);
   float occlusion = ambientOcclusion(p, n);
 
@@ -1676,8 +2230,9 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
   float span = min(depth, 15.0);
   float stepLength = span / float(sampleCount);
 
-  float above = 1.0 - uMorph;
-  float below = uMorph;
+  float above = floorWeight(0.0);
+  float below = floorWeight(1.0);
+  float deeper = floorWeight(2.0);
   vec3 lampAt = carriedPosition();
   float flame = carriedFlicker();
 
@@ -1712,6 +2267,23 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
       float carriedRange = length(lampAt - p);
       accumulated += below * CARRIED_COLOUR * 0.020 * flame * dustDensity(p) * uCorridorDust /
         (1.0 + carriedRange * carriedRange * carriedRange * 1.6);
+    }
+
+    if (deeper > MORPH_EPSILON) {
+      // The cone under each reading shade, in the air. The dustiest room in the
+      // building and the only one where the haze is the point rather than the
+      // medium: a library's light is visible because a library is full of paper.
+      // Much tighter than the arithmetic suggests it wants to be. Four lamps in a
+      // room this size, each with a halo generous enough to look right on its own,
+      // sum into a uniform warm veil over the whole frame — every surface lifted,
+      // every shadow filled, and a picture with no depth in it. The haze has to
+      // stop at the edge of each shade or it stops being four lamps in the dark and
+      // becomes fog with furniture in it.
+      float index = clamp(floor(p.z / TABLE_PITCH + 0.5), TABLE_FIRST, TABLE_LAST);
+      float lampRange = length(readingLampPosition(index) - p);
+      accumulated += deeper * uReadingColour * 0.0045 * uReadingStrength *
+        dustDensity(p) * uLibraryDust /
+        (1.0 + lampRange * lampRange * lampRange * 3.2);
     }
   }
 
@@ -1750,7 +2322,7 @@ void main() {
     // The mirror, once the lift has finished and the room it reflects exists. See
     // the file comment for why this waits for the end of the ride rather than
     // fading up through it.
-    if (hit.y == MAT_MIRROR && uMorph > 1.0 - MORPH_EPSILON) {
+    if (hit.y == MAT_MIRROR && abs(uDepth - 1.0) < MORPH_EPSILON) {
       colour += mirrorReflection(p, n, rayDirection);
     }
   }
@@ -1787,6 +2359,7 @@ export const HOTEL_FRAGMENT_SHADER = [
   COMMON_PRIMITIVES_GLSL,
   LOBBY_GLSL,
   CORRIDOR_GLSL,
+  LIBRARY_GLSL,
   COMMON_SHADING_GLSL,
   SCENE_GLSL,
 ].join('\n');

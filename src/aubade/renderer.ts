@@ -23,13 +23,13 @@
  * that beats against the refresh rate, which looks like a dropped frame and is not
  * one.
  *
- * **There is still exactly one program.** Two floors, a lift between them, and one
- * compile — see the file comment on `rooms/hotel.frag.ts`. The morph is a uniform,
- * both floors' rigs are uploaded every frame, and the shader's own branches decide
- * what to spend anything on. Uploading a rig nobody is looking at costs eight
- * uniform writes, which is nothing next to a single `mapScene` call; compiling a
- * second program at the moment the lift doors close would cost a stalled driver in
- * the middle of the piece's one transition.
+ * **There is still exactly one program.** Three floors, a lift between them, and
+ * one compile — see the file comment on `rooms/hotel.frag.ts`. The depth is a
+ * uniform, all three floors' rigs are uploaded every frame, and the shader's own
+ * branches decide what to spend anything on. Uploading two rigs nobody is looking
+ * at costs fourteen uniform writes, which is nothing next to a single `mapScene`
+ * call; compiling a second program at the moment the lift doors close would cost a
+ * stalled driver in the middle of the piece's one transition.
  */
 
 import { breathe } from './camera/drift';
@@ -47,6 +47,7 @@ import { drawingBufferSize, resizeDrawingBuffer } from './gl/viewport';
 import { FULLSCREEN_VERTEX_SHADER } from './rooms/fullscreen.vert';
 import type { ICorridorRig } from './rooms/corridor-rig';
 import { HOTEL_FRAGMENT_SHADER } from './rooms/hotel.frag';
+import type { ILibraryRig } from './rooms/library-rig';
 import type { ILightRig } from './rooms/light-rig';
 
 /** What the renderer will say about itself, for the caption under the canvas. */
@@ -72,12 +73,16 @@ export interface IHotelFrame {
   /** Floor −1's rig — see `rooms/corridor-rig.ts`. */
   readonly corridor: ICorridorRig;
 
+  /** Floor −2's rig — see `rooms/library-rig.ts`. */
+  readonly library: ILibraryRig;
+
   /**
-   * The lift: 0 is the lobby's distance field exactly, 1 is the corridor's
-   * exactly, and in between the shader mixes them. From `descent.ts`, where the
-   * requirement that the endpoints be exact is spelled out.
+   * The lift, as floors below the lobby: 0 is the lobby's distance field exactly,
+   * 1 the corridor's, 2 the library's, and between any adjacent pair the shader
+   * mixes them. From `descent.ts`, where the requirement that the endpoints be
+   * exact is spelled out.
    */
-  readonly morph: number;
+  readonly depth: number;
 }
 
 export class HotelRenderer {
@@ -202,7 +207,7 @@ export class HotelRenderer {
 
     // Interpolated across the leftover of the fixed step — see the file comment.
     const seconds = frame.simulatedSeconds + (frame.alpha * FIXED_STEP_MS) / 1000;
-    const camera = breathe(seconds, hotel.morph);
+    const camera = breathe(seconds, hotel.depth);
 
     gl.useProgram(this.program);
     gl.uniform2f(this.at('uResolution'), size.width, size.height);
@@ -210,7 +215,7 @@ export class HotelRenderer {
     gl.uniform3f(this.at('uEye'), camera.eye.x, camera.eye.y, camera.eye.z);
     gl.uniform3f(this.at('uTarget'), camera.target.x, camera.target.y, camera.target.z);
     gl.uniform1f(this.at('uRoll'), camera.roll);
-    gl.uniform1f(this.at('uMorph'), hotel.morph);
+    gl.uniform1f(this.at('uDepth'), hotel.depth);
     gl.uniform1i(this.at('uMarchSteps'), tier.marchSteps);
     gl.uniform1i(this.at('uShadowSteps'), tier.shadowSteps);
     gl.uniform1i(this.at('uVolumetricSamples'), tier.volumetricSamples);
@@ -249,6 +254,15 @@ export class HotelRenderer {
     gl.uniform3f(this.at('uCorridorFloor'), ...corridor.ambientFloor);
     gl.uniform3f(this.at('uCorridorSky'), ...corridor.ambientSky);
     gl.uniform1f(this.at('uCorridorDust'), corridor.dust);
+
+    const library = hotel.library;
+    gl.uniform3f(this.at('uReadingColour'), ...library.readingColour);
+    gl.uniform1f(this.at('uReadingStrength'), library.readingStrength);
+    gl.uniform1f(this.at('uInk'), library.inkStrength);
+    gl.uniform1f(this.at('uLibraryExposure'), library.exposure);
+    gl.uniform3f(this.at('uLibraryFloor'), ...library.ambientFloor);
+    gl.uniform3f(this.at('uLibrarySky'), ...library.ambientSky);
+    gl.uniform1f(this.at('uLibraryDust'), library.dust);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     return true;

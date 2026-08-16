@@ -212,6 +212,93 @@ export const FLOOR_PROSE: Readonly<Record<Floor, readonly string[]>> = {
       'you came down in, with a gap above its doors.',
     'You are carrying a light. It is the only thing on this floor that is yours.',
   ],
+
+  '-2': [
+    'Both walls are shelved from the skirting to the cornice, in bays with a pilaster between ' +
+      'each pair, and there is a run of lamps along the top of each case. That is why you can ' +
+      'read the top shelf and the bottom shelf equally well — the light is a line rather than a ' +
+      'point, which is how a library has always been lit.',
+    'Four tables down the middle, far enough apart to be quiet, each with a brass lamp under a ' +
+      'green shade. It is the same lamp that is on the desk two floors up. Somebody bought them ' +
+      'at the same time.',
+    'You set the light down somewhere on the way in. This room has its own, and it has never ' +
+      'needed to borrow any.',
+    'One sentence is going to live in here, in eight writing systems at once, dissolving from ' +
+      'each into the next. It is not written yet, and until it is, this floor says what it has ' +
+      'to say with the spines.',
+  ],
+};
+
+/**
+ * The five hours on Floor −2.
+ *
+ * The library is the one floor whose light does not answer the sun — see
+ * `rooms/library-rig.ts`, where five of six fields are identical at all five hours
+ * and the sixth is the whole idea. So this is the one set of five in this file
+ * where the clerk cannot mention the light, because the light has not changed. It
+ * has to describe a room getting quieter without getting darker, which is a harder
+ * sentence and the reason this floor is worth having.
+ *
+ * The rule the rest of the file follows holds here too: nothing states a clock
+ * time. And one more, particular to this floor — nothing says the word *dawn*. A
+ * visitor who is told the writing goes at sunrise has been handed the connection;
+ * one who takes the lift down at four in the morning, reads a shelf, and comes
+ * back at noon to find the same shelf blank under the same lamps has made it
+ * themselves, and will not forget it.
+ */
+export const LIBRARY_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
+  open: {
+    plate: 'Floor −2, and every shelf on both walls can be read from where you stand.',
+    picture:
+      'A below-ground reading room, drawn in real time. Bookcases run the length of both walls ' +
+      'in bays, lit along their tops; four long tables recede down the middle, each with a lamp ' +
+      'under a green shade. The gilt on the spines catches the light in two long lines.',
+    opening:
+      'Both walls are shelved to the cornice and every spine is lettered. Read any of them — ' +
+      'this is the hour the room is for.',
+  },
+
+  late: {
+    plate: 'The lettering is going at the far end. The lamps have not moved.',
+    picture:
+      'A below-ground reading room, drawn in real time. The bookcases and the reading lamps are ' +
+      'exactly as bright as before, but the gilt on the more distant spines has begun to go.',
+    opening:
+      'Something is going from the far end of both walls, and it is not the light. The lamps are ' +
+      'burning at exactly the strength they were. The titles down there are not.',
+  },
+
+  warning: {
+    plate: 'Half the shelves have stopped saying what is on them.',
+    picture:
+      'A below-ground reading room, fully lit, drawn in real time. About half the spines still ' +
+      'carry visible gilt; the rest are plain cloth in three colours, and the room is no darker ' +
+      'for it.',
+    opening:
+      'About half of it is gone. You can still read the nearest bay, and you can see exactly how ' +
+      'much you have lost by looking one bay further on.',
+  },
+
+  aubade: {
+    plate: 'There is nothing left in here that can be read. Nothing has been turned off.',
+    picture:
+      'A below-ground reading room at full brightness, drawn in real time. The spines are bare ' +
+      'cloth; a suggestion of gilt survives on a few of the nearest, and no title anywhere is ' +
+      'legible.',
+    opening:
+      'What is left on the spines is the idea of lettering rather than lettering. Every lamp in ' +
+      'the room is still lit. That is the part worth standing still for.',
+  },
+
+  shuttered: {
+    plate: 'A fully lit library with nothing written in it.',
+    picture:
+      'A below-ground reading room, drawn in real time, lit exactly as it is at midnight. Every ' +
+      'spine on both walls is blank cloth. There is no writing anywhere in the room.',
+    opening:
+      'Every lamp is burning. Both walls are full. Not one book on either of them says what it ' +
+      'is, and none of them ever did at this hour.',
+  },
 };
 
 /**
@@ -274,6 +361,7 @@ export const RENDER_NOTES = {
 export const FLOOR_NAMES: Readonly<Record<Floor, string>> = {
   0: 'Floor 0 — The Desk',
   '-1': 'Floor −1 — The Mirror Corridor',
+  '-2': 'Floor −2 — The Library',
 };
 
 /**

@@ -14,6 +14,7 @@ import {
   FLOOR_NAMES,
   FLOOR_PROSE,
   INVITATION,
+  LIBRARY_COPY,
   LIFT_COPY,
   READER_CUE,
   RENDER_NOTES,
@@ -22,10 +23,11 @@ import {
   formatClockTime,
 } from './desk';
 import {
+  canCall,
+  depthAt,
+  depthForFloor,
   floorAfter,
   liftHasArrived,
-  morphAt,
-  morphForFloor,
   type Floor,
   type ILift,
   type LiftDirection,
@@ -35,6 +37,7 @@ import { forcedState, readTheSun, SUN_INTERVAL_MS } from './hour';
 import { prefersReducedMotion } from './reduced-motion';
 import type { HotelRenderer } from './renderer';
 import { corridorRigFor } from './rooms/corridor-rig';
+import { libraryRigFor } from './rooms/library-rig';
 import { rigFor } from './rooms/light-rig';
 import type { IAubadeClock } from './solar';
 
@@ -166,9 +169,13 @@ export class Aubade implements AfterViewInit, OnDestroy {
    * One lookup rather than a branch in the template, and it is the same shape on
    * both floors so nothing downstream has to know which one it got.
    */
-  public readonly copy = computed(() =>
-    this.floor() === -1 ? CORRIDOR_COPY[this.state()] : DESK_COPY[this.state()]
-  );
+  public readonly copy = computed(() => {
+    const floor = this.floor();
+    if (floor === -2) {
+      return LIBRARY_COPY[this.state()];
+    }
+    return floor === -1 ? CORRIDOR_COPY[this.state()] : DESK_COPY[this.state()];
+  });
 
   /** What the plate over the room calls this floor. */
   public readonly floorName = computed(() => FLOOR_NAMES[this.floor()]);
@@ -195,39 +202,52 @@ export class Aubade implements AfterViewInit, OnDestroy {
       !(this.state() === 'shuttered' && !this.invited())
   );
 
-  /** Which way the lift would go if it were called. */
-  public readonly liftDirection = computed<LiftDirection>(() =>
-    this.floor() === -1 ? 'up' : 'down'
-  );
-
   /**
-   * The lift's control: what it says, and whether it can be pressed.
+   * The lift's controls: one per direction the shaft actually goes from here.
    *
-   * `null` when there is no render to move between — a browser without WebGL2 gets
-   * the prose for both floors and no lift, because a control that changes a picture
+   * Empty when there is no render to move between — a browser without WebGL2 gets
+   * the prose for every floor and no lift, because a control that changes a picture
    * nobody can see is worse than no control.
    *
-   * One button in three states rather than a button that is sometimes a line of
+   * A list rather than the single button this was, because the middle floor is the
+   * first one with somewhere to go in both directions and a lift with one button on
+   * a middle floor is a lift that has decided for you. The ends of the shaft still
+   * show one control each, and they show it because `canCall` says so rather than
+   * because the template knows which floors those are.
+   *
+   * Buttons stay mounted and go disabled rather than being swapped for a line of
    * text, and that is a decision about behaviour before it is one about template
    * complexity. Swapping the element out mid-ride reflows the plate under whatever
    * the visitor is pointing at, and a screen reader gets a removal and an insertion
    * where what actually happened is that one control became unavailable. Disabling
    * it says that, and says it in the building's own voice.
    */
-  public readonly liftControl = computed<{ text: string; enabled: boolean } | null>(() => {
+  public readonly liftControls = computed<
+    ReadonlyArray<{ direction: LiftDirection; text: string; enabled: boolean }>
+  >(() => {
     if (this.mode() === 'closed') {
-      return null;
+      return [];
     }
-    if (this.riding()) {
-      return { text: LIFT_COPY.moving, enabled: false };
-    }
-    if (this.state() === 'shuttered' && !this.invited()) {
-      return { text: LIFT_COPY.shut, enabled: false };
-    }
-    return {
-      text: this.liftDirection() === 'up' ? LIFT_COPY.up : LIFT_COPY.down,
-      enabled: true,
-    };
+
+    const floor = this.floor();
+    const riding = this.riding();
+    const shut = this.state() === 'shuttered' && !this.invited();
+
+    return (['up', 'down'] as const)
+      .filter((direction) => canCall(floor, direction))
+      .map((direction) => {
+        if (riding) {
+          return { direction, text: LIFT_COPY.moving, enabled: false };
+        }
+        if (shut) {
+          return { direction, text: LIFT_COPY.shut, enabled: false };
+        }
+        return {
+          direction,
+          text: direction === 'up' ? LIFT_COPY.up : LIFT_COPY.down,
+          enabled: true,
+        };
+      });
   });
 
   /** The offer, the control, and what taking it leaves behind. */
@@ -392,20 +412,19 @@ export class Aubade implements AfterViewInit, OnDestroy {
    * a reduced-motion visitor gets both rooms and no ride, rather than a ride they
    * asked not to be given.
    */
-  public call(): void {
-    if (!this.liftAvailable()) {
+  public call(direction: LiftDirection): void {
+    const from = this.floor();
+    if (!this.liftAvailable() || !canCall(from, direction)) {
       return;
     }
 
-    const direction = this.liftDirection();
-
     if (this.loop?.running !== true) {
-      this.floor.set(floorAfter(direction));
+      this.floor.set(floorAfter(from, direction));
       this.loop?.renderOnce();
       return;
     }
 
-    this.car = { direction, startedAtSeconds: this.lastSeconds };
+    this.car = { from, direction, startedAtSeconds: this.lastSeconds };
     this.riding.set(true);
   }
 
@@ -425,7 +444,8 @@ export class Aubade implements AfterViewInit, OnDestroy {
       !renderer.render(frame, {
         lobby: rigFor(state, invited),
         corridor: corridorRigFor(state, invited),
-        morph: this.morphNow(frame.simulatedSeconds),
+        library: libraryRigFor(state, invited),
+        depth: this.depthNow(frame.simulatedSeconds),
       })
     ) {
       // A lost context, or a disposed renderer. Stop rather than spin: a loop
@@ -447,15 +467,15 @@ export class Aubade implements AfterViewInit, OnDestroy {
    * Where the lift is, this frame.
    *
    * @param seconds The room's clock.
-   * @returns `uMorph` — the settled floor's endpoint at rest, and the eased
+   * @returns `uDepth` — the settled floor's exact depth at rest, and the eased
    *   progress of the ride while the car is moving.
    */
-  private morphNow(seconds: number): number {
+  private depthNow(seconds: number): number {
     const car = this.car;
     if (car === null) {
-      return morphForFloor(this.floor());
+      return depthForFloor(this.floor());
     }
-    return morphAt(seconds - car.startedAtSeconds, car.direction);
+    return depthAt(seconds - car.startedAtSeconds, car.from, car.direction);
   }
 
   /**
@@ -463,8 +483,8 @@ export class Aubade implements AfterViewInit, OnDestroy {
    *
    * Checked after the draw rather than before it, so the last frame of the descent
    * is rendered as part of the descent. Doing it first lands the visitor on the new
-   * floor one frame early, which is invisible on the render — `morphAt` and
-   * `morphForFloor` agree exactly at the endpoint, which `descent.spec.ts` asserts
+   * floor one frame early, which is invisible on the render — `depthAt` and
+   * `depthForFloor` agree exactly at the endpoint, which `descent.spec.ts` asserts
    * — and wrong on the plate, which would change while the room was still moving.
    */
   private settle(seconds: number): void {
@@ -474,7 +494,7 @@ export class Aubade implements AfterViewInit, OnDestroy {
     }
 
     this.car = null;
-    this.floor.set(floorAfter(car.direction));
+    this.floor.set(floorAfter(car.from, car.direction));
     this.riding.set(false);
   }
 

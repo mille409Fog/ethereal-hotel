@@ -119,7 +119,7 @@ describe('the Reader’s Edition', () => {
 
     it('says which floors are built and which are only written', () => {
       // The one place the fiction and the truth land on the same sentence.
-      // Everything on this page is present tense; four of the six floors do not
+      // Everything on this page is present tense; three of the six floors do not
       // exist; both facts are in the work rather than in a footnote.
       //
       // This assertion is the reason AUBADE tells each new room it owes this page
@@ -128,7 +128,9 @@ describe('the Reader’s Edition', () => {
       // still reads beautifully — so it is checked rather than remembered.
       const everything = prose().join(' ');
 
-      expect(everything).toContain('Floor 0 and Floor −1 exist and the lift runs between them');
+      expect(everything).toContain(
+        'Floor 0, Floor −1 and Floor −2 exist and the lift runs between them'
+      );
       expect(everything).toContain('written and not built');
     });
 

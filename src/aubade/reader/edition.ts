@@ -159,10 +159,13 @@ export const EDITION: readonly IEditionSection[] = [
         floor: 'Floor −2',
         name: 'The Library',
         body:
-          'One sentence, held in eight writing systems at once — Latin, Greek, Cyrillic, ' +
-          'Arabic, Devanagari, Hebrew, Han, Hangul — and moving between them without ever ' +
-          'cutting. The glyphs dissolve into one another. The sentence does not change. It is ' +
-          'not a translation exercise; it is one thought declining to stay in one alphabet.',
+          'A reading room, shelved to the cornice down both walls, four long tables, a lamp on ' +
+          'each. No daylight has ever reached this floor and none of its light answers to any: ' +
+          'every lamp burns at the same strength at three in the morning as at noon. What the ' +
+          'sun takes here is the writing. The gilt goes off the spines as the night ends, and by ' +
+          'sunrise there is not one legible mark in a room as bright as it ever was. One ' +
+          'sentence is still to come, held in eight writing systems at once and dissolving ' +
+          'between them. Until it is written, the shelves say this floor’s piece for it.',
       },
       {
         floor: 'Floor −3',
@@ -198,11 +201,11 @@ export const EDITION: readonly IEditionSection[] = [
         'a cross-fade between two pictures — it is one piece of arithmetic becoming another ' +
         'piece of arithmetic, in full view, which is the only honest way to move between two ' +
         'rooms that are made of nothing but arithmetic.',
-      'At the time of writing, Floor 0 and Floor −1 exist and the lift runs between them. The ' +
-        'four floors below are written and not built, which is exactly why you can read them ' +
-        'here and not walk into them. The distinction is kept on purpose: this is a place that ' +
-        'tells you what it can and cannot do, and a hotel advertising rooms it does not have is ' +
-        'worse than a hotel with two very good ones.',
+      'At the time of writing, Floor 0, Floor −1 and Floor −2 exist and the lift runs between ' +
+        'them, one floor at a time. The three floors below are written and not built, which is ' +
+        'exactly why you can read them here and not walk into them. The distinction is kept on ' +
+        'purpose: this is a place that tells you what it can and cannot do, and a hotel ' +
+        'advertising rooms it does not have is worse than a hotel with three very good ones.',
       'The lift does not run while the hotel is shut. If you are here in daylight there is a ' +
         'control at the desk that opens the place anyway, and it opens the lift with it.',
     ],
