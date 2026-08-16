@@ -197,8 +197,6 @@ when a reader zooms in.
 
 In this order, by ratio of impact to risk:
 
-1. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
-   Devanagari shaping right or cut those two; broken shaping is an insult, not an effect.
 2. **The Cellar** — breath pacing, 4-7-8 cycle, the room resolving over ~90 seconds of stillness.
    The hardest thing here is nerve: it must actually be quiet and actually be slow.
 3. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.

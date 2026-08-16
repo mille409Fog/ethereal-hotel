@@ -85,7 +85,10 @@ async function waitForSettledBooking(page: Page): Promise<void> {
  * depend on. Both states are supposed to pass the audit, which is the point.
  */
 async function waitForSettledAubade(page: Page): Promise<void> {
-  await expect(page.getByText('Unlocking the lobby')).toBeHidden();
+  // Twenty seconds rather than the default five, for the reason given over the
+  // twin of this helper in `aubade.spec.ts`: it is waiting on a lazy chunk, a
+  // shader compile and one CPU-rasterised raymarch, not on a widget settling.
+  await expect(page.getByText('Unlocking the lobby')).toBeHidden({ timeout: 20_000 });
 }
 
 test.describe('accessibility', () => {

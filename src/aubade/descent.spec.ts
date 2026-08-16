@@ -255,10 +255,12 @@ describe('the lift', () => {
       }
     });
 
-    it('clears the shader’s scene-skipping threshold on both sides', () => {
-      // The branch in hotel.frag.ts only fires inside MORPH_EPSILON of an
-      // integer depth. A curve that spends the first second below that threshold
-      // has a lift that visibly does nothing before it starts.
+    it('clears the shader’s mirror threshold on both sides', () => {
+      // The mirror in hotel.frag.ts only wakes inside MORPH_EPSILON of depth 1.
+      // A curve that spends the first second inside that band has a lift that
+      // visibly does nothing before it starts. The scene branch next to it needs
+      // no such clearance — it has no epsilon — so this is the wider of the two
+      // demands the shader makes on the curve, and the only one worth asserting.
       for (const { from, direction } of legs) {
         const departed = depthForFloor(from);
         const arriving = depthForFloor(floorAfter(from, direction));

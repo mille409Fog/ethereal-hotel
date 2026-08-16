@@ -26,9 +26,21 @@ import { expect, test, type Page } from '@playwright/test';
  * frame reaches the canvas, not how many.
  */
 
-/** The plate stops saying this once the renderer chunk has resolved. */
+/**
+ * The plate stops saying this once the renderer chunk has resolved and the first
+ * frame is on the canvas.
+ *
+ * Given its own budget rather than the default five seconds, because that is what
+ * it is actually waiting for: a lazy chunk, a shader compile, and one raymarched
+ * frame rasterised on the CPU. Five seconds is a sensible default for a widget
+ * settling and a coin toss for this — it passed the whole suite one run and failed
+ * here the next, on a box doing nothing differently. Twenty leaves ten inside the
+ * test timeout for whatever the test came to assert.
+ */
+const LOBBY_TIMEOUT = 20_000;
+
 async function waitForTheLobby(page: Page): Promise<void> {
-  await expect(page.getByText('Unlocking the lobby')).toBeHidden();
+  await expect(page.getByText('Unlocking the lobby')).toBeHidden({ timeout: LOBBY_TIMEOUT });
 }
 
 /** Open the route with the camera held still — see the file comment. */
@@ -359,6 +371,18 @@ test.describe('the camera', () => {
     // End to end, this is the assertion that the fixed-step accumulator, the
     // drift function and the uniform upload are all wired to each other: if any
     // of the three is inert, consecutive frames are identical.
+    //
+    // The only test in the file that lets the loop run uncapped, and the only one
+    // that needs more than the default budget. Screenshotting a WebGL canvas
+    // forces a readback, and a readback has to interleave with a raymarch that is
+    // being rasterised on the same CPUs — so this waits on the contention rather
+    // than on the page. It passes in about ten seconds alone and overruns thirty
+    // beside another worker, which is a fact about SwiftShader and not about the
+    // camera. `test.slow()` rather than a raised default: every other test here
+    // draws one frame and stops, and none of them should be allowed to quietly
+    // take ninety seconds.
+    test.slow();
+
     await page.goto('/aubade');
     await waitForTheLobby(page);
 
@@ -374,7 +398,7 @@ test.describe('the camera', () => {
     // Honoured at the concept level: not a slower camera, no camera.
     await openStill(page);
 
-    await expect(page.getByText('holding its breath')).toBeVisible();
+    await expect(page.getByText('holding their breath')).toBeVisible();
 
     const canvas = page.locator('canvas');
     const first = await canvas.screenshot();

@@ -36,18 +36,22 @@
  *
  * This is the one subtle thing in the file, and generalising the lift made it
  * subtler rather than less so. `hotel.frag.ts` branches on `uDepth` to skip whole
- * scenes: within `MORPH_EPSILON` of an integer it evaluates that floor alone, and
- * only between them does it evaluate two and mix them. That branch is what keeps
- * the settled floors at the same cost they had when there was only one room — and
- * it is also what wakes the mirror, which is a second march, only ever runs at
- * depth 1, and does not run during a ride.
+ * scenes, and it does so on an exact comparison: an integral depth evaluates that
+ * floor alone, and every other depth evaluates the two floors it lies between and
+ * mixes them. That branch is what keeps the settled floors at the same cost they
+ * had when there was only one room. `MORPH_EPSILON` is a second, wider net thrown
+ * over the same endpoints, and it is the mirror's — a second march that only ever
+ * runs at depth 1 and does not run during a ride.
  *
  * So an easing curve that approaches its endpoint asymptotically, or lands on
  * 0.9997, is not a rounding error. It is a corridor that permanently pays for a
- * lobby nobody can see, and a mirror that never turns on. The progress function is
- * required to return its two endpoints exactly, and `descent.spec.ts` asserts it
- * with `toBe` rather than `toBeCloseTo` for that reason — now at three values
- * rather than two, which is three chances for the same invisible failure.
+ * lobby nobody can see, and — a thousandth further out — a mirror that never turns
+ * on. The scene branch is the unforgiving one of the two, because it has no
+ * epsilon at all: a depth is either a floor or it is between two, and there is no
+ * third thing for a tolerance to describe. The progress function is required to
+ * return its two endpoints exactly, and `descent.spec.ts` asserts it with `toBe`
+ * rather than `toBeCloseTo` for that reason — now at three values rather than two,
+ * which is three chances for the same invisible failure.
  *
  * ## Why it is timed rather than driven
  *
@@ -101,8 +105,13 @@ export const LOWEST_FLOOR: Floor = -2;
 export const LIFT_SECONDS = 7.5;
 
 /**
- * How close to an endpoint counts as arrived, for the shader's scene-skipping
- * branch and for this file's own arithmetic.
+ * How close to an endpoint counts as arrived, for the shader's mirror and for
+ * this file's own arithmetic.
+ *
+ * Not for the shader's scene-skipping branch, which takes no epsilon — see §Why
+ * the endpoints have to be exact. The two used to be one test, and separating them
+ * cost the mirror nothing and bought the scene branch the right to name each room
+ * exactly once.
  *
  * Shared with `hotel.frag.ts`, which declares the same number as a GLSL constant.
  * They are two declarations of one value because the shader cannot import — see

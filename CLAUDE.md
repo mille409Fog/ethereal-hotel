@@ -180,12 +180,18 @@ not leave the note behind when the suppression goes.
   `lhci` cannot forward Chrome flags regardless. CONTRIBUTING has the direct-run command that
   shows the scores. The thresholds are enforced by the Linux CI job — do not loosen them, and do
   not conclude the site regressed, on the strength of a local `EPERM`.
-- **Most of `e2e/aubade.spec.ts` cannot pass locally on this box either, and that is also not a
-  regression.** SwiftShader is a CPU rasteriser: one 1280×720 frame of this raymarcher costs
-  about 13s here against a 30s per-test budget, so under ten parallel workers most of the suite
-  times out. Measured at a clean `HEAD`, before any local change: 5 passed, 11 failed. Do not
-  "fix" it by shrinking viewports or raising timeouts on the strength of a local run — shrinking
-  the viewport is what `renders the lobby` exists to resist, and the Linux CI job is what decides.
+- **Run `e2e/aubade.spec.ts` at `--workers=2` before believing a local failure.** SwiftShader is a
+  CPU rasteriser and the default ten workers oversubscribe this box: measured at a clean `HEAD`,
+  16 of 16 pass at two workers and 15 at ten, the straggler being whichever test has to fetch the
+  renderer chunk and draw a first frame under the most contention. Two is also what a four-core CI
+  runner gives itself, so it is the honest local reading. Do not "fix" a failure by shrinking
+  viewports or raising timeouts on the strength of a local run — shrinking the viewport is what
+  `renders the lobby` exists to resist, and the Linux CI job is what decides.
+- **A 1280×720 frame costs about 1.5s here, and that number is a canary.** It read 13s once, and
+  the box was not the reason — `mapScene` had grown a third floor in a way that named seven rooms
+  where three would do, which cost ten times the frame and timed out twelve CI tests.
+  `npm run verify:shader` prints a wall time for 25 frames (about 40s); a large jump in it is a
+  shader regression, not a slow afternoon.
 - Windows box. `run.bat` and `start-dev.bat` exist alongside their `.sh` twins. Ports in play:
   4200 (ng serve), 8000 (FastAPI), 4173 (`scripts/serve-dist.mjs` for Playwright and Lighthouse).
 
@@ -234,7 +240,11 @@ mistake for bugs:
   corridor, 2 in the library — depth is minus the floor, exactly — and `mapScene` branches on
   which *pair* a ride is between, so a ride still evaluates two distance fields and a settled
   floor one. AUBADE's phase note named the alternative (the lift becomes a fade) and it was
-  rejected. Every integer must be hit *exactly*, because the shader skips a scene there and the
+  rejected. **`mapScene` must also name each room exactly once**, which is a claim about the
+  compiler rather than the frame: it is inlined at seven sites, so a room written twice is a
+  second copy of its field in all seven, and writing it as early returns over a two-armed mix
+  cost SwiftShader ten times the frame for a lobby that had not changed. Every integer must be
+  hit *exactly*, because the scene branch has no epsilon at all, and the
   mirror's second march only wakes inside `MORPH_EPSILON` of 1 — a two-sided band, not a
   threshold, or it stays awake down to a floor with no mirror in it. `MORPH_EPSILON` is declared
   twice (`descent.ts`, and GLSL, which cannot import) and `check:docs` fails on drift; a drifted

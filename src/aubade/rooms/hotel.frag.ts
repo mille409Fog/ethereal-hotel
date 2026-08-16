@@ -1649,42 +1649,45 @@ const SCENE_GLSL = `
  *
  * See the file comment for why the mix is a valid distance field and why the
  * material snaps rather than blends. Every branch here is on a uniform, so every
- * pixel in the draw takes the same side of all of them and together they cost
- * three compares.
+ * pixel in the draw takes the same side of all of them.
  *
- * **A ride still evaluates exactly two fields, and a settled floor exactly one.**
- * That is the whole reason the third floor is a branch on which pair is being
- * mixed rather than a third term in one expression — AUBADE's phase note names
- * both options and this is the one that keeps the cost where it was. Adding
- * floors −3, −4 and −5 adds one early return and one arm each, and never adds a
- * third field to any single frame, because a lift is only ever between two floors.
+ * **A ride evaluates two fields and a settled floor one — and each room is named
+ * once.** The second half is the load-bearing half, and it is about the compiler
+ * rather than the frame: this function is inlined at seven sites (the march, four
+ * normal samples, the shadow, the occlusion, the volumetric), so a room written
+ * twice is a second copy of its field in all seven. Written as three early returns
+ * over a two-armed mix it named seven rooms rather than three, and SwiftShader
+ * charged ten times the frame for a lobby whose geometry had not changed. Floors
+ * −3 and −4 add an arm each and never a third field, because a lift is only ever
+ * between two floors.
  */
 vec2 mapScene(vec3 p) {
-  if (uDepth < MORPH_EPSILON) {
-    return mapLobby(p);
-  }
-  if (abs(uDepth - 1.0) < MORPH_EPSILON) {
-    return mapCorridor(p);
-  }
-  if (uDepth > 2.0 - MORPH_EPSILON) {
-    return mapLibrary(p);
-  }
-
-  // The leg the car is on, and how far along it. floor() is exact here because
-  // the endpoints were excluded above.
-  float leg = floor(uDepth);
+  // The leg the car is on, how far along it, and the rooms that leg needs. Only a
+  // ride asks for two of them; a settled floor asks for one and skips the rest.
+  float leg = uDepth < 1.0 ? 0.0 : 1.0;
   float t = uDepth - leg;
+  bool lower = leg > 0.5;
 
-  vec2 above = leg < 0.5 ? mapLobby(p) : mapCorridor(p);
-  vec2 below = leg < 0.5 ? mapCorridor(p) : mapLibrary(p);
+  bool needLobby = !lower && t < 1.0;
+  bool needCorridor = lower ? t < 1.0 : t > 0.0;
+  bool needLibrary = lower && t > 0.0;
 
-  // Whichever surface is nearer, biased by the lift. At t = 0 this is always the
-  // departing room and at t = 1 always the arriving one, so the early returns
-  // above are consistent with it rather than special cases; in between it is the
-  // nearer of the two, which is what keeps an emitter in frame the whole way down.
+  // Nothing, arbitrarily far off: it loses every mix and every compare it meets.
+  const vec2 NOWHERE = vec2(MAX_DISTANCE * 2.0, -1.0);
+
+  vec2 corridor = needCorridor ? mapCorridor(p) : NOWHERE;
+  vec2 above = lower ? corridor : (needLobby ? mapLobby(p) : NOWHERE);
+  vec2 below = lower ? (needLibrary ? mapLibrary(p) : NOWHERE) : corridor;
+
+  // Whichever surface is nearer, biased by the lift, which is what keeps an
+  // emitter in frame the whole way down. mix() is exact at both ends but the bias
+  // is not — a point on the lobby's ceiling is inside the corridor's, so at t = 0
+  // it reads below.x < 0 and hands a settled Floor 0 plaster from a floor nobody
+  // is standing on. So the endpoints name their own material.
   float pick = above.x * t - below.x * (1.0 - t);
+  float material = t <= 0.0 ? above.y : t >= 1.0 ? below.y : pick < 0.0 ? above.y : below.y;
 
-  return vec2(mix(above.x, below.x, t), pick < 0.0 ? above.y : below.y);
+  return vec2(mix(above.x, below.x, t), material);
 }
 
 /**
