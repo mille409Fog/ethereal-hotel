@@ -227,6 +227,21 @@ export const FLOOR_PROSE: Readonly<Record<Floor, readonly string[]>> = {
       'each into the next. It is not written yet, and until it is, this floor says what it has ' +
       'to say with the spines.',
   ],
+
+  '-3': [
+    'A brick barrel vault, springing off the wall heads at about shoulder height and closing ' +
+      'overhead in one unbroken curve the length of the room. It was laid a ring at a time from ' +
+      'one end to the other, which is why the courses run round it rather than along it, and there ' +
+      'is a century of saltpetre coming through the joints near the floor.',
+    'Down the right-hand side, seven casks on stillages with iron hoops. Down the left, a corbel ' +
+      'with a candle on it. At the far end, standing water and a boarded lift — the brass stops at ' +
+      'the library; below that it is a service lift and nobody was ever going to see it.',
+    'This is the only room in the hotel that asks you for something. It is not difficult and it is ' +
+      'not short: stand still, and stay standing still. Every time you move you give some of it ' +
+      'back.',
+    'It is also the only room that is exactly the same for everybody who walks into it. What is ' +
+      'different is what happens next, and that is not the same for everybody at all.',
+  ],
 };
 
 /**
@@ -302,6 +317,115 @@ export const LIBRARY_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
 };
 
 /**
+ * The five hours on Floor −3.
+ *
+ * The hardest set in the file, because the clerk cannot describe the light — it
+ * has not changed — and cannot describe the room either, since the room has not
+ * changed and is mostly not visible. What is different at each hour is how much of
+ * it a person standing still is eventually going to get, and that is a fact about
+ * the visitor rather than about the hotel. See `rooms/cellar-rig.ts`.
+ *
+ * So these five are written from the far side of the ninety seconds. They describe
+ * what staying is worth tonight, and they get shorter and flatter as the sun comes
+ * up, which is the only honest shape for the thing they are reporting.
+ *
+ * The rule the rest of the file keeps holds here: nothing states a clock time. And
+ * one particular to this floor, inherited from the corridor's — **nothing explains
+ * why it works.** The plate says what to do, because AUBADE's fourth failure mode
+ * is a piece nobody can tell what to do with inside eight seconds and this floor
+ * would fail it outright without an instruction. It does not say that the room is
+ * unchanged and the change is in the reader's own eyes. A visitor who works that
+ * out has been given something; a visitor who is told it has been given a caption.
+ */
+export const CELLAR_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
+  open: {
+    plate:
+      'Floor −3. Nothing in this room is going to happen, and it takes about a minute and a half.',
+    picture:
+      'A brick barrel vault below ground, drawn in real time. One candle burns on a corbel on the ' +
+      'left-hand wall; a row of casks on iron-hooped stillages recedes down the right, and the far ' +
+      'end of the room is dark.',
+    opening:
+      'One candle, on a ledge, on the left. Everything else in here is a rumour. Stand still and ' +
+      'the rest of it arrives — all of it, tonight — and moving costs you some of what you have.',
+  },
+
+  late: {
+    plate: 'Most of it will still come, and the far end will not.',
+    picture:
+      'A brick barrel vault below ground, drawn in real time. The candle and the near casks are ' +
+      'visible; the far end of the vault stays dark.',
+    opening:
+      'Stand still and most of this will come in. Not the far end — that has gone tonight, and it ' +
+      'went the way everything in this hotel goes, which is quietly and from the end you are not ' +
+      'looking at.',
+  },
+
+  warning: {
+    plate:
+      'The vault overhead and the nearest casks. That is what a minute and a half is worth now.',
+    picture:
+      'A brick barrel vault below ground, drawn in real time. Only the bay above the candle and ' +
+      'the two nearest casks emerge from the dark.',
+    opening:
+      'You can have the vault directly above you and the two nearest casks. You can tell there is ' +
+      'more. You are not going to get it, and standing here longer is not the variable.',
+  },
+
+  aubade: {
+    plate: 'A metre further than the candle throws. It is not the waiting that is short.',
+    picture:
+      'A brick barrel vault below ground, almost entirely dark, drawn in real time. A little more ' +
+      'brickwork around the candle is visible than on arrival, and nothing else is.',
+    opening:
+      'Ninety seconds here buys about a metre. What is left of the room past that is the same dark ' +
+      'it was when you came in, and it is going to stay that way for as long as you can bear to ' +
+      'stand in it.',
+  },
+
+  shuttered: {
+    plate: 'The room is perfectly willing. You came in out of the daylight.',
+    picture:
+      'A brick barrel vault below ground, drawn in real time, lit by one candle exactly as it is ' +
+      'at midnight. Almost none of the room is visible.',
+    opening:
+      'The candle is burning at exactly the strength it burns at three in the morning, and this is ' +
+      'the whole of what you are going to see. Nothing has been turned off and nothing is being ' +
+      'kept from you. You can stand here all afternoon.',
+  },
+};
+
+/**
+ * What the plate says about how far into the room the visitor has got.
+ *
+ * The one piece of copy in AUBADE that reports a mechanism, and it is here because
+ * without it the floor is a black rectangle that a visitor leaves after four
+ * seconds. AUBADE's fourth failure mode is a piece that is impressive and
+ * unreadable — "ambiguity is a choice; confusion is a bug" — and a room whose whole
+ * content is on the far side of ninety seconds of doing nothing has to say so.
+ *
+ * It says what to do and stops. It does not say what will happen, and it never says
+ * that the room is unchanged; that is the thing the floor is for and it is left
+ * where a visitor can find it.
+ */
+export const STILLNESS_COPY = {
+  /** On arrival, and after any disturbance has cost enough to matter. */
+  waiting: 'You have only just come in. Stand still.',
+
+  /** While it is coming. */
+  arriving: 'It is coming. Keep still.',
+
+  /** All the way in — as far as tonight goes, which is not always all the way. */
+  settled: 'That is the whole of what tonight had.',
+
+  /**
+   * Day. The ceiling is exactly zero, so there is nothing to report and saying
+   * "keep still" would be a lie told to somebody being patient.
+   */
+  daylit: 'Standing still will not do anything here today.',
+} as const;
+
+/**
  * The lift, in the two directions it goes and the one state it will not be argued
  * with in.
  *
@@ -362,6 +486,7 @@ export const FLOOR_NAMES: Readonly<Record<Floor, string>> = {
   0: 'Floor 0 — The Desk',
   '-1': 'Floor −1 — The Mirror Corridor',
   '-2': 'Floor −2 — The Library',
+  '-3': 'Floor −3 — The Cellar',
 };
 
 /**

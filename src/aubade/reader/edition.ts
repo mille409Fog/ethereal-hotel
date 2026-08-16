@@ -24,11 +24,13 @@
  * which is computed rather than written, and is the only part of this page that
  * changes.
  *
- * **The five unbuilt floors are described in the present tense and then named as
+ * **The unbuilt floors are described in the present tense and then named as
  * unbuilt.** That is not a hedge bolted onto the fiction — it is the fiction and
  * the truth landing on the same sentence, which is the most this repository ever
- * asks of a paragraph. The lift is not running. Five floors are written and not
- * built. Both statements are in the work, and neither is in a footnote.
+ * asks of a paragraph. Both statements are in the work, and neither is in a
+ * footnote. The count in the coda moves every time a floor lands, and moving it is
+ * part of landing one: a room that ships without taking itself out of that list has
+ * quietly made this page lie.
  */
 
 /** One floor of the hotel, as the Reader’s Edition lists it. */
@@ -171,10 +173,12 @@ export const EDITION: readonly IEditionSection[] = [
         floor: 'Floor −3',
         name: 'The Cellar',
         body:
-          'Nearly dark, nearly silent, and slow. The room resolves only if you stay in it, over ' +
-          'about ninety seconds, at the pace of a long breath. Nothing here rewards attention ' +
-          'paid quickly, which is why it will be the floor people remember. That is the usual ' +
-          'arrangement with patience.',
+          'A brick barrel vault, seven casks on iron hoops, standing water at the low end, one ' +
+          'tallow candle. Nothing in it ever changes, at any hour, for anybody. Stand still for ' +
+          'ninety seconds and the whole room arrives anyway — the coursing overhead, the ' +
+          'saltpetre in the joints, a far wall you had no reason to think was there. Move and ' +
+          'you give some of it back. How much you get at all depends on the sun, which has never ' +
+          'been down here and does not need to have been.',
       },
       {
         floor: 'Floor −4',
@@ -201,11 +205,11 @@ export const EDITION: readonly IEditionSection[] = [
         'a cross-fade between two pictures — it is one piece of arithmetic becoming another ' +
         'piece of arithmetic, in full view, which is the only honest way to move between two ' +
         'rooms that are made of nothing but arithmetic.',
-      'At the time of writing, Floor 0, Floor −1 and Floor −2 exist and the lift runs between ' +
-        'them, one floor at a time. The three floors below are written and not built, which is ' +
-        'exactly why you can read them here and not walk into them. The distinction is kept on ' +
+      'At the time of writing, Floor 0, Floor −1, Floor −2 and Floor −3 exist and the lift runs ' +
+        'between them, one floor at a time. The two floors below are written and not built, which ' +
+        'is exactly why you can read them here and not walk into them. The distinction is kept on ' +
         'purpose: this is a place that tells you what it can and cannot do, and a hotel ' +
-        'advertising rooms it does not have is worse than a hotel with three very good ones.',
+        'advertising rooms it does not have is worse than a hotel with four very good ones.',
       'The lift does not run while the hotel is shut. If you are here in daylight there is a ' +
         'control at the desk that opens the place anyway, and it opens the lift with it.',
     ],

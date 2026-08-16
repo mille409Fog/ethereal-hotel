@@ -58,10 +58,10 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | File                | Size | Read it when                                                                                                                          |
 | ------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `ROADMAP.md`        | 4K   | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here. |
-| `README.md`         | 5K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
+| `README.md`         | 6K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
 | `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
 | `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
-| `AUBADE.md`         | 17K  | Only if the task touches `/aubade` (a separate WebGL project). Five phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), and the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`). The Library's *room* has landed too (`rooms/library-rig.ts`, `mapLibrary`) — its phase has not, because the sentence in eight writing systems is what that phase is, so the item stays on the list. |
+| `AUBADE.md`         | 19K  | Only if the task touches `/aubade` (a separate WebGL project). Six phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`), and the Cellar on Floor −3 (`cellar.ts`, `rooms/cellar-rig.ts`, `adapted()`). The Library's *room* has landed too (`rooms/library-rig.ts`, `mapLibrary`) — its phase has not, because the sentence in eight writing systems is what that phase is, so the item stays on the list. |
 | `CONTRIBUTING.md`   | 6K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
@@ -237,9 +237,9 @@ mistake for bugs:
   own `exposure` too: `uExposure` is Floor 0's field and `tonemap` applies it to the whole frame,
   so un-blended the lobby's noon stop reached two storeys down and brightened the library by 8%.
 - **The lift is one uniform, and it counts floors.** `uDepth` is 0 in the lobby, 1 in the
-  corridor, 2 in the library — depth is minus the floor, exactly — and `mapScene` branches on
-  which *pair* a ride is between, so a ride still evaluates two distance fields and a settled
-  floor one. AUBADE's phase note named the alternative (the lift becomes a fade) and it was
+  corridor, 2 in the library, 3 in the cellar — depth is minus the floor, exactly — and `mapScene`
+  branches on which *pair* a ride is between, so a ride still evaluates two distance fields and a
+  settled floor one. AUBADE's phase note named the alternative (the lift becomes a fade) and it was
   rejected. **`mapScene` must also name each room exactly once**, which is a claim about the
   compiler rather than the frame: it is inlined at seven sites, so a room written twice is a
   second copy of its field in all seven, and writing it as early returns over a two-armed mix
@@ -249,6 +249,16 @@ mistake for bugs:
   threshold, or it stays awake down to a floor with no mirror in it. `MORPH_EPSILON` is declared
   twice (`descent.ts`, and GLSL, which cannot import) and `check:docs` fails on drift; a drifted
   pair looks fine and silently costs the mirror.
+- **Floor −3 does not change, and the visitor does.** The Cellar's field is identical at every
+  hour and for everybody; the ninety seconds are `adapted()`, a gain and a desaturation on the
+  finished frame. `check:docs` fails if `uStillness` or `uAdaptation` appears inside
+  `CELLAR_GLSL` — a room that knows how still you have been assembles itself, which is the thing
+  this floor exists not to do — and if `adaptation` stops being **exactly 0** at `shuttered`. So
+  its frames are a *pair* rather than a series, and `verify:shader` asserts that shape: five
+  identical `arriving` frames, a settled one 3× brighter and *less* coloured, and the noon pair
+  equal. `arriving` is deliberately uncommitted (five copies of one picture). Under
+  `prefers-reduced-motion` the room is handed over already resolved — that path draws one frame,
+  so the alternative is black for ever.
 - **The absent reflection is one argument**: `shadeSurface`'s `carried`, 1 in the room and 0 in
   the mirror. Deliberately unphysical — a correct mirror would show the lit floor — so passing
   1.0 gives a beautiful corridor about nothing. No test sees that, so `check:docs` does.

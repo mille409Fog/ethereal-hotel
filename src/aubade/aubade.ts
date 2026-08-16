@@ -8,7 +8,9 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { breathAt, settleStep } from './cellar';
 import {
+  CELLAR_COPY,
   CORRIDOR_COPY,
   DESK_COPY,
   FLOOR_NAMES,
@@ -18,6 +20,7 @@ import {
   LIFT_COPY,
   READER_CUE,
   RENDER_NOTES,
+  STILLNESS_COPY,
   SUNSET_CARD,
   describeCountdown,
   formatClockTime,
@@ -36,10 +39,12 @@ import { FrameLoop, type IFrame } from './gl/loop';
 import { forcedState, readTheSun, SUN_INTERVAL_MS } from './hour';
 import { prefersReducedMotion } from './reduced-motion';
 import type { HotelRenderer } from './renderer';
+import { cellarRigFor } from './rooms/cellar-rig';
 import { corridorRigFor } from './rooms/corridor-rig';
 import { libraryRigFor } from './rooms/library-rig';
 import { rigFor } from './rooms/light-rig';
 import type { IAubadeClock } from './solar';
+import type { AubadeState } from './solar/state';
 
 /** Where the desk card stops counting hours and starts describing a season. */
 const MILLISECONDS_PER_DAY = 86_400_000;
@@ -141,6 +146,20 @@ export class Aubade implements AfterViewInit, OnDestroy {
   public readonly modeNote = computed<string | null>(() => RENDER_NOTES[this.mode()]);
 
   /**
+   * Everything the machinery has to say about itself, in order, with the silences
+   * removed.
+   *
+   * The two above, as one list. They are the same voice at the same size in the
+   * same place and are never ordered differently, so the template renders them
+   * with one `@for` rather than two `@if`s — which is not only tidiness: the
+   * template's cyclomatic-complexity limit is a real budget, and the Cellar's
+   * instruction is the block that needed the room.
+   */
+  public readonly remarks = computed<readonly string[]>(() =>
+    [this.modeNote(), this.note()].filter((line): line is string => line !== null)
+  );
+
+  /**
    * The sun, where this visitor is. Re-read on a timer; every other signal on
    * this component is derived from it.
    */
@@ -171,11 +190,29 @@ export class Aubade implements AfterViewInit, OnDestroy {
    */
   public readonly copy = computed(() => {
     const floor = this.floor();
-    if (floor === -2) {
-      return LIBRARY_COPY[this.state()];
+    const state = this.state();
+    if (floor === -3) {
+      return CELLAR_COPY[state];
     }
-    return floor === -1 ? CORRIDOR_COPY[this.state()] : DESK_COPY[this.state()];
+    if (floor === -2) {
+      return LIBRARY_COPY[state];
+    }
+    return floor === -1 ? CORRIDOR_COPY[state] : DESK_COPY[state];
   });
+
+  /**
+   * How far into the cellar the visitor has got, in three steps rather than in the
+   * hundredths the shader is given.
+   *
+   * Coarse on purpose. The underlying number moves every frame, and a signal that
+   * changed sixty times a second would schedule change detection sixty times a
+   * second to rewrite a sentence that is the same sentence — which is the exact
+   * mistake `car` is a plain field to avoid. Three buckets change perhaps four
+   * times in a visit.
+   *
+   * `null` anywhere but Floor −3: no other room asks the visitor for anything.
+   */
+  public readonly stillnessNote = signal<string | null>(null);
 
   /** What the plate over the room calls this floor. */
   public readonly floorName = computed(() => FLOOR_NAMES[this.floor()]);
@@ -314,6 +351,41 @@ export class Aubade implements AfterViewInit, OnDestroy {
   private car: ILift | null = null;
 
   /**
+   * How still the visitor has been, in [0, 1] — Floor −3's whole subject.
+   *
+   * Not a signal, for the reason `car` is not one and more so: it is written every
+   * frame and read every frame by exactly one caller. The template reads
+   * `stillnessNote`, which changes about four times in a visit.
+   */
+  private stillness = 0;
+
+  /**
+   * The room's clock the last time the visitor did anything, or `null` if they
+   * never have.
+   *
+   * A timestamp rather than a per-frame flag, because the events that set it arrive
+   * on their own schedule and frames arrive on theirs: a pointer that moves once
+   * between two frames would otherwise be seen by whichever frame happened to
+   * follow it and by no other, and a pointer moving steadily at 120Hz would be seen
+   * by every frame. The grace window below makes both of those cost the same.
+   */
+  private disturbedAtSeconds: number | null = null;
+
+  /**
+   * How long after a movement the visitor still counts as moving, in seconds of the
+   * room's clock.
+   *
+   * A third of a second. Long enough that one flick of a pointer is charged as a
+   * movement rather than as a single frame's worth of one — about two and a half
+   * seconds of lost ground, which is felt and forgiven — and short enough that
+   * somebody who stops is credited with stopping almost immediately.
+   */
+  private static readonly DISTURBANCE_GRACE_SECONDS = 1 / 3;
+
+  /** Torn down in `ngOnDestroy`; there are four of them and they are all on `window`. */
+  private stirring: (() => void) | null = null;
+
+  /**
    * The room's clock at the last frame drawn.
    *
    * The lift is timed in simulated seconds rather than wall-clock ones, so calling
@@ -365,10 +437,24 @@ export class Aubade implements AfterViewInit, OnDestroy {
 
     if (prefersReducedMotion()) {
       this.mode.set('still');
+      // The Cellar, handed over rather than asked for.
+      //
+      // Floor −3's content is ninety seconds of change, and under reduced motion
+      // there is no loop to change anything: one frame is drawn and left. A visitor
+      // who asked for less motion would get a black rectangle for ever, which is
+      // the worst outcome available on any floor of this hotel.
+      //
+      // AUBADE's third non-negotiable says reduced motion becomes "a series of
+      // still compositions that change on interaction", so the still composition
+      // for this floor is the resolved room. They are given the reward instead of
+      // the wait — which is the only reading of that instruction that leaves them
+      // anything, and it is what the prose down there tells them has happened.
+      this.stillness = 1;
       this.loop.renderOnce();
       return;
     }
 
+    this.watchTheVisitor();
     this.mode.set('running');
     this.loop.start();
   }
@@ -377,6 +463,7 @@ export class Aubade implements AfterViewInit, OnDestroy {
     this.destroyed = true;
     this.loop?.stop();
     this.observer?.disconnect();
+    this.stirring?.();
     if (this.ticker !== null) {
       clearInterval(this.ticker);
     }
@@ -424,6 +511,20 @@ export class Aubade implements AfterViewInit, OnDestroy {
       return;
     }
 
+    // Leaving the floor gives the cellar back. Stillness is what somebody has done
+    // *in that room*, so it cannot be carried down in the lift — a visitor who spent
+    // ninety seconds reading the prose in the lobby has been perfectly still and has
+    // not been standing in a cellar, and arriving already adapted would be the floor
+    // handing over its own subject at the door.
+    //
+    // **Below the reduced-motion return on purpose.** That path has no loop, so a
+    // stillness reset there could never be integrated back up: the visitor would
+    // arrive on Floor −3 at zero and stay there, looking at an unresolved room with
+    // no way to resolve it, for ever. They are handed the settled room instead — see
+    // `ngAfterViewInit` — and this line must not take it away again on the way down.
+    this.stillness = 0;
+    this.disturbedAtSeconds = null;
+
     this.car = { from, direction, startedAtSeconds: this.lastSeconds };
     this.riding.set(true);
   }
@@ -435,17 +536,22 @@ export class Aubade implements AfterViewInit, OnDestroy {
       return;
     }
 
+    const elapsed = frame.simulatedSeconds - this.lastSeconds;
     this.lastSeconds = frame.simulatedSeconds;
 
     const state = this.state();
     const invited = this.invited();
+    this.keepStill(frame.simulatedSeconds, elapsed, state, invited);
 
     if (
       !renderer.render(frame, {
         lobby: rigFor(state, invited),
         corridor: corridorRigFor(state, invited),
         library: libraryRigFor(state, invited),
+        cellar: cellarRigFor(state, invited),
         depth: this.depthNow(frame.simulatedSeconds),
+        stillness: this.stillness,
+        breath: breathAt(frame.simulatedSeconds),
       })
     ) {
       // A lost context, or a disposed renderer. Stop rather than spin: a loop
@@ -496,6 +602,86 @@ export class Aubade implements AfterViewInit, OnDestroy {
     this.car = null;
     this.floor.set(floorAfter(car.from, car.direction));
     this.riding.set(false);
+  }
+
+  /**
+   * Advance the stillness, and say so on the plate when it has moved far enough to
+   * be worth a different sentence.
+   *
+   * Only on Floor −3, and only once the lift has stopped. Stillness accrues in the
+   * room rather than in the building — see `call`, which gives it back — and a
+   * visitor mid-ride is not standing anywhere.
+   *
+   * @param seconds The room's clock.
+   * @param elapsed Simulated seconds since the previous frame.
+   * @param state What the hotel is doing.
+   * @param invited Whether the visitor let themselves in.
+   */
+  private keepStill(seconds: number, elapsed: number, state: AubadeState, invited: boolean): void {
+    if (this.floor() !== -3 || this.riding()) {
+      if (this.stillnessNote() !== null) {
+        this.stillnessNote.set(null);
+      }
+      return;
+    }
+
+    const since = this.disturbedAtSeconds;
+    const disturbed = since !== null && seconds - since < Aubade.DISTURBANCE_GRACE_SECONDS;
+    this.stillness = settleStep(this.stillness, elapsed, disturbed);
+
+    // What the plate says is about how far in they have got *and* about how far in
+    // they can get, which are different numbers — the second is the hour's ceiling.
+    // A visitor at noon who has been perfectly still for two minutes has a stillness
+    // of 1 and a room of nothing, and telling them to keep still would be a lie told
+    // to somebody being patient.
+    const ceiling = cellarRigFor(state, invited).adaptation;
+    let line: string;
+    if (ceiling <= 0) {
+      line = STILLNESS_COPY.daylit;
+    } else if (this.stillness >= 1) {
+      line = STILLNESS_COPY.settled;
+    } else if (this.stillness > 0.12) {
+      line = STILLNESS_COPY.arriving;
+    } else {
+      line = STILLNESS_COPY.waiting;
+    }
+
+    if (line !== this.stillnessNote()) {
+      this.stillnessNote.set(line);
+    }
+  }
+
+  /**
+   * Notice the visitor moving.
+   *
+   * Four events on `window` rather than on the canvas, because the demand is that
+   * the *person* is still, and a hand that scrolls the prose or tabs through the
+   * lift controls has not been still merely because the pointer stayed off the
+   * picture.
+   *
+   * Passive listeners: none of these is cancelled, and a non-passive `wheel` or
+   * `touchmove` handler makes the browser wait for it before scrolling — which is a
+   * measurable scroll jank charged to a page whose whole subject is calm.
+   *
+   * Not registered at all under `prefers-reduced-motion`: there is no loop to read
+   * them, the cellar is handed over resolved, and a listener whose only effect would
+   * be to take that away is worse than no listener.
+   */
+  private watchTheVisitor(): void {
+    const stirred = (): void => {
+      this.disturbedAtSeconds = this.lastSeconds;
+    };
+
+    const events = ['pointermove', 'pointerdown', 'keydown', 'wheel'] as const;
+    for (const name of events) {
+      window.addEventListener(name, stirred, { passive: true });
+    }
+
+    this.stirring = (): void => {
+      for (const name of events) {
+        window.removeEventListener(name, stirred);
+      }
+    };
   }
 
   /**

@@ -54,13 +54,22 @@ export const STUB_UNIFORM_NAMES = [
   'uEye',
   'uTarget',
   'uRoll',
+  'uDepth',
   'uMarchSteps',
   'uShadowSteps',
   'uVolumetricSamples',
-  // The light rig — see rooms/light-rig.ts. This half of the list is checked
-  // against the real program by `npm run verify:shader`, which links the actual
-  // GLSL and reads its reflection back; here it only has to stay in step, and a
-  // uniform missing from it presents as "never written" in renderer.spec.ts.
+  // Every floor's light rig — see rooms/light-rig.ts and its three twins. This
+  // half of the list is checked against the real program by `npm run
+  // verify:shader`, which links the actual GLSL and reads its reflection back;
+  // here it only has to stay in step, and a uniform missing from it presents as
+  // "never written" in renderer.spec.ts.
+  //
+  // Everything below `uThreshold` was missing until Floor −3 landed, and the
+  // consequence was quieter than it looks: `uniformLocations` never handed the
+  // renderer a location for those names, so `at()` returned null, the writes went
+  // to a no-op, and every assertion about them would have read as "never written"
+  // whether the renderer wrote them or not. Two floors' worth of uniforms were
+  // untestable rather than untested.
   'uKeyDirection',
   'uKeyColour',
   'uKeyStrength',
@@ -74,6 +83,32 @@ export const STUB_UNIFORM_NAMES = [
   'uBleach',
   'uExposure',
   'uThreshold',
+  'uSconceColour',
+  'uSconceStrength',
+  'uShaftDirection',
+  'uShaftColour',
+  'uShaftStrength',
+  'uCorridorFloor',
+  'uCorridorSky',
+  'uCorridorDust',
+  'uReadingColour',
+  'uReadingStrength',
+  'uInk',
+  'uLibraryExposure',
+  'uLibraryFloor',
+  'uLibrarySky',
+  'uLibraryDust',
+  'uCandleColour',
+  'uCandleStrength',
+  'uAdaptation',
+  'uCellarExposure',
+  'uCellarFloor',
+  'uCellarSky',
+  'uCellarDust',
+  // The visitor, not a rig — see cellar.ts. The only two uniforms in the piece
+  // that are about the person rather than the building or the sun.
+  'uStillness',
+  'uBreath',
 ] as const;
 
 export class StubWebGL2 {

@@ -57,7 +57,7 @@ one shader and one idea.
 | **0**  | **The Desk**            | The lobby. Raymarched interior, volumetric light through the transom, dust. The register lists prior guests — real ones, anonymised to city and duration. "A guest from Lisbon, 4h ago, stayed 11 minutes." |
 | **−1** | **The Mirror Corridor** | A mirrored wall, rendered by a second march. Everything in the corridor reflects. Your light does not. You will notice this about four seconds later than you think you will.                               |
 | **−2** | **The Library**         | One sentence, migrating across eight writing systems — Latin, Greek, Cyrillic, Arabic, Devanagari, Hebrew, Han, Hangul — glyphs dissolving into one another rather than cutting.                            |
-| **−3** | **The Cellar**          | Meditation. Near-silence. The render loop slows to a breath cycle and the room resolves only if you stay. The one place that rewards patience, and therefore the only one anybody remembers.                |
+| **−3** | **The Cellar**          | Meditation. Near-silence. The camera slows to a 4-7-8 breath and the room resolves only if you stay — in the eye, not in the room, which never changes at all. **Built.**                                   |
 | **−4** | **The Projection Room** | Film. The post-processing stack _is_ the exhibit: gate weave, halation, grain, 24fps judder, splice flashes, reel-change cue dots. Exposed as a projectionist's bench you can operate.                      |
 | **−5** | **The Box**             | Opera. A single aria drives the geometry. Silent by default — must be beautiful with the sound off, because for most visitors it will be.                                                                   |
 
@@ -163,15 +163,28 @@ headless Chromium and writes a PNG, which is a faster edit loop than reloading a
 Ship in this order. Each phase is deployable and each one is worth showing on its own. Do not
 start a phase before the previous one is live.
 
-Five phases have landed and been deleted from this list, per the rule at the top: **the clock**
+Six phases have landed and been deleted from this list, per the rule at the top: **the clock**
 (`src/aubade/solar/`, checked against published almanac times for eight cities), **the lobby**
 (`/aubade` — `src/aubade/gl/`, `camera/`, `rooms/`, `renderer.ts`), **day, night and the
 invitation** (`rooms/light-rig.ts`, `desk.ts`, `fake-clock.ts`, and the shutter in
 `rooms/hotel.frag.ts`), **the Reader's Edition** (`/aubade/reader` — `src/aubade/reader/`, plus
-`hour.ts` and `tokens.css`, which the two routes now share), and **the descent and the Mirror
-Corridor** (`descent.ts`, `rooms/corridor-rig.ts`, and the second half of `rooms/hotel.frag.ts`).
+`hour.ts` and `tokens.css`, which the two routes now share), **the descent and the Mirror
+Corridor** (`descent.ts`, `rooms/corridor-rig.ts`, and the second half of `rooms/hotel.frag.ts`),
+and **the Cellar** (`cellar.ts`, `rooms/cellar-rig.ts`, and `adapted()` in `rooms/hotel.frag.ts`).
 Their reasoning moved into those files' header comments, which are dense and are the thing to read
 before touching any of them.
+
+The Cellar is the one that changed what a floor is allowed to be, so its shape is worth carrying
+forward. The other three rooms answer the sun with light: the lobby brightens, the corridor's gas
+goes out, the library keeps its lamps and loses its writing. Floor −3 answers it with the visitor.
+The room is one brick vault and one candle and is **identical at every hour and for everybody** —
+nothing in its distance field reads the clock or the stillness, and `check:docs` fails if that ever
+stops being true. What ninety seconds of standing still buys is a gain and a desaturation applied to
+the finished frame, modelling a dark-adapting eye; what the sun sets is the ceiling on that, which
+is exactly zero at noon. A visitor who came in out of the daylight can stand there all afternoon and
+see the room they walked into. Two committed frames per hour would have been five copies of one
+picture, so `verify-shader.mjs` asserts the identity instead — all five arriving frames the same,
+the settled one three times brighter and measurably less coloured, and the noon pair equal.
 
 The room reads the clock: one shader, five sets of uniforms, five palettes and five light rigs,
 with the daytime state built as its own picture — the louvres are geometry, the bars they cut are
@@ -193,22 +206,26 @@ lobby — it ignores `?t=<state>`, because a forced state next to a real elevati
 this page cannot tell, and no font size on it is expressed in `vw`, because a `vw` size shrinks
 when a reader zooms in.
 
-### Phases 1–4 — One room each
+### Phases 1–3 — One room each
 
 In this order, by ratio of impact to risk:
 
-2. **The Cellar** — breath pacing, 4-7-8 cycle, the room resolving over ~90 seconds of stillness.
-   The hardest thing here is nerve: it must actually be quiet and actually be slow.
-3. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.
-4. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
+1. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
+   Devanagari shaping right or cut those two; broken shaping is an insult, not an effect. The
+   *room* is built and lit — what is left is the sentence, which is the phase.
+2. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.
+3. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
    are the two things most likely to eat a week.
 
-A third floor is a bigger step than the second one was, and it is worth knowing why before
-starting. Two rooms fit in one program because two distance fields can be mixed by one uniform and
-the settled floors each cost what one room cost. Three rooms do not extend that for free: either
-`mapScene` starts branching on which pair is being mixed, or the lift stops being a mix and becomes
-a fade. Decide which before writing any GLSL, because the answer changes `hotel.frag.ts` far more
-than it changes the new room.
+The question a third floor raised is settled and the answer generalised, so a fourth room is no
+longer an architectural decision. Two rooms fitted in one program because two distance fields can be
+mixed by one uniform; three did not extend that for free, and the fork was either `mapScene`
+branching on which pair is being mixed or the lift ceasing to be a mix and becoming a fade. The
+branch was taken. `mapScene` now evaluates each room into its own local behind its own guard and
+chooses between locals, so a settled floor still costs one field, a ride still costs two, and
+another floor is one more guard and one more name. The rule that makes that true is that **no room
+may be named twice** — see the note in `hotel.frag.ts`, which is where the ten-times-slower frame is
+recorded.
 
 Each new room owes the Reader's Edition a paragraph, and owes `check:docs` and
 `verify-shader.mjs` a committed frame per solar state. `reader/edition.ts` describes all six

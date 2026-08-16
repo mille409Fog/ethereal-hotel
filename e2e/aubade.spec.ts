@@ -170,6 +170,60 @@ test.describe('the aubade route', () => {
     expect(errors).toEqual([]);
   });
 
+  test('the lift reaches the bottom of the shaft', async ({ page }) => {
+    // The same argument as the test above, one floor further, plus one that is
+    // particular to Floor −3. Every other check on the Cellar is blind to a
+    // different half of it: the unit tests drive a stub context that never reads
+    // the shader, `verify:shader` compiles the shader against its own canvas and
+    // never loads the app, and `check:docs` reads the source without running any of
+    // it. A cellar that threw on arrival would pass all three.
+    //
+    // The particular one is that this is the only floor whose plate says something
+    // the visitor is expected to act on, and the only text on the route that
+    // changes without anybody doing anything. If it never renders, the room is a
+    // black rectangle that everybody leaves after four seconds and no other gate
+    // notices — the picture is correct, the prose is correct, and the floor's whole
+    // content is behind an instruction nobody was given.
+    //
+    // Small viewport for the reason the file comment gives, and reduced motion so
+    // the three rides are three cuts rather than twenty-two and a half seconds.
+    await page.setViewportSize({ width: 420, height: 280 });
+
+    const errors: Error[] = [];
+    page.on('pageerror', (error) => errors.push(error));
+
+    await openStill(page);
+
+    const invite = page.getByRole('button', { name: /Open the night rooms/ });
+    if (await invite.isVisible()) {
+      await invite.click();
+    }
+
+    for (let floor = 0; floor < 3; floor += 1) {
+      await page.getByRole('button', { name: /Take the lift down/ }).click();
+    }
+
+    await expect(page.getByText('The Cellar')).toBeVisible();
+    await expect(page.getByText(/barrel vault/)).toBeVisible();
+
+    // The instruction, in the live region. Its wording depends on the hour — a
+    // daytime visitor is told plainly that standing still will not help them — so
+    // what is asserted is that the region exists and has something in it.
+    const asking = page.locator('[aria-live="polite"]');
+    await expect(asking).toBeVisible();
+    await expect(asking).not.toBeEmpty();
+
+    // The shaft ends here, so there is one control and it goes up.
+    await expect(page.getByRole('button', { name: /Take the lift down/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Take the lift up/ })).toBeEnabled();
+
+    const label = await page.locator('canvas').getAttribute('aria-label');
+    expect(label).toContain('vault');
+    expect(label).toContain('drawn in real time');
+
+    expect(errors).toEqual([]);
+  });
+
   test('is lit by whatever the sun is doing where the visitor is', async ({ page }) => {
     // The one end-to-end assertion that the clock reaches the room. It cannot
     // name an hour: this runs against a production build, where the dev-only

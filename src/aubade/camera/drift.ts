@@ -23,7 +23,21 @@
  *
  * Pure, and a function of time alone: no state, no easing, nothing to reset. The
  * reduced-motion path renders `breathe(0)`, which is the anchor pose exactly —
- * every term is a sine, and every sine is zero at zero.
+ * every term is a sine, and every sine is zero at zero. Floor −3 adds the one term
+ * that is not a sine, and it is zero at zero too, on purpose and for this reason;
+ * see the note beside it.
+ *
+ * ## Floor −3 is the exception to the rule about periods
+ *
+ * The Cellar swaps the eleven-second breath for the 4-7-8 cycle in `cellar.ts` and
+ * damps everything else to a third. That is a deliberate violation of the
+ * paragraph above — nineteen seconds is a period a visitor will absolutely notice —
+ * and the violation is the room. Nowhere else does the piece want to be followed;
+ * there, it does.
+ *
+ * The cycle itself is a parameter rather than an import, which keeps this file free
+ * of dependencies and is also forced by the toolchain. See `breathe`'s third
+ * parameter, where both halves of that are set out.
  */
 
 /** A point or a direction. Plain data; the shader wants three floats. */
@@ -123,16 +137,49 @@ export const LIBRARY_EYE: IVec3 = { x: -0.55, y: 1.5, z: -4.2 };
 export const LIBRARY_TARGET: IVec3 = { x: 0.3, y: 1.15, z: 3.4 };
 
 /**
- * The three floors' anchors, in the order the lift passes them — so the index is
+ * Where a person stands on Floor −3: back from the candle, right of the room's
+ * axis, and lower than anywhere else in the building.
+ *
+ * Off to the right specifically, which is the casks' side, so that the one light
+ * in the room is across the frame rather than beside the camera. That matters more
+ * on this floor than on any other, because the picture at second zero has to be a
+ * small bright thing a long way off with a great deal of nothing around it — and a
+ * candle at the visitor's shoulder lights the near brick, fills the bottom of the
+ * frame, and tells them the room is small.
+ *
+ * Lowest of the four, and the drop from the library is the largest of the three:
+ * this is a barrel vault springing at 850mm and the whole feeling of one is that
+ * the sides come down past your shoulders. Standing high in it renders a tunnel.
+ */
+export const CELLAR_EYE: IVec3 = { x: 0.3, y: 1.42, z: -4.0 };
+
+/**
+ * Aimed down the room and slightly down, at the flags rather than the vault.
+ *
+ * The opposite choice from the library's, and for the opposite reason. That room's
+ * subject is on the shelves, so the gaze goes up to meet it; this room's subject is
+ * that there is nothing to see yet, and the two things that eventually arrive at
+ * the bottom of the frame — the flagstone joints and the standing water at the far
+ * end — are the ones a visitor finds last and remembers.
+ */
+export const CELLAR_TARGET: IVec3 = { x: -0.25, y: 0.98, z: 3.2 };
+
+/**
+ * The four floors' anchors, in the order the lift passes them — so the index is
  * the depth, exactly, which is the same identity `descent.ts` is built on.
  *
- * A table rather than three named pairs threaded through a branch, because the
+ * A table rather than four named pairs threaded through a branch, because the
  * interpolation below has to work between *whichever* pair the lift is straddling
  * and there is no version of that written as a conditional which survives a
- * fourth floor.
+ * fifth floor.
  */
-const EYE_ANCHORS: readonly IVec3[] = [ANCHOR_EYE, CORRIDOR_EYE, LIBRARY_EYE];
-const TARGET_ANCHORS: readonly IVec3[] = [ANCHOR_TARGET, CORRIDOR_TARGET, LIBRARY_TARGET];
+const EYE_ANCHORS: readonly IVec3[] = [ANCHOR_EYE, CORRIDOR_EYE, LIBRARY_EYE, CELLAR_EYE];
+const TARGET_ANCHORS: readonly IVec3[] = [
+  ANCHOR_TARGET,
+  CORRIDOR_TARGET,
+  LIBRARY_TARGET,
+  CELLAR_TARGET,
+];
 
 /**
  * Seconds per cycle. Coprime enough that the sum has no useful period.
@@ -191,6 +238,20 @@ const ROLL_AMPLITUDE = 0.0045;
  */
 const DESCENT_SAG = 0.11;
 
+/**
+ * How much of its ordinary motion the camera keeps on Floor −3.
+ *
+ * A third. Everywhere else in this hotel the camera is a person standing in a
+ * room; on the cellar floor it is a person standing very still in one, and the
+ * difference between those has to be visible or the room's whole demand is
+ * rhetorical. It is not zero, because a camera that stops entirely is the
+ * reduced-motion still and this visitor did not ask for that.
+ *
+ * Applied to the sway, the drift and the roll but *not* to the breath, which on
+ * this floor is the point rather than the noise.
+ */
+const CELLAR_QUIET = 0.34;
+
 /** Turn seconds into radians for a cycle of `period` seconds. */
 function phase(seconds: number, period: number): number {
   return (seconds * 2 * Math.PI) / period;
@@ -247,15 +308,31 @@ function anchorAt(anchors: readonly IVec3[], depth: number): IVec3 {
  *   than producing `NaN` uniforms, which a driver renders as a black screen with
  *   no error anywhere.
  * @param depth Where the lift is: 0 in the lobby, 1 in the corridor, 2 in the
- *   library, and in between during a descent. The same number the shader mixes
- *   its distance fields by, so the camera and the room can never disagree about
- *   which floor they are on. Clamped to the floors that exist, and non-finite
- *   input is treated as the lobby.
+ *   library, 3 in the cellar, and in between during a descent. The same number the
+ *   shader mixes its distance fields by, so the camera and the room can never
+ *   disagree about which floor they are on. Clamped to the floors that exist, and
+ *   non-finite input is treated as the lobby.
+ * @param breath How full the lungs are on the 4-7-8 cycle, in [0, 1] — `breathAt`
+ *   from `cellar.ts`, evaluated at the same second.
+ *
+ *   Passed in rather than computed here, and the reason is worth recording because
+ *   the obvious version does not build. `scripts/verify-shader.mjs` runs this file
+ *   directly under Node, whose ESM resolver has no extensionless resolution, so a
+ *   value import of `../cellar` fails there — and naming `../cellar.ts` outright
+ *   fails the Angular build instead. It is the same fork `rooms/hotel.frag.ts`
+ *   describes at length, and the way out here is better than either: the caller
+ *   already computes this number to upload as `uBreath`, so handing it over keeps
+ *   the camera a pure function of its arguments *and* makes it impossible for the
+ *   pose and the uniform to disagree about where in the breath they are.
+ *
+ *   Read only near depth 3 and ignored everywhere else. Defaults to 0, which is an
+ *   empty chest and therefore the anchor pose — so a caller that forgets it gets a
+ *   cellar whose camera has stopped rather than one that has jumped.
  * @returns Eye, target and roll. Deterministic: the same second at the same depth
  *   always gives the same pose, which is what makes the fixed-step loop worth
  *   having.
  */
-export function breathe(seconds: number, depth = 0): ICameraPose {
+export function breathe(seconds: number, depth = 0, breath = 0): ICameraPose {
   const t = Number.isFinite(depth) ? Math.min(Math.max(depth, 0), EYE_ANCHORS.length - 1) : 0;
   const eyeAnchor = anchorAt(EYE_ANCHORS, t);
   const targetAnchor = anchorAt(TARGET_ANCHORS, t);
@@ -264,14 +341,39 @@ export function breathe(seconds: number, depth = 0): ICameraPose {
     return { eye: eyeAnchor, target: targetAnchor, roll: 0 };
   }
 
-  const breath = Math.sin(phase(seconds, BREATH_PERIOD));
-  const sway = Math.sin(phase(seconds, SWAY_PERIOD));
-  const drift = Math.sin(phase(seconds, DRIFT_PERIOD));
-  const driftDepth = Math.sin(phase(seconds, DRIFT_DEPTH_PERIOD));
+  // How much of Floor −3 is in the frame. The same expression the shader's
+  // `floorWeight` uses, deliberately, so the camera changes gait over exactly the
+  // stretch of the shaft in which the room it is changing gait for is being drawn.
+  const cellar = Math.max(0, 1 - Math.abs(t - 3));
+  const loose = 1 - cellar * (1 - CELLAR_QUIET);
+
+  // The one place in this file where a visible period is correct.
+  //
+  // Everything above is built on three sinusoids whose common period is measured
+  // in hours, precisely so the piece never visibly loops — and on Floor −3 the
+  // eleven-second breath crossfades into the caller's 4-7-8 cycle, which loops on
+  // purpose every nineteen seconds. A pace a visitor cannot find is not a pace they
+  // can keep, and the Cellar's whole proposition is that they keep one.
+  //
+  // Both terms are exactly zero at second zero, which is what keeps the
+  // reduced-motion still on its anchor on every floor: the sine is zero at zero
+  // because it is a sine, and the 4-7-8 curve is zero at zero because the cycle
+  // starts on an empty chest. That is not a coincidence and `cellar.ts` says so.
+  //
+  // The two ranges differ — a sine covers [−1, 1] and a chest covers [0, 1] — and
+  // that is deliberate rather than an oversight. A breath is one-sided: you rise
+  // from rest and return to it, rather than sinking below where you started. So the
+  // anchor on this floor is a body at the bottom of an exhale, which is the correct
+  // place for a room that is asking you to stop.
+  const paced = Number.isFinite(breath) ? Math.min(Math.max(breath, 0), 1) : 0;
+  const rise = Math.sin(phase(seconds, BREATH_PERIOD)) * (1 - cellar) + paced * cellar;
+  const sway = Math.sin(phase(seconds, SWAY_PERIOD)) * loose;
+  const drift = Math.sin(phase(seconds, DRIFT_PERIOD)) * loose;
+  const driftDepth = Math.sin(phase(seconds, DRIFT_DEPTH_PERIOD)) * loose;
 
   const offsetX = sway * SWAY_LATERAL + drift * DRIFT_LATERAL;
-  const offsetY = breath * BREATH_RISE - Math.sin(Math.PI * (t - Math.floor(t))) * DESCENT_SAG;
-  const offsetZ = breath * BREATH_PUSH + driftDepth * DRIFT_DEPTH;
+  const offsetY = rise * BREATH_RISE - Math.sin(Math.PI * (t - Math.floor(t))) * DESCENT_SAG;
+  const offsetZ = rise * BREATH_PUSH + driftDepth * DRIFT_DEPTH;
 
   return {
     eye: {
@@ -284,6 +386,6 @@ export function breathe(seconds: number, depth = 0): ICameraPose {
       y: targetAnchor.y + offsetY * GAZE_FOLLOW,
       z: targetAnchor.z + offsetZ * GAZE_FOLLOW,
     },
-    roll: Math.sin(phase(seconds, SWAY_PERIOD * 1.31)) * ROLL_AMPLITUDE,
+    roll: Math.sin(phase(seconds, SWAY_PERIOD * 1.31)) * ROLL_AMPLITUDE * loose,
   };
 }

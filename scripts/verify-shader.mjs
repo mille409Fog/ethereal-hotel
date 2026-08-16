@@ -66,9 +66,11 @@ import { FULLSCREEN_VERTEX_SHADER } from '../src/aubade/rooms/fullscreen.vert.ts
 import { HOTEL_FRAGMENT_SHADER } from '../src/aubade/rooms/hotel.frag.ts';
 import { breathe } from '../src/aubade/camera/drift.ts';
 import { QUALITY_TIERS } from '../src/aubade/gl/quality.ts';
+import { cellarRigFor } from '../src/aubade/rooms/cellar-rig.ts';
 import { corridorRigFor } from '../src/aubade/rooms/corridor-rig.ts';
 import { libraryRigFor } from '../src/aubade/rooms/library-rig.ts';
 import { rigFor } from '../src/aubade/rooms/light-rig.ts';
+import { breathAt } from '../src/aubade/cellar.ts';
 import { AUBADE_STATES } from '../src/aubade/solar/state.ts';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -90,13 +92,28 @@ const tier = QUALITY_TIERS[Number(readFlag('tier', '0'))];
 const invited = hasFlag('invited');
 
 /**
- * The three positions of the lift that get a committed frame.
+ * The positions of the lift that get a committed frame.
  *
- * `lift` is not a floor and that is exactly why it is here. It is the descent
- * caught halfway, where both distance fields are being evaluated and mixed, and it
- * is the one thing in the piece whose whole justification is that it looks like
- * something. A phase whose spectacle has no committed frame has no way of
- * noticing when the spectacle stops working.
+ * `lift`, `descent` and `sinking` are not floors and that is exactly why they are
+ * here. They are the three rides caught halfway, where two distance fields are
+ * being evaluated and mixed, and they are the things in the piece whose whole
+ * justification is that they look like something. A phase whose spectacle has no
+ * committed frame has no way of noticing when the spectacle stops working.
+ *
+ * `arriving` is not a floor either, and it is the strangest entry here: it is Floor
+ * −3 at the same depth as `cellar` and a different *visitor*. Floor −3 is the one
+ * room in the hotel that is not a function of the hour alone — see
+ * `rooms/cellar-rig.ts` — so a single frame per state cannot describe it. Two can:
+ * the room a visitor walks into, and the room ninety seconds of stillness turns it
+ * into. The pair is what the cellar's assertions below are actually about.
+ *
+ * It carries `probe`, which is the one entry that does, and that is because of what
+ * the five arriving frames turn out to be. Nothing in the cellar's rig varies with
+ * the hour except the adaptation ceiling, and stillness zero multiplies that out —
+ * so all five of them are the same picture, necessarily, and committing five copies
+ * of one image would be committing a redundancy rather than a reference. They are
+ * rendered on every run and asserted three ways; `--out` skips them unless
+ * `--floor arriving` asks for one specifically.
  */
 const FLOORS = [
   { name: 'lobby', depth: 0 },
@@ -104,7 +121,13 @@ const FLOORS = [
   { name: 'corridor', depth: 1 },
   { name: 'descent', depth: 1.5 },
   { name: 'library', depth: 2 },
+  { name: 'sinking', depth: 2.5 },
+  { name: 'arriving', depth: 3, stillness: 0, probe: true },
+  { name: 'cellar', depth: 3, stillness: 1 },
 ];
+
+/** The entries `--out` writes only when they are asked for by name. */
+const PROBES = new Set(FLOORS.filter((floor) => floor.probe).map((floor) => floor.name));
 
 const onlyState = readFlag('state', null);
 if (onlyState !== null && !AUBADE_STATES.includes(onlyState)) {
@@ -115,7 +138,7 @@ if (onlyState !== null && !AUBADE_STATES.includes(onlyState)) {
 const onlyFloor = readFlag('floor', null);
 if (onlyFloor !== null && !FLOORS.some((floor) => floor.name === onlyFloor)) {
   const names = FLOORS.map((floor) => floor.name).join(', ');
-  process.stderr.write(`\nNo such floor: ${onlyFloor}. The three are ${names}.\n\n`);
+  process.stderr.write(`\nNo such floor: ${onlyFloor}. They are ${names}.\n\n`);
   process.exit(1);
 }
 
@@ -148,10 +171,20 @@ const job = {
       state,
       floor: floor.name,
       depth,
-      camera: breathe(seconds, depth),
+      camera: breathe(seconds, depth, breathAt(seconds)),
       lobby: rigFor(state, invited),
       corridor: corridorRigFor(state, invited),
       library: libraryRigFor(state, invited),
+      cellar: cellarRigFor(state, invited),
+      // A visitor who has already settled, unless the entry says otherwise. The
+      // committed frames are the room as somebody who stayed sees it, because that
+      // is the room the phase claims to have built; `arriving` is the one entry
+      // that overrides it, and the pair of them is Floor −3's whole assertion.
+      stillness: floor.stillness ?? 1,
+      // The camera's own pacing, evaluated at the same second, so a frame and the
+      // eye position it was drawn from can never disagree about where in the breath
+      // they are.
+      breath: breathAt(seconds),
     }));
   }),
   // The extension decides the encoding. Five 1280×720 PNGs of this room are 7.5MB,
@@ -201,6 +234,15 @@ const job = {
     'uLibraryFloor',
     'uLibrarySky',
     'uLibraryDust',
+    'uCandleColour',
+    'uCandleStrength',
+    'uAdaptation',
+    'uCellarExposure',
+    'uCellarFloor',
+    'uCellarSky',
+    'uCellarDust',
+    'uStillness',
+    'uBreath',
   ],
 };
 
@@ -319,6 +361,18 @@ function renderInPage(input) {
     gl.uniform3f(at('uLibrarySky'), library.ambientSky[0], library.ambientSky[1], library.ambientSky[2]);
     gl.uniform1f(at('uLibraryDust'), library.dust);
 
+    const cellar = frame.cellar;
+    gl.uniform3f(at('uCandleColour'), cellar.candleColour[0], cellar.candleColour[1], cellar.candleColour[2]);
+    gl.uniform1f(at('uCandleStrength'), cellar.candleStrength);
+    gl.uniform1f(at('uAdaptation'), cellar.adaptation);
+    gl.uniform1f(at('uCellarExposure'), cellar.exposure);
+    gl.uniform3f(at('uCellarFloor'), cellar.ambientFloor[0], cellar.ambientFloor[1], cellar.ambientFloor[2]);
+    gl.uniform3f(at('uCellarSky'), cellar.ambientSky[0], cellar.ambientSky[1], cellar.ambientSky[2]);
+    gl.uniform1f(at('uCellarDust'), cellar.dust);
+
+    gl.uniform1f(at('uStillness'), frame.stillness);
+    gl.uniform1f(at('uBreath'), frame.breath);
+
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     const glError = gl.getError();
 
@@ -337,20 +391,31 @@ function renderInPage(input) {
     // mean is exactly the statistic that cannot see it — the room is the same
     // brightness at every hour. What falls as the gilt goes is the variation
     // between neighbouring pixels, which is what a standard deviation measures.
+    // Chroma is carried as well, and it exists for Floor −3. That floor's reward
+    // for stillness is not only a brighter room but a *colourless* one — rods are
+    // monochromatic, so a dark-adapted eye drains the hue out of everything it is
+    // finally able to see. Neither a mean nor a deviation can tell that apart from
+    // the exposure being raised, which is the failure mode the whole piece is most
+    // prone to, so the spread between the channels is measured directly.
     let min = 255;
     let max = 0;
     let total = 0;
     let totalSquares = 0;
+    let totalChroma = 0;
     let samples = 0;
     const levels = new Set();
     for (let y = 0; y < input.height; y += 4) {
       for (let x = 0; x < input.width; x += 4) {
         const offset = (y * input.width + x) * 4;
-        const luma = (pixels[offset] * 3 + pixels[offset + 1] * 6 + pixels[offset + 2]) / 10;
+        const red = pixels[offset];
+        const green = pixels[offset + 1];
+        const blue = pixels[offset + 2];
+        const luma = (red * 3 + green * 6 + blue) / 10;
         min = Math.min(min, luma);
         max = Math.max(max, luma);
         total += luma;
         totalSquares += luma * luma;
+        totalChroma += Math.max(red, green, blue) - Math.min(red, green, blue);
         samples += 1;
         levels.add(Math.round(luma));
       }
@@ -367,6 +432,7 @@ function renderInPage(input) {
       max,
       mean,
       deviation,
+      chroma: totalChroma / samples,
       distinct: levels.size,
       dataUrl: canvas.toDataURL(input.mimeType, 0.92),
     });
@@ -547,23 +613,149 @@ if (onlyState === null && !invited) {
     }
   }
 
+  // The cellar's claim, and it is a fourth different one again. Floor −3 is lit
+  // identically at every hour like Floor −2, but what the sun moves here is not in
+  // the room at all: it is the ceiling on how far a visitor's own eyes can adapt,
+  // which is exactly zero at noon. See `rooms/cellar-rig.ts`.
+  //
+  // So the statistic has to be a *pair* of frames rather than a series, which is
+  // the one shape none of the three floors above uses. `arriving` and `cellar` are
+  // the same room at the same hour seen by a visitor who has just walked in and one
+  // who has stood still for ninety seconds, and the whole floor is the difference
+  // between them: large at astronomical night, and nothing whatever at noon.
+  const arriving = floorFrames('arriving');
+  const cellar = floorFrames('cellar');
+
+  const pairFor = (state) => [
+    arriving.find((frame) => frame.state === state),
+    cellar.find((frame) => frame.state === state),
+  ];
+
+  // The room a visitor walks into is the same room at every hour — not similar, the
+  // same, because nothing in CELLAR_RIGS varies except the ceiling and stillness
+  // zero multiplies that out. It is the plainest possible statement of the floor's
+  // claim that the sun does not touch this room, and it is also the assertion that
+  // would catch a stray uHour term wired into the cellar's lighting by somebody
+  // making it "respond to the clock like the others do".
+  if (arriving.length === AUBADE_STATES.length) {
+    const [reference] = arriving;
+    for (const frame of arriving.slice(1)) {
+      if (Math.abs(frame.mean - reference.mean) > 0.05) {
+        problems.push(
+          `The cellar on arrival differs between ${reference.state} and ${frame.state} ` +
+            `(mean luma ${reference.mean.toFixed(3)} against ${frame.mean.toFixed(3)}). Before a ` +
+            `visitor has kept still, Floor −3 is supposed to be one picture at all five hours: ` +
+            `nothing in rooms/cellar-rig.ts varies but the adaptation ceiling, and stillness zero ` +
+            `multiplies that out. Something on this floor has been wired to the sun directly.`
+        );
+      }
+    }
+  }
+
+  const [walkedIn, stayed] = pairFor('open');
+  if (walkedIn !== undefined && stayed !== undefined) {
+    if (stayed.mean < walkedIn.mean * 3) {
+      problems.push(
+        `At astronomical night the cellar after ninety seconds of stillness (mean luma ` +
+          `${stayed.mean.toFixed(1)}) is less than three times as bright as the cellar on ` +
+          `arrival (${walkedIn.mean.toFixed(1)}). uStillness and uAdaptation are supposed to ` +
+          `open the room up by an order of magnitude in adapted(); a floor whose reward is a ` +
+          `slight lift is a floor that asked for ninety seconds and gave nothing back.`
+      );
+    }
+
+    // And it is not merely brighter. A gain alone would be the room with the
+    // exposure raised, which is precisely what the daytime lobby is checked against
+    // one floor at a time — so the drain has to show as well. A dark-adapted eye is
+    // colourless, and the rendered frame has to be measurably less coloured.
+    if (stayed.chroma >= walkedIn.chroma) {
+      problems.push(
+        `The settled cellar is no less coloured than the one on arrival (mean chroma ` +
+          `${stayed.chroma.toFixed(2)} against ${walkedIn.chroma.toFixed(2)}). SCOTOPIC_DRAIN in ` +
+          `hotel.frag.ts is supposed to take the colour out as the rods take over; without it ` +
+          `the floor is the same picture with the exposure up, which is the one thing every ` +
+          `other room here is checked against.`
+      );
+    }
+  }
+
+  // The exact half of the claim, and the one that would fail silently. At noon the
+  // ceiling is exactly zero, so ninety seconds of perfect stillness has to buy
+  // *exactly nothing* — the same frame, to within the noise of a rounded byte.
+  // A ceiling of 0.03 renders a room that resolves very slightly, which looks
+  // entirely fine and has quietly turned an argument into a gradient.
+  const [shutIn, shutStayed] = pairFor('shuttered');
+  if (shutIn !== undefined && shutStayed !== undefined) {
+    if (Math.abs(shutIn.mean - shutStayed.mean) > 0.05) {
+      problems.push(
+        `At noon the cellar changes when the visitor keeps still (mean luma ` +
+          `${shutIn.mean.toFixed(3)} on arrival against ${shutStayed.mean.toFixed(3)} after ` +
+          `ninety seconds). CELLAR_RIGS.shuttered.adaptation is meant to be exactly 0: a ` +
+          `daytime visitor gets the room they walked into and no other, however long they stand ` +
+          `in it. Something is reading uStillness without going through settledInto().`
+      );
+    }
+  }
+
+  // The ceiling falls with the sun, which is the ordering claim — made over the
+  // settled frames, because the arriving ones are identical by construction and
+  // ordering them would be asserting that a constant is monotonic.
+  if (cellar.length === AUBADE_STATES.length) {
+    const means = cellar.map((frame) => frame.mean);
+    for (let i = 1; i < cellar.length; i += 1) {
+      if (means[i] >= means[i - 1]) {
+        problems.push(
+          `The settled cellar's ${cellar[i].state} frame (mean luma ${means[i].toFixed(1)}) is ` +
+            `no darker than ${cellar[i - 1].state} (${means[i - 1].toFixed(1)}). ` +
+            `CELLAR_RIGS.adaptation is supposed to fall as the night ends: a visitor arriving ` +
+            `nearer dawn has more of the day still in their eyes and gets less of the room for ` +
+            `the same ninety seconds.`
+        );
+      }
+    }
+  }
+
   // A ride is between two floors and has to look like neither. A ride whose halfway
   // frame matches one of its endpoints is a cut with a delay in it, which is the
   // one thing "visible and unhurried" rules out — and it is exactly what a morph
-  // curve that saturates at an endpoint produces. Both legs, against both of their
-  // own endpoints.
+  // curve that saturates at an endpoint produces. All three legs, against both of
+  // their own endpoints.
+  //
+  // The third leg's lower endpoint is `arriving` rather than `cellar`, and that is
+  // not a detail: a visitor stepping out of the lift has by definition not been
+  // standing still yet, so the settled frame is not the room the ride ends in.
   for (const [ride, ends] of [
     ['lift', ['lobby', 'corridor']],
     ['descent', ['corridor', 'library']],
+    ['sinking', ['library', 'arriving']],
   ]) {
     for (const moving of floorFrames(ride)) {
       for (const floor of ends) {
         const settled = floorFrames(floor).find((frame) => frame.state === moving.state);
-        if (settled !== undefined && Math.abs(settled.mean - moving.mean) < 0.5) {
+        if (settled === undefined) {
+          continue;
+        }
+
+        // Every statistic, not just the mean. A cut with a delay in it renders the
+        // *same picture* as its endpoint, so it matches on all three; a genuine mix
+        // of two distance fields can land on one of them by coincidence and does —
+        // halfway down the third leg the hybrid room's mean luma crossed the
+        // settled library's at exactly one hour of the five, while its contrast and
+        // its colour were nowhere near it. Requiring all three is a stricter test of
+        // the thing actually being claimed and a looser one only against the
+        // coincidence.
+        const same =
+          Math.abs(settled.mean - moving.mean) < 0.5 &&
+          Math.abs(settled.deviation - moving.deviation) < 0.3 &&
+          Math.abs(settled.chroma - moving.chroma) < 0.5;
+
+        if (same) {
           problems.push(
             `Halfway through the ${ride} the ${moving.state} frame is indistinguishable from the ` +
-              `settled ${floor} (mean luma ${moving.mean.toFixed(1)} against ${settled.mean.toFixed(1)}). ` +
-              `The lift is supposed to be a mix of two distance fields, not a cut between them.`
+              `settled ${floor} (mean luma ${moving.mean.toFixed(1)} against ${settled.mean.toFixed(1)}, ` +
+              `sd ${moving.deviation.toFixed(2)} against ${settled.deviation.toFixed(2)}, chroma ` +
+              `${moving.chroma.toFixed(2)} against ${settled.chroma.toFixed(2)}). The lift is ` +
+              `supposed to be a mix of two distance fields, not a cut between them.`
           );
         }
       }
@@ -576,6 +768,12 @@ if (outPath !== null) {
   await mkdir(parsed.dir, { recursive: true });
 
   for (const frame of result.frames) {
+    // Probes are rendered and asserted but not written out, unless somebody asked
+    // for that one by name — see the note on FLOORS.
+    if (PROBES.has(frame.floor) && onlyFloor !== frame.floor) {
+      continue;
+    }
+
     // One file per floor per state, always suffixed — even for a single `--state`,
     // so the name says which hour and which floor is in the picture. A screenshot
     // of a piece whose whole subject is the hour should not have to be identified
@@ -593,7 +791,8 @@ process.stdout.write(
 for (const frame of result.frames) {
   process.stdout.write(
     `  ${frame.floor.padEnd(9)} ${frame.state.padEnd(10)} luma ${frame.min.toFixed(1)}–${frame.max.toFixed(1)} ` +
-      `(mean ${frame.mean.toFixed(1)}, sd ${frame.deviation.toFixed(2)}), ${frame.distinct} levels\n`
+      `(mean ${frame.mean.toFixed(1)}, sd ${frame.deviation.toFixed(2)}, chroma ` +
+      `${frame.chroma.toFixed(2)}), ${frame.distinct} levels\n`
   );
 }
 

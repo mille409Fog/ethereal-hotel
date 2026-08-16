@@ -76,13 +76,15 @@ Performance and accessibility are budgets rather than aspirations. `npm run ligh
 production build on `/` and `/dashboard` — the desktop profile, three runs, asserted against the
 median — and the build **fails** below **performance 90**, **accessibility 100** and
 **best practices 95**. Size has a ceiling in the same spirit: `angular.json` caps the
-**initial payload at 15 kB** and **all scripts at 755 kB**, set just above what the build produces
+**initial payload at 15 kB** and **all scripts at 810 kB**, set just above what the build produces
 today so the next regression trips it rather than being absorbed. `npm run check:docs` fails if
 these numbers and the configs that enforce them ever disagree.
 
-The initial payload is the number to watch, and it has not moved: `/aubade` is a lazy route whose
-renderer sits behind a second dynamic import, so the shaders reach a browser only when someone
-opens that page. Its Reader's Edition at `/aubade/reader` is a third chunk again, and creates no
+The initial payload is the number to watch, and it has not moved — it is under 12 kB with four
+floors of raymarched hotel in the repository, because `/aubade` is a lazy route whose renderer sits
+behind a second dynamic import, so the shaders reach a browser only when someone opens that page.
+The all-scripts ceiling is what a new floor spends, and most of it is comments: GLSL lives inside a
+template literal, so a minifier never sees them. Its Reader's Edition at `/aubade/reader` is a third chunk again, and creates no
 WebGL context at all. `npm run verify:shader` compiles them in headless Chromium and renders a frame —
 GLSL is the only code here whose compiler would otherwise run for the first time in production.
 

@@ -23,13 +23,13 @@
  * that beats against the refresh rate, which looks like a dropped frame and is not
  * one.
  *
- * **There is still exactly one program.** Three floors, a lift between them, and
+ * **There is still exactly one program.** Four floors, a lift between them, and
  * one compile — see the file comment on `rooms/hotel.frag.ts`. The depth is a
- * uniform, all three floors' rigs are uploaded every frame, and the shader's own
- * branches decide what to spend anything on. Uploading two rigs nobody is looking
- * at costs fourteen uniform writes, which is nothing next to a single `mapScene`
- * call; compiling a second program at the moment the lift doors close would cost a
- * stalled driver in the middle of the piece's one transition.
+ * uniform, all four floors' rigs are uploaded every frame, and the shader's own
+ * branches decide what to spend anything on. Uploading three rigs nobody is looking
+ * at costs a couple of dozen uniform writes, which is nothing next to a single
+ * `mapScene` call; compiling a second program at the moment the lift doors close
+ * would cost a stalled driver in the middle of the piece's one transition.
  */
 
 import { breathe } from './camera/drift';
@@ -45,6 +45,7 @@ import {
 } from './gl/quality';
 import { drawingBufferSize, resizeDrawingBuffer } from './gl/viewport';
 import { FULLSCREEN_VERTEX_SHADER } from './rooms/fullscreen.vert';
+import type { ICellarRig } from './rooms/cellar-rig';
 import type { ICorridorRig } from './rooms/corridor-rig';
 import { HOTEL_FRAGMENT_SHADER } from './rooms/hotel.frag';
 import type { ILibraryRig } from './rooms/library-rig';
@@ -62,9 +63,9 @@ export interface IRenderReport {
 /**
  * Where the hotel is, for one frame.
  *
- * Both floors' rigs travel together whether or not the lift is moving, because
- * during the ride both rooms are lit at once and afterwards the cost of the one
- * nobody is in is eight uniform writes.
+ * All four floors' rigs travel together whether or not the lift is moving, because
+ * during the ride two rooms are lit at once and afterwards the cost of the ones
+ * nobody is in is a couple of dozen uniform writes.
  */
 export interface IHotelFrame {
   /** Floor 0's rig — see `rooms/light-rig.ts`. */
@@ -76,13 +77,29 @@ export interface IHotelFrame {
   /** Floor −2's rig — see `rooms/library-rig.ts`. */
   readonly library: ILibraryRig;
 
+  /** Floor −3's rig — see `rooms/cellar-rig.ts`. */
+  readonly cellar: ICellarRig;
+
   /**
    * The lift, as floors below the lobby: 0 is the lobby's distance field exactly,
-   * 1 the corridor's, 2 the library's, and between any adjacent pair the shader
-   * mixes them. From `descent.ts`, where the requirement that the endpoints be
-   * exact is spelled out.
+   * 1 the corridor's, 2 the library's, 3 the cellar's, and between any adjacent
+   * pair the shader mixes them. From `descent.ts`, where the requirement that the
+   * endpoints be exact is spelled out.
    */
   readonly depth: number;
+
+  /**
+   * How long the visitor has kept still, in [0, 1] — see `cellar.ts`.
+   *
+   * The only quantity in this interface that is about the person rather than the
+   * building or the sun, and it is here rather than in a rig for exactly that
+   * reason: a rig is what an hour looks like, and no hour knows how anybody is
+   * behaving. Read by Floor −3 and by nothing else.
+   */
+  readonly stillness: number;
+
+  /** Where the 4-7-8 cycle has got to, in [0, 1] — see `cellar.ts`. */
+  readonly breath: number;
 }
 
 export class HotelRenderer {
@@ -173,9 +190,10 @@ export class HotelRenderer {
    * Draw one frame.
    *
    * @param frame Timing from the fixed-step loop.
-   * @param hotel The hour's two rigs and where the lift is. Passed per frame
-   *   rather than held, because the renderer has no business knowing when the sun
-   *   moved or when somebody pressed the lift call button.
+   * @param hotel The hour's four rigs, where the lift is, and how still the
+   *   visitor has been. Passed per frame rather than held, because the renderer has
+   *   no business knowing when the sun moved, when somebody pressed the lift call
+   *   button, or whether they have stopped fidgeting.
    * @returns Whether anything was drawn. `false` means the context was lost or the
    *   renderer disposed — the caller stops the loop rather than spinning on a dead
    *   context, which otherwise burns a core for as long as the tab is open.
@@ -207,7 +225,9 @@ export class HotelRenderer {
 
     // Interpolated across the leftover of the fixed step — see the file comment.
     const seconds = frame.simulatedSeconds + (frame.alpha * FIXED_STEP_MS) / 1000;
-    const camera = breathe(seconds, hotel.depth);
+    // The breath goes to the camera and to the shader from the same variable, so
+    // the pose and `uBreath` cannot disagree about where in the cycle they are.
+    const camera = breathe(seconds, hotel.depth, hotel.breath);
 
     gl.useProgram(this.program);
     gl.uniform2f(this.at('uResolution'), size.width, size.height);
@@ -263,6 +283,19 @@ export class HotelRenderer {
     gl.uniform3f(this.at('uLibraryFloor'), ...library.ambientFloor);
     gl.uniform3f(this.at('uLibrarySky'), ...library.ambientSky);
     gl.uniform1f(this.at('uLibraryDust'), library.dust);
+
+    const cellar = hotel.cellar;
+    gl.uniform3f(this.at('uCandleColour'), ...cellar.candleColour);
+    gl.uniform1f(this.at('uCandleStrength'), cellar.candleStrength);
+    gl.uniform1f(this.at('uAdaptation'), cellar.adaptation);
+    gl.uniform1f(this.at('uCellarExposure'), cellar.exposure);
+    gl.uniform3f(this.at('uCellarFloor'), ...cellar.ambientFloor);
+    gl.uniform3f(this.at('uCellarSky'), ...cellar.ambientSky);
+    gl.uniform1f(this.at('uCellarDust'), cellar.dust);
+
+    // The visitor. Not from a rig, because neither is a fact about the hotel.
+    gl.uniform1f(this.at('uStillness'), hotel.stillness);
+    gl.uniform1f(this.at('uBreath'), hotel.breath);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     return true;

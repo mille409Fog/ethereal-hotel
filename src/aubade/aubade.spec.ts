@@ -1,7 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Aubade } from './aubade';
+import { FLOORS } from './descent';
 import { StubWebGL2 } from './gl/webgl.testing';
 import type { AubadeState } from './solar/state';
+
+/**
+ * Small numbers as the prose writes them, for the one assertion that has to read
+ * a sentence rather than a count. Only ever indexed with a floor count and its
+ * complement out of six, so it stops where the building does.
+ */
+const SPELLED = ['no', 'one', 'two', 'three', 'four', 'five', 'six'] as const;
 
 /**
  * `/aubade` — the route, not the room.
@@ -152,8 +160,17 @@ describe('the aubade route', () => {
     });
 
     it('says how far into the hotel this is', async () => {
+      // Derived from the shaft rather than written out, for the same reason the
+      // Reader's Edition's version of this claim is — see `edition.spec.ts`. A
+      // literal here is a sentence somebody has to remember to edit in the commit
+      // that ships a floor, and forgetting it is invisible: the page still reads
+      // perfectly and is quietly advertising fewer rooms than the lift serves.
       await render();
-      expect(text()).toContain('Three floors of six');
+
+      // Case-insensitive on the first, because it opens the sentence and the
+      // sentence is prose rather than a data binding.
+      expect(text()).toMatch(new RegExp(`${SPELLED[FLOORS.length]} floors of six`, 'i'));
+      expect(text()).toContain(`The other ${SPELLED[6 - FLOORS.length]} are written and not built`);
     });
   });
 
@@ -383,6 +400,105 @@ describe('the aubade route', () => {
           'a[href="/aubade/reader"]'
         );
         expect(links.length).toBeGreaterThanOrEqual(2);
+      });
+    });
+
+    describe('at the bottom of the shaft', () => {
+      /**
+       * Three floors down, without three rides.
+       *
+       * Under `prefers-reduced-motion` the loop never starts and each call is a cut
+       * between two still compositions — AUBADE's third non-negotiable asks for
+       * exactly that, and it is also the only way to reach Floor −3 in a test
+       * without driving twenty-two and a half seconds of simulated lift.
+       */
+      const goToTheBottom = async (state: AubadeState = 'open'): Promise<void> => {
+        setHour(state);
+        setReducedMotion(true);
+        await render();
+        for (let step = 0; step < 3; step += 1) {
+          fixture.componentInstance.call('down');
+        }
+        fixture.detectChanges();
+      };
+
+      it('reaches the cellar and stops there', async () => {
+        await goToTheBottom();
+
+        expect(fixture.componentInstance.floor()).toBe(-3);
+        expect(text()).toContain('The Cellar');
+
+        // The shaft ends. A fourth call is a lift asked to go through the bottom of
+        // the building, and `canCall` is what stops it.
+        fixture.componentInstance.call('down');
+        fixture.detectChanges();
+        expect(fixture.componentInstance.floor()).toBe(-3);
+      });
+
+      it('offers only the way back up', async () => {
+        await goToTheBottom();
+
+        const controls = (fixture.nativeElement as HTMLElement).querySelectorAll('.lobby__call');
+        expect(controls.length).toBe(1);
+        expect(controls[0].textContent).toContain('up');
+      });
+
+      it('writes the room out in prose, and asks for something', async () => {
+        await goToTheBottom();
+
+        expect(text()).toContain('barrel vault');
+        expect(text()).toContain('casks');
+        expect(text()).toContain('stand still');
+        expect(text()).not.toContain('brass bell');
+      });
+
+      it('never explains why standing still works', async () => {
+        // The corridor's rule, inherited. The plate says what to do, because a
+        // room whose content is ninety seconds away has to; it does not say that
+        // the room is unchanged and the change is in the visitor's own eyes. That
+        // is the thing this floor is for, and it is left where it can be found.
+        await goToTheBottom();
+
+        const prose = text().toLowerCase();
+        expect(prose).not.toContain('your eyes');
+        expect(prose).not.toContain('adapt');
+      });
+
+      it('hands the room over resolved when the visitor asked for less motion', async () => {
+        // There is no loop under `prefers-reduced-motion`: one frame is drawn and
+        // left. A floor whose entire content is ninety seconds of change would be a
+        // black rectangle for ever, which is the worst outcome available anywhere in
+        // this hotel — so the reward is given instead of the wait.
+        await goToTheBottom();
+
+        expect(gl?.uniformValue('uStillness')).toEqual([1]);
+      });
+
+      it('says nothing about standing still until the visitor is down there', async () => {
+        // The one instruction in the piece, and it belongs to one floor. On any
+        // other it would be an instruction about nothing.
+        setReducedMotion(true);
+        await render();
+        expect(fixture.componentInstance.stillnessNote()).toBeNull();
+      });
+
+      it('tells a daytime visitor that standing still will not help them', async () => {
+        // The ceiling is exactly zero at noon, so "keep still" would be a lie told
+        // to somebody being patient. The lift only runs down there because the
+        // invitation opened it — which is also why the rig is the open one and the
+        // plate still is not.
+        setHour('shuttered');
+        setReducedMotion(true);
+        await render();
+
+        fixture.componentInstance.accept();
+        for (let step = 0; step < 3; step += 1) {
+          fixture.componentInstance.call('down');
+        }
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.floor()).toBe(-3);
+        expect(text()).toContain('came in out of the daylight');
       });
     });
   });

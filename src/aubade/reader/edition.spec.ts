@@ -1,3 +1,4 @@
+import { FLOORS } from '../descent';
 import { AUBADE_STATES } from '../solar/state';
 import {
   EDITION,
@@ -23,6 +24,15 @@ import {
  * alt attribute with headings. A floor of a thousand words catches that. A
  * ceiling catches the opposite drift, which is likelier here than anywhere else
  * in the repository.
+ *
+ * The ceiling has room in it for the floors that have not landed, and that is
+ * deliberate rather than slack. Every phase converts one of the six floor entries
+ * from a sketch of a room into a description of one, which costs forty or fifty
+ * words each time — so a ceiling set tight against today's total is a gate that
+ * fails on the next phase for a reason that is not the reason it exists. It was
+ * seven words clear when the Cellar landed, which is a gate measuring the wrong
+ * thing. Nineteen hundred budgets the two rooms still to come and would still
+ * catch this page turning into an essay, which is the only thing it is for.
  */
 
 /** Every word the page prints from this file, including the headings. */
@@ -55,7 +65,7 @@ describe('the Reader’s Edition', () => {
       const count = words().length;
 
       expect(count).toBeGreaterThan(1000);
-      expect(count).toBeLessThan(1600);
+      expect(count).toBeLessThan(1900);
     });
 
     it('states no wall-clock time and names no month', () => {
@@ -119,18 +129,26 @@ describe('the Reader’s Edition', () => {
 
     it('says which floors are built and which are only written', () => {
       // The one place the fiction and the truth land on the same sentence.
-      // Everything on this page is present tense; three of the six floors do not
+      // Everything on this page is present tense; some of the six floors do not
       // exist; both facts are in the work rather than in a footnote.
       //
       // This assertion is the reason AUBADE tells each new room it owes this page
       // a paragraph. A floor that ships without moving itself out of the unbuilt
       // list has quietly made the work lie, and the lie is invisible — the page
       // still reads beautifully — so it is checked rather than remembered.
+      //
+      // Derived from `FLOORS` rather than written out, and that is the whole point
+      // of the check. Spelled as a literal it was a string somebody had to remember
+      // to edit in the same commit that shipped a floor, which is exactly the class
+      // of thing this test exists because people forget. Built from the shaft's own
+      // list it fails the moment a floor exists and the page has not said so, and it
+      // needs no maintenance when the next one lands.
+      const named = FLOORS.map((floor) => `Floor ${floor === 0 ? '0' : `−${-floor}`}`);
+      const built = `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`;
+
       const everything = prose().join(' ');
 
-      expect(everything).toContain(
-        'Floor 0, Floor −1 and Floor −2 exist and the lift runs between them'
-      );
+      expect(everything).toContain(`${built} exist and the lift runs between them`);
       expect(everything).toContain('written and not built');
     });
 

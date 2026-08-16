@@ -44,16 +44,36 @@
       <p class="lobby__state">{{ copy().plate }}</p>
 
       <!-- What the render is doing, when that is worth saying — the chunk still
-           loading, the camera stopped for reduced motion, or a browser with no
-           WebGL2 at all. The strings live in `desk.ts` with the rest of the
-           writing, which is also what keeps this template under the complexity
-           limit now that there are two floors and a lift in it. -->
-      @if (modeNote(); as line) {
-        <p class="lobby__state lobby__state--quiet">{{ line }}</p>
+           loading, the camera stopped for reduced motion, a browser with no WebGL2
+           at all, or a rung the detail ladder has dropped to. The strings live in
+           `desk.ts` with the rest of the writing, which is what keeps this template
+           under the complexity limit now that there are four floors and a lift in
+           it.
+
+           One `@for` over a list rather than two `@if`s over two signals, and that
+           is the same lint rule earning its keep a second time: both lines are the
+           machinery talking about itself in the same voice at the same size, they
+           are never ordered differently, and as two blocks they cost this template
+           the complexity budget the Cellar's instruction needed. -->
+      @for (remark of remarks(); track remark) {
+        <p class="lobby__state lobby__state--quiet">{{ remark }}</p>
       }
 
-      @if (note(); as reduction) {
-        <p class="lobby__state lobby__state--quiet">{{ reduction }}</p>
+      <!-- Floor −3 only, and the one instruction in the piece. AUBADE's fourth
+           failure mode is a piece nobody can tell what to do with inside eight
+           seconds; the Cellar's entire content sits on the far side of ninety
+           seconds of standing still, so it has to say so or nobody ever sees it.
+
+           `aria-live="polite"` because this is the only text on the route that
+           changes without anybody doing anything — the other plates change when
+           the sun does or when the lift arrives, both of which a screen reader
+           user has caused. This one changes because they *stopped* causing
+           things, which is precisely the announcement they cannot get any other
+           way. Polite rather than assertive: it is not urgent, and it is coming
+           to somebody who has been asked to be calm. It updates about four times
+           in a visit — see `stillnessNote`, which is bucketed for this reason. -->
+      @if (stillnessNote(); as asking) {
+        <p class="lobby__state lobby__state--asking" aria-live="polite">{{ asking }}</p>
       }
 
       <!-- The card on the desk. Only in daylight: a countdown to sunset shown
@@ -168,7 +188,7 @@
       @for (paragraph of prose(); track paragraph) {
         <p>{{ paragraph }}</p>
       }
-      <p class="lobby__aside">Three floors of six. The other three are written and not built.</p>
+      <p class="lobby__aside">Four floors of six. The other two are written and not built.</p>
 
       <!-- The second of the two required links, and the one that is actually
            earned: somebody who has read this far has read about this room and

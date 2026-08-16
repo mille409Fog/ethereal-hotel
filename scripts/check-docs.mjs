@@ -305,6 +305,7 @@ check('every floor is lit by the clock, at every hour', () => {
     'src/aubade/rooms/light-rig.ts',
     'src/aubade/rooms/corridor-rig.ts',
     'src/aubade/rooms/library-rig.ts',
+    'src/aubade/rooms/cellar-rig.ts',
     'src/aubade/desk.ts',
   ]) {
     if (!exists(file)) {
@@ -322,6 +323,7 @@ check('every floor is lit by the clock, at every hour', () => {
   const rigs = read('src/aubade/rooms/light-rig.ts');
   const corridorRigs = read('src/aubade/rooms/corridor-rig.ts');
   const libraryRigs = read('src/aubade/rooms/library-rig.ts');
+  const cellarRigs = read('src/aubade/rooms/cellar-rig.ts');
   const copy = read('src/aubade/desk.ts');
   const entry = (state) => new RegExp(`^\\s{2}${state}:\\s*\\{`, 'm');
 
@@ -346,6 +348,13 @@ check('every floor is lit by the clock, at every hour', () => {
           `by writing all five hours out, including the four that are identical.`
       );
     }
+    if (!entry(state).test(cellarRigs)) {
+      problems.push(
+        `CELLAR_RIGS has no rig for '${state}'. Floor −3's answer to the sun is one field in this ` +
+          `table — the room does not move and the ceiling on the visitor's own eyes does — and it ` +
+          `can only be made by writing all five hours out, including the four that are identical.`
+      );
+    }
     if (!entry(state).test(copy)) {
       problems.push(`DESK_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
     }
@@ -355,15 +364,25 @@ check('every floor is lit by the clock, at every hour', () => {
     if (!new RegExp(`LIBRARY_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
       problems.push(`LIBRARY_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
     }
+    if (!new RegExp(`CELLAR_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
+      problems.push(`CELLAR_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
+    }
 
     // The phases' Definitions of Done, as pictures. One run writes all
-    // twenty-five: `npm run verify:shader -- --out docs/images/aubade.webp`.
+    // thirty-five: `npm run verify:shader -- --out docs/images/aubade.webp`.
     //
-    // `lift` and `descent` are not floors and are committed anyway, because they
-    // are the two rides caught halfway — the things in the piece whose entire
-    // justification is that they look like something, and therefore the ones with
-    // no other way of noticing they have stopped.
-    for (const floor of ['lobby', 'lift', 'corridor', 'descent', 'library']) {
+    // `lift`, `descent` and `sinking` are not floors and are committed anyway,
+    // because they are the three rides caught halfway — the things in the piece
+    // whose entire justification is that they look like something, and therefore
+    // the ones with no other way of noticing they have stopped.
+    //
+    // `arriving` is rendered on every run and is deliberately *not* here. It is
+    // Floor −3 before the visitor has kept still, and because nothing in the
+    // cellar's rig varies with the hour, all five of its frames are provably the
+    // same picture — so five committed copies would be a redundancy rather than a
+    // reference. `verify-shader.mjs` asserts that identity directly instead, which
+    // is the stronger check and the cheaper one.
+    for (const floor of ['lobby', 'lift', 'corridor', 'descent', 'library', 'sinking', 'cellar']) {
       if (!exists(`docs/images/aubade-${floor}-${state}.webp`)) {
         problems.push(
           `docs/images/aubade-${floor}-${state}.webp is missing. AUBADE commits a frame per ` +
@@ -552,12 +571,120 @@ check('the library keeps its light and loses its writing', () => {
   }
 
   // And the stop, which is the one that actually bit. See the note in tonemap.
-  if (!/mix\(uExposure, uLibraryExposure, floorWeight\(2\.0\)\)/.test(read(shader))) {
+  //
+  // Matched as a weighted sum rather than as the `mix` it used to be, because Floor
+  // −3 wanted its own stop too and two of them will not fit in a two-armed mix. The
+  // property being defended is the same one and it is the whole reason the sum has
+  // to be convex: floorWeight's four values total exactly 1, so this is three stops
+  // blended and never three stops added.
+  if (!/uLibraryExposure \* floorWeight\(2\.0\)/.test(read(shader))) {
     problems.push(
       `${shader} no longer blends the tonemap's exposure towards the library's own. uExposure is ` +
         `Floor 0's rig field and is applied to the whole frame whatever floor is in it, so ` +
         `without this the lobby's daytime stop reaches Floor −2 and the library measurably ` +
         `brightens at noon — which is precisely what the room is built to refuse.`
+    );
+  }
+
+  return problems;
+});
+
+// Floor −3's one idea, and it is the only floor whose claim is not about the room.
+//
+// The three floors above answer the sun with light, with the absence of light, and
+// with the writing. This one answers it with the visitor: the room is identical at
+// every hour and for everybody, and what the sun sets is the ceiling on how much of
+// it ninety seconds of stillness can bring in. `verify-shader.mjs` carries the
+// measurable half — five identical arriving frames, a settled frame three times
+// brighter and measurably less coloured, and a noon pair that match exactly.
+//
+// What is left for here is the part a frame cannot see. All four of these fail
+// silently: a ceiling that is nearly zero renders a room that resolves very
+// slightly, lighting that reads the stillness directly renders almost the same
+// picture while making the opposite claim, a leaked exposure lifts the floor at
+// noon, and a reduced-motion visitor handed an unresolved room simply sees black
+// for ever and reports nothing.
+check('the cellar keeps its room and moves the visitor', () => {
+  const rig = 'src/aubade/rooms/cellar-rig.ts';
+  const shader = 'src/aubade/rooms/hotel.frag.ts';
+  const component = 'src/aubade/aubade.ts';
+
+  if (!exists(rig)) {
+    return [`${rig} is gone, but CLAUDE.md and AUBADE.md both describe Floor −3.`];
+  }
+
+  const problems = [];
+  const source = read(rig);
+  const glsl = read(shader);
+
+  // Exactly zero at noon, for the same reason the library's ink is: a visitor who
+  // came in out of the daylight gets the room they walked into and no other, however
+  // long they stand in it. A residual ceiling is a room that resolves a little,
+  // which is an argument that has quietly become a gradient.
+  if (!/shuttered:\s*\{[\s\S]*?adaptation:\s*0,/.test(source)) {
+    problems.push(
+      `${rig} no longer sets adaptation to exactly 0 at the shuttered hour. Floor −3's answer to ` +
+        `the sun is that ninety seconds of perfect stillness buys a daytime visitor exactly ` +
+        `nothing; a residual value is a cellar that resolves slightly, which looks entirely fine ` +
+        `and is not the claim.`
+    );
+  }
+
+  // Every field but the ceiling is shared by construction, exactly as the library's
+  // are, because this floor's light does not answer the sun either.
+  if (!/const CONSTANT_LIGHT = \{/.test(source) || !/\.\.\.CONSTANT_LIGHT,/.test(source)) {
+    problems.push(
+      `${rig} no longer spreads one CONSTANT_LIGHT into all five rigs. Floor −3's claim is that ` +
+        `the room is identical at every hour, and five entries maintained separately are five ` +
+        `entries that will eventually disagree.`
+    );
+  }
+
+  // The resolve is in the eye and not in the room. This is the architectural claim
+  // and it is the easiest one to undo by accident: bringing the candle up as the
+  // visitor settles renders a very similar picture and says the room is performing.
+  if (!/vec3 adapted\(vec3 colour\)/.test(glsl)) {
+    problems.push(
+      `${shader} no longer has adapted(). Floor −3's whole content is a gain and a desaturation ` +
+        `applied to the finished frame — the room itself never changes — and a version that ` +
+        `moves the resolve into the lighting makes the opposite claim about what the room is.`
+    );
+  }
+  // Scoped to the CELLAR_GLSL source string alone — the room's geometry — and not
+  // to everything below it, which is the shading and is where `adapted()` and the
+  // candle's flicker legitimately read both of these.
+  const cellarGeometry = glsl.slice(glsl.indexOf('const CELLAR_GLSL')).split('\n`;')[0];
+  for (const uniform of ['uStillness', 'uAdaptation']) {
+    if (cellarGeometry.includes(uniform)) {
+      problems.push(
+        `${shader} reads ${uniform} inside the cellar's geometry. Floor −3's distance field is ` +
+          `the same at every second, at every hour, for every visitor — a room that knows how ` +
+          `still somebody has been is a room that assembles itself, which is exactly what this ` +
+          `floor is built not to do.`
+      );
+    }
+  }
+
+  // This floor's own stop, for the reason the library's comment gives — and it
+  // matters more here, because adapted() multiplies a gain on top of whatever
+  // exposure reaches it.
+  if (!/uCellarExposure \* floorWeight\(3\.0\)/.test(glsl)) {
+    problems.push(
+      `${shader} no longer blends the tonemap's exposure towards the cellar's own. A leaked stop ` +
+        `is a leaked stop times the adaptation gain down here, and the one measurement this floor ` +
+        `makes is a comparison between its own two ends.`
+    );
+  }
+
+  // And the reduced-motion answer. There is no loop under `prefers-reduced-motion`,
+  // so a floor whose content is ninety seconds of change would be a black rectangle
+  // for ever — the worst outcome available on any floor of this hotel.
+  if (!/this\.stillness = 1;/.test(read(component))) {
+    problems.push(
+      `${component} no longer hands the cellar over resolved under prefers-reduced-motion. That ` +
+        `path draws one frame and stops, so without it a visitor who asked for less motion gets ` +
+        `Floor −3 as an unresolved black frame and no way to change it. AUBADE's third ` +
+        `non-negotiable asks for still compositions, not for the reward to be withheld.`
     );
   }
 

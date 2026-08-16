@@ -4,6 +4,7 @@ import { DEMOTE_ABOVE_MS, QUALITY_TIERS, WINDOW_FRAMES } from './gl/quality';
 import { StubWebGL2, stubCanvas } from './gl/webgl.testing';
 import { MAX_DRAWING_BUFFER_PIXELS } from './gl/viewport';
 import { HotelRenderer, type IHotelFrame } from './renderer';
+import { CELLAR_RIGS } from './rooms/cellar-rig';
 import { CORRIDOR_RIGS } from './rooms/corridor-rig';
 import { LIBRARY_RIGS } from './rooms/library-rig';
 import { INVITED_THRESHOLD, LIGHT_RIGS, rigFor } from './rooms/light-rig';
@@ -34,18 +35,25 @@ const frame = (overrides: Partial<IFrame> = {}): IFrame => ({
 const NIGHT = LIGHT_RIGS.open;
 
 /**
- * One frame's worth of hotel: a rig per floor, and where the lift is.
+ * One frame's worth of hotel: a rig per floor, where the lift is, and the visitor.
  *
  * Most of these tests are about the renderer's plumbing rather than about any one
  * room, so they settle on the lobby and pass whichever lobby rig they are
- * interested in. The other two rigs still travel on every frame, because they do
+ * interested in. The other three rigs still travel on every frame, because they do
  * in the real thing — see the note on IHotelFrame.
+ *
+ * `stillness` and `breath` are zero here, which is a visitor who has just arrived
+ * at the bottom of an exhale. Nothing above Floor −3 reads either, so it is the
+ * quietest default rather than a meaningful one.
  */
 const at = (lobby = NIGHT, depth = 0): IHotelFrame => ({
   lobby,
   corridor: CORRIDOR_RIGS.open,
   library: LIBRARY_RIGS.open,
+  cellar: CELLAR_RIGS.open,
   depth,
+  stillness: 0,
+  breath: 0,
 });
 
 /** A renderer over a stub, with the canvas laid out at a known size. */
@@ -231,9 +239,60 @@ describe('the light rig', () => {
       'uBleach',
       'uExposure',
       'uThreshold',
+      'uSconceColour',
+      'uSconceStrength',
+      'uShaftDirection',
+      'uShaftColour',
+      'uShaftStrength',
+      'uCorridorFloor',
+      'uCorridorSky',
+      'uCorridorDust',
+      'uReadingColour',
+      'uReadingStrength',
+      'uInk',
+      'uLibraryExposure',
+      'uLibraryFloor',
+      'uLibrarySky',
+      'uLibraryDust',
+      'uCandleColour',
+      'uCandleStrength',
+      'uAdaptation',
+      'uCellarExposure',
+      'uCellarFloor',
+      'uCellarSky',
+      'uCellarDust',
     ]) {
       expect(gl.uniformValue(name), `${name} was never written`).not.toBeNull();
     }
+  });
+
+  it('writes the visitor as well as the hotel', () => {
+    // The two uniforms that are not about the building. They travel on every frame
+    // whatever floor the lift is on, because the renderer has no business knowing
+    // which floor reads them — see `adapted()` in the shader, which is a no-op
+    // above depth 2 and is the only thing that does.
+    const { gl, renderer } = build();
+    renderer.render(frame(), { ...at(NIGHT), stillness: 0.4, breath: 0.75 });
+
+    expect(gl.uniformValue('uStillness')).toEqual([0.4]);
+    expect(gl.uniformValue('uBreath')).toEqual([0.75]);
+  });
+
+  it('paces the camera with the same breath it hands the shader', () => {
+    // One variable, two destinations. The pose and `uBreath` cannot disagree about
+    // where in the 4-7-8 cycle they are, which is the reason `breathe` takes the
+    // breath as an argument rather than computing it — see the note on its third
+    // parameter, where the toolchain half of that story is also recorded.
+    const { gl, renderer } = build();
+    renderer.render(frame({ simulatedSeconds: 6 }), {
+      ...at(NIGHT, 3),
+      stillness: 1,
+      breath: 1,
+    });
+
+    const pose = breathe(6, 3, 1);
+    expect(gl.uniformValue('uEye')).toEqual([pose.eye.x, pose.eye.y, pose.eye.z]);
+    expect(gl.uniformValue('uBreath')).toEqual([1]);
   });
 
   it('sends the hour it was handed, not a remembered one', () => {

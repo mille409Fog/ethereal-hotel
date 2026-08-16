@@ -101,6 +101,22 @@
   font-style: italic;
 }
 
+/* Floor −3's one instruction — see the note beside it in `aubade.html`.
+
+   Set in the plate's own face rather than the clerk's prose face, and in brass,
+   because it is the only line on the route that is addressed to the visitor
+   rather than describing the building. It has to be findable in a frame that is
+   almost entirely black without being a notification: no box, no icon, no
+   background. A room asking somebody to stand still cannot do it in a toast. */
+.lobby__state--asking {
+  margin-top: 0.5rem;
+  font-family: var(--lobby-face-plate);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+}
+
 /* ----- The card on the desk -----
 
    Shown only while the hotel is shut. It is the one piece of chrome that

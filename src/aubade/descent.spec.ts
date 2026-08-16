@@ -24,20 +24,22 @@ import {
  * evaluations forever afterwards while the mirror, which only wakes at the
  * endpoint, never turns on at all.
  *
- * Since the shaft went to three floors there are three such values rather than
+ * Since the shaft went to four floors there are four such values rather than
  * two, and one more way to get it wrong: a curve that is exact on the first leg
- * and accumulates a float's worth of error on the second. So every leg is
+ * and accumulates a float's worth of error on the ones after it. So every leg is
  * asserted on its own, exactly, with `toBe`. The shape is asserted as properties
  * rather than as sampled values, because pinning the curve to a table of numbers
  * would make it unimprovable.
  */
 
-/** The four rides that exist. Every leg, both ways. */
+/** The six rides that exist. Every leg, both ways. */
 const legs: ReadonlyArray<{ from: Floor; direction: LiftDirection }> = [
   { from: 0, direction: 'down' },
   { from: -1, direction: 'down' },
+  { from: -2, direction: 'down' },
   { from: -1, direction: 'up' },
   { from: -2, direction: 'up' },
+  { from: -3, direction: 'up' },
 ];
 
 /** A ride, sampled finely enough to see any non-monotonic wobble in the easing. */
@@ -48,9 +50,9 @@ const ride = (from: Floor, direction: LiftDirection, steps = 300): number[] =>
 
 describe('the lift', () => {
   describe('the shaft it runs in', () => {
-    it('serves three floors, deepest last', () => {
-      expect(FLOORS).toEqual([0, -1, -2]);
-      expect(LOWEST_FLOOR).toBe(-2);
+    it('serves four floors, deepest last', () => {
+      expect(FLOORS).toEqual([0, -1, -2, -3]);
+      expect(LOWEST_FLOOR).toBe(-3);
     });
 
     it('parks each floor on an exact depth, and depth is minus the floor', () => {
@@ -69,6 +71,7 @@ describe('the lift', () => {
       expect(depthForFloor(0)).toBe(0);
       expect(depthForFloor(-1)).toBe(1);
       expect(depthForFloor(-2)).toBe(2);
+      expect(depthForFloor(-3)).toBe(3);
     });
 
     it('will not be called through the roof or the floor', () => {
@@ -77,8 +80,10 @@ describe('the lift', () => {
 
       expect(canCall(0, 'down')).toBe(true);
       expect(canCall(-1, 'down')).toBe(true);
+      expect(canCall(-2, 'down')).toBe(true);
       expect(canCall(-1, 'up')).toBe(true);
       expect(canCall(-2, 'up')).toBe(true);
+      expect(canCall(-3, 'up')).toBe(true);
     });
 
     it('moves one floor at a time', () => {

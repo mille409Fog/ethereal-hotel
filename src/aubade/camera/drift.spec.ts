@@ -1,7 +1,10 @@
+import { breathAt } from '../cellar';
 import {
   ANCHOR_EYE,
   ANCHOR_TARGET,
   breathe,
+  CELLAR_EYE,
+  CELLAR_TARGET,
   CORRIDOR_EYE,
   CORRIDOR_TARGET,
   LIBRARY_EYE,
@@ -219,6 +222,13 @@ describe('the camera descends', () => {
       expect(pose.target).toEqual(LIBRARY_TARGET);
     });
 
+    it('sits exactly on the cellar anchor at the bottom', () => {
+      const pose = breathe(0, 3);
+
+      expect(pose.eye).toEqual(CELLAR_EYE);
+      expect(pose.target).toEqual(CELLAR_TARGET);
+    });
+
     it('treats a missing or impossible lift as the lobby', () => {
       // `depth` arrives from the shader's own uniform and a NaN there is a black
       // screen with nothing in the console. Out-of-range values are clamped
@@ -226,7 +236,45 @@ describe('the camera descends', () => {
       for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -3]) {
         expect(breathe(0, bad).eye).toEqual(ANCHOR_EYE);
       }
-      expect(breathe(0, 4).eye).toEqual(LIBRARY_EYE);
+      expect(breathe(0, 5).eye).toEqual(CELLAR_EYE);
+    });
+
+    it('holds the anchor at second zero on the cellar floor too, whatever the breath', () => {
+      // The one floor where the reduced-motion still could have drifted off its
+      // own composition. Every other term in `breathe` is a sine and every sine is
+      // zero at zero; the cellar swaps one of them for the 4-7-8 curve, which is
+      // zero at zero only because `breathAt` starts the cycle on an empty chest.
+      // If that ever stopped being true the held frame would sit a few millimetres
+      // off its anchor on exactly one floor, which is invisible and permanent.
+      expect(breathe(0, 3, breathAt(0)).eye).toEqual(CELLAR_EYE);
+      expect(breathe(0, 3, 0).eye).toEqual(CELLAR_EYE);
+    });
+
+    it('breathes on the 4-7-8 cycle down there rather than on its own', () => {
+      // The camera changes gait on Floor −3 — see the file comment, where the
+      // deliberate violation of the no-visible-period rule is set out. What proves
+      // it is wired is that the pose responds to the breath argument at depth 3 and
+      // ignores it entirely in the lobby.
+      const empty = breathe(4, 3, 0);
+      const full = breathe(4, 3, 1);
+      expect(full.eye.y).not.toBeCloseTo(empty.eye.y, 6);
+
+      expect(breathe(4, 0, 1).eye).toEqual(breathe(4, 0, 0).eye);
+    });
+
+    it('nearly stops moving on the cellar floor', () => {
+      // A third of the sway, the drift and the roll — the room asks the visitor to
+      // be still and a camera that carried on wandering would be asking for
+      // something it was not doing itself. Compared against the library one floor
+      // up rather than against a constant, so this measures the damping rather than
+      // any particular amplitude.
+      const swing = (depth: number): number => {
+        const poses = [3, 9, 17, 26].map((second) => breathe(second, depth, 0));
+        const xs = poses.map((pose) => pose.eye.x);
+        return Math.max(...xs) - Math.min(...xs);
+      };
+
+      expect(swing(3)).toBeLessThan(swing(2) * 0.5);
     });
   });
 

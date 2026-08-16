@@ -1,8 +1,8 @@
 /**
- * The hotel: three floors, one program, and the lift between them.
+ * The hotel: four floors, one program, and the lift between them.
  *
  * The whole program: shared primitives, every floor's geometry, the shading, and
- * the scene that mixes them. Six source strings, concatenated at the bottom in
+ * the scene that mixes them. Seven source strings, concatenated at the bottom in
  * declaration order, because GLSL has no forward declarations and the compiler
  * reports the omission as an undeclared identifier a long way from anything a
  * person would think to look at.
@@ -22,9 +22,10 @@
  * The one thing to hold onto from the arrangement it replaced is the reason the
  * shading is split from the primitives and sits *below* every floor: the floors'
  * geometry needs the primitives and the material identifiers, and `surfaceAlbedo`
- * needs the corridor's dimensions and the library's shelving, so the order is
+ * needs the corridor's dimensions, the library's shelving and the cellar's arch,
+ * so the order is
  *
- *   header · PRIMITIVES · lobby · corridor · library · SHADING · scene
+ *   header · PRIMITIVES · lobby · corridor · library · cellar · SHADING · scene
  *
  * and it is not negotiable in either direction.
  *
@@ -43,6 +44,8 @@
  *   uDepth = 1            the corridor's field, exactly
  *   1 < uDepth < 2        corridor and library evaluated and mixed — a ride
  *   uDepth = 2            the library's field, exactly
+ *   2 < uDepth < 3        library and cellar evaluated and mixed — a ride
+ *   uDepth = 3            the cellar's field, exactly
  *
  * AUBADE's phase note says a third room does not extend a two-room design for
  * free, and names the fork: either `mapScene` starts branching on which pair is
@@ -133,9 +136,24 @@
  *   uLibraryFloor       warm half of the library's ambient        │ `rooms/
  *   uLibrarySky         cool half                                 │ library-rig.ts`
  *   uLibraryDust        scattering in the library's air           ┘
+ *   uCandleColour       the cellar's one flame                    ┐
+ *   uCandleStrength     how hard it is driven — every hour        │ Floor −3's rig,
+ *   uAdaptation         how far the dark will let you get; 0 at noon │ from
+ *   uCellarExposure     this floor's stop, which no hour moves    │ `rooms/
+ *   uCellarFloor        warm half of the cellar's ambient         │ cellar-rig.ts`
+ *   uCellarSky          cool half                                 │
+ *   uCellarDust         scattering in the cellar's air            ┘
+ *   uStillness          how long this visitor has kept still      ┐ the visitor,
+ *   uBreath             where the 4-7-8 cycle has got to          ┘ from `cellar.ts`
  *
- * Five of Floor −2's six never vary with the hour, and that is the floor's whole
- * idea rather than an omission — see `rooms/library-rig.ts`.
+ * Five of Floor −2's six never vary with the hour, and six of Floor −3's seven do
+ * not either. That is those floors' whole idea rather than an omission — see
+ * `rooms/library-rig.ts` and `rooms/cellar-rig.ts`.
+ *
+ * The last two are the only uniforms in the piece that describe the person rather
+ * than the building or the sun, and they exist for one floor. Floor −3's proposition
+ * is that the room never changes and the visitor does; `adapted()` is where that
+ * cashes out, and it is a no-op everywhere above depth 2.
  */
 /**
  * What both floors are made of: distance primitives, the material table, and the
@@ -244,6 +262,11 @@ const float MAT_SHAFT    = 13.0;
 const float MAT_SPINE    = 14.0;
 const float MAT_READING  = 15.0;
 const float MAT_BOARDS   = 16.0;
+const float MAT_BRICK    = 17.0;
+const float MAT_FLAG     = 18.0;
+const float MAT_CANDLE   = 19.0;
+const float MAT_WATER    = 20.0;
+const float MAT_IRON     = 21.0;
 
 // How far outside a bounding box a ray may be before the box stands in for its
 // contents. Comfortably above SURFACE_EPSILON, so a ray can never terminate on a
@@ -411,6 +434,96 @@ vec3 surfaceAlbedo(float id, vec3 p, out float roughness, out float metallic) {
     return vec3(0.055, 0.052, 0.048);
   }
 
+  if (id == MAT_BRICK) {
+    // The vault, course by course. Rings at constant z, which is how a barrel is
+    // actually laid — see the cellar's file comment — with the perpends measured
+    // round the arch by archRun, and every other ring offset by half a brick so
+    // the bond is stretcher rather than stack.
+    //
+    // All of this is here rather than in the map on purpose, and it is what pays
+    // for the floor: it is the detail a visitor spends ninety seconds finding,
+    // and it costs one evaluation per shaded pixel instead of one per march step.
+    // Which way the courses run depends on which surface this is, and getting that
+    // wrong is visible from across the room. The barrel is laid in rings at constant
+    // z; the two end walls are laid in ordinary horizontal courses like any wall.
+    // Without the distinction the end wall takes a single ring index for the whole
+    // of itself, so its only pattern is the perpends — which are lines of constant
+    // archRun, which are concentric arcs about the springing. It rendered as a
+    // target painted round the lift doors.
+    bool onEnd  = min(p.z - CELLAR_NEAR_Z, CELLAR_FAR_Z - p.z) < 0.05;
+    float lay   = onEnd ? p.y : p.z;
+    float along = onEnd ? p.x : archRun(p);
+
+    float ring   = floor(lay / COURSE_PITCH);
+    float run    = along / BRICK_RUN + mod(ring, 2.0) * 0.5;
+    float bed    = abs(fract(lay / COURSE_PITCH) - 0.5);
+    float perp   = abs(fract(run) - 0.5);
+    float joint  = max(smoothstep(0.42, 0.49, bed), smoothstep(0.44, 0.49, perp));
+
+    // Every brick fired differently, which is the line that stops a wall of them
+    // reading as wallpaper. The same argument the oak boards make one floor up,
+    // and it matters more here because there are three hundred of them in shot.
+    float fired = 0.74 + 0.52 * hash13(vec3(ring, floor(run), 0.0));
+
+    // Saltpetre. A cellar wall that has been damp for a century blooms pale from
+    // the joints upward, worst near the floor, and it is the one thing in this
+    // room that is lighter than the mortar — so it is what the eye finds third,
+    // after the coursing and before the far end.
+    // Named mottle rather than the obvious thing, because patch is on GLSL ES
+    // 3.00's reserved list and is rejected with a line number and no reason —
+    // the same trap this file's header records against half, sample and the rest.
+    float low    = 1.0 - smoothstep(0.10, 1.05, p.y);
+    float mottle = sin(p.z * 1.37 + sin(p.y * 2.61) * 1.9) * 0.5 + 0.5;
+    float bloom  = low * smoothstep(0.45, 0.95, mottle) * 0.045;
+
+    roughness = 0.90;
+    return vec3(0.068, 0.034, 0.026) * fired * (1.0 - joint * 0.45) + bloom;
+  }
+
+  if (id == MAT_FLAG) {
+    // Laid stone, 550mm, joints open and full of a century of grit. Darker than
+    // any other floor in the building — this one has never been washed, and the
+    // marble two floors up is a public floor that has.
+    vec2 slab   = floor(p.xz / 0.55);
+    vec2 within = abs(fract(p.xz / 0.55) - 0.5);
+    float joint = smoothstep(0.42, 0.49, max(within.x, within.y));
+    float cut   = 0.78 + 0.44 * hash13(vec3(slab, 0.0));
+
+    roughness = 0.76;
+    return vec3(0.047, 0.044, 0.041) * cut * (1.0 - joint * 0.62);
+  }
+
+  if (id == MAT_IRON) {
+    // Black iron: the cask hoops, and the only metal below the library.
+    //
+    // It exists because brass does not work down here, and the way it failed is
+    // worth recording. A metal's ambient term is albedo × ambient × 3, and brass's
+    // albedo is about ten times the brick's — so in a room lit by one candle the
+    // brass hoops and the lift's brass doors came out as the brightest things in
+    // the frame after the flame itself, at the far end, where this floor's whole
+    // proposition is that there is nothing to see yet. A room that hands you its
+    // far wall in the first second has no ninety seconds to sell.
+    //
+    // Iron is the honest fix rather than a darkened brass, because a cellar does
+    // not have polished brass in it. Coopers use iron hoops, and the lift's
+    // finished side stops at the library — see mapCellar, where the leaves down
+    // here are boards.
+    roughness = 0.46;
+    metallic  = 1.0;
+    return vec3(0.086, 0.082, 0.078);
+  }
+
+  if (id == MAT_WATER) {
+    // Standing water at the low end: almost black, almost smooth, and therefore
+    // almost entirely specular. There is no second march here and there is not
+    // going to be one — Floor −1 owns that trick and it costs more than this room
+    // has to spend. What the water does instead is hold one long highlight off the
+    // candle, drawn out down the room by the grazing angle, which is the thing at
+    // the far end worth resolving towards.
+    roughness = 0.055;
+    return vec3(0.006, 0.008, 0.009);
+  }
+
   roughness = 0.5;
   return vec3(0.1);
 }
@@ -471,14 +584,23 @@ vec3 tonemap(vec3 colour) {
   // tempting to reach for whenever anything looks wrong, and almost never the one
   // that is actually wrong.
   //
-  // Blended towards the library's own stop by the lift, because this is applied to
-  // the whole frame whatever floor is in it — so the lobby's daytime stop, which
+  // Blended towards the deep floors' own stops by the lift, because this is applied
+  // to the whole frame whatever floor is in it — so the lobby's daytime stop, which
   // opens up for a room full of sunlight, was reaching two floors underground and
   // lifting the library at noon by about eight per cent. Eight per cent is nothing
   // to look at and it was fatal: Floor −2's entire claim is that its light does not
   // answer the sun, and it was measurably answering. Floor −1 still rides the
   // lobby's stop, which is harmless because the sun genuinely does reach it.
-  colour *= mix(uExposure, uLibraryExposure, floorWeight(2.0));
+  //
+  // A weighted sum rather than nested mixes, now that two floors want their own —
+  // the same construction roomAmbient uses and for the same reason. floorWeight's
+  // four values sum to exactly 1 at every depth, so this is a convex combination of
+  // three stops and nothing has to be renormalised. Floor −3 needs its own twice as
+  // badly as Floor −2 did, because adapted() multiplies a gain on top of whatever
+  // stop reaches it, so a leaked stop there is a leaked stop times eleven.
+  colour *= uExposure * (floorWeight(0.0) + floorWeight(1.0)) +
+            uLibraryExposure * floorWeight(2.0) +
+            uCellarExposure * floorWeight(3.0);
   return clamp((colour * (2.51 * colour + 0.03)) / (colour * (2.43 * colour + 0.59) + 0.14), 0.0, 1.0);
 }
 
@@ -1538,6 +1660,243 @@ vec2 mapLibrary(vec3 p) {
 `;
 
 /**
+ * Floor −3 — The Cellar. A brick barrel vault, one candle, and a room that is
+ * entirely there from the first frame.
+ *
+ * That last clause is the floor, so it is worth putting before the geometry. There
+ * is no reveal in this distance field. Nothing below is gated on a uniform, nothing
+ * grows, nothing fades in, and a visitor who arrives at astronomical night and one
+ * who arrives at noon are standing in identical rooms lit by an identical candle.
+ * What changes over the ninety seconds AUBADE asks for is entirely in `adapted()`,
+ * three hundred lines down, and what it models is an eye rather than a building.
+ *
+ * The alternative was to build the room out of the uniform — bring the vault in on
+ * the first breath, the casks on the third — and it was rejected for a reason that
+ * is not about cost. A room that assembles itself is a room performing for you, and
+ * this is the one floor in the hotel whose whole proposition is that it is not.
+ *
+ * ## The vault is one length()
+ *
+ * The shell below the springing is two vertical walls; above it, a semicircular
+ * barrel. Both come out of the same expression, because the radius equals the half
+ * width, so the arch springs exactly off the wall head and the two are one surface:
+ *
+ *     vec2 arch = vec2(p.x, max(p.y - SPRING_Y, 0.0));
+ *     return CELLAR_HALF_WIDTH - length(arch);
+ *
+ * Below the springing the max clamps to zero, the length collapses to abs(p.x), and
+ * it is a pair of planes. Above it, it is a cylinder. One square root for the whole
+ * envelope, exact everywhere, and 1-Lipschitz by inspection — which the two-branch
+ * version of the same thing was not, at the join, where a ray could take a step
+ * sized by a wall it had already passed.
+ *
+ * ## Brick is drawn where brick is free
+ *
+ * The coursing, the perpends, the variation between bricks and the saltpetre
+ * blooming low on the walls are all in `surfaceAlbedo` and none of them is in the
+ * map. That is worth stating because it is what makes this floor affordable: the
+ * detail a visitor spends ninety seconds finding costs one texture evaluation per
+ * shaded pixel, not one per march step per pixel, and the march is where every
+ * frame in this piece is actually spent.
+ *
+ * The courses run as rings at constant z, which is how a barrel vault is really
+ * built — one arch of brick at a time, from one end to the other — and it is also
+ * the cheap direction, because the ring index is a divide on p.z. Only the perpends
+ * need to know where round the arch a point is, and that is the one atan in the
+ * file.
+ *
+ * ## Conventions
+ *
+ * Metres, +y up, +z away from the camera down the room's length. The floor plane at
+ * y = 0 is shared with all three floors above, for the reason at the foot of the
+ * lobby section: the ground a visitor stands on never moves, or the descent reads
+ * as falling. The room is 4.20 across and 2.95 to the crown — narrower than the
+ * library and lower than the lobby, and the springing is at 850mm, which is under
+ * shoulder height. A vault you can touch the side of is the whole difference
+ * between a cellar and a basement.
+ */
+const CELLAR_GLSL = `
+// ---------------------------------------------------------------------------
+// The cellar, in metres
+// ---------------------------------------------------------------------------
+const float CELLAR_HALF_WIDTH = 2.10;
+const float CELLAR_NEAR_Z     = -5.60;
+const float CELLAR_FAR_Z      = 9.00;
+
+// Where the barrel springs off the wall head. Low on purpose — see the file
+// comment. The crown is SPRING_Y + CELLAR_HALF_WIDTH, which is 2.95.
+const float SPRING_Y = 0.85;
+
+// Brickwork. A standard brick is 215 long on a 65 course with a 10mm joint, and
+// these are those numbers: the ring pitch is one course laid on edge and the
+// perpend pitch is one brick measured round the arch.
+const float COURSE_PITCH = 0.075;
+const float BRICK_RUN    = 0.225;
+
+// The corbel on the west wall, and the candle standing on it. The only light in
+// the room, and deliberately well down the room rather than beside the camera: a
+// flame at the visitor's shoulder lights the near brick and tells them nothing
+// about where they are, and the picture the unadapted room has to be is a small
+// bright thing a long way off with a lot of nothing around it.
+const vec3  LEDGE_CENTRE = vec3(-1.91, 0.90, -0.20);
+const vec3  LEDGE_HALF   = vec3(0.19, 0.04, 0.30);
+const float WICK_Y       = 1.14;
+
+// The casks along the east wall, lying on their sides on stillages, axis down the
+// room. Seven of them at 1.30 centres.
+// The gap between them is the point and it took a rendered frame to get right. At
+// 1.08 long on a 1.30 pitch they were 220mm apart, which down the length of the
+// room at a grazing angle closed up completely: seven casks read as one pipe with
+// rings on it. 800mm long on the same pitch leaves half a metre of dark between
+// each pair, and the row reads as objects.
+const float CASK_CENTRE_X = 1.66;
+const float CASK_AXIS_Y   = 0.55;
+const float CASK_RADIUS   = 0.31;
+const float CASK_HALF_Z   = 0.40;
+const float CASK_PITCH    = 1.30;
+const float CASK_FIRST    = -1.0;
+const float CASK_LAST     = 4.0;
+
+// Standing water at the low end. The floor does not slope — a sloped floor is a
+// second plane in the shell and this room's shell is one square root — so the
+// water simply begins, which is what water in a cellar actually looks like.
+const float WATER_NEAR_Z = 3.40;
+const float WATER_Y      = 0.016;
+
+/**
+ * Where the flame is. Read by the geometry and by the light, which is the
+ * arrangement the sconces and the reading lamps both use and for the same reason:
+ * two declarations of one position is a light that drifts out of its own fitting
+ * the first time either is nudged.
+ */
+vec3 candlePosition() {
+  return vec3(LEDGE_CENTRE.x + 0.05, WICK_Y, LEDGE_CENTRE.z);
+}
+
+/**
+ * How far up the wall and over the arch a point is, measured along the surface.
+ *
+ * Below the springing that is simply its height. Above it, it is the springing
+ * plus the arc from the wall head, which is what a bricklayer would measure and
+ * therefore where the perpends have to be. The one atan in this file, and it is in
+ * the shading rather than in the map.
+ */
+float archRun(vec3 p) {
+  float up = p.y - SPRING_Y;
+  if (up <= 0.0) {
+    return p.y;
+  }
+  return SPRING_Y + CELLAR_HALF_WIDTH * atan(up, max(abs(p.x), 0.0001));
+}
+
+/**
+ * The shell: two walls and the barrel over them, out of one length().
+ *
+ * See the file comment. Written as a function rather than inline because
+ * surfaceAlbedo needs the same geometry to know where the saltpetre is.
+ */
+float cellarShell(vec3 p) {
+  vec2 arch = vec2(p.x, max(p.y - SPRING_Y, 0.0));
+  return CELLAR_HALF_WIDTH - length(arch);
+}
+
+/**
+ * The casks: a body, a pair of hoops, and the stillage under them.
+ *
+ * The hoops are an intersection rather than a second solid — a cylinder a
+ * centimetre fatter than the cask, cut to a band by the distance along the axis.
+ * That is one comparison against a value the body already computed, where a torus
+ * would have been a second primitive and a second square root per march step, and
+ * at this light level nobody is going to see the difference between a hoop with a
+ * round section and one with a square one.
+ */
+vec2 mapCasks(vec3 p) {
+  float index = clamp(floor(p.z / CASK_PITCH + 0.5), CASK_FIRST, CASK_LAST);
+  vec3 c = p - vec3(CASK_CENTRE_X, CASK_AXIS_Y, index * CASK_PITCH);
+
+  float bound = sdBox(c - vec3(0.0, -0.10, 0.0), vec3(CASK_RADIUS + 0.05, CASK_RADIUS + 0.46, CASK_HALF_Z + 0.06));
+  if (bound > BOUND_SLACK) {
+    return vec2(bound, MAT_TIMBER);
+  }
+
+  // A cylinder down the room: the swizzle puts the axis on z, so the radius is
+  // taken across x and y and the length along z.
+  float body = sdCylinderY(vec3(c.x, c.z, c.y), CASK_HALF_Z, CASK_RADIUS);
+  vec2 res = vec2(body, MAT_TIMBER);
+
+  // Two hoops, folded onto one another about the middle of the cask.
+  float band = abs(abs(c.z) - CASK_HALF_Z * 0.58) - 0.026;
+  float hoop = max(sdCylinderY(vec3(c.x, c.z, c.y), CASK_HALF_Z, CASK_RADIUS + 0.011), band);
+  res = nearer(res, vec2(hoop, MAT_IRON));
+
+  // The stillage: two rails under the belly, which is what stops seven barrels
+  // reading as seven pipes lying on a floor.
+  vec3 rail = c;
+  rail.z = abs(rail.z) - CASK_HALF_Z * 0.72;
+  res = nearer(res, vec2(
+    sdBox(rail - vec3(0.0, -CASK_RADIUS - 0.10, 0.0), vec3(CASK_RADIUS * 0.92, 0.10, 0.055)),
+    MAT_TIMBER
+  ));
+
+  return res;
+}
+
+/**
+ * Distance to the nearest surface of Floor −3, and what that surface is made of.
+ *
+ * Same construction as the three floors above: the shell is exact rather than a
+ * box, and everything with detail in it sits behind a bounding test.
+ */
+vec2 mapCellar(vec3 p) {
+  // Flags, not boards and not marble. A cellar floor is laid stone with the joints
+  // open, and under one candle the joints are most of what there is to see.
+  vec2 res = vec2(p.y, MAT_FLAG);
+  res = nearer(res, vec2(cellarShell(p), MAT_BRICK));
+  res = nearer(res, vec2(p.z - CELLAR_NEAR_Z, MAT_BRICK));
+  res = nearer(res, vec2(CELLAR_FAR_Z - p.z, MAT_BRICK));
+
+  // The lift the visitor came down in. The same two leaves, the same carved seam
+  // and the same height as the corridor's and the library's, because it is the same
+  // lift — and, like the library, no opening above it. Nothing reaches this floor
+  // from outside at any hour, which is why its light does not move.
+  //
+  // Boards rather than the brass three floors up, and that is a decision about the
+  // picture before it is one about the fiction. Brass has ten times the albedo of
+  // this room's brick, so under one candle the doors came out as the brightest
+  // thing at the far end — which is precisely where a floor that sells ninety
+  // seconds of resolving cannot afford anything legible. A hotel's lift is finished
+  // on the floors guests use and boarded below them, which is both true of real
+  // buildings and, here, the difference between a room with a far end and a room
+  // with a lit rectangle in it.
+  float leaves = sdBox(p - vec3(0.0, 1.05, CELLAR_FAR_Z - 0.055), vec3(0.62, 1.05, 0.045));
+  float seam   = sdBox(p - vec3(0.0, 1.05, CELLAR_FAR_Z - 0.055), vec3(0.006, 1.02, 0.090));
+  res = nearer(res, vec2(carve(leaves, seam), MAT_TIMBER));
+
+  // The standing water. A half-space in z intersected with a plane in y, which is
+  // two comparisons and no primitive. It is nearly black and nearly smooth, so what
+  // it does in the picture is hold one long reflection of the candle — which is the
+  // thing at the far end of the room worth resolving towards.
+  res = nearer(res, vec2(max(p.y - WATER_Y, WATER_NEAR_Z - p.z), MAT_WATER));
+
+  // The corbel, the candle on it, and the flame.
+  float ledgeBound = sdBox(p - LEDGE_CENTRE, LEDGE_HALF + vec3(0.06, 0.30, 0.06));
+  if (ledgeBound <= BOUND_SLACK) {
+    res = nearer(res, vec2(sdBox(p - LEDGE_CENTRE, LEDGE_HALF) - 0.012, MAT_BRICK));
+
+    vec3 wick = p - candlePosition();
+    res = nearer(res, vec2(sdCylinderY(wick - vec3(0.0, -0.11, 0.0), 0.10, 0.027), MAT_PAPER));
+    res = nearer(res, vec2(length(wick * vec3(1.0, 0.62, 1.0)) - 0.020, MAT_CANDLE));
+  } else {
+    res = nearer(res, vec2(ledgeBound, MAT_BRICK));
+  }
+
+  res = nearer(res, mapCasks(p));
+
+  return res;
+}
+`;
+
+/**
  * The uniforms, and the precision the whole program is compiled at.
  *
  * `#version 300 es` has to be the very first characters of the source — not the
@@ -1594,6 +1953,25 @@ uniform vec3  uLibraryFloor;
 uniform vec3  uLibrarySky;
 uniform float uLibraryDust;
 
+// Floor −3's light rig; see rooms/cellar-rig.ts. Six of these seven never vary
+// with the hour either, and the seventh — uAdaptation — is not about the room at
+// all. It is the ceiling on what this visitor's eyes can do at this hour.
+uniform vec3  uCandleColour;
+uniform float uCandleStrength;
+uniform float uAdaptation;
+uniform float uCellarExposure;
+uniform vec3  uCellarFloor;
+uniform vec3  uCellarSky;
+uniform float uCellarDust;
+
+// The visitor, on Floor −3 only. Neither of these comes from a rig, because
+// neither is a fact about the hotel: uStillness is how long this person has kept
+// still (see cellar.ts) and uBreath is where the 4-7-8 cycle they are being paced
+// by has got to. They are the only uniforms in the piece that describe the person
+// rather than the building or the sun.
+uniform float uStillness;
+uniform float uBreath;
+
 out vec4 fragColour;
 
 // How close to an endpoint counts as arrived. Declared again in descent.ts as
@@ -1629,6 +2007,24 @@ float floorWeight(float atDepth) {
   return clamp(1.0 - abs(uDepth - atDepth), 0.0, 1.0);
 }
 
+/**
+ * How far into the dark this visitor has actually got, in [0, 1].
+ *
+ * The stillness they have earned, times the ceiling the hour puts on it. Both
+ * halves are needed and they fail differently: a visitor who will not keep still
+ * sees nothing at any hour, and a visitor who keeps perfectly still at noon sees
+ * nothing either, because uAdaptation is exactly zero there — see
+ * rooms/cellar-rig.ts, where that exactness is the floor's whole argument.
+ *
+ * Deliberately not weighted by the lift. This is a property of the person, and a
+ * person halfway down a lift shaft has been standing still for exactly as long as
+ * they had been a second earlier. Every *use* of it below is weighted, which is
+ * where the floor comes in.
+ */
+float settledInto() {
+  return clamp(uStillness, 0.0, 1.0) * clamp(uAdaptation, 0.0, 1.0);
+}
+
 const float SURFACE_EPSILON = 0.0013;
 const float MAX_DISTANCE    = 40.0;
 
@@ -1657,27 +2053,45 @@ const SCENE_GLSL = `
  * normal samples, the shadow, the occlusion, the volumetric), so a room written
  * twice is a second copy of its field in all seven. Written as three early returns
  * over a two-armed mix it named seven rooms rather than three, and SwiftShader
- * charged ten times the frame for a lobby whose geometry had not changed. Floors
- * −3 and −4 add an arm each and never a third field, because a lift is only ever
- * between two floors.
+ * charged ten times the frame for a lobby whose geometry had not changed.
+ *
+ * Floor −3 arrived as one more leg and one more name, exactly as this comment
+ * predicted it would, and the shape below is what makes that true rather than
+ * lucky. Each room is evaluated into its own local, once, behind its own guard;
+ * the two ternaries afterwards only *choose* between locals and cannot duplicate
+ * anything. A fifth floor is three more lines of the same and still no third
+ * field, because a lift is only ever between two floors.
  */
 vec2 mapScene(vec3 p) {
-  // The leg the car is on, how far along it, and the rooms that leg needs. Only a
-  // ride asks for two of them; a settled floor asks for one and skips the rest.
-  float leg = uDepth < 1.0 ? 0.0 : 1.0;
+  // The leg the car is on, and how far along it. Three legs now — lobby to
+  // corridor, corridor to library, library to cellar — and the last floor's leg
+  // index is clamped so that a settled depth of 3 reads as the end of leg 2 rather
+  // than as the start of a leg that does not exist.
+  float leg = clamp(floor(uDepth), 0.0, 2.0);
   float t = uDepth - leg;
-  bool lower = leg > 0.5;
 
-  bool needLobby = !lower && t < 1.0;
-  bool needCorridor = lower ? t < 1.0 : t > 0.0;
-  bool needLibrary = lower && t > 0.0;
+  // Which rooms this leg needs. Only a ride asks for two of them; a settled floor
+  // asks for one and skips the rest, which is what keeps an arrived floor at the
+  // cost it had when it was the only floor.
+  bool onFirst  = leg < 0.5;
+  bool onSecond = leg > 0.5 && leg < 1.5;
+  bool onThird  = leg > 1.5;
+
+  bool needLobby    = onFirst && t < 1.0;
+  bool needCorridor = (onFirst && t > 0.0) || (onSecond && t < 1.0);
+  bool needLibrary  = (onSecond && t > 0.0) || (onThird && t < 1.0);
+  bool needCellar   = onThird && t > 0.0;
 
   // Nothing, arbitrarily far off: it loses every mix and every compare it meets.
   const vec2 NOWHERE = vec2(MAX_DISTANCE * 2.0, -1.0);
 
+  vec2 lobby    = needLobby    ? mapLobby(p)    : NOWHERE;
   vec2 corridor = needCorridor ? mapCorridor(p) : NOWHERE;
-  vec2 above = lower ? corridor : (needLobby ? mapLobby(p) : NOWHERE);
-  vec2 below = lower ? (needLibrary ? mapLibrary(p) : NOWHERE) : corridor;
+  vec2 library  = needLibrary  ? mapLibrary(p)  : NOWHERE;
+  vec2 cellar   = needCellar   ? mapCellar(p)   : NOWHERE;
+
+  vec2 above = onFirst ? lobby    : (onSecond ? corridor : library);
+  vec2 below = onFirst ? corridor : (onSecond ? library  : cellar);
 
   // Whichever surface is nearer, biased by the lift, which is what keeps an
   // emitter in frame the whole way down. mix() is exact at both ends but the bias
@@ -1838,6 +2252,31 @@ float carriedFlicker() {
   );
 }
 
+/**
+ * The candle on Floor −3, as a multiplier around 1.
+ *
+ * Everything about it is the opposite of the lamp above. That one flickers at 11
+ * and 18 hertz because its job is to be *caught* by peripheral vision — a moving
+ * absence is noticed and a still one is not, and Floor −1's whole Definition of
+ * Done rests on it. This one is a flame in dead air three storeys underground and
+ * it barely moves at all: a third the depth, a quarter the rate, and no term fast
+ * enough to read as a flicker.
+ *
+ * And it steadies further as the visitor does. That is not the wax settling — it
+ * is the same thing everything else on this floor is: an eye that has stopped
+ * saccading reports a steadier flame than one that has not. Scaled by how far into
+ * the dark the visitor has actually got rather than by their stillness alone, so
+ * that at noon, where the ceiling is exactly zero, this is one more thing that
+ * ninety seconds of perfect stillness does not buy.
+ */
+float candleFlicker() {
+  float wobble =
+    sin(uTime * 2.7) * 0.44 +
+    sin(uTime * 1.13 + 2.1) * 0.34 +
+    sin(uTime * 4.3 + 0.7) * 0.22;
+  return 1.0 + 0.13 * (1.0 - 0.55 * settledInto()) * wobble;
+}
+
 // ---------------------------------------------------------------------------
 // Shading
 // ---------------------------------------------------------------------------
@@ -1874,18 +2313,19 @@ float silvering(vec3 p) {
  * window in it rather than a dark room the moon has got into.
  */
 vec3 roomAmbient(vec3 n) {
-  // A weighted sum rather than nested mixes, now that there are three of them.
-  // It is still a convex combination: floorWeight's three values sum to exactly 1
+  // A weighted sum rather than nested mixes, now that there are four of them.
+  // It is still a convex combination: floorWeight's four values sum to exactly 1
   // at every depth, which is the property the function comment calls load-bearing
   // and this is the place it is load-bearing for. If they did not, the ambient
   // would dim in the middle of every ride for no reason anybody could name.
   float w0 = floorWeight(0.0);
   float w1 = floorWeight(1.0);
   float w2 = floorWeight(2.0);
+  float w3 = floorWeight(3.0);
 
   return mix(
-    uAmbientFloor * w0 + uCorridorFloor * w1 + uLibraryFloor * w2,
-    uAmbientSky * w0 + uCorridorSky * w1 + uLibrarySky * w2,
+    uAmbientFloor * w0 + uCorridorFloor * w1 + uLibraryFloor * w2 + uCellarFloor * w3,
+    uAmbientSky * w0 + uCorridorSky * w1 + uLibrarySky * w2 + uCellarSky * w3,
     n.y * 0.5 + 0.5
   );
 }
@@ -1927,6 +2367,13 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
     // answer the sun.
     return uReadingColour * uReadingStrength * 2.6;
   }
+  if (id == MAT_CANDLE) {
+    // The flame itself, which is the only self-luminous thing on Floor −3 and, for
+    // the first minute, very nearly the only thing on it. Driven hard relative to
+    // the room precisely because the room is not driven at all: what the picture
+    // has to be at second zero is a small bright thing a long way off.
+    return uCandleColour * uCandleStrength * 26.0 * candleFlicker();
+  }
 
   float roughness;
   float metallic;
@@ -1950,6 +2397,7 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
   float above = floorWeight(0.0);
   float below = floorWeight(1.0);
   float deeper = floorWeight(2.0);
+  float deepest = floorWeight(3.0);
 
   vec3 diffuse = vec3(0.0);
   vec3 gloss   = vec3(0.0);
@@ -2137,6 +2585,46 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
     }
   }
 
+  // --- Floor −3: one candle, and nothing else whatever -------------------------
+  //
+  // The shortest lighting block in the file, and it is the room. There is no
+  // second source, no ambient trick, no line light along a cornice: an open flame
+  // on a corbel, an inverse square, and a shadow march because the casks are
+  // between it and half the floor.
+  //
+  // Nothing here reads uStillness or uAdaptation. That is the whole architecture
+  // of this floor in one negative: the room is lit identically at every hour and
+  // for every visitor, and everything the ninety seconds does happens in adapted(),
+  // after the frame is finished. A version that put the resolve in here — brought
+  // the candle up as the visitor settled — renders almost the same picture and
+  // makes the opposite claim, which is that the room is performing.
+  if (deepest > MORPH_EPSILON) {
+    vec3 toCandle = candlePosition() - p;
+    float range = length(toCandle);
+    toCandle /= max(range, 0.0001);
+
+    // An open flame throws in every direction — no shade, no bowl, no mask. The
+    // one falloff term is doing all the work, and it is deliberately steeper than
+    // the reading lamps' so the far end of the room is genuinely unlit rather than
+    // dimly lit. A room that is dimly lit everywhere has nothing left to resolve.
+    // The shadow march is skipped in the near field, and that is a fix rather than
+    // an economy. Within about half a metre of the flame the only surfaces are the
+    // corbel it stands on and the wall behind it, and there is nothing between any
+    // of them and the light — but the penumbra estimate does not know that. It is
+    // min(shade, 12h/t) accumulated over discrete steps, and with the source that
+    // close to the wall the step count changes from pixel to pixel and draws a set
+    // of concentric rings on the brick centred on the candle. Very pretty, entirely
+    // fictional, and the one part of this room a viewer would read as a bug.
+    float facing = max(dot(n, toCandle), 0.0);
+    float shade = facing <= 0.0 ? 0.0 : (range > 0.55 ? softShadow(p, toCandle, range * 0.88) : 1.0);
+    float lit = facing * shade / (1.0 + range * range * 1.35);
+    float flame = candleFlicker();
+
+    diffuse += deepest * uCandleColour * uCandleStrength * lit * flame;
+    gloss += deepest * uCandleColour * uCandleStrength * lit * flame *
+      specularLobe(n, viewDirection, toCandle, roughness);
+  }
+
   vec3 ambient = roomAmbient(n);
   float occlusion = ambientOcclusion(p, n);
 
@@ -2236,8 +2724,11 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
   float above = floorWeight(0.0);
   float below = floorWeight(1.0);
   float deeper = floorWeight(2.0);
+  float deepest = floorWeight(3.0);
   vec3 lampAt = carriedPosition();
   float flame = carriedFlicker();
+  vec3 candleAt = candlePosition();
+  float taper = candleFlicker();
 
   vec3 accumulated = vec3(0.0);
 
@@ -2288,9 +2779,109 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
         dustDensity(p) * uLibraryDust /
         (1.0 + lampRange * lampRange * lampRange * 3.2);
     }
+
+    if (deepest > MORPH_EPSILON) {
+      // The halo round the candle. The least dust in the building and the tightest
+      // halo, which is the opposite of what a cellar suggests and is the point:
+      // a haze is what makes a light *visible from a distance*, and a glow that
+      // reached the far end would hand over the shape of the vault in the first
+      // second. The dust here exists to give the flame a body and to stop there.
+      //
+      // The breath is in this term and in no other part of the frame. It swells the
+      // halo by a few per cent over nineteen seconds — far too little to be seen as
+      // an animation, and about enough that a visitor who has been following the
+      // camera's pace for a minute finds the air agreeing with them. Anything
+      // larger stops being a room and becomes a pulse, and a pulse reads as a
+      // shader.
+      float candleRange = length(candleAt - p);
+      accumulated += deepest * uCandleColour * 0.016 * taper *
+        (0.94 + 0.12 * uBreath) * dustDensity(p) * uCellarDust /
+        (1.0 + candleRange * candleRange * candleRange * 3.6);
+    }
   }
 
   return accumulated * stepLength;
+}
+
+// ---------------------------------------------------------------------------
+// The eye
+// ---------------------------------------------------------------------------
+
+/**
+ * How much more sensitive a fully dark-adapted eye is than an unadapted one, as
+ * far as this room is concerned.
+ *
+ * The real figure is four or five orders of magnitude over half an hour, which is
+ * not a number a tonemap can be handed. This is the part of it that happens in the
+ * first ninety seconds, compressed to something that fits between an unlit vault
+ * and a legible one.
+ *
+ * Eight was arrived at from both ends and both ends are gates. Below about six the
+ * settled room stops being three times the arriving one, which is what
+ * scripts/verify-shader.mjs requires of a floor that asks for ninety seconds and is
+ * the least this room can give back. Above about ten the ACES curve has taken the near
+ * brick to white and the picture is a lit tunnel rather than a dark room somebody
+ * has begun to see — which is the daytime lobby's old failure, one floor at a time,
+ * and the one this whole piece is most prone to.
+ */
+const float SCOTOPIC_GAIN = 8.0;
+
+/**
+ * What is left of colour when only the rods are working, and what colour that is.
+ *
+ * Rods are monochromatic — one pigment, one response curve — so a dark-adapted eye
+ * cannot distinguish hues at all, which is why a moonlit landscape is grey no
+ * matter what is growing in it. The tint is the Purkinje shift: rhodopsin peaks
+ * around 500nm against the cones' 555, so the whole response slides towards the
+ * blue-green and a candle-lit brick vault ends up reading cool.
+ *
+ * That is the pair of pictures this floor is for. Unadapted it is a small orange
+ * flame in black; adapted it is a wide, colourless, faintly blue room — and
+ * nothing in it has changed, including the candle, which is still exactly as
+ * orange as it was and now looks it against a room that is not.
+ *
+ * Not taken all the way to 1. A little residual colour keeps the flame reading as
+ * a flame; at full drain the room is technically correct and reads as a black and
+ * white photograph of itself, which is a different and much worse idea.
+ */
+const vec3  SCOTOPIC_TINT  = vec3(0.74, 0.90, 1.24);
+const float SCOTOPIC_DRAIN = 0.80;
+
+/**
+ * The room after ninety seconds of standing still in it — which is to say, the
+ * same room, seen by a different eye.
+ *
+ * This function is Floor −3. Everything else about that floor is a brick vault
+ * with a candle in it that never changes, and the entire content of the phase is
+ * here: a gain and a desaturation, applied to the finished frame, weighted by how
+ * near the lift is to depth 3 and by how far the visitor has actually got.
+ *
+ * Applied **before** the tonemap, which is the only placement that works. After it,
+ * a gain of eleven pushes everything the ACES curve has already rolled off into
+ * flat white and the candle becomes a disc; before it, the curve does what it is
+ * for and the flame goes from bright to painfully bright while the vault comes up
+ * underneath it out of nothing. That is also what a real dark-adapted eye reports
+ * about a naked flame, so the correct order is the flattering one for once.
+ *
+ * The breath is in the gain as well as in the halo, at about four per cent either
+ * way. It is under the threshold at which anybody would call it an effect and over
+ * the one at which a room feels inert, which is the whole specification for
+ * everything on this floor.
+ *
+ * @param colour The frame, linear, pre-tonemap.
+ */
+vec3 adapted(vec3 colour) {
+  float here = floorWeight(3.0);
+  if (here <= MORPH_EPSILON) {
+    return colour;
+  }
+
+  float reach = settledInto() * here;
+  float gain = mix(1.0, SCOTOPIC_GAIN, reach) * (1.0 + (uBreath - 0.5) * 0.08 * here);
+  vec3 lifted = colour * gain;
+
+  float luma = dot(lifted, vec3(0.299, 0.587, 0.114));
+  return mix(lifted, vec3(luma) * SCOTOPIC_TINT, reach * SCOTOPIC_DRAIN);
 }
 
 // ---------------------------------------------------------------------------
@@ -2336,6 +2927,11 @@ void main() {
   // enough to be felt rather than seen.
   colour *= 1.0 - 0.075 * dot(uv, uv);
 
+  // And then, on Floor −3 and nowhere else, the eye that has been standing in it.
+  // A no-op above depth 2 — see adapted(), where the argument for putting this
+  // here rather than in the lighting is set out.
+  colour = adapted(colour);
+
   colour = tonemap(colour);
   colour = pow(colour, vec3(1.0 / 2.2));
 
@@ -2363,6 +2959,7 @@ export const HOTEL_FRAGMENT_SHADER = [
   LOBBY_GLSL,
   CORRIDOR_GLSL,
   LIBRARY_GLSL,
+  CELLAR_GLSL,
   COMMON_SHADING_GLSL,
   SCENE_GLSL,
 ].join('\n');

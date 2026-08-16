@@ -1,11 +1,12 @@
 /**
- * The lift: three floors, one number, and the rule that turns time into it.
+ * The lift: four floors, one number, and the rule that turns time into it.
  *
  * AUBADE says the elevator "is not a transition, it is a room", and that it is
  * "where the morph between two distance fields happens in full view". Both
  * sentences land on the same variable. `uDepth` counts floors below the lobby —
- * 0 is the lobby's distance field exactly, 1 the corridor's, 2 the library's —
- * and every part of the descent, which room is drawn, where the camera stands,
+ * 0 is the lobby's distance field exactly, 1 the corridor's, 2 the library's, 3
+ * the cellar's — and every part of the descent, which room is drawn, where the
+ * camera stands,
  * which lights exist, how much of the mirror is awake, is derived from it. There
  * is no second clock and no parallel animation to keep in step, because a descent
  * whose light and geometry are timed separately is a descent that will eventually
@@ -50,8 +51,8 @@
  * epsilon at all: a depth is either a floor or it is between two, and there is no
  * third thing for a tolerance to describe. The progress function is required to
  * return its two endpoints exactly, and `descent.spec.ts` asserts it with `toBe`
- * rather than `toBeCloseTo` for that reason — now at three values rather than two,
- * which is three chances for the same invisible failure.
+ * rather than `toBeCloseTo` for that reason — now at four values rather than two,
+ * which is four chances for the same invisible failure.
  *
  * ## Why it is timed rather than driven
  *
@@ -73,7 +74,7 @@
  * those, and the difference between what is written and what is built is a
  * distinction that page keeps on purpose.
  */
-export type Floor = 0 | -1 | -2;
+export type Floor = 0 | -1 | -2 | -3;
 
 /** Which way the car is going. */
 export type LiftDirection = 'down' | 'up';
@@ -82,10 +83,10 @@ export type LiftDirection = 'down' | 'up';
  * The floors, in the order the lift passes them. Depth is the index, which is
  * the whole of `depthForFloor`.
  */
-export const FLOORS: readonly Floor[] = [0, -1, -2];
+export const FLOORS: readonly Floor[] = [0, -1, -2, -3];
 
 /** The deepest floor built. The lift refuses to be called past it. */
-export const LOWEST_FLOOR: Floor = -2;
+export const LOWEST_FLOOR: Floor = -3;
 
 /**
  * How long one floor's ride lasts, in seconds of the room's clock.
@@ -183,8 +184,8 @@ export function floorAfter(from: Floor, direction: LiftDirection): Floor {
  * expressed as a depth at all — see the file comment.
  *
  * @param floor Where the visitor is standing.
- * @returns 0 in the lobby, 1 in the corridor, 2 in the library. Exact, for the
- *   reason in the file comment.
+ * @returns 0 in the lobby, 1 in the corridor, 2 in the library, 3 in the cellar.
+ *   Exact, for the reason in the file comment.
  */
 export function depthForFloor(floor: Floor): number {
   // Written out rather than as a bare negation, and the reason is the one value
