@@ -11,10 +11,10 @@
 
 # Tests
 pytest==9.1.1          # 8.3.3 carries PYSEC-2026-1845; 9.0.3 is the fix floor
-httpx==0.27.2          # required by fastapi.testclient.TestClient
+httpx==0.28.1          # required by fastapi.testclient.TestClient
 
 # Static analysis — see pyproject.toml at the repo root for the configuration.
-ruff==0.16.2
+ruff==0.16.3
 mypy==2.3.0
 
 # Advisory scanner for both lists above, run in CI by
@@ -24,4 +24,4 @@ mypy==2.3.0
 # is deliberate: this repo already treats an advisory against pytest or ruff as
 # a real failure — nothing in the gate distinguishes tooling from runtime — so
 # exempting the scanner would be the one inconsistency worth objecting to.
-pip-audit==2.9.0
+pip-audit==2.10.1
