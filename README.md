@@ -11,9 +11,9 @@ SQLite database. Two routes carry the argument: `/dashboard` reads, `/booking` w
 
 ![The hotel operations dashboard: occupancy, ADR, RevPAR, room revenue, arrivals/departures and rooms available](docs/images/dashboard.png)
 
-*Captured before the API was deployed, so it shows the third badge state: the backend is
+_Captured before the API was deployed, so it shows the third badge state: the backend is
 unreachable and the page says so rather than pretending. The live demo reads "polled from the
-API".*
+API"._
 
 ![The booking form with a check-out date the server rejected: the message "check_out must be after check_in" is rendered under the check-out input, which is outlined and marked aria-invalid, while the booking created a moment earlier appears in the list below](docs/images/booking-validation-error.png)
 
@@ -35,15 +35,15 @@ dashboard takes metrics from a WebSocket, or from polling, or from a committed f
 badge in the header names which of the three is live. The hosted demo is a serverless function
 and cannot hold a socket open, so it polls and says "polled" — the stream is a real feature that
 belongs to the container deployment, not a claim the demo makes and cannot keep. `/booking`
-deliberately has *no* fixture fallback: a form whose entire claim is that it writes a durable
+deliberately has _no_ fixture fallback: a form whose entire claim is that it writes a durable
 row cannot honestly fake one.
 → [Transport and degradation](ARCHITECTURE.md#transport-and-degradation)
 
 ![The dashboard running against the container deployment. The header badge reads "Live data · streaming from the API" and the guests-in-house figure changes every two seconds as broadcasts arrive](docs/images/websocket-stream.webp)
 
-*Fifteen unedited seconds of the container deployment — `cd backend && docker compose up -d`. The
+_Fifteen unedited seconds of the container deployment — `cd backend && docker compose up -d`. The
 guests-in-house figure moves on each broadcast tick and nothing else does, because nothing else in
-the database changed. `npm run capture:stream` records this.*
+the database changed. `npm run capture:stream` records this._
 
 ![The connection badge in both of its live states, side by side: the container deployment reads "Live data · streaming from the API", the deployed Vercel demo reads "Live data · polled from the API every few seconds"](docs/images/connection-badge-states.png)
 **The booking rule exists once, on the server, and its error knows which field it belongs to.**
@@ -76,11 +76,11 @@ Performance and accessibility are budgets rather than aspirations. `npm run ligh
 production build on `/` and `/dashboard` — the desktop profile, three runs, asserted against the
 median — and the build **fails** below **performance 90**, **accessibility 100** and
 **best practices 95**. Size has a ceiling in the same spirit: `angular.json` caps the
-**initial payload at 15 kB** and **all scripts at 810 kB**, set just above what the build produces
+**initial payload at 15 kB** and **all scripts at 870 kB**, set just above what the build produces
 today so the next regression trips it rather than being absorbed. `npm run check:docs` fails if
 these numbers and the configs that enforce them ever disagree.
 
-The initial payload is the number to watch, and it has not moved — it is under 12 kB with four
+The initial payload is the number to watch, and it has not moved — it is under 12 kB with five
 floors of raymarched hotel in the repository, because `/aubade` is a lazy route whose renderer sits
 behind a second dynamic import, so the shaders reach a browser only when someone opens that page.
 The all-scripts ceiling is what a new floor spends, and most of it is comments: GLSL lives inside a

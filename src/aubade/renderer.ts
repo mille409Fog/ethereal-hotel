@@ -23,13 +23,20 @@
  * that beats against the refresh rate, which looks like a dropped frame and is not
  * one.
  *
- * **There is still exactly one program.** Four floors, a lift between them, and
+ * **There is still exactly one program.** Five floors, a lift between them, and
  * one compile — see the file comment on `rooms/hotel.frag.ts`. The depth is a
- * uniform, all four floors' rigs are uploaded every frame, and the shader's own
- * branches decide what to spend anything on. Uploading three rigs nobody is looking
+ * uniform, all five floors' rigs are uploaded every frame, and the shader's own
+ * branches decide what to spend anything on. Uploading four rigs nobody is looking
  * at costs a couple of dozen uniform writes, which is nothing next to a single
  * `mapScene` call; compiling a second program at the moment the lift doors close
  * would cost a stalled driver in the middle of the piece's one transition.
+ *
+ * **One floor's clock is not the room's clock, and this file is where that
+ * happens.** Floor −4 runs on a projector, and `render` quantises the second it
+ * poses the camera at by the same arithmetic that decides which frame is in the gate
+ * — see `projection.ts`, which explains why that has to be on this side of the
+ * uniform upload rather than in the shader. It is the only place in this renderer
+ * where a floor reaches out and changes something above it.
  */
 
 import { breathe } from './camera/drift';
@@ -44,12 +51,14 @@ import {
   type IQualityTier,
 } from './gl/quality';
 import { drawingBufferSize, resizeDrawingBuffer } from './gl/viewport';
+import { benchMask, filmFrameAt, type IBench, type IFilmFrame } from './projection';
 import { FULLSCREEN_VERTEX_SHADER } from './rooms/fullscreen.vert';
 import type { ICellarRig } from './rooms/cellar-rig';
 import type { ICorridorRig } from './rooms/corridor-rig';
 import { HOTEL_FRAGMENT_SHADER } from './rooms/hotel.frag';
 import type { ILibraryRig } from './rooms/library-rig';
 import type { ILightRig } from './rooms/light-rig';
+import type { IProjectionRig } from './rooms/projection-rig';
 
 /** What the renderer will say about itself, for the caption under the canvas. */
 export interface IRenderReport {
@@ -63,7 +72,7 @@ export interface IRenderReport {
 /**
  * Where the hotel is, for one frame.
  *
- * All four floors' rigs travel together whether or not the lift is moving, because
+ * All five floors' rigs travel together whether or not the lift is moving, because
  * during the ride two rooms are lit at once and afterwards the cost of the ones
  * nobody is in is a couple of dozen uniform writes.
  */
@@ -80,13 +89,26 @@ export interface IHotelFrame {
   /** Floor −3's rig — see `rooms/cellar-rig.ts`. */
   readonly cellar: ICellarRig;
 
+  /** Floor −4's rig — see `rooms/projection-rig.ts`. */
+  readonly projection: IProjectionRig;
+
   /**
    * The lift, as floors below the lobby: 0 is the lobby's distance field exactly,
-   * 1 the corridor's, 2 the library's, 3 the cellar's, and between any adjacent
-   * pair the shader mixes them. From `descent.ts`, where the requirement that the
-   * endpoints be exact is spelled out.
+   * 1 the corridor's, 2 the library's, 3 the cellar's, 4 the projection box's, and
+   * between any adjacent pair the shader mixes them. From `descent.ts`, where the
+   * requirement that the endpoints be exact is spelled out.
    */
   readonly depth: number;
+
+  /**
+   * Which of the projectionist's six switches are down — see `projection.ts`.
+   *
+   * Like `stillness`, this is not a fact about the hotel or about the sun, and it is
+   * here rather than in a rig for that reason. Unlike `stillness` it is not a fact
+   * about the visitor either: it is the state of a machine they have been given the
+   * controls to. Read by Floor −4 and by nothing else.
+   */
+  readonly bench: IBench;
 
   /**
    * How long the visitor has kept still, in [0, 1] — see `cellar.ts`.
@@ -225,9 +247,49 @@ export class HotelRenderer {
 
     // Interpolated across the leftover of the fixed step — see the file comment.
     const seconds = frame.simulatedSeconds + (frame.alpha * FIXED_STEP_MS) / 1000;
+
+    // Which frame of film is in the gate, and how much of the frame is Floor −4.
+    //
+    // `held` is `floorWeight(4.0)` written in TypeScript, deliberately and to the
+    // character, so the camera changes clock over exactly the stretch of the shaft in
+    // which the room it is changing clock for is being drawn. `camera/drift.ts` does
+    // the same thing for the cellar's gait one floor up.
+    const struck = filmFrameAt(seconds, hotel.projection.rate);
+    const held = Math.max(0, 1 - Math.abs(hotel.depth - 4));
+
+    // The judder switch, and it is the only one of the six that is thrown here rather
+    // than in the shader — because it is the only one that is not an effect. The
+    // other five are things done to a picture; this one is the *clock the picture is
+    // drawn on*, and the clock is upstream of the uniform upload.
+    //
+    // Note which half of the frame it releases. Turning judder off makes the motion
+    // continuous and leaves the index where it was, so the room glides while its
+    // grain, its splices and its cue dots go on counting frames of film. That is
+    // exactly the right answer, because judder is when the picture is replaced and
+    // the index is which piece of film it is — and it is also the more interesting
+    // one to look at, since what a visitor gets is not "the effect off" but a print
+    // that has been transferred to something that does not judder.
+    const film =
+      hotel.bench.judder || hotel.projection.rate <= 0
+        ? struck
+        : { time: seconds, index: struck.index };
+
+    // The camera's clock, blended towards the projector's.
+    //
+    // This is the line that makes the judder a room rather than a filter. A picture
+    // that steps while the viewpoint glides reads as an effect laid over a continuous
+    // world — the eye takes the smooth motion as the truth — so on Floor −4 the eye
+    // and the frame are evaluated at the same quantised second and step together.
+    //
+    // Written as `(1 − t)·a + t·b` for the reason `between` in `camera/drift.ts`
+    // gives at length: it is exact at both ends. At every depth but the last it is
+    // exactly `seconds`, so no other floor pays a rounding error for this floor's
+    // idea, and at a settled depth of 4 it is exactly the film's own second.
+    const cameraSeconds = seconds * (1 - held) + film.time * held;
+
     // The breath goes to the camera and to the shader from the same variable, so
     // the pose and `uBreath` cannot disagree about where in the cycle they are.
-    const camera = breathe(seconds, hotel.depth, hotel.breath);
+    const camera = breathe(cameraSeconds, hotel.depth, hotel.breath);
 
     gl.useProgram(this.program);
     gl.uniform2f(this.at('uResolution'), size.width, size.height);
@@ -293,6 +355,8 @@ export class HotelRenderer {
     gl.uniform3f(this.at('uCellarSky'), ...cellar.ambientSky);
     gl.uniform1f(this.at('uCellarDust'), cellar.dust);
 
+    this.uploadProjection(hotel.projection, film, hotel.bench);
+
     // The visitor. Not from a rig, because neither is a fact about the hotel.
     gl.uniform1f(this.at('uStillness'), hotel.stillness);
     gl.uniform1f(this.at('uBreath'), hotel.breath);
@@ -321,6 +385,39 @@ export class HotelRenderer {
       this.gl.deleteProgram(this.program);
       this.gl.getExtension('WEBGL_lose_context')?.loseContext();
     }
+  }
+
+  /**
+   * Floor −4's rig, its projector and its bench.
+   *
+   * The one floor whose uniforms are lifted out of `render` into a method of their
+   * own, and that is a line count rather than an architecture: this floor uploads
+   * eleven names where the others upload seven or eight, and eleven more inline put
+   * `render` over the lint config's cap. Extracting the one that broke the budget
+   * rather than all five keeps the other four where a reader expects them, next to
+   * the camera and the depth they are lit by.
+   *
+   * @param projection The hour's rig.
+   * @param film Which frame of the show is in the gate — the same value the camera
+   *   above was posed at, so the eye and the picture cannot disagree about which
+   *   frame they are showing.
+   * @param bench Which of the projectionist's six switches are down.
+   */
+  private uploadProjection(projection: IProjectionRig, film: IFilmFrame, bench: IBench): void {
+    const gl = this.gl;
+
+    gl.uniform3f(this.at('uArcColour'), ...projection.arcColour);
+    gl.uniform1f(this.at('uArcStrength'), projection.arcStrength);
+    gl.uniform1f(this.at('uBurn'), projection.burn);
+    gl.uniform1f(this.at('uProjectionExposure'), projection.exposure);
+    gl.uniform3f(this.at('uProjectionFloor'), ...projection.ambientFloor);
+    gl.uniform3f(this.at('uProjectionSky'), ...projection.ambientSky);
+    gl.uniform1f(this.at('uProjectionDust'), projection.dust);
+
+    gl.uniform1f(this.at('uProjectorRate'), projection.rate);
+    gl.uniform1f(this.at('uFilmTime'), film.time);
+    gl.uniform1f(this.at('uFilmFrame'), film.index);
+    gl.uniform1i(this.at('uStack'), benchMask(bench));
   }
 
   /** A uniform's location, or `null` — which `gl.uniform*` treats as a no-op. */

@@ -165,20 +165,63 @@ export const CELLAR_EYE: IVec3 = { x: 0.3, y: 1.42, z: -4.0 };
 export const CELLAR_TARGET: IVec3 = { x: -0.25, y: 0.98, z: 3.2 };
 
 /**
- * The four floors' anchors, in the order the lift passes them — so the index is
+ * Where a person stands on Floor −4: back and to the left, so that the projector is
+ * a three-quarter silhouette on the right and its beam crosses the frame away from
+ * it rather than towards the camera.
+ *
+ * Behind the machine and off its axis, which is where a projectionist actually
+ * stands and is also the only placement that composes. Square behind it, the beam
+ * recedes to a point and the room is a corridor with a box in it; square beside it,
+ * the beam is a horizontal bar and the machine is an elevation drawing. From back
+ * left the lens, the beam and the port lie on a diagonal — the same argument the
+ * lobby's shaft of moonlight makes about crossing a frame rather than dividing it.
+ *
+ * Lowest in the building, and the drop from the cellar is the smallest of the four:
+ * the box is a small room with a normal ceiling rather than a vault, so the descent
+ * is nearly finished here. It is a shelf, not a plunge.
+ */
+export const PROJECTION_EYE: IVec3 = { x: -1.6, y: 1.45, z: -3.0 };
+
+/**
+ * Aimed at the middle of the beam, which is neither of the two things making it.
+ *
+ * The one target in the building that is not aimed at a surface. Every other floor
+ * looks at something — the desk, the far end of a corridor, the shelving, the flags —
+ * and this one looks at a piece of air, because the air is the subject: the machine
+ * is a silhouette and the port is a hole, and what is worth standing here for is the
+ * two metres of lit dust between them.
+ *
+ * That is also what fixes the composition rather than the anchor above doing it
+ * alone. The eye is on the left, the machine is on the right, the port is on the
+ * left again and lower — so the beam runs right to left and slightly down across the
+ * frame, and this point is halfway along it. Aimed at the port instead, the machine
+ * leaves the shot; aimed at the machine, the port does.
+ */
+export const PROJECTION_TARGET: IVec3 = { x: 0.35, y: 1.05, z: 2.6 };
+
+/**
+ * The five floors' anchors, in the order the lift passes them — so the index is
  * the depth, exactly, which is the same identity `descent.ts` is built on.
  *
- * A table rather than four named pairs threaded through a branch, because the
+ * A table rather than five named pairs threaded through a branch, because the
  * interpolation below has to work between *whichever* pair the lift is straddling
  * and there is no version of that written as a conditional which survives a
- * fifth floor.
+ * sixth floor. Two floors have arrived since that was written and neither touched a
+ * line of `anchorAt`, which is what the table was for.
  */
-const EYE_ANCHORS: readonly IVec3[] = [ANCHOR_EYE, CORRIDOR_EYE, LIBRARY_EYE, CELLAR_EYE];
+const EYE_ANCHORS: readonly IVec3[] = [
+  ANCHOR_EYE,
+  CORRIDOR_EYE,
+  LIBRARY_EYE,
+  CELLAR_EYE,
+  PROJECTION_EYE,
+];
 const TARGET_ANCHORS: readonly IVec3[] = [
   ANCHOR_TARGET,
   CORRIDOR_TARGET,
   LIBRARY_TARGET,
   CELLAR_TARGET,
+  PROJECTION_TARGET,
 ];
 
 /**
@@ -307,11 +350,20 @@ function anchorAt(anchors: readonly IVec3[], depth: number): IVec3 {
  *   not `performance.now()`. Non-finite input falls back to the anchor pose rather
  *   than producing `NaN` uniforms, which a driver renders as a black screen with
  *   no error anywhere.
+ *
+ *   Near depth 4 the caller does not pass a wall second at all: it passes the
+ *   instant the frame now in the projector's gate was struck at, blended in by the
+ *   lift. That is Floor −4's whole subject and it is done on the caller's side
+ *   rather than here for the reason `projection.ts` gives — this function stays a
+ *   pure function of the second it is handed, and which second that is, is a fact
+ *   about the room rather than about the camera. At a stopped projector the second
+ *   is zero, so the camera is on its anchor and every term below is exactly zero:
+ *   the same still the reduced-motion path draws, arrived at from the fiction.
  * @param depth Where the lift is: 0 in the lobby, 1 in the corridor, 2 in the
- *   library, 3 in the cellar, and in between during a descent. The same number the
- *   shader mixes its distance fields by, so the camera and the room can never
- *   disagree about which floor they are on. Clamped to the floors that exist, and
- *   non-finite input is treated as the lobby.
+ *   library, 3 in the cellar, 4 in the projection box, and in between during a
+ *   descent. The same number the shader mixes its distance fields by, so the camera
+ *   and the room can never disagree about which floor they are on. Clamped to the
+ *   floors that exist, and non-finite input is treated as the lobby.
  * @param breath How full the lungs are on the 4-7-8 cycle, in [0, 1] — `breathAt`
  *   from `cellar.ts`, evaluated at the same second.
  *

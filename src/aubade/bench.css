@@ -1,0 +1,126 @@
+/* ===== HÔTEL AUBADE · FLOOR −4 · THE BENCH =====
+
+   Floor −4's controls. Everything else on the lobby's plate is the building
+   talking: a card on a desk, a reluctant door, a lift. This is a machine with its
+   lid off, so it is dressed as one — a boxed panel with a rule round it, tighter
+   type, and the switches in a column with their labels aligned, which is what a
+   control plate looks like and is emphatically not what the rest of the route
+   looks like.
+
+   Nothing here animates, for the reason `aubade.css` gives at length: this panel
+   overlaps the canvas, and a composited layer over a WebGL surface costs frames on
+   exactly the machines that have none to spare. Every state change below is a flat
+   repaint. */
+
+/* `contents` rather than `block`, and it is load-bearing. The element is mounted on
+   every floor and its template decides whether to draw anything — see the note in
+   `bench.html` for why the condition lives there — so a host box would leave an
+   empty bordered panel on the four floors that have no bench in them. */
+:host {
+  display: contents;
+}
+
+.bench {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem 0.8rem;
+  max-width: 27rem;
+  border: 1px solid var(--lobby-rule);
+  background: #101115;
+}
+
+.bench__head {
+  margin: 0;
+  font-family: var(--lobby-face-plate);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+}
+
+.bench__hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  color: var(--lobby-ink);
+  text-wrap: pretty;
+}
+
+/* The rate. A readout rather than a control, so it is deliberately *not* dressed
+   like the switches under it — no box, no interactive affordance, nothing that
+   invites a press — and the line beneath it says in words what its appearance is
+   already saying. */
+.bench__rate {
+  margin: 0.6rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--lobby-rule);
+}
+
+.bench__rate-state {
+  display: block;
+  font-family: var(--lobby-face-plate);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+}
+
+.bench__rate-fixed {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--lobby-ink);
+}
+
+.bench__switches {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A grid rather than a flex row per item, so the six notes line up under one
+   another however long each label runs. A column of labels whose descriptions
+   start at six different left edges reads as six unrelated controls rather than as
+   one stack. */
+.bench__switch {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.5rem;
+  padding: 0.4rem 0;
+}
+
+.bench__switch + .bench__switch {
+  border-top: 1px solid color-mix(in srgb, var(--lobby-rule) 55%, transparent);
+}
+
+/* `accent-color` on the native control rather than a hand-built one. The browser's
+   checkbox already carries its state to assistive technology, works under a
+   keyboard, and is the right shape; the only thing it does not do out of the box is
+   wear the hotel's brass, and that is one line. */
+.bench__input {
+  grid-row: 1 / 3;
+  align-self: start;
+  margin-top: 0.15rem;
+  accent-color: var(--lobby-brass);
+  cursor: pointer;
+}
+
+.bench__input:focus-visible {
+  outline: 2px solid var(--lobby-brass);
+  outline-offset: 2px;
+}
+
+.bench__label {
+  font-family: var(--lobby-face-plate);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lobby-brass);
+  cursor: pointer;
+}
+
+.bench__note {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--lobby-ink) 82%, transparent);
+  text-wrap: pretty;
+}

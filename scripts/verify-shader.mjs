@@ -47,6 +47,15 @@
  * the opposite of the truth, so the two floors are checked against their own
  * claims. See `rooms/corridor-rig.ts`.
  *
+ * Three floors have arrived since that was written and each of them makes a
+ * differently *shaped* claim rather than a differently signed one, which is the
+ * point of them: the library's mean is asserted flat and its spread falling, the
+ * cellar's is a pair of visitors, and the projection box's is a pair of **instants**.
+ * That last one is the only assertion here that could not be made about a single
+ * frame at all — Floor −4 answers the sun with a rate, and a photograph of a
+ * projector running at eight frames a second and one running at twenty-four are the
+ * same photograph.
+ *
  * It proves nothing about **speed**. SwiftShader is a CPU rasteriser and its frame
  * times have no relationship to a GPU's. The frame budget is a separate claim,
  * checked by looking at the thing on real hardware.
@@ -69,6 +78,8 @@ import { QUALITY_TIERS } from '../src/aubade/gl/quality.ts';
 import { cellarRigFor } from '../src/aubade/rooms/cellar-rig.ts';
 import { corridorRigFor } from '../src/aubade/rooms/corridor-rig.ts';
 import { libraryRigFor } from '../src/aubade/rooms/library-rig.ts';
+import { projectionRigFor } from '../src/aubade/rooms/projection-rig.ts';
+import { benchMask, filmFrameAt, THREADED } from '../src/aubade/projection.ts';
 import { rigFor } from '../src/aubade/rooms/light-rig.ts';
 import { breathAt } from '../src/aubade/cellar.ts';
 import { AUBADE_STATES } from '../src/aubade/solar/state.ts';
@@ -107,14 +118,49 @@ const invited = hasFlag('invited');
  * the room a visitor walks into, and the room ninety seconds of stillness turns it
  * into. The pair is what the cellar's assertions below are actually about.
  *
- * It carries `probe`, which is the one entry that does, and that is because of what
- * the five arriving frames turn out to be. Nothing in the cellar's rig varies with
- * the hour except the adaptation ceiling, and stillness zero multiplies that out —
- * so all five of them are the same picture, necessarily, and committing five copies
+ * It carries `probe`, which is one of the two entries that do, and that is because of
+ * what the five arriving frames turn out to be. Nothing in the cellar's rig varies
+ * with the hour except the adaptation ceiling, and stillness zero multiplies that out
+ * — so all five of them are the same picture, necessarily, and committing five copies
  * of one image would be committing a redundancy rather than a reference. They are
  * rendered on every run and asserted three ways; `--out` skips them unless
  * `--floor arriving` asks for one specifically.
+ *
+ * `later` is the second probe and it is Floor −4's version of the same trick. That
+ * floor's answer to the sun is a *rate*, which no single frame can show — a
+ * photograph of a projector running at eight frames a second and a photograph of one
+ * running at twenty-four are the same photograph. So the floor is measured as a pair
+ * of instants rather than as a pair of visitors: `projection` at second zero and
+ * `later` a good way into the reel, at every hour. At astronomical night they must
+ * differ, because the film has moved; at the shuttered hour they must be identical to
+ * the byte, because the machine is stopped and that is the whole claim. Five copies
+ * of a frame that is meant to equal another committed frame would again be a
+ * redundancy, so `later` is rendered and asserted and not written out.
  */
+
+/**
+ * How far into the show Floor −4's two entries are taken, as offsets from the run's
+ * own second rather than as instants.
+ *
+ * Offsets, so `--time` still moves this floor with the rest of the building. Non-zero
+ * at all, because **second zero is the one instant at which this floor has nothing to
+ * say**: every rate strikes frame 0 there, so the four running hours render exactly
+ * the same picture and the committed frames would be four copies of one image — which
+ * is the redundancy the `arriving` note refuses one floor up, arrived at by a
+ * different route. A few seconds in, twenty-four frames a second is on frame 88 and
+ * eight is on frame 29, and the four hours are four pictures.
+ *
+ * Neither is a round number and neither is a multiple of any of the four rates' frame
+ * intervals. At a whole second the twenty-four, twelve and eight frame rates all land
+ * exactly on a boundary, which is a legitimate instant and a poor probe: it is the one
+ * place a bug that quantised to the *wrong* boundary would still agree with a correct
+ * one. Both also sit inside the first reel and well clear of both cue windows, so the
+ * pair being compared is two ordinary moments of a running show rather than one of
+ * them and a reel change.
+ */
+const FRAME_SECONDS = 3.7;
+const LATER_SECONDS = 9.37;
+
 const FLOORS = [
   { name: 'lobby', depth: 0 },
   { name: 'lift', depth: 0.5 },
@@ -124,6 +170,9 @@ const FLOORS = [
   { name: 'sinking', depth: 2.5 },
   { name: 'arriving', depth: 3, stillness: 0, probe: true },
   { name: 'cellar', depth: 3, stillness: 1 },
+  { name: 'threading', depth: 3.5 },
+  { name: 'projection', depth: 4, after: FRAME_SECONDS },
+  { name: 'later', depth: 4, after: LATER_SECONDS, probe: true },
 ];
 
 /** The entries `--out` writes only when they are asked for by name. */
@@ -167,25 +216,48 @@ const job = {
   tier,
   frames: floors.flatMap((floor) => {
     const depth = depthOverride === null ? floor.depth : Number(depthOverride);
-    return states.map((state) => ({
-      state,
-      floor: floor.name,
-      depth,
-      camera: breathe(seconds, depth, breathAt(seconds)),
-      lobby: rigFor(state, invited),
-      corridor: corridorRigFor(state, invited),
-      library: libraryRigFor(state, invited),
-      cellar: cellarRigFor(state, invited),
-      // A visitor who has already settled, unless the entry says otherwise. The
-      // committed frames are the room as somebody who stayed sees it, because that
-      // is the room the phase claims to have built; `arriving` is the one entry
-      // that overrides it, and the pair of them is Floor −3's whole assertion.
-      stillness: floor.stillness ?? 1,
-      // The camera's own pacing, evaluated at the same second, so a frame and the
-      // eye position it was drawn from can never disagree about where in the breath
-      // they are.
-      breath: breathAt(seconds),
-    }));
+    // Every entry is drawn at the run's second unless it asks to be taken later —
+    // which two do, because Floor −4's claim is about two instants rather than one.
+    const at = seconds + (floor.after ?? 0);
+
+    return states.map((state) => {
+      const projection = projectionRigFor(state, invited);
+
+      // The projector's quantisation, done exactly as `renderer.ts` does it, and the
+      // camera posed at the result. It has to be the same arithmetic in both places
+      // or this script would be verifying a hotel nobody visits: the whole of Floor
+      // −4's judder is that the eye and the frame share one clock.
+      const film = filmFrameAt(at, projection.rate);
+      const held = Math.max(0, 1 - Math.abs(depth - 4));
+      const posedAt = at * (1 - held) + film.time * held;
+
+      return {
+        state,
+        floor: floor.name,
+        depth,
+        camera: breathe(posedAt, depth, breathAt(at)),
+        lobby: rigFor(state, invited),
+        corridor: corridorRigFor(state, invited),
+        library: libraryRigFor(state, invited),
+        cellar: cellarRigFor(state, invited),
+        projection,
+        seconds: at,
+        filmTime: film.time,
+        filmFrame: film.index,
+        // The bench as a visitor finds it: everything on. A run with the stack
+        // switched off would be verifying a room nobody is shown.
+        stack: benchMask(THREADED),
+        // A visitor who has already settled, unless the entry says otherwise. The
+        // committed frames are the room as somebody who stayed sees it, because that
+        // is the room the phase claims to have built; `arriving` is the one entry
+        // that overrides it, and the pair of them is Floor −3's whole assertion.
+        stillness: floor.stillness ?? 1,
+        // The camera's own pacing, evaluated at the same second, so a frame and the
+        // eye position it was drawn from can never disagree about where in the breath
+        // they are.
+        breath: breathAt(at),
+      };
+    });
   }),
   // The extension decides the encoding. Five 1280×720 PNGs of this room are 7.5MB,
   // which is not a thing to commit for the sake of a few screenshots; the same
@@ -241,6 +313,17 @@ const job = {
     'uCellarFloor',
     'uCellarSky',
     'uCellarDust',
+    'uArcColour',
+    'uArcStrength',
+    'uBurn',
+    'uProjectionExposure',
+    'uProjectionFloor',
+    'uProjectionSky',
+    'uProjectionDust',
+    'uProjectorRate',
+    'uFilmTime',
+    'uFilmFrame',
+    'uStack',
     'uStillness',
     'uBreath',
   ],
@@ -310,7 +393,6 @@ function renderInPage(input) {
 
   const at = (name) => gl.getUniformLocation(program, name);
   gl.uniform2f(at('uResolution'), input.width, input.height);
-  gl.uniform1f(at('uTime'), input.seconds);
   gl.uniform1i(at('uMarchSteps'), input.tier.marchSteps);
   gl.uniform1i(at('uShadowSteps'), input.tier.shadowSteps);
   gl.uniform1i(at('uVolumetricSamples'), input.tier.volumetricSamples);
@@ -321,6 +403,11 @@ function renderInPage(input) {
   const pixels = new Uint8Array(input.width * input.height * 4);
 
   for (const frame of input.frames) {
+    // Per frame rather than once, because one entry is drawn at its own second: the
+    // `later` probe is Floor −4's second instant, and comparing it with `projection`
+    // is the whole of that floor's assertion.
+    gl.uniform1f(at('uTime'), frame.seconds);
+
     const camera = frame.camera;
     gl.uniform3f(at('uEye'), camera.eye.x, camera.eye.y, camera.eye.z);
     gl.uniform3f(at('uTarget'), camera.target.x, camera.target.y, camera.target.z);
@@ -370,6 +457,19 @@ function renderInPage(input) {
     gl.uniform3f(at('uCellarSky'), cellar.ambientSky[0], cellar.ambientSky[1], cellar.ambientSky[2]);
     gl.uniform1f(at('uCellarDust'), cellar.dust);
 
+    const projection = frame.projection;
+    gl.uniform3f(at('uArcColour'), projection.arcColour[0], projection.arcColour[1], projection.arcColour[2]);
+    gl.uniform1f(at('uArcStrength'), projection.arcStrength);
+    gl.uniform1f(at('uBurn'), projection.burn);
+    gl.uniform1f(at('uProjectionExposure'), projection.exposure);
+    gl.uniform3f(at('uProjectionFloor'), projection.ambientFloor[0], projection.ambientFloor[1], projection.ambientFloor[2]);
+    gl.uniform3f(at('uProjectionSky'), projection.ambientSky[0], projection.ambientSky[1], projection.ambientSky[2]);
+    gl.uniform1f(at('uProjectionDust'), projection.dust);
+    gl.uniform1f(at('uProjectorRate'), projection.rate);
+    gl.uniform1f(at('uFilmTime'), frame.filmTime);
+    gl.uniform1f(at('uFilmFrame'), frame.filmFrame);
+    gl.uniform1i(at('uStack'), frame.stack);
+
     gl.uniform1f(at('uStillness'), frame.stillness);
     gl.uniform1f(at('uBreath'), frame.breath);
 
@@ -397,12 +497,21 @@ function renderInPage(input) {
     // finally able to see. Neither a mean nor a deviation can tell that apart from
     // the exposure being raised, which is the failure mode the whole piece is most
     // prone to, so the spread between the channels is measured directly.
+    // And a fingerprint of the pixels themselves, which exists for Floor −4 and is
+    // the only statistic here that is not a statistic. That floor's claim is that a
+    // running projector puts a *different frame* in the gate a few seconds later and
+    // a stopped one does not — an identity, and identity is exactly what a summary
+    // cannot see. Two frames of the same room a moment apart have the same mean, the
+    // same deviation and the same chroma to within a tenth, because the room is
+    // statistically stationary and only its content moved. An FNV-1a over the sampled
+    // bytes settles it outright and costs one multiply per sample.
     let min = 255;
     let max = 0;
     let total = 0;
     let totalSquares = 0;
     let totalChroma = 0;
     let samples = 0;
+    let fingerprint = 0x811c9dc5;
     const levels = new Set();
     for (let y = 0; y < input.height; y += 4) {
       for (let x = 0; x < input.width; x += 4) {
@@ -418,6 +527,14 @@ function renderInPage(input) {
         totalChroma += Math.max(red, green, blue) - Math.min(red, green, blue);
         samples += 1;
         levels.add(Math.round(luma));
+
+        // Math.imul rather than `*`, because the product overflows 32 bits on every
+        // single byte and plain multiplication would silently drift into doubles —
+        // at which point the low bits, which are the whole of what a fingerprint is
+        // made of, stop being carried at all.
+        fingerprint = Math.imul(fingerprint ^ red, 0x01000193);
+        fingerprint = Math.imul(fingerprint ^ green, 0x01000193);
+        fingerprint = Math.imul(fingerprint ^ blue, 0x01000193);
       }
     }
     const mean = total / samples;
@@ -434,6 +551,7 @@ function renderInPage(input) {
       deviation,
       chroma: totalChroma / samples,
       distinct: levels.size,
+      fingerprint: fingerprint >>> 0,
       dataUrl: canvas.toDataURL(input.mimeType, 0.92),
     });
   }
@@ -715,19 +833,152 @@ if (onlyState === null && !invited) {
     }
   }
 
+  // The projection box's claim, and it is a fifth different one again — different in
+  // *shape*, not only in sign, which is the whole reason the floor was worth
+  // building. Floor 0 orders its five frames, Floor −1 orders them the other way,
+  // Floor −2 holds the mean flat and drops the spread, Floor −3 compares two
+  // visitors. Floor −4 compares **two instants**.
+  //
+  // It has to. This floor's answer to the sun is a rate, and no single frame can show
+  // a rate — a photograph of a projector running at eight frames a second and a
+  // photograph of one running at twenty-four are the same photograph. What separates
+  // them is whether the *next* one differs, and by how much. So `projection` and
+  // `later` are the same room at the same hour at two different seconds, and the
+  // floor is the difference between them.
+  const projection = floorFrames('projection');
+  const later = floorFrames('later');
+
+  const instantsFor = (state) => [
+    projection.find((frame) => frame.state === state),
+    later.find((frame) => frame.state === state),
+  ];
+
+  // Both halves are asserted on the fingerprint rather than on the statistics, and
+  // that is not belt and braces — it is the only thing that can see this claim. Two
+  // instants of a running projection box have the same mean, the same deviation and
+  // the same chroma to within a tenth of a per cent, because the room is
+  // statistically stationary and all that moved was which frame is in the gate. A
+  // threshold tight enough to catch that is a threshold inside the noise of a hash.
+  // The question being asked is whether the two frames are the same *picture*, which
+  // is an identity, and identity wants the pixels.
+  //
+  // A running machine moves. At every hour but the last, the film advances between the
+  // two instants and the beam carries a different part of the picture in each — so if
+  // any of the four match, the quantisation has stuck, uFilmFrame is not reaching the
+  // shader, or the beam has stopped reading it.
+  for (const state of AUBADE_STATES) {
+    const [struck, advanced] = instantsFor(state);
+    if (struck === undefined || advanced === undefined) {
+      continue;
+    }
+
+    const running = state !== 'shuttered';
+    const same = struck.fingerprint === advanced.fingerprint;
+
+    if (running && same) {
+      problems.push(
+        `At ${state} the projection box is pixel-identical at ${seconds + FRAME_SECONDS} seconds ` +
+          `and at ${seconds + LATER_SECONDS}. PROJECTION_RIGS.${state}.rate says the machine is ` +
+          `running, so a different frame is supposed to be in the gate by then — an identical ` +
+          `one means uFilmFrame is not reaching the beam, or filmFrameAt has stopped advancing.`
+      );
+    }
+
+    // And the exact half, which is the one that would fail silently. At noon the rate
+    // is exactly zero: the machine is stopped, one frame is standing in the gate, and
+    // the two instants have to be **the same picture** — not similar, the same, to the
+    // byte. A rate of 0.4 renders a projector that crawls, which looks entirely
+    // plausible and has quietly turned this floor's argument into a gradient. It is the
+    // cellar's noon assertion taken along the other axis, and it is exact for the same
+    // reason that one is.
+    if (!running && !same) {
+      problems.push(
+        `At noon the projection box is not the same picture at ${seconds + FRAME_SECONDS} ` +
+          `seconds and at ${seconds + LATER_SECONDS}. PROJECTION_RIGS.shuttered.rate is meant to ` +
+          `be exactly 0: the machine is stopped with the lamp on and one frame burning in the ` +
+          `gate, and that frame is the same frame however long anybody stands there. Something ` +
+          `on this floor is reading uTime where it should be reading uFilmTime.`
+      );
+    }
+  }
+
+  // The four running hours are four *different* pictures at one instant, which is the
+  // other thing second zero cannot show — see the note on FRAME_SECONDS. It is a
+  // weaker claim than the ordering the lobby makes and it is the honest one for this
+  // floor: at a given moment a machine at twenty-four and a machine at eight are
+  // showing different frames of the same show, not brighter and darker rooms.
+  const striking = new Set(
+    projection.filter((entry) => entry.state !== 'shuttered').map((entry) => entry.fingerprint)
+  );
+  if (projection.length === AUBADE_STATES.length && striking.size < AUBADE_STATES.length - 1) {
+    problems.push(
+      `The projection box's four running hours are not four pictures at ${
+        seconds + FRAME_SECONDS
+      } seconds — ${striking.size} of them are distinct. Each rate should have struck a different ` +
+        `frame by now (24fps is on frame 88 where 8fps is on 29), so two hours landing on the ` +
+        `same picture means the rate is not reaching filmFrameAt.`
+    );
+  }
+
+  // The burn is a picture rather than a failure, and this is what says so. AUBADE
+  // asks for a daytime state that stands alone rather than the night frame with the
+  // exposure moved, and on every other floor that is checked as a brightness. Here it
+  // cannot be: the room is lit identically at every hour. What is different at noon is
+  // that a hole has opened in the middle of the frame with the whole undiffused lamp
+  // behind it — so the *spread* is what moves, and it moves a long way.
+  if (projection.length === AUBADE_STATES.length) {
+    const [night] = projection;
+    const day = projection[projection.length - 1];
+
+    if (day.deviation < night.deviation * 1.2) {
+      problems.push(
+        `The burned frame at noon is barely more varied than the running one at astronomical ` +
+          `night (luma deviation ${day.deviation.toFixed(2)} against ${night.deviation.toFixed(2)}). ` +
+          `uBurn is supposed to open a hole in the gate that passes the entire lamp; a daytime ` +
+          `projection box whose contrast has not moved is one where the burn is not reaching the ` +
+          `frame, and AUBADE's daytime state is a second picture rather than a dimmer one.`
+      );
+    }
+
+    // The four running hours are lit identically — only the rate differs — so their
+    // means have to sit close together. This is the library's flatness check applied
+    // one floor down, and it is what would catch somebody "making the room respond to
+    // the clock like the others do" by putting a dimmer on the arc. The burned hour is
+    // excluded, because it is the one that is deliberately not the same picture.
+    const running = projection.slice(0, -1).map((frame) => frame.mean);
+    const brightest = Math.max(...running);
+    const dimmest = Math.min(...running);
+
+    if (brightest - dimmest > brightest * 0.14) {
+      problems.push(
+        `The projection box's four running hours span mean luma ${dimmest.toFixed(1)}–` +
+          `${brightest.toFixed(1)}. Floor −4 is lit identically at every hour — six of the seven ` +
+          `fields in rooms/projection-rig.ts are the same in all five rigs — and what the sun ` +
+          `moves is the rate, not the arc. A projection box that dims with the sun has been ` +
+          `wired to another floor's rig.`
+      );
+    }
+  }
+
   // A ride is between two floors and has to look like neither. A ride whose halfway
   // frame matches one of its endpoints is a cut with a delay in it, which is the
   // one thing "visible and unhurried" rules out — and it is exactly what a morph
-  // curve that saturates at an endpoint produces. All three legs, against both of
+  // curve that saturates at an endpoint produces. All four legs, against both of
   // their own endpoints.
   //
   // The third leg's lower endpoint is `arriving` rather than `cellar`, and that is
   // not a detail: a visitor stepping out of the lift has by definition not been
   // standing still yet, so the settled frame is not the room the ride ends in.
+  //
+  // The fourth leg's *upper* endpoint is `cellar` and not `arriving`, which is the
+  // opposite choice and is the same rule. A visitor riding up out of Floor −3 has
+  // been standing in it, so the room they are leaving is the settled one — and the
+  // ride's own frames are drawn at stillness 1 for exactly that reason.
   for (const [ride, ends] of [
     ['lift', ['lobby', 'corridor']],
     ['descent', ['corridor', 'library']],
     ['sinking', ['library', 'arriving']],
+    ['threading', ['cellar', 'projection']],
   ]) {
     for (const moving of floorFrames(ride)) {
       for (const floor of ends) {

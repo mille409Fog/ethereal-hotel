@@ -171,22 +171,26 @@ test.describe('the aubade route', () => {
   });
 
   test('the lift reaches the bottom of the shaft', async ({ page }) => {
-    // The same argument as the test above, one floor further, plus one that is
-    // particular to Floor −3. Every other check on the Cellar is blind to a
+    // The same argument as the test above, three floors further, plus two that are
+    // particular to the bottom two. Every other check on those floors is blind to a
     // different half of it: the unit tests drive a stub context that never reads
     // the shader, `verify:shader` compiles the shader against its own canvas and
     // never loads the app, and `check:docs` reads the source without running any of
     // it. A cellar that threw on arrival would pass all three.
     //
-    // The particular one is that this is the only floor whose plate says something
-    // the visitor is expected to act on, and the only text on the route that
-    // changes without anybody doing anything. If it never renders, the room is a
+    // The Cellar's particular one is that it is the only floor whose plate says
+    // something the visitor is expected to act on, and the only text on the route
+    // that changes without anybody doing anything. If it never renders, the room is a
     // black rectangle that everybody leaves after four seconds and no other gate
     // notices — the picture is correct, the prose is correct, and the floor's whole
     // content is behind an instruction nobody was given.
     //
+    // The Projection Room's is its bench, and it is the same shape of gap: six real
+    // controls that are supposed to change the frame, in a browser, against a real
+    // context. Nothing else here operates them.
+    //
     // Small viewport for the reason the file comment gives, and reduced motion so
-    // the three rides are three cuts rather than twenty-two and a half seconds.
+    // the four rides are four cuts rather than thirty seconds of lift.
     await page.setViewportSize({ width: 420, height: 280 });
 
     const errors: Error[] = [];
@@ -213,12 +217,43 @@ test.describe('the aubade route', () => {
     await expect(asking).toBeVisible();
     await expect(asking).not.toBeEmpty();
 
-    // The shaft ends here, so there is one control and it goes up.
+    // One floor further, to the bottom. The Cellar used to be it and the assertion
+    // that the shaft ended there was correct until Floor −4 landed.
+    await page.getByRole('button', { name: /Take the lift down/ }).click();
+
+    await expect(page.getByText('The Projection Room')).toBeVisible();
+    await expect(page.getByText(/lamphouse/)).toBeVisible();
+
+    // The bench, which is the one thing on this route that is not the hotel talking
+    // and the only control surface in the piece a visitor is invited to play with.
+    // AUBADE asks for the film stack "exposed as a projectionist's bench you can
+    // operate", and this is the only gate that operates it in a real browser against
+    // a real WebGL context — the unit tests drive a stub that never reads the shader,
+    // and `verify:shader` never loads the app.
+    const switches = page.locator('.bench__input');
+    await expect(switches).toHaveCount(6);
+    for (let index = 0; index < 6; index += 1) {
+      await expect(switches.nth(index)).toBeChecked();
+    }
+
+    // Throwing one has to change the picture, and the picture is redrawn on a loop
+    // this page is not running — reduced motion draws one frame and stops. A switch
+    // that moves and changes nothing is the worst possible answer from a control
+    // whose entire purpose is that it visibly does something.
+    await switches.nth(2).click();
+    await expect(switches.nth(2)).not.toBeChecked();
+    await expect(switches.nth(1)).toBeChecked();
+
+    // The rate is a readout and not a switch. A visitor who could wind the projector
+    // back up at noon would have been handed this floor's whole answer to the clock.
+    await expect(page.getByText(/The hour sets the rate/)).toBeVisible();
+
+    // *Now* the shaft ends, so there is one control and it goes up.
     await expect(page.getByRole('button', { name: /Take the lift down/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Take the lift up/ })).toBeEnabled();
 
     const label = await page.locator('canvas').getAttribute('aria-label');
-    expect(label).toContain('vault');
+    expect(label).toContain('projection box');
     expect(label).toContain('drawn in real time');
 
     expect(errors).toEqual([]);

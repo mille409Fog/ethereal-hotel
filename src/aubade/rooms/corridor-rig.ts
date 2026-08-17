@@ -38,8 +38,10 @@
  * also why `shuttered` is not a dead rig that only the committed frames ever see:
  * a visitor who goes down at three in the morning and stays is on this floor when
  * their own sunrise arrives, and what they see is the sconces failing one after
- * another and the day coming down the shaft. Phase 7 is where that becomes an
- * event; the rig it will need is here already and is correct now.
+ * another and the day coming down the shaft. The Dawn phase is where that becomes
+ * an event; the rig it will need is here already and is correct now. (Named rather
+ * than numbered: AUBADE renumbers its list from 1 every time a phase lands, so a
+ * number cited from outside that file is wrong within a commit or two.)
  *
  * Nothing here imports from `src/app/`, and the numbers are AUBADE's own.
  */

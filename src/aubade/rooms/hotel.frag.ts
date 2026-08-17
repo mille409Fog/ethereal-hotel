@@ -1,8 +1,8 @@
 /**
- * The hotel: four floors, one program, and the lift between them.
+ * The hotel: five floors, one program, and the lift between them.
  *
  * The whole program: shared primitives, every floor's geometry, the shading, and
- * the scene that mixes them. Seven source strings, concatenated at the bottom in
+ * the scene that mixes them. Eight source strings, concatenated at the bottom in
  * declaration order, because GLSL has no forward declarations and the compiler
  * reports the omission as an undeclared identifier a long way from anything a
  * person would think to look at.
@@ -25,7 +25,8 @@
  * needs the corridor's dimensions, the library's shelving and the cellar's arch,
  * so the order is
  *
- *   header · PRIMITIVES · lobby · corridor · library · cellar · SHADING · scene
+ *   header · PRIMITIVES · lobby · corridor · library · cellar · projection ·
+ *   SHADING · scene
  *
  * and it is not negotiable in either direction.
  *
@@ -46,6 +47,8 @@
  *   uDepth = 2            the library's field, exactly
  *   2 < uDepth < 3        library and cellar evaluated and mixed — a ride
  *   uDepth = 3            the cellar's field, exactly
+ *   3 < uDepth < 4        cellar and projection box evaluated and mixed — a ride
+ *   uDepth = 4            the projection box's field, exactly
  *
  * AUBADE's phase note says a third room does not extend a two-room design for
  * free, and names the fork: either `mapScene` starts branching on which pair is
@@ -143,17 +146,36 @@
  *   uCellarFloor        warm half of the cellar's ambient         │ cellar-rig.ts`
  *   uCellarSky          cool half                                 │
  *   uCellarDust         scattering in the cellar's air            ┘
+ *   uArcColour          the lamp in the lamphouse                 ┐
+ *   uArcStrength        how hard it is driven — every hour        │ Floor −4's rig,
+ *   uBurn               what a stopped frame does; 0 but at noon  │ from
+ *   uProjectionExposure this floor's stop, which no hour moves    │ `rooms/
+ *   uProjectionFloor    warm half of the box's ambient            │ projection-rig.ts`
+ *   uProjectionSky      cool half                                 │
+ *   uProjectionDust     scattering in the box's air               ┘
+ *   uProjectorRate      frames a second; 0 at noon                ┐ the projector,
+ *   uFilmTime           when the frame in the gate was struck     │ from
+ *   uFilmFrame          which frame of the show it is             ┘ `projection.ts`
+ *   uStack              which of the bench's six switches are down
  *   uStillness          how long this visitor has kept still      ┐ the visitor,
  *   uBreath             where the 4-7-8 cycle has got to          ┘ from `cellar.ts`
  *
- * Five of Floor −2's six never vary with the hour, and six of Floor −3's seven do
- * not either. That is those floors' whole idea rather than an omission — see
- * `rooms/library-rig.ts` and `rooms/cellar-rig.ts`.
+ * Five of Floor −2's six never vary with the hour, six of Floor −3's seven do not
+ * either, and six of Floor −4's seven do not either. That is those floors' whole
+ * idea rather than an omission — see `rooms/library-rig.ts`, `rooms/cellar-rig.ts`
+ * and `rooms/projection-rig.ts`, which answer the sun with writing, with the
+ * visitor, and with time.
  *
- * The last two are the only uniforms in the piece that describe the person rather
- * than the building or the sun, and they exist for one floor. Floor −3's proposition
- * is that the room never changes and the visitor does; `adapted()` is where that
- * cashes out, and it is a no-op everywhere above depth 2.
+ * `uStillness` and `uBreath` are the only uniforms in the piece that describe the
+ * person rather than the building or the sun, and they exist for one floor. Floor
+ * −3's proposition is that the room never changes and the visitor does; `adapted()`
+ * is where that cashes out, and it is a no-op everywhere above depth 2.
+ *
+ * `uStack` is the only uniform that describes neither — it is six switches on a
+ * bench, and it is the one control surface in this hotel that is not diegetic
+ * furniture. Floor −4's proposition is that the apparatus is the exhibit, so the
+ * apparatus has to be operable; `projected()` is where most of that cashes out, and
+ * it is a no-op everywhere above depth 3.
  */
 /**
  * What both floors are made of: distance primitives, the material table, and the
@@ -267,6 +289,8 @@ const float MAT_FLAG     = 18.0;
 const float MAT_CANDLE   = 19.0;
 const float MAT_WATER    = 20.0;
 const float MAT_IRON     = 21.0;
+const float MAT_ARC      = 22.0;
+const float MAT_SCREEN   = 23.0;
 
 // How far outside a bounding box a ray may be before the box stands in for its
 // contents. Comfortably above SURFACE_EPSILON, so a ray can never terminate on a
@@ -570,9 +594,18 @@ float specularLobe(vec3 n, vec3 viewDirection, vec3 lightDirection, float roughn
  * twenty samples per pixel. Dust inside a beam has no structure worth resolving —
  * what sells it is that it moves slowly and unevenly, which three incommensurable
  * sines do for a twentieth of the cost.
+ *
+ * The clock is a parameter rather than uTime, and it has exactly one caller that
+ * passes anything else. Floor −4 runs on a projector, which is a machine for making
+ * time discrete, and the whole of that floor's claim is that everything in it steps
+ * together — so its dust is evaluated at uFilmTime. Air that drifted smoothly
+ * through a stepped room would say the stepping was a filter laid over a continuous
+ * world, which is the reading Floor −4 cannot afford. See rooms/projection-rig.ts.
+ *
+ * @param at The clock to read the drift at. uTime everywhere but the projection box.
  */
-float dustDensity(vec3 p) {
-  vec3 q = p * vec3(1.9, 2.6, 2.1) + vec3(0.0, -uTime * 0.055, uTime * 0.021);
+float dustDensity(vec3 p, float at) {
+  vec3 q = p * vec3(1.9, 2.6, 2.1) + vec3(0.0, -at * 0.055, at * 0.021);
   float body = sin(q.x) * sin(q.y * 1.27 + 1.7) * sin(q.z * 0.83 + 3.1);
   return 0.55 + 0.45 * body;
 }
@@ -592,15 +625,23 @@ vec3 tonemap(vec3 colour) {
   // answer the sun, and it was measurably answering. Floor −1 still rides the
   // lobby's stop, which is harmless because the sun genuinely does reach it.
   //
-  // A weighted sum rather than nested mixes, now that two floors want their own —
+  // A weighted sum rather than nested mixes, now that three floors want their own —
   // the same construction roomAmbient uses and for the same reason. floorWeight's
-  // four values sum to exactly 1 at every depth, so this is a convex combination of
-  // three stops and nothing has to be renormalised. Floor −3 needs its own twice as
+  // five values sum to exactly 1 at every depth, so this is a convex combination of
+  // four stops and nothing has to be renormalised. Floor −3 needs its own twice as
   // badly as Floor −2 did, because adapted() multiplies a gain on top of whatever
   // stop reaches it, so a leaked stop there is a leaked stop times eleven.
+  //
+  // Floor −4 needs one for a third reason, and it is the sharpest of the three. That
+  // floor's daytime picture is a frame burning through in a stopped gate, and a burn
+  // is a hole that passes the whole lamp — so it is deliberately driven to clipping.
+  // A leaked exposure underneath it does not brighten a burn, it moves where the
+  // burn's edge falls, which is the one place in this shader where a stray stop
+  // would change a shape rather than a level.
   colour *= uExposure * (floorWeight(0.0) + floorWeight(1.0)) +
             uLibraryExposure * floorWeight(2.0) +
-            uCellarExposure * floorWeight(3.0);
+            uCellarExposure * floorWeight(3.0) +
+            uProjectionExposure * floorWeight(4.0);
   return clamp((colour * (2.51 * colour + 0.03)) / (colour * (2.43 * colour + 0.59) + 0.14), 0.0, 1.0);
 }
 
@@ -1897,6 +1938,405 @@ vec2 mapCellar(vec3 p) {
 `;
 
 /**
+ * Floor −4 — The Projection Room. The room where the apparatus is the exhibit.
+ *
+ * AUBADE's floor table gives this room two sentences: "Film. The post-processing
+ * stack *is* the exhibit: gate weave, halation, grain, 24fps judder, splice
+ * flashes, reel-change cue dots. Exposed as a projectionist's bench you can
+ * operate." Both halves are load-bearing and they pull in opposite directions,
+ * which is what this floor had to solve.
+ *
+ * ## The picture you are looking at is the one in the gate
+ *
+ * The obvious reading of "the stack is the exhibit" is a screen on the far wall
+ * with a film on it and the effects applied to that rectangle. It is wrong, and it
+ * is wrong in a way that would have cost the floor everything: a framed picture
+ * inside a picture is a *sample* of the effect, held at arm's length, and a visitor
+ * compares it with the un-effected room around it and reads the whole thing as a
+ * demonstration. AUBADE's first failure mode, exactly — six rooms of unrelated
+ * effects with a hotel painted on.
+ *
+ * So the stack is applied to the *whole frame*. The room the visitor is standing in
+ * is itself the film in the gate: it weaves, it grains, it halates, it steps at the
+ * projector's rate, it takes a splice flash, and it wears the cue dots. There is no
+ * un-effected reference anywhere in shot, which is what turns a filter into a place.
+ * The prose downstairs says this out loud, because it is the one thing about the
+ * floor a visitor genuinely cannot work out by looking.
+ *
+ * ## How the sun gets four floors underground, for the fifth time
+ *
+ * The four rooms above answer the hour with light arriving, light leaving, writing
+ * leaving, and the visitor's own eye. A fifth dimmer switch would have been the
+ * demo reel arriving one floor at a time, so this floor answers with the one
+ * dimension a projection box has that none of them do, which is **time**.
+ *
+ * The projector runs at twenty-four frames a second at astronomical night and slows
+ * as the night ends — eighteen, twelve, eight — and at the shuttered hour it is
+ * stopped dead with the lamp still on. `uFilmTime` and `uFilmFrame` carry that: every
+ * moving thing on this floor is evaluated at the former and every *discrete* thing is
+ * keyed on the latter, so the room, its air, its beam and the camera looking at it
+ * all step together. See `projection.ts`, where the quantisation lives, and
+ * `rooms/projection-rig.ts`, where the five rates are.
+ *
+ * What a stopped frame does under an arc lamp is burn, and `uBurn` is that: exactly
+ * zero at every hour but the shuttered one, where it is exactly one. The hole passes
+ * the whole lamp, so the daytime picture on this floor is a held still with a white
+ * hole opening through the middle of it and a scorch ring around that — which is
+ * AUBADE's daytime specification almost word for word, "everything over-exposed to
+ * the edge of white", arrived at from the mechanism rather than from the palette.
+ *
+ * ## Conventions
+ *
+ * Metres, +y up, +z away from the camera towards the port wall. The floor plane at
+ * y = 0 is shared with the four floors above, for the reason at the foot of the
+ * lobby section. The box is 5.10 across and 2.85 to the ceiling — the smallest room
+ * in the building, and the only one with a machine in it big enough to have to walk
+ * round. The camera stands back and to the left so the projector is a
+ * three-quarter silhouette on the right and the beam crosses the frame diagonally
+ * away from it, which is the same composition argument the lobby's moonlight makes.
+ */
+const PROJECTION_GLSL = `
+// ---------------------------------------------------------------------------
+// The box, in metres
+// ---------------------------------------------------------------------------
+const float BOX_HALF_WIDTH = 2.55;
+const float BOX_HEIGHT     = 2.85;
+const float BOX_NEAR_Z     = -5.20;
+const float BOX_FAR_Z      =  4.30;
+
+// The two openings in the port wall. Both are real: a projection box has a port for
+// the beam and a second one at head height for the projectionist to watch through,
+// and the pair of them is most of what says "projection box" rather than "cupboard".
+//
+// The projection port is low and well over to the left, and neither of those is
+// decoration. Low, because a box sits above an auditorium and the beam rakes *down*
+// into it. Left, because the machine is over to the right — see below, where the
+// whole composition is set out.
+const vec2 PORT_CENTRE = vec2(-0.55, 0.62);
+const vec2 PORT_HALF   = vec2(0.30, 0.23);
+const vec2 SPY_CENTRE  = vec2(0.10, 1.42);
+const vec2 SPY_HALF    = vec2(0.21, 0.17);
+
+// The machine. Everything about it is arranged around the lens, because the lens is
+// where the room's only light comes from and every other part of the projector is a
+// silhouette against it.
+//
+// It stands to the right and throws two metres across the room to a port on the
+// left, which is the single most important number in this file and was got wrong
+// first time round. A projector square to its port, viewed from behind, puts the
+// lens, the beam and the port on one line pointing away from the camera — so three
+// metres of lit air project to eighty pixels and the room's whole subject is a
+// smudge between two bright rectangles. Rendered, it was unmistakable and it is the
+// reason this floor is composed across rather than along: the beam now crosses four
+// hundred pixels of frame, which is the same argument the lobby's shaft of moonlight
+// makes about a diagonal, arrived at the hard way.
+//
+// Boxes really are offset from the centreline of the screen they serve, so nothing
+// here is being bent to suit the picture. And lensBeam needs no change for it — it
+// projects from the lens through a point onto the port's plane, which is true of any
+// arrangement of the two.
+const float MACHINE_X   = 1.45;
+const vec3  LENS_MOUTH  = vec3(1.45, 1.16, 1.25);
+const float LENS_RADIUS = 0.075;
+
+// Where the lamp actually is, which is not where the light appears to come from.
+// The arc sits deep inside a closed cast housing behind the head; what reaches the
+// room is what escapes down the vent slots in its flanks, and that is the only thing
+// lighting the machine's own silhouette. Read by the geometry and by the light, the
+// same arrangement the sconces and the candle use and for the same reason.
+const vec3 LAMPHOUSE_CENTRE = vec3(1.45, 1.34, -0.20);
+
+// The two magazines, which are the projector's whole silhouette: a big flat drum
+// above the head and another in front of it below, and nothing else in this building
+// is that shape. Axis along x, so they are seen as discs from where the camera
+// stands.
+const vec3  UPPER_REEL = vec3(1.45, 1.80, 0.35);
+const vec3  LOWER_REEL = vec3(1.45, 0.52, 1.06);
+const float REEL_RADIUS = 0.34;
+const float REEL_HALF   = 0.085;
+
+// The bench along the left-hand wall: a top, a carcass under it, and two rewind
+// spindles with a reel on each. It is the thing the floor is named after on the
+// plate outside, and it is deliberately the only ordinary furniture down here.
+const vec3 BENCH_TOP_CENTRE = vec3(-2.00, 0.90, 0.40);
+const vec3 BENCH_TOP_HALF   = vec3(0.50, 0.035, 1.60);
+
+// The worklight over the bench, and it is the only light in this hotel that answers
+// to a person rather than to the sun or to a machine.
+//
+// Every projection box has one — a shaded bulb over the rewind bench, kept low so it
+// does not fog the port, and it is on because somebody is working rather than because
+// of the hour. That makes it this floor's version of the lamp the visitor carries
+// down the corridor: not in any rig, identical at every hour, and a GLSL constant for
+// exactly that reason.
+//
+// It earns its place by fixing a real failure rather than by being a nice idea. With
+// the arc shut in its housing and the beam touching nothing, the left half of this
+// room rendered as an unlit void — and the bench is not set dressing, it is the thing
+// the floor is named after on the plate and the thing the prose tells a visitor to go
+// and look at. A room that describes furniture nobody can see has failed AUBADE's
+// fourth test before anybody has read a word of it.
+//
+// Warm, and deliberately: it is the one thing in here that is not six thousand
+// kelvin, so the room reads as a cold beam crossing a warm bench rather than as one
+// colour at two brightnesses.
+const vec3  WORK_LAMP     = vec3(-1.95, 2.02, 0.35);
+const vec3  WORK_COLOUR   = vec3(1.00, 0.70, 0.40);
+const float WORK_STRENGTH = 1.45;
+
+// How far outside the cone each of the two callers carries the beam's edge. These
+// are not two settings of one taste: the first is a beam and the second is the flare
+// around it, and the ratio between them is thirty to one.
+const float BEAM_EDGE       = 0.022;
+const float HALATION_SPREAD = 0.68;
+
+// Halation is red because the anti-halation backing on a print is red, and what you
+// see is what that backing failed to stop. Declared here with the room rather than
+// with the rest of the film stack five hundred lines down, and not by choice: it is
+// read by scatteredLight, GLSL has no forward declarations, and the compiler reports
+// the omission as an undeclared identifier a long way from anything a person would
+// think to look at. See scatteredLight for why this floor's halation is in the air.
+const vec3 HALATION_TINT = vec3(1.00, 0.31, 0.17);
+
+/**
+ * How much of the beam reaches a point, and how far that point is from the lens.
+ *
+ * The same analytic aperture the lobby's transom uses and for the same reason: the
+ * only opening is a rectangle on a known plane, so asking whether a point in the air
+ * is inside the beam is a divide and a rectangle test rather than a shadow march.
+ * The difference is which way round it runs. Upstairs the light comes *through* the
+ * aperture from outside; here the lens is a point source inside the room and the
+ * port is what clips its cone, so the projection is forward along the ray from the
+ * lens rather than backward along the light.
+ *
+ * @param spread How far outside the cone the edge is carried, in metres at the plane
+ *   of the port. Two callers and two very different answers, exactly as transomBeam
+ *   has — see the note on the halation in scatteredLight, which is the whole reason
+ *   this is a parameter. The beam itself wants a couple of centimetres, because a
+ *   mathematically hard boundary on a beam is the most reliable way to make an image
+ *   read as computer graphics rather than as a photograph of a room. The halation
+ *   wants most of a metre, because what it is is the part that got out.
+ * @return x: how much of the beam is here, in [0, 1]. y: metres from the lens.
+ */
+vec2 lensBeam(vec3 p, float spread) {
+  vec3 fromLens = p - LENS_MOUTH;
+  float run = fromLens.z;
+  if (run <= 0.001) {
+    return vec2(0.0, length(fromLens));
+  }
+
+  // Where the ray from the lens through this point crosses the port wall.
+  vec2 onPort = LENS_MOUTH.xy + fromLens.xy * ((BOX_FAR_Z - LENS_MOUTH.z) / run);
+  vec2 outside = abs(onPort - PORT_CENTRE) - PORT_HALF;
+
+  float admitted = 1.0 - smoothstep(-spread, spread * 0.8, max(outside.x, outside.y));
+
+  // And it stops at the wall. Past the port the beam is in the auditorium, which is
+  // somewhere this room does not go.
+  admitted *= 1.0 - smoothstep(BOX_FAR_Z - 0.03, BOX_FAR_Z + 0.01, p.z);
+
+  return vec2(admitted, length(fromLens));
+}
+
+/**
+ * The picture on the film, as one number.
+ *
+ * A projected beam is not a uniform cone — it is modulated by whatever is on the
+ * frame in the gate, and that modulation changing wholesale twenty-four times a
+ * second is the single most legible thing a projector does. So the beam carries a
+ * coarse block pattern keyed on the frame index, and it is redrawn every time the
+ * frame is pulled.
+ *
+ * This is where the judder actually becomes visible, and it is why it is worth a
+ * hash rather than a constant. A cone of steady light with a stepping camera reads
+ * as a dropped frame; a cone whose *content* changes on the step reads as a machine
+ * running. With uFilmFrame held — the shuttered hour — it is one unchanging pattern,
+ * which is a stopped projector and is correct.
+ *
+ * Blocky on purpose. Eight cells across a 600mm port is 75mm of detail at the
+ * aperture, which is far too coarse to read as an image and exactly coarse enough to
+ * read as *an image being there*. Anything finer aliases in the volumetric, for the
+ * reason the shutter's louvres do upstairs.
+ */
+float framePicture(vec2 onPort) {
+  vec2 cell = floor((onPort - PORT_CENTRE) / PORT_HALF * 4.0);
+  return 0.45 + 0.75 * hash13(vec3(cell, uFilmFrame));
+}
+
+/**
+ * How dense the frame in the gate is, over the whole of it — one number per frame of
+ * film, with no position in it at all.
+ *
+ * This is what the *beam* is modulated by, and it is not the function above. The
+ * difference took a rendered frame to find and is worth setting out, because the
+ * obvious version is the one that is wrong.
+ *
+ * A projected beam does carry the image across its section — that is what a beam is —
+ * so modulating the air by framePicture is the physically honest thing to write. It
+ * renders as television static. The blocks are 75mm at the plane of the port, the
+ * volumetric takes twenty samples across ten metres, and every pixel's ray crosses
+ * the cone at its own angle: consecutive samples land in uncorrelated cells and
+ * neighbouring pixels land in different sequences of them, so a pattern that is
+ * perfectly legible on a surface becomes noise in the air. It is the transom's
+ * louvre-aliasing trap arriving through a different door, and the note there says the
+ * same thing — a structure sampled two orders of magnitude below its own frequency
+ * does not soften, it breaks up.
+ *
+ * It is also not what anybody sees. Nobody has ever read a picture out of a beam; a
+ * beam brightens and dims as the overall density of the frame passing through it
+ * changes, and that is one number. So the air gets the number, the screen through the
+ * port gets the picture, and both are keyed on the same frame index — which means the
+ * beam still steps at the projector's rate, which was the whole reason for any of it.
+ */
+float frameDensity() {
+  return 0.55 + 0.62 * hash13(vec3(uFilmFrame, 19.0, 7.0));
+}
+
+/**
+ * The projector: stand, lamphouse, head, two magazines and the lens.
+ *
+ * Bounded by the caller and assumes the ray is close. Boxes and two cylinders, which
+ * is what a 35mm machine actually is — a cast-iron cabinet with drums bolted to it —
+ * and the reason it needs no more than that is that it is never lit from the front.
+ * Everything the camera sees of it is edge-lit by its own lamp leaking round the
+ * housing, so what has to be right is the outline.
+ */
+vec2 mapProjector(vec3 p) {
+  vec3 q = p - vec3(MACHINE_X, 0.0, 0.0);
+
+  // The pedestal it is bolted to, and the cabinet above.
+  vec2 res = vec2(sdBox(q - vec3(0.0, 0.40, 0.55), vec3(0.28, 0.40, 0.40)), MAT_IRON);
+  res = nearer(res, vec2(sdBox(q - vec3(0.0, 1.10, 0.55), vec3(0.23, 0.29, 0.30)), MAT_IRON));
+
+  // The lamphouse, behind the head and bigger than it — which is the proportion that
+  // reads as a projector rather than as a camera. The lamp is inside it and is not
+  // in the map at all: what is in shot is the leak round the door, which is the
+  // emitter below.
+  res = nearer(res, vec2(sdBox(q - vec3(0.0, 1.20, -0.20), vec3(0.29, 0.33, 0.42)), MAT_IRON));
+
+  // The vents down both flanks of the lamphouse: three slots a side, folded out of
+  // one box by an abs and a repeat.
+  //
+  // Slots and not a panel. Written first as a single 180mm opening it rendered as a
+  // white slab bolted to the side of the machine — the brightest thing in the frame
+  // after the port, hard-edged, and reading as a hole in the casting rather than as
+  // light escaping past it. What says "there is an arc shut inside this box" is
+  // several narrow bright lines with iron between them, which is also what a
+  // lamphouse actually has.
+  vec3 vent = q - vec3(0.0, 1.34, -0.20);
+  vent.x = abs(vent.x) - 0.29;
+  vent.y -= clamp(floor(vent.y / 0.085 + 0.5), -1.0, 1.0) * 0.085;
+  res = nearer(res, vec2(sdBox(vent, vec3(0.012, 0.017, 0.26)), MAT_ARC));
+
+  // The magazines. Discs on an x axis, so the swizzle puts the length across the
+  // room and the radius up and down it.
+  for (float which = 0.0; which <= 1.0; which += 1.0) {
+    vec3 hub = p - mix(UPPER_REEL, LOWER_REEL, which);
+    float drum = sdCylinderY(vec3(hub.y, hub.x, hub.z), REEL_HALF, REEL_RADIUS);
+    // Hollowed a little at the rim, so the drum has a lip rather than being a
+    // cheese. One carve, and it is what catches the lamp leak.
+    float dish = sdCylinderY(vec3(hub.y, hub.x, hub.z), REEL_HALF - 0.022, REEL_RADIUS - 0.04);
+    res = nearer(res, vec2(carve(drum, dish), MAT_IRON));
+  }
+
+  // The lens barrel, and its front face — which is the light source and the only
+  // part of the machine that is not a silhouette.
+  vec3 barrel = q - vec3(0.0, LENS_MOUTH.y, 1.05);
+  res = nearer(res, vec2(sdCylinderY(vec3(barrel.x, barrel.z, barrel.y), 0.20, LENS_RADIUS + 0.018), MAT_IRON));
+  res = nearer(res, vec2(length(barrel - vec3(0.0, 0.0, 0.20)) - LENS_RADIUS, MAT_ARC));
+
+  return res;
+}
+
+/**
+ * The bench, and the two reels standing on it.
+ *
+ * AUBADE asks for the stack to be "exposed as a projectionist's bench you can
+ * operate", and the operable half of that is six controls in the page rather than
+ * anything in here. This is the other half, and it is not decoration: a room that
+ * offers a bench in its plate and has no bench in it has told the visitor the
+ * controls belong to the software rather than to the building.
+ */
+vec2 mapBench(vec3 p) {
+  vec2 res = vec2(sdBox(p - BENCH_TOP_CENTRE, BENCH_TOP_HALF) - 0.008, MAT_TIMBER);
+  res = nearer(res, vec2(
+    sdBox(p - BENCH_TOP_CENTRE - vec3(-0.12, -0.47, 0.0), vec3(0.36, 0.44, 1.52)),
+    MAT_TIMBER
+  ));
+
+  // Two rewind spindles with a reel on each, which is how film is wound back by
+  // hand and is the one thing on this floor that says somebody works here.
+  vec3 spindle = p - vec3(BENCH_TOP_CENTRE.x + 0.10, 1.18, BENCH_TOP_CENTRE.z);
+  spindle.z = abs(spindle.z) - 0.95;
+  res = nearer(res, vec2(
+    sdCylinderY(vec3(spindle.y, spindle.x, spindle.z), 0.028, 0.235),
+    MAT_IRON
+  ));
+
+  // The worklight: a drop rod out of the ceiling and a conical shade on the end of
+  // it. The bulb is inside the shade and is never in shot, which is the whole reason
+  // this reads as a fitting rather than as a light source — and the same green enamel
+  // as the desk lamp four floors up, because it is the same hotel and somebody bought
+  // them at the same time.
+  vec3 fitting = p - WORK_LAMP;
+  res = nearer(res, vec2(sdCylinderY(fitting - vec3(0.0, 0.42, 0.0), 0.40, 0.011), MAT_IRON));
+  res = nearer(res, vec2(sdCappedCone(fitting, 0.072, 0.135, 0.045), MAT_ENAMEL));
+
+  return res;
+}
+
+/**
+ * Distance to the nearest surface of Floor −4, and what that surface is made of.
+ *
+ * Same construction as the four floors above: the shell is five planes rather than a
+ * box, the port wall has its two openings carved out and filled by an emitter behind
+ * them, and everything with detail in it sits behind a bounding test.
+ */
+vec2 mapProjection(vec3 p) {
+  // Boards. A projection box has a wooden floor with a very heavy machine bolted
+  // through it, and this is the same oak the library is laid in — same building,
+  // same carpenter, and one fewer material in a table that already has twenty-three.
+  vec2 res = vec2(p.y, MAT_BOARDS);
+  res = nearer(res, vec2(BOX_HEIGHT - p.y, MAT_PLASTER));
+  res = nearer(res, vec2(BOX_HALF_WIDTH - abs(p.x), MAT_PLASTER));
+  res = nearer(res, vec2(p.z - BOX_NEAR_Z, MAT_PLASTER));
+
+  // The port wall, with both openings cut out of it and both filled behind — so no
+  // ray escapes the room, exactly as the lobby's doorway assembly does for its
+  // transom.
+  float wall = BOX_FAR_Z - p.z;
+  float port = sdBox(p - vec3(PORT_CENTRE, BOX_FAR_Z), vec3(PORT_HALF, 0.5));
+  float spy  = sdBox(p - vec3(SPY_CENTRE, BOX_FAR_Z), vec3(SPY_HALF, 0.5));
+  res = nearer(res, vec2(carve(wall, min(port, spy)), MAT_PLASTER));
+
+  // What is through them: the auditorium, and the screen a long way off in it. One
+  // plane just behind the wall rather than a second room, because a projection box
+  // that modelled the cinema beyond it would be paying for four hundred seats nobody
+  // can see round a 600mm hole.
+  res = nearer(res, vec2(BOX_FAR_Z + 0.06 - p.z, MAT_SCREEN));
+
+  // The lift, boarded, exactly as it is one floor up. The brass stops at the
+  // library — see mapCellar, where that decision is set out — and this is one floor
+  // below the floor that recorded it.
+  float leaves = sdBox(p - vec3(-1.70, 1.05, BOX_NEAR_Z + 0.055), vec3(0.62, 1.05, 0.045));
+  float seam   = sdBox(p - vec3(-1.70, 1.05, BOX_NEAR_Z + 0.055), vec3(0.006, 1.02, 0.090));
+  res = nearer(res, vec2(carve(leaves, seam), MAT_TIMBER));
+
+  float machineBound = sdBox(p - vec3(MACHINE_X, 1.05, 0.42), vec3(0.42, 1.12, 0.98));
+  res = machineBound > BOUND_SLACK
+    ? nearer(res, vec2(machineBound, MAT_IRON))
+    : nearer(res, mapProjector(p));
+
+  float benchBound = sdBox(p - BENCH_TOP_CENTRE - vec3(-0.06, -0.02, 0.0), vec3(0.58, 0.94, 1.70));
+  res = benchBound > BOUND_SLACK
+    ? nearer(res, vec2(benchBound, MAT_TIMBER))
+    : nearer(res, mapBench(p));
+
+  return res;
+}
+`;
+
+/**
  * The uniforms, and the precision the whole program is compiled at.
  *
  * `#version 300 es` has to be the very first characters of the source — not the
@@ -1964,6 +2404,48 @@ uniform vec3  uCellarFloor;
 uniform vec3  uCellarSky;
 uniform float uCellarDust;
 
+// Floor −4's light rig; see rooms/projection-rig.ts. Six of these ten never vary
+// with the hour. What the hour moves here is time itself — see uFilmTime below —
+// and uBurn, which is what a stopped frame does under a lamp and is exactly zero at
+// every hour but the shuttered one.
+uniform vec3  uArcColour;
+uniform float uArcStrength;
+uniform float uBurn;
+uniform float uProjectionExposure;
+uniform vec3  uProjectionFloor;
+uniform vec3  uProjectionSky;
+uniform float uProjectionDust;
+
+// The projector's clock, on Floor −4 only, from projection.ts.
+//
+// uFilmTime is the second the frame now in the gate was struck at, and it is what
+// every continuous thing on this floor is evaluated at instead of uTime — the dust,
+// the beam, and the camera, which is quantised on the other side of the upload so
+// that the eye and the frame step together. uFilmFrame is which frame of the show it
+// is, and it is what every *discrete* thing is keyed on: the grain, the splices and
+// the cue dots all count frames of film rather than frames of display.
+//
+// At the shuttered hour the rate is zero and both are held, whatever the wall clock
+// is doing. That is not a division guard; it is the floor's answer to the sun.
+uniform float uFilmTime;
+uniform float uFilmFrame;
+
+// How fast the machine is running, frames per second, straight off the rig. The two
+// above could be derived from it and are not, because they are derived from it on
+// the *other* side of the upload so that the camera can be quantised by the same
+// arithmetic. What this one is for is the two things that need to know whether film
+// is arriving rather than which frame of it has: a splice is a join coming through,
+// and a cue is four frames of a reel going past. Both are meaningless on a stopped
+// machine and both are gated on this being above zero.
+uniform float uProjectorRate;
+
+// Which of the six switches on the bench are down, as a bitmask — see
+// projection.ts, which declares the same six bits and which check:docs holds
+// against this list. One int rather than six floats: GLSL ES 3.00 has integer
+// bitwise operators, and six uniforms would have been six more names in three files
+// for nothing.
+uniform int uStack;
+
 // The visitor, on Floor −3 only. Neither of these comes from a rig, because
 // neither is a fact about the hotel: uStillness is how long this person has kept
 // still (see cellar.ts) and uBreath is where the 4-7-8 cycle they are being paced
@@ -1971,6 +2453,21 @@ uniform float uCellarDust;
 // rather than the building or the sun.
 uniform float uStillness;
 uniform float uBreath;
+
+// The bench's six bits. Declared again in projection.ts as STACK_BITS, because a
+// shader cannot import; check:docs fails when the two lists drift, and a drifted
+// pair looks entirely fine and wires the halation switch to the grain.
+const int STACK_WEAVE    = 1;
+const int STACK_HALATION = 2;
+const int STACK_GRAIN    = 4;
+const int STACK_JUDDER   = 8;
+const int STACK_SPLICES  = 16;
+const int STACK_CUES     = 32;
+
+/** Whether one of the bench's switches is down. */
+bool switched(int bit) {
+  return (uStack & bit) != 0;
+}
 
 out vec4 fragColour;
 
@@ -1997,7 +2494,8 @@ const float MORPH_EPSILON = 0.001;
  * than by its own rig plus a rounding error of the floor above.
  *
  * This replaced a pair of complementary weights called above and below, which was
- * the same idea with the third floor's seat taken.
+ * the same idea with the third floor's seat taken. Two floors have arrived since
+ * without touching a character of it, which is the whole of what it was for.
  *
  * The parameter is not named for what it is, because what it is, is a floor —
  * and floor is a GLSL built-in, which the compiler refuses to let anything shadow
@@ -2055,19 +2553,25 @@ const SCENE_GLSL = `
  * over a two-armed mix it named seven rooms rather than three, and SwiftShader
  * charged ten times the frame for a lobby whose geometry had not changed.
  *
- * Floor −3 arrived as one more leg and one more name, exactly as this comment
- * predicted it would, and the shape below is what makes that true rather than
- * lucky. Each room is evaluated into its own local, once, behind its own guard;
+ * Floors −3 and −4 each arrived as one more leg and one more name, exactly as this
+ * comment predicted they would, and the shape below is what makes that true rather
+ * than lucky. Each room is evaluated into its own local, once, behind its own guard;
  * the two ternaries afterwards only *choose* between locals and cannot duplicate
- * anything. A fifth floor is three more lines of the same and still no third
- * field, because a lift is only ever between two floors.
+ * anything. A sixth floor is three more lines of the same and still no third field,
+ * because a lift is only ever between two floors.
+ *
+ * The ternaries are the one part that does not stay flat. They are nested one level
+ * deeper per floor, and at five rooms that is as far as the shape wants to go
+ * unaided; a sixth would be the moment to reach for an array of five locals indexed
+ * by the leg, which GLSL will take and which is only worth the indirection once the
+ * conditional stops being readable in one line.
  */
 vec2 mapScene(vec3 p) {
-  // The leg the car is on, and how far along it. Three legs now — lobby to
-  // corridor, corridor to library, library to cellar — and the last floor's leg
-  // index is clamped so that a settled depth of 3 reads as the end of leg 2 rather
-  // than as the start of a leg that does not exist.
-  float leg = clamp(floor(uDepth), 0.0, 2.0);
+  // The leg the car is on, and how far along it. Four legs now — lobby to corridor,
+  // corridor to library, library to cellar, cellar to the projection box — and the
+  // last floor's leg index is clamped so that a settled depth of 4 reads as the end
+  // of leg 3 rather than as the start of a leg that does not exist.
+  float leg = clamp(floor(uDepth), 0.0, 3.0);
   float t = uDepth - leg;
 
   // Which rooms this leg needs. Only a ride asks for two of them; a settled floor
@@ -2075,23 +2579,26 @@ vec2 mapScene(vec3 p) {
   // cost it had when it was the only floor.
   bool onFirst  = leg < 0.5;
   bool onSecond = leg > 0.5 && leg < 1.5;
-  bool onThird  = leg > 1.5;
+  bool onThird  = leg > 1.5 && leg < 2.5;
+  bool onFourth = leg > 2.5;
 
-  bool needLobby    = onFirst && t < 1.0;
-  bool needCorridor = (onFirst && t > 0.0) || (onSecond && t < 1.0);
-  bool needLibrary  = (onSecond && t > 0.0) || (onThird && t < 1.0);
-  bool needCellar   = onThird && t > 0.0;
+  bool needLobby      = onFirst && t < 1.0;
+  bool needCorridor   = (onFirst && t > 0.0) || (onSecond && t < 1.0);
+  bool needLibrary    = (onSecond && t > 0.0) || (onThird && t < 1.0);
+  bool needCellar     = (onThird && t > 0.0) || (onFourth && t < 1.0);
+  bool needProjection = onFourth && t > 0.0;
 
   // Nothing, arbitrarily far off: it loses every mix and every compare it meets.
   const vec2 NOWHERE = vec2(MAX_DISTANCE * 2.0, -1.0);
 
-  vec2 lobby    = needLobby    ? mapLobby(p)    : NOWHERE;
-  vec2 corridor = needCorridor ? mapCorridor(p) : NOWHERE;
-  vec2 library  = needLibrary  ? mapLibrary(p)  : NOWHERE;
-  vec2 cellar   = needCellar   ? mapCellar(p)   : NOWHERE;
+  vec2 lobby      = needLobby      ? mapLobby(p)      : NOWHERE;
+  vec2 corridor   = needCorridor   ? mapCorridor(p)   : NOWHERE;
+  vec2 library    = needLibrary    ? mapLibrary(p)    : NOWHERE;
+  vec2 cellar     = needCellar     ? mapCellar(p)     : NOWHERE;
+  vec2 projection = needProjection ? mapProjection(p) : NOWHERE;
 
-  vec2 above = onFirst ? lobby    : (onSecond ? corridor : library);
-  vec2 below = onFirst ? corridor : (onSecond ? library  : cellar);
+  vec2 above = onFirst ? lobby    : (onSecond ? corridor : (onThird ? library : cellar));
+  vec2 below = onFirst ? corridor : (onSecond ? library  : (onThird ? cellar  : projection));
 
   // Whichever surface is nearer, biased by the lift, which is what keeps an
   // emitter in frame the whole way down. mix() is exact at both ends but the bias
@@ -2313,8 +2820,8 @@ float silvering(vec3 p) {
  * window in it rather than a dark room the moon has got into.
  */
 vec3 roomAmbient(vec3 n) {
-  // A weighted sum rather than nested mixes, now that there are four of them.
-  // It is still a convex combination: floorWeight's four values sum to exactly 1
+  // A weighted sum rather than nested mixes, now that there are five of them.
+  // It is still a convex combination: floorWeight's five values sum to exactly 1
   // at every depth, which is the property the function comment calls load-bearing
   // and this is the place it is load-bearing for. If they did not, the ambient
   // would dim in the middle of every ride for no reason anybody could name.
@@ -2322,10 +2829,13 @@ vec3 roomAmbient(vec3 n) {
   float w1 = floorWeight(1.0);
   float w2 = floorWeight(2.0);
   float w3 = floorWeight(3.0);
+  float w4 = floorWeight(4.0);
 
   return mix(
-    uAmbientFloor * w0 + uCorridorFloor * w1 + uLibraryFloor * w2 + uCellarFloor * w3,
-    uAmbientSky * w0 + uCorridorSky * w1 + uLibrarySky * w2 + uCellarSky * w3,
+    uAmbientFloor * w0 + uCorridorFloor * w1 + uLibraryFloor * w2 + uCellarFloor * w3 +
+      uProjectionFloor * w4,
+    uAmbientSky * w0 + uCorridorSky * w1 + uLibrarySky * w2 + uCellarSky * w3 +
+      uProjectionSky * w4,
     n.y * 0.5 + 0.5
   );
 }
@@ -2374,6 +2884,34 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
     // has to be at second zero is a small bright thing a long way off.
     return uCandleColour * uCandleStrength * 26.0 * candleFlicker();
   }
+  if (id == MAT_ARC) {
+    // The lens, and the lamphouse's vent slots. The one cold light in this hotel —
+    // everything else in the building is gas, tungsten, tallow or the sun, and an
+    // arc runs near six thousand kelvin, which is why the projection box is the only
+    // room down here that does not read warm.
+    //
+    // Driven very hard and clipped on purpose. A lens seen from behind the machine
+    // is a disc of undiffused arc light and there is no exposure at which it is not
+    // white; what makes it read as a lens rather than as a hole is the barrel round
+    // it and the beam coming out of it, both of which are geometry.
+    return uArcColour * uArcStrength * 22.0;
+  }
+  if (id == MAT_SCREEN) {
+    // What is through the two ports: the auditorium, and the screen a long way off
+    // in it, carrying the frame that is in the gate right now.
+    //
+    // The same picture the beam is modulated by, at the same frame — so the light
+    // crossing this room and the light landing out there are the same light, and
+    // when the projector steps they step together. That is the only reason this is
+    // an emitter rather than a dark rectangle: a port showing nothing would make the
+    // beam a lamp pointed at a wall.
+    // Well below the lens, and it has to be. Driven at the strength the beam is, a
+    // port onto a lit screen clips to flat white across its whole opening — which is
+    // true of a real box and is a rectangle with nothing in it, so the frame the
+    // room is showing becomes invisible at exactly the place it is being shown.
+    float lit = framePicture(p.xy);
+    return uArcColour * uArcStrength * lit * 0.14;
+  }
 
   float roughness;
   float metallic;
@@ -2398,6 +2936,7 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
   float below = floorWeight(1.0);
   float deeper = floorWeight(2.0);
   float deepest = floorWeight(3.0);
+  float boxed = floorWeight(4.0);
 
   vec3 diffuse = vec3(0.0);
   vec3 gloss   = vec3(0.0);
@@ -2625,6 +3164,79 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
       specularLobe(n, viewDirection, toCandle, roughness);
   }
 
+  // --- Floor −4: what leaks round the lamphouse, and what comes back in --------
+  //
+  // There is deliberately no beam term in this block at all, and the absence is the
+  // most accurate thing on the floor. A projector's beam lands in the auditorium;
+  // inside the box it crosses three metres of air, goes out through a hole, and
+  // touches nothing whatever on the way. So the beam is entirely volumetric — see
+  // scatteredLight, where it is the room's whole picture — and every surface in here
+  // is lit by one of the two things that are left over.
+  if (boxed > MORPH_EPSILON) {
+    vec3 toLamphouse = LAMPHOUSE_CENTRE - p;
+    float leakRange = length(toLamphouse);
+    toLamphouse /= max(leakRange, 0.0001);
+
+    // The housing is closed at the front, where the film runs, and vented down both
+    // flanks. One smoothstep on the light's forward component is the whole model —
+    // the same trick the desk lamp's shade and the sconce's bowl use — and here it
+    // is what stops the machine from throwing light onto the port wall it is aimed
+    // at, which would put a second beam in the room and cost the first one its job.
+    //
+    // A fifth of it wraps forward rather than none, and that floor under the mask is
+    // the same fix the corridor's sconces needed for the same reason. Everything in
+    // front of the lamphouse is the machine itself — the head, both magazines, the
+    // barrel — so a mask that stops dead leaves the entire projector as an unmodelled
+    // black slab, and a silhouette with no edge on it is a hole rather than an
+    // object. With the spill it keeps a rim down its near side and reads as cast iron.
+    float ventMask = mix(0.20, 1.0, 1.0 - smoothstep(0.10, 0.72, -toLamphouse.z));
+    float leak = max(dot(n, toLamphouse), 0.0) * ventMask / (1.0 + leakRange * leakRange * 1.15);
+
+    diffuse += boxed * uArcColour * uArcStrength * leak * 0.62;
+    gloss += boxed * uArcColour * uArcStrength * leak * 0.62 *
+      specularLobe(n, viewDirection, toLamphouse, roughness);
+
+    // And the show, coming back in through the port off a screen four hundred seats
+    // away. A rectangle rather than a point, but at three metres across a room this
+    // size the difference is under the dither floor, and what it has to do in the
+    // picture is put an edge on the far end of the bench rather than be a source
+    // anybody looks at.
+    //
+    // Modulated by the frame in the gate, at the same index the beam is, so the
+    // room's fill breathes with the picture. It is the quietest place the judder
+    // shows and the one that sells it: a stepping beam is an effect, and a stepping
+    // beam over a wall that steps with it is a machine.
+    vec3 toPort = vec3(PORT_CENTRE, BOX_FAR_Z) - p;
+    float portRange = length(toPort);
+    toPort /= max(portRange, 0.0001);
+    float returned = max(dot(n, toPort), 0.0) / (1.0 + portRange * portRange * 0.80);
+
+    diffuse += boxed * uArcColour * uArcStrength * returned * frameDensity() * 0.085;
+
+    // And the worklight over the bench — see the constant, where the argument for a
+    // second source in a room with a beam in it is set out. Shaded on top and open
+    // below, which is one smoothstep and the same model the desk lamp's shade and the
+    // sconce's bowl both use, so it throws down onto the bench and the boards and
+    // nothing at all at the ceiling it hangs from.
+    //
+    // Note which way round the mask runs, because it was written the other way first
+    // and the library's comment already warned about it in as many words. toWork
+    // points *from the surface to the lamp*, so a bench top under the shade sees it
+    // pointing straight up — the mask therefore has to rise with toWork.y, not fall
+    // with it. Inverted, it lit the ceiling the fitting hangs from and left the bench
+    // exactly as dark as it had been, which renders as a perfectly plausible warm
+    // glow in the corner of a room and is the opposite of a worklight.
+    vec3 toWork = WORK_LAMP - p;
+    float workRange = length(toWork);
+    toWork /= max(workRange, 0.0001);
+    float shadeMask = smoothstep(-0.30, 0.28, toWork.y);
+    float worked = max(dot(n, toWork), 0.0) * shadeMask / (1.0 + workRange * workRange * 0.85);
+
+    diffuse += boxed * WORK_COLOUR * WORK_STRENGTH * worked;
+    gloss += boxed * WORK_COLOUR * WORK_STRENGTH * worked *
+      specularLobe(n, viewDirection, toWork, roughness);
+  }
+
   vec3 ambient = roomAmbient(n);
   float occlusion = ambientOcclusion(p, n);
 
@@ -2725,6 +3337,7 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
   float below = floorWeight(1.0);
   float deeper = floorWeight(2.0);
   float deepest = floorWeight(3.0);
+  float boxed = floorWeight(4.0);
   vec3 lampAt = carriedPosition();
   float flame = carriedFlicker();
   vec3 candleAt = candlePosition();
@@ -2740,7 +3353,7 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
       float beam = transomBeam(p, SLAT_EDGE_AIR).x;
       if (beam > 0.002) {
         accumulated +=
-          above * uKeyColour * beam * deskShadow(p) * dustDensity(p) * glint * 0.055 * uDust;
+          above * uKeyColour * beam * deskShadow(p) * dustDensity(p, uTime) * glint * 0.055 * uDust;
       }
 
       float lampRange = length(LAMP_POSITION - p);
@@ -2752,14 +3365,14 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
       float blade = shaftBlade(p).x;
       if (blade > 0.002) {
         accumulated +=
-          below * uShaftColour * blade * dustDensity(p) * glint * 0.050 * uCorridorDust * uShaftStrength;
+          below * uShaftColour * blade * dustDensity(p, uTime) * glint * 0.050 * uCorridorDust * uShaftStrength;
       }
 
       // The halo the visitor is standing inside. It is the one volumetric in the
       // piece with a light source that moves, so the dust in it turns over as the
       // camera breathes rather than hanging in a fixed cone.
       float carriedRange = length(lampAt - p);
-      accumulated += below * CARRIED_COLOUR * 0.020 * flame * dustDensity(p) * uCorridorDust /
+      accumulated += below * CARRIED_COLOUR * 0.020 * flame * dustDensity(p, uTime) * uCorridorDust /
         (1.0 + carriedRange * carriedRange * carriedRange * 1.6);
     }
 
@@ -2776,7 +3389,7 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
       float index = clamp(floor(p.z / TABLE_PITCH + 0.5), TABLE_FIRST, TABLE_LAST);
       float lampRange = length(readingLampPosition(index) - p);
       accumulated += deeper * uReadingColour * 0.0045 * uReadingStrength *
-        dustDensity(p) * uLibraryDust /
+        dustDensity(p, uTime) * uLibraryDust /
         (1.0 + lampRange * lampRange * lampRange * 3.2);
     }
 
@@ -2795,8 +3408,79 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
       // shader.
       float candleRange = length(candleAt - p);
       accumulated += deepest * uCandleColour * 0.016 * taper *
-        (0.94 + 0.12 * uBreath) * dustDensity(p) * uCellarDust /
+        (0.94 + 0.12 * uBreath) * dustDensity(p, uTime) * uCellarDust /
         (1.0 + candleRange * candleRange * candleRange * 3.6);
+    }
+
+    if (boxed > MORPH_EPSILON) {
+      // The beam, which on Floor −4 is not one element of the picture, it is the
+      // picture. Every other volumetric in this building is a highlight on a room
+      // that is lit some other way; this room has no other way, so what a visitor is
+      // looking at is three metres of air with a projector shining through it.
+      //
+      // Everything here reads uFilmTime rather than uTime — the dust, the glint,
+      // and the frame the beam is carrying — because a beam that shimmered smoothly
+      // while the room around it stepped would say the stepping was a filter. See
+      // dustDensity, which takes a clock for exactly this one caller.
+      // No glint term either, and its absence is the one place this floor's air is
+      // modelled differently from every other room's. Upstairs a per-cell hash on top
+      // of the dust is what makes a shaft sparkle, and it is free because the shaft
+      // is a detail in a lit room. Here the beam *is* the room, so a second noise
+      // over it reads as a fault rather than as motes — and the texture a viewer
+      // expects on this floor is grain, which is on the bench and is applied to the
+      // whole frame at the very end. The three sines in dustDensity are smooth and
+      // correlated along a ray, which is what a beam actually wants.
+      vec2 beam = lensBeam(p, BEAM_EDGE);
+      if (beam.x > 0.002) {
+        accumulated += boxed * uArcColour * uArcStrength * beam.x * frameDensity() *
+          dustDensity(p, uFilmTime) * 0.058 * uProjectionDust /
+          (1.0 + beam.y * beam.y * 0.10);
+      }
+
+      // Halation, and it is in the wrong place on purpose.
+      //
+      // Real halation happens inside the film. Light gets through the emulsion,
+      // reflects off the back of the base and comes up again a fraction of a
+      // millimetre away, so every highlight on a print wears a red-orange fringe —
+      // red because the anti-halation backing is red, and what you are seeing is what
+      // that backing failed to stop. Reproducing it honestly means blurring the
+      // finished frame and adding it back, which is a second pass this renderer does
+      // not have and is not going to grow for one floor.
+      //
+      // What it has instead is air. A wide, red-shifted, slowly-falling lobe around
+      // the lens, integrated along the view ray, gives a halo that is genuinely
+      // spread across the screen rather than a curve applied in place — the air does
+      // the blur, which is the same argument the corridor's carried lamp makes about
+      // its own halo and the reason neither of them costs a pass. It is the wrong
+      // mechanism and the right picture, and it is only available at all because this
+      // floor's subject happens to be a beam.
+      //
+      // Gated on a *widened* aperture rather than on none, and that correction is
+      // worth recording because the first version got it exactly backwards and the
+      // frame it produced is the one AUBADE's own notes complain about.
+      //
+      // The reasoning was: halation is what spills outside a highlight, so clipping
+      // it to the cone would make it a slightly redder cone, which is nothing at all.
+      // True, and it does not follow that the answer is no gate — because the term
+      // left ungated is not a halo, it is an inverse square from a point, which fills
+      // a room. Rendered, the projection box came out as a uniform orange fog with
+      // the machine as a silhouette in it: no beam, no cold arc, every surface lifted
+      // and nothing anywhere brighter than anything else. That is the beige mess the
+      // additional-improvements note at the foot of AUBADE calls out, and the same
+      // failure the library's cornice comment records one floor up.
+      //
+      // A halo is a *skirt on a shape*, so it is the same aperture test carried most
+      // of a metre further out. It hugs the cone, it spills well outside it, and it
+      // is nowhere at all at the back of the room.
+      if (switched(STACK_HALATION)) {
+        float skirt = lensBeam(p, HALATION_SPREAD).x;
+        if (skirt > 0.002) {
+          float lensRange = length(LENS_MOUTH - p);
+          accumulated += boxed * HALATION_TINT * uArcStrength * skirt * 0.030 *
+            dustDensity(p, uFilmTime) * uProjectionDust /
+            (1.0 + lensRange * lensRange * 0.35);
+        }
+      }
     }
   }
 
@@ -2885,12 +3569,204 @@ vec3 adapted(vec3 colour) {
 }
 
 // ---------------------------------------------------------------------------
+// The gate
+// ---------------------------------------------------------------------------
+
+// The reel, in the shader's own numbers. Declared again in projection.ts, because a
+// shader cannot import, and check:docs fails when the two drift — the same
+// arrangement MORPH_EPSILON has and for the same reason. A drifted pair puts the
+// cue dots at a time the bench's readout disagrees with, which looks like nothing at
+// all and is a machine lying about itself.
+const float REEL_SECONDS     = 40.0;
+const float CUE_LEAD_SECONDS = 8.0;
+const float CUE_FRAMES       = 4.0;
+
+// What a splice looks like coming through: the join flares, because two thicknesses
+// of base pass more light than one, and the tape crosses the picture.
+const vec3 SPLICE_FLASH = vec3(1.00, 0.93, 0.80);
+
+// The cue dot. Black on a print rather than white — it is scratched or punched into
+// the emulsion, and what a projectionist actually sees is a dark blot in the top
+// right corner of the picture. Not quite black, because it is being back-lit.
+const vec3 CUE_COLOUR = vec3(0.16, 0.12, 0.10);
+
+// Where the frame in the gate has begun to go, in screen coordinates, and how far.
+// Off centre, because a burn that opens dead centre reads as a vignette inverted
+// rather than as damage — and because the hottest part of a gate is where the arc's
+// own hot spot sits, which is never quite the middle.
+const vec2  BURN_CENTRE = vec2(0.23, 0.10);
+const float BURN_RADIUS = 0.29;
+
+// What the frame does on its way out: yellow-brown first, then a scorched ring, then
+// nothing at all — through which the whole undiffused lamp arrives. The hole is
+// *white*, which is the opposite of what a hole usually means in a picture and is
+// the entire reason this is Floor −4's daytime piece rather than a failure of it.
+//
+// The scorch is **linear and pre-tonemap**, and that is worth stating because the
+// obvious number is two stops wrong. It is mixed into the frame before the ACES
+// curve, so it is not a colour anybody can read off a picture of charred film: at a
+// perfectly reasonable-looking 0.20 red it came back out of the tonemap at 160 and
+// the char rendered as a wide bright orange corona, which read as an explosion in a
+// war film rather than as a burn in a gate. Everything here is a linear radiance and
+// the curve is what turns it into a colour.
+const vec3 BURN_CAST    = vec3(1.14, 0.90, 0.58);
+const vec3 BURN_SCORCH  = vec3(0.016, 0.005, 0.0018);
+const vec3 BURN_THROUGH = vec3(3.6, 3.4, 3.1);
+
+/**
+ * The frame, as the gate leaves it — which on Floor −4 is the exhibit.
+ *
+ * This function and the two lines of it that live in main() are the whole of what
+ * AUBADE means by "the post-processing stack *is* the exhibit". It sits exactly where
+ * adapted() does, before the tonemap, and for the same reason: everything in here is
+ * a light phenomenon rather than a colour choice, and a burn that has to clip has to
+ * be given to the curve rather than taken from it.
+ *
+ * The other three items of the stack are not here, and their absence is deliberate.
+ * The **judder** is not an effect at all — it is uFilmTime, and it reaches the camera
+ * on the other side of the uniform upload. The **weave** is in the ray direction at
+ * the top of main(), because a weave is the frame moving relative to the lens and
+ * moving the finished image instead would slide the room across its own beam. The
+ * **halation** is in the air, in scatteredLight. Three of the six are in the places
+ * the mechanism actually is, and the bench switches all six the same way, which is
+ * what stops the room from being a filter with a menu.
+ *
+ * @param colour The frame, linear, pre-tonemap.
+ * @param uv Screen coordinates, y up, x scaled by aspect — the same ones main()
+ *   builds the ray from, weave and all.
+ */
+vec3 projected(vec3 colour, vec2 uv) {
+  float here = floorWeight(4.0);
+  if (here <= MORPH_EPSILON) {
+    return colour;
+  }
+
+  bool running = uProjectorRate > 0.0;
+
+  // A splice. Every join in a print is a frame or two of flare and a bar of tape
+  // crossing the picture, and a print that has been through a machine as often as
+  // this one has is mostly joins.
+  //
+  // Keyed on the frame index rather than on the clock, so it is a property of the
+  // film and not of the wall — and gated on the projector actually running, because
+  // a splice is a join *arriving*. A stopped machine has nothing arriving, and a
+  // splice a visitor could stand and look at would be a scratch.
+  if (switched(STACK_SPLICES) && running) {
+    float roll = hash13(vec3(uFilmFrame, 5.0, 41.0));
+    if (roll > 0.984) {
+      float across = 1.0 - smoothstep(0.0, 0.075, abs(uv.y - (roll - 0.984) * 90.0 + 0.6));
+      colour = colour * (1.0 + 1.5 * here) + SPLICE_FLASH * here * (0.30 + across * 1.5);
+    }
+  }
+
+  // The reel-change cues: a dot in the top right corner, four frames, twice, eight
+  // seconds apart. The motor cue tells the box next door to run its machine up to
+  // speed; the changeover cue is the last four frames of the reel.
+  //
+  // It is the only part of this stack a visitor is at all likely to have seen on
+  // purpose, and the pair is why it is worth having — one dot is a blemish, and two
+  // dots eight seconds apart is a machine talking to a person who is not in the room
+  // any more.
+  if (switched(STACK_CUES) && running) {
+    float intoReel = mod(uFilmTime, REEL_SECONDS);
+    float span = CUE_FRAMES / uProjectorRate;
+    float motorAt = REEL_SECONDS - CUE_LEAD_SECONDS;
+
+    bool motor  = intoReel >= motorAt && intoReel < motorAt + span;
+    bool change = intoReel >= REEL_SECONDS - span;
+
+    if (motor || change) {
+      // The top right of the picture, in the picture's own coordinates — so it stays
+      // in the corner whatever shape the window is, which is where a cue dot lives
+      // on every print ever struck.
+      vec2 corner = uv - vec2(uResolution.x / uResolution.y - 0.17, 0.83);
+      float blot = 1.0 - smoothstep(0.028, 0.037, length(corner));
+      colour = mix(colour, CUE_COLOUR, blot * here);
+    }
+  }
+
+  // And the burn. A frame stopped in front of an arc does not simply sit there: the
+  // emulsion cooks, a hole opens outward from the hot spot, and what comes through
+  // the hole is the whole lamp with nothing left to modulate it.
+  //
+  // Static rather than growing, and that exactness is the floor. The projector has
+  // been stopped since long before this visitor arrived — they did not do this, and
+  // there is nothing they can do about it — so a burn that opened while they watched
+  // would make the shuttered frame a function of the second, which is precisely what
+  // verify-shader.mjs renders this hour twice to rule out.
+  if (uBurn > 0.001) {
+    float amount = clamp(uBurn, 0.0, 1.0) * here;
+    vec2 fromHot = uv - BURN_CENTRE;
+    float radius = length(fromHot * vec2(1.0, 1.15));
+
+    // A ragged rim, and it is the difference between a burn and a light.
+    //
+    // Film does not go in a circle. The emulsion fails where it is thinnest and the
+    // hole eats outward in an uneven, lobed front, so a perfect ellipse with a smooth
+    // falloff does not read as damage at all — the first version of this rendered a
+    // clean white disc floating in the middle of the room, which every viewer would
+    // file as a lens flare or a sun and nobody would file as a frame on fire.
+    //
+    // Three incommensurable sines of the angle, which is the same construction the
+    // camera's drift and both flames use and for the same reason: one period reads as
+    // a pattern, three read as a thing.
+    float angle = atan(fromHot.y, fromHot.x);
+    float ragged =
+      sin(angle * 3.0) * 0.34 +
+      sin(angle * 5.0 + 1.7) * 0.22 +
+      sin(angle * 9.0 + 3.1) * 0.13;
+    float edge = BURN_RADIUS * (1.0 + 0.30 * ragged);
+
+    // Three bands, and the char is the widest on purpose. What says "this has burned"
+    // is not the hole — a hole on its own is a window — it is the black ring eating
+    // outward from it, which is the part that is still film and is no longer a
+    // picture.
+    float hole = 1.0 - smoothstep(edge * 0.86, edge, radius);
+    float scorched = (1.0 - smoothstep(edge, edge * 1.9, radius)) * (1.0 - hole);
+
+    // Everything outside the scorch is the frame the machine stopped on, cooking
+    // slowly and evenly: pulled towards the base's own colour rather than towards
+    // white, because film goes yellow-brown a long time before it goes anywhere else.
+    colour = mix(colour, colour * BURN_CAST * 1.30, amount * 0.72);
+    colour = mix(colour, BURN_SCORCH, amount * scorched * 0.96);
+    colour += BURN_THROUGH * amount * hole;
+  }
+
+  return colour;
+}
+
+// ---------------------------------------------------------------------------
 // Output
 // ---------------------------------------------------------------------------
 
 void main() {
   // Screen coordinates: y up, x scaled by aspect so the room does not stretch.
   vec2 uv = (gl_FragCoord.xy * 2.0 - uResolution) / uResolution.y;
+
+  // The gate weave, before anything else is built out of these coordinates —
+  // because on Floor −4 it is the camera that weaves, not the picture.
+  //
+  // A frame is located in the gate by a pair of register pins and pulled down by a
+  // claw, and neither is perfect. The picture wanders by a fraction of its own width,
+  // mostly vertically because that is the axis the claw works in, and it moves on the
+  // *pull* rather than continuously — so this is keyed on the frame index and is
+  // stationary between frames, which is what separates a weave from a wobble.
+  //
+  // Applied to the ray rather than to the finished image, which costs nothing, is
+  // what a weave physically is, and means it survives into the volumetric. Sliding
+  // the rendered frame instead would move the room across its own beam and leave the
+  // beam behind, which is the one thing in this room that cannot move.
+  float weave = floorWeight(4.0) * (switched(STACK_WEAVE) ? 1.0 : 0.0);
+  if (weave > MORPH_EPSILON) {
+    vec2 wander = vec2(
+      hash13(vec3(uFilmFrame, 17.0, 3.0)) - 0.5,
+      hash13(vec3(uFilmFrame, 71.0, 9.0)) - 0.5
+    );
+    // Vertical is rather more than twice horizontal, which is the real proportion:
+    // the claw pulls down and the pins locate sideways, so one axis is a tolerance
+    // and the other is a mechanism.
+    uv += wander * vec2(0.0018, 0.0042) * weave;
+  }
 
   vec3 forward = normalize(uTarget - uEye);
   vec3 right   = normalize(cross(vec3(0.0, 1.0, 0.0), forward));
@@ -2932,6 +3808,10 @@ void main() {
   // here rather than in the lighting is set out.
   colour = adapted(colour);
 
+  // And on Floor −4 and nowhere else, the gate. Also a no-op above depth 3, and
+  // also before the tonemap, because everything it does is light rather than paint.
+  colour = projected(colour, uv);
+
   colour = tonemap(colour);
   colour = pow(colour, vec3(1.0 / 2.2));
 
@@ -2939,7 +3819,32 @@ void main() {
   // an 8-bit range, where a gradient bands visibly; a dither below the
   // quantisation step is what makes the shadows read as continuous rather than
   // terraced.
-  colour += (hash13(vec3(gl_FragCoord.xy, fract(uTime) * 601.0)) - 0.5) * 0.016;
+  float dither = (hash13(vec3(gl_FragCoord.xy, fract(uTime) * 601.0)) - 0.5) * 0.016;
+
+  // Except on Floor −4, where grain is not a dither at all — it is one of the six
+  // things on the bench, and a visitor is going to switch it off and on and look at
+  // what changes. So it is film grain and not video noise, which is two differences
+  // and both of them matter. It is *coarse*: clumps of silver halide a couple of
+  // display pixels across rather than one pixel each. And it is redrawn once per
+  // frame of **film** rather than once per frame of display, which is the whole of
+  // what separates grain from noise — at eight frames a second the clumps hold for
+  // seven display frames at a time, and at a stopped projector they never change at
+  // all, because a still photograph's grain is part of the photograph.
+  //
+  // The amplitude is a third of what it was first written at, and the difference is
+  // the difference between grain and a rash. At 0.082 it is ±8% of the range, which
+  // is nothing on a wall at three per cent brightness and is a coarse mottle all over
+  // the one thing on this floor anybody is looking at — the beam sits squarely in the
+  // midtones, which is exactly where grain is most visible and where 8% stops reading
+  // as emulsion and starts reading as a broken renderer. Real grain is felt before it
+  // is seen.
+  float filmGrain = floorWeight(4.0) * (switched(STACK_GRAIN) ? 1.0 : 0.0);
+  if (filmGrain > MORPH_EPSILON) {
+    float clump = hash13(vec3(floor(gl_FragCoord.xy / 1.7), uFilmFrame)) - 0.5;
+    dither = mix(dither, clump * 0.028, filmGrain);
+  }
+
+  colour += dither;
 
   fragColour = vec4(colour, 1.0);
 }
@@ -2960,6 +3865,7 @@ export const HOTEL_FRAGMENT_SHADER = [
   CORRIDOR_GLSL,
   LIBRARY_GLSL,
   CELLAR_GLSL,
+  PROJECTION_GLSL,
   COMMON_SHADING_GLSL,
   SCENE_GLSL,
 ].join('\n');

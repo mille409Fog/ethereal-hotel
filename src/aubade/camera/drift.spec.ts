@@ -9,6 +9,8 @@ import {
   CORRIDOR_TARGET,
   LIBRARY_EYE,
   LIBRARY_TARGET,
+  PROJECTION_EYE,
+  PROJECTION_TARGET,
   type ICameraPose,
   type IVec3,
 } from './drift';
@@ -222,11 +224,23 @@ describe('the camera descends', () => {
       expect(pose.target).toEqual(LIBRARY_TARGET);
     });
 
-    it('sits exactly on the cellar anchor at the bottom', () => {
+    it('sits exactly on the cellar anchor at depth three', () => {
       const pose = breathe(0, 3);
 
       expect(pose.eye).toEqual(CELLAR_EYE);
       expect(pose.target).toEqual(CELLAR_TARGET);
+    });
+
+    it('sits exactly on the projection box’s anchor at the bottom', () => {
+      // The deepest anchor, and the one the clamp lands on. Exact for the same
+      // reason every other endpoint here is: `renderer.ts` blends the camera's clock
+      // towards the projector's by `1 − |depth − 4|`, so a settled Floor −4 that is
+      // a rounding error short of four is a camera posed at a fraction of a wall
+      // second mixed into a film second — a picture that judders almost right.
+      const pose = breathe(0, 4);
+
+      expect(pose.eye).toEqual(PROJECTION_EYE);
+      expect(pose.target).toEqual(PROJECTION_TARGET);
     });
 
     it('treats a missing or impossible lift as the lobby', () => {
@@ -236,7 +250,8 @@ describe('the camera descends', () => {
       for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -3]) {
         expect(breathe(0, bad).eye).toEqual(ANCHOR_EYE);
       }
-      expect(breathe(0, 5).eye).toEqual(CELLAR_EYE);
+      // Clamped to the deepest floor that exists, which moves every time one lands.
+      expect(breathe(0, 9).eye).toEqual(PROJECTION_EYE);
     });
 
     it('holds the anchor at second zero on the cellar floor too, whatever the breath', () => {

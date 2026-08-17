@@ -306,6 +306,7 @@ check('every floor is lit by the clock, at every hour', () => {
     'src/aubade/rooms/corridor-rig.ts',
     'src/aubade/rooms/library-rig.ts',
     'src/aubade/rooms/cellar-rig.ts',
+    'src/aubade/rooms/projection-rig.ts',
     'src/aubade/desk.ts',
   ]) {
     if (!exists(file)) {
@@ -324,6 +325,7 @@ check('every floor is lit by the clock, at every hour', () => {
   const corridorRigs = read('src/aubade/rooms/corridor-rig.ts');
   const libraryRigs = read('src/aubade/rooms/library-rig.ts');
   const cellarRigs = read('src/aubade/rooms/cellar-rig.ts');
+  const projectionRigs = read('src/aubade/rooms/projection-rig.ts');
   const copy = read('src/aubade/desk.ts');
   const entry = (state) => new RegExp(`^\\s{2}${state}:\\s*\\{`, 'm');
 
@@ -355,6 +357,13 @@ check('every floor is lit by the clock, at every hour', () => {
           `can only be made by writing all five hours out, including the four that are identical.`
       );
     }
+    if (!entry(state).test(projectionRigs)) {
+      problems.push(
+        `PROJECTION_RIGS has no rig for '${state}'. Floor −4's answer to the sun is one field in ` +
+          `this table — the light does not move and the projector's rate does — and it can only ` +
+          `be made by writing all five hours out, including the four that are lit identically.`
+      );
+    }
     if (!entry(state).test(copy)) {
       problems.push(`DESK_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
     }
@@ -367,6 +376,11 @@ check('every floor is lit by the clock, at every hour', () => {
     if (!new RegExp(`CELLAR_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
       problems.push(`CELLAR_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
     }
+    if (!new RegExp(`PROJECTION_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
+      problems.push(
+        `PROJECTION_COPY has no line for '${state}'; the plate would render \`undefined\`.`
+      );
+    }
 
     // The phases' Definitions of Done, as pictures. One run writes all
     // thirty-five: `npm run verify:shader -- --out docs/images/aubade.webp`.
@@ -376,13 +390,26 @@ check('every floor is lit by the clock, at every hour', () => {
     // whose entire justification is that they look like something, and therefore
     // the ones with no other way of noticing they have stopped.
     //
-    // `arriving` is rendered on every run and is deliberately *not* here. It is
-    // Floor −3 before the visitor has kept still, and because nothing in the
-    // cellar's rig varies with the hour, all five of its frames are provably the
-    // same picture — so five committed copies would be a redundancy rather than a
-    // reference. `verify-shader.mjs` asserts that identity directly instead, which
-    // is the stronger check and the cheaper one.
-    for (const floor of ['lobby', 'lift', 'corridor', 'descent', 'library', 'sinking', 'cellar']) {
+    // `arriving` and `later` are rendered on every run and are deliberately *not*
+    // here. `arriving` is Floor −3 before the visitor has kept still, and because
+    // nothing in the cellar's rig varies with the hour, all five of its frames are
+    // provably the same picture. `later` is Floor −4 a few seconds further into the
+    // reel, which at noon is provably the same picture as `projection` and at every
+    // other hour is a frame nobody has any reason to look at twice. Five committed
+    // copies of either would be a redundancy rather than a reference, and
+    // `verify-shader.mjs` asserts both identities directly instead — which is the
+    // stronger check and the cheaper one.
+    for (const floor of [
+      'lobby',
+      'lift',
+      'corridor',
+      'descent',
+      'library',
+      'sinking',
+      'cellar',
+      'threading',
+      'projection',
+    ]) {
       if (!exists(`docs/images/aubade-${floor}-${state}.webp`)) {
         problems.push(
           `docs/images/aubade-${floor}-${state}.webp is missing. AUBADE commits a frame per ` +
@@ -685,6 +712,150 @@ check('the cellar keeps its room and moves the visitor', () => {
         `path draws one frame and stops, so without it a visitor who asked for less motion gets ` +
         `Floor −3 as an unresolved black frame and no way to change it. AUBADE's third ` +
         `non-negotiable asks for still compositions, not for the reward to be withheld.`
+    );
+  }
+
+  return problems;
+});
+
+// Floor −4, and the four things about it a rendered frame cannot see.
+//
+// `verify-shader.mjs` asserts the pictures: that a running machine moves between two
+// instants, that a stopped one does not, that the burn opens the frame's contrast up
+// and that the four running hours are lit alike. What is left for here is everything
+// upstream of the pixels, and all four of these fail silently.
+//
+// A rate that is nearly zero renders a projector that crawls. A judder that never
+// reaches the camera renders a picture that steps under a viewpoint that glides,
+// which looks like a dropped frame and is the reading the whole floor is built to
+// avoid. A bench whose bits have drifted between the two files that declare them
+// wires the halation switch to the grain, works perfectly, and is one line in a diff.
+// And a stack the visitor cannot reach is AUBADE's instruction — "exposed as a
+// projectionist's bench you can operate" — quietly not carried out.
+check('the projection box keeps its light and loses its speed', () => {
+  const rig = 'src/aubade/rooms/projection-rig.ts';
+  const clock = 'src/aubade/projection.ts';
+  const shader = 'src/aubade/rooms/hotel.frag.ts';
+  const renderer = 'src/aubade/renderer.ts';
+  const template = 'src/aubade/aubade.html';
+
+  for (const file of [rig, clock]) {
+    if (!exists(file)) {
+      return [`${file} is gone, but CLAUDE.md and AUBADE.md both describe Floor −4.`];
+    }
+  }
+
+  const problems = [];
+  const source = read(rig);
+  const glsl = read(shader);
+
+  // Exactly zero at noon, for the same reason the library's ink and the cellar's
+  // ceiling are. A machine running at half a frame a second is a machine that is
+  // running, and a projector crawling through noon is an argument that has become a
+  // gradient.
+  if (!/shuttered:\s*\{[\s\S]*?rate:\s*0,/.test(source)) {
+    problems.push(
+      `${rig} no longer stops the projector at the shuttered hour. Floor −4's answer to the sun ` +
+        `is that the film slows and then stops; a residual rate is a machine that crawls, which ` +
+        `renders beautifully and is not the claim. verify-shader.mjs checks the picture that ` +
+        `follows from this — two instants at noon being one picture — and cannot see the number.`
+    );
+  }
+
+  // Every field but the rate and the burn is shared by construction, exactly as the
+  // library's and the cellar's are, because this floor's light does not answer the
+  // sun either.
+  if (!/const CONSTANT_LIGHT = \{/.test(source) || !/\.\.\.CONSTANT_LIGHT,/.test(source)) {
+    problems.push(
+      `${rig} no longer spreads one CONSTANT_LIGHT into all five rigs. Floor −4's claim is that ` +
+        `the arc is the same arc at every hour and only the rate moves, and five entries ` +
+        `maintained separately are five entries that will eventually disagree.`
+    );
+  }
+
+  // The judder has to reach the camera, and this is the line that does it. A room
+  // whose picture steps under a viewpoint that glides reads as an effect laid over a
+  // continuous world — the eye takes the smooth motion as the truth — and that is
+  // AUBADE's first failure mode arriving as a filter with a hotel painted on it.
+  if (!/filmFrameAt\(/.test(read(renderer))) {
+    problems.push(
+      `${renderer} no longer quantises anything through filmFrameAt. Floor −4's judder is the ` +
+        `clock the camera is posed at, not a post-process — see projection.ts, which sets out why ` +
+        `that has to happen on this side of the uniform upload — and a shader-side judder would ` +
+        `step the picture while the eye glided over it.`
+    );
+  }
+
+  // The bench's six bits, declared twice because a shader cannot import. A drifted
+  // pair looks entirely fine and silently wires one switch to another effect, which
+  // is the single most confusing failure this floor could produce for a visitor who
+  // is being invited to experiment.
+  const bits = [...read(clock).matchAll(/^\s{2}(\w+): (\d+),$/gm)].filter(([, name]) =>
+    ['weave', 'halation', 'grain', 'judder', 'splices', 'cues'].includes(name)
+  );
+
+  if (bits.length !== 6) {
+    problems.push(
+      `${clock} no longer declares six STACK_BITS. AUBADE names six things a projector does to a ` +
+        `picture and the bench is meant to switch all six.`
+    );
+  }
+
+  for (const [, effect, bit] of bits) {
+    const name = `STACK_${effect.toUpperCase()}`;
+    // The GLSL side is column-aligned, so the run of spaces before `=` is whatever
+    // the longest name needs. Matched loosely for that reason and for that reason
+    // only — the name and the number are exact.
+    if (!new RegExp(`const int ${name}\\s*= ${bit};`).test(glsl)) {
+      problems.push(
+        `${shader} does not declare \`const int ${name} = ${bit};\`, but ${clock} gives ` +
+          `'${effect}' bit ${bit}. The two lists are one bitmask declared twice — the shader ` +
+          `cannot import — and a drifted pair renders perfectly while wiring one switch on the ` +
+          `bench to another effect.`
+      );
+    }
+  }
+
+  // The reel's three numbers, mirrored for the same reason and gated the same way.
+  // The bench's plate quotes the rate and the cue dots are timed off the reel, so a
+  // drift here is a machine that disagrees with its own readout.
+  for (const [name, value] of [
+    ['REEL_SECONDS', 40],
+    ['CUE_LEAD_SECONDS', 8],
+    ['CUE_FRAMES', 4],
+  ]) {
+    if (!new RegExp(`export const ${name} = ${value};`).test(read(clock))) {
+      problems.push(`${clock} no longer sets ${name} to ${value}.`);
+    }
+    if (!new RegExp(`const float ${name}\\s*= ${value}\\.0;`).test(glsl)) {
+      problems.push(
+        `${shader} no longer declares ${name} as ${value}.0. It is the same number as ` +
+          `${clock}'s, declared twice because a shader cannot import, and a drifted pair puts the ` +
+          `cue dots at a time the bench's plate disagrees with.`
+      );
+    }
+  }
+
+  // This floor's own stop, for the reason the library's and the cellar's comments
+  // give — and here a leaked one would move the burn's *edge* rather than its
+  // brightness, which is a shape rather than a level.
+  if (!/uProjectionExposure \* floorWeight\(4\.0\)/.test(glsl)) {
+    problems.push(
+      `${shader} no longer blends the tonemap's exposure towards the projection box's own. The ` +
+        `burn is deliberately driven past clipping, so a leaked stop underneath it does not ` +
+        `brighten the hole, it moves where the hole's edge falls.`
+    );
+  }
+
+  // And the bench has to be reachable. AUBADE asks for the stack "exposed as a
+  // projectionist's bench you can operate", and a stack with no controls on the page
+  // is that instruction quietly not carried out — which nothing else here would
+  // notice, because the room renders identically either way.
+  if (!/throwSwitch\(/.test(read(template))) {
+    problems.push(
+      `${template} has no control calling throwSwitch. AUBADE asks for the film stack to be ` +
+        `"exposed as a projectionist's bench you can operate"; a stack with no switches renders ` +
+        `exactly the same room and has stopped being the phase.`
     );
   }
 

@@ -228,6 +228,22 @@ export const FLOOR_PROSE: Readonly<Record<Floor, readonly string[]>> = {
       'to say with the spines.',
   ],
 
+  '-4': [
+    'The smallest room in the building, and the only one you have to walk round something to ' +
+      'cross. A 35mm machine on a cast pedestal: lamphouse at the back, head in the middle, two ' +
+      'magazines the size of dinner plates above and in front, and a lens pointed at a hole in ' +
+      'the far wall. There is a second, smaller hole beside it at head height, for looking ' +
+      'through.',
+    'Nothing in here is lit in the ordinary sense. The lamp is shut inside its housing and what ' +
+      'gets out comes down the vent slots in its flanks; the rest is what comes back through the ' +
+      'port off a screen you cannot see. What you are actually looking at is three metres of ' +
+      'dusty air with a projector shining through it.',
+    'Down the left-hand wall, the bench: a top, a carcass, two rewind spindles and a reel on ' +
+      'each. The six switches on it are real, they are yours, and every one of them changes ' +
+      'something you can see. Throw them and watch what goes. What the sun operates is not on ' +
+      'this bench and there is no switch for it.',
+  ],
+
   '-3': [
     'A brick barrel vault, springing off the wall heads at about shoulder height and closing ' +
       'overhead in one unbroken curve the length of the room. It was laid a ring at a time from ' +
@@ -396,6 +412,158 @@ export const CELLAR_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
 };
 
 /**
+ * The five hours on Floor −4.
+ *
+ * The clerk cannot describe the light on this floor either — the arc is the same arc
+ * at every hour, in the same room, throwing the same beam through the same port — and
+ * cannot describe the room, which has not moved. What changes here is a *rate*, which
+ * is the hardest thing in the piece to write about, because a rate cannot be seen in
+ * a sentence any more than it can be seen in a photograph.
+ *
+ * So these five describe the machine rather than the picture, and they name the
+ * numbers. Twenty-four, eighteen, twelve, eight, and then nothing. A visitor who
+ * reads "twelve frames a second" and looks up at the beam has been given the one
+ * piece of information that makes the room legible in the eight seconds AUBADE's
+ * fourth failure mode allows.
+ *
+ * The rule the rest of this file keeps holds here: nothing states a clock time. And
+ * one particular to this floor, inherited from the corridor's — **nothing says what
+ * the stack is being applied to.** The switches on the bench answer that in one
+ * click, faster and better than a sentence could, and a visitor who throws the grain
+ * switch and watches the entire frame go clean has found something rather than been
+ * told it.
+ */
+export const PROJECTION_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
+  open: {
+    plate: 'Floor −4, running at twenty-four. The machine is right and the print is holding.',
+    picture:
+      'A projection box below ground, drawn in real time. A 35mm projector stands on a cast ' +
+      'pedestal with a magazine above it and another in front; its beam crosses three metres of ' +
+      'dusty air and goes out through a port in the far wall. A bench with two rewind reels runs ' +
+      'down the left-hand side.',
+    opening:
+      'Twenty-four frames a second, which is the rate and has been since sound. The beam is ' +
+      'continuous, the picture in it changes twenty-four times while you read this line, and ' +
+      'none of that is anything you can point at.',
+  },
+
+  late: {
+    plate: 'Eighteen. That is silent speed, and it is the last rate that is still a rate.',
+    picture:
+      'A projection box below ground, drawn in real time. The projector is running slower than ' +
+      'it should; the beam through the port steps visibly rather than flowing.',
+    opening:
+      'It has dropped to eighteen — silent speed, what everything ran at before sound fixed the ' +
+      'number. You can see the step now. Nothing has been turned down and nothing is dimmer.',
+  },
+
+  warning: {
+    plate: 'Twelve frames a second. Somewhere around here you stop watching and start counting.',
+    picture:
+      'A projection box below ground, drawn in real time. The beam through the port is a series ' +
+      'of separate states rather than a moving picture, and the room steps with it.',
+    opening:
+      'Twelve. This is the rate at which the eye gives up assembling the frames into movement and ' +
+      'begins counting them instead. The lamp has not moved. What is going is the continuity, and ' +
+      'it goes out of the middle of the movement rather than off either end of it.',
+  },
+
+  aubade: {
+    plate: 'Eight. Every frame is an event now, with a gap on both sides of it.',
+    picture:
+      'A projection box below ground, drawn in real time. The projector is barely running; each ' +
+      'frame of the beam holds for an eighth of a second before the next one arrives.',
+    opening:
+      'Eight frames a second, and each one of them stands there long enough to be looked at. The ' +
+      'beam is exactly as bright as it was at midnight and the room is exactly as dark. Nobody is ' +
+      'touching the machine.',
+  },
+
+  shuttered: {
+    plate: 'The film stopped some time ago. The lamp did not.',
+    picture:
+      'A projection box below ground, drawn in real time. One frame is standing still in the ' +
+      'gate with the lamp behind it and has burned through: a hole with a scorched ring around ' +
+      'it, and the whole undiffused arc coming out of the middle of it.',
+    opening:
+      'One frame has been standing in the gate with an arc behind it for longer than a frame can. ' +
+      'It has gone through the middle, and what is coming out of the hole is the entire lamp with ' +
+      'nothing left in front of it. Whoever was in this box went home when the sun came up.',
+  },
+};
+
+/**
+ * The projectionist's bench: six switches, and one number that is not a switch.
+ *
+ * AUBADE asks for the film stack to be "exposed as a projectionist's bench you can
+ * operate", and this is the operable half of that — the other half is the actual
+ * bench, in the room, in `hotel.frag.ts`. Every label here names the mechanism rather
+ * than the effect, because that is the difference between a bench and a filter menu:
+ * "gate weave" is a thing a gate does, and "camera shake" is a thing an editor
+ * chooses.
+ *
+ * The rate is deliberately not among them, and the line under it says so. The bench
+ * operates the apparatus; the sun operates the film. A visitor who could wind the
+ * projector back up to twenty-four at noon would have been handed this floor's whole
+ * answer to the clock in one click, which is the one thing none of the five rooms
+ * lets anybody do.
+ */
+export const BENCH_COPY = {
+  /** The heading over the controls. */
+  heading: 'The bench',
+
+  /**
+   * Under the heading, once, before the switches.
+   *
+   * "Start on" rather than "are on", which is the difference between a description
+   * and a claim that stops being true the moment somebody uses the thing it is
+   * describing.
+   */
+  hint: 'Six things a projector does to a picture. All of them start on. None has to be.',
+
+  /** The plate beside the switches, when the machine is running. */
+  running: (rate: number): string => `Running at ${rate} frames a second`,
+
+  /** The same plate when it is not. */
+  stopped: 'Stopped, with the lamp on',
+
+  /** Under the plate, at every hour. The line that makes the bench a bench. */
+  fixed: 'Not on this bench. The hour sets the rate.',
+
+  /**
+   * The six, in the order `FILM_STACK` lists them. Each is a mechanism and a
+   * sentence about what that mechanism is for — short, because a caption on a
+   * control is read standing up.
+   */
+  effects: {
+    weave: {
+      label: 'Gate weave',
+      note: 'The frame is held by pins and pulled by a claw, and neither is perfect.',
+    },
+    halation: {
+      label: 'Halation',
+      note: 'Light gets through the emulsion, bounces off the back of the base, and comes up again.',
+    },
+    grain: {
+      label: 'Grain',
+      note: 'Clumps of silver, redrawn once per frame of film rather than once per frame of screen.',
+    },
+    judder: {
+      label: 'Judder',
+      note: 'The picture does not move. It is replaced, at a rate, and the rate is the room.',
+    },
+    splices: {
+      label: 'Splice flashes',
+      note: 'Two thicknesses of base pass more light than one. This print is mostly joins.',
+    },
+    cues: {
+      label: 'Cue dots',
+      note: 'Top right, four frames, twice — eight seconds apart. A machine talking to a person.',
+    },
+  },
+} as const;
+
+/**
  * What the plate says about how far into the room the visitor has got.
  *
  * The one piece of copy in AUBADE that reports a mechanism, and it is here because
@@ -487,6 +655,7 @@ export const FLOOR_NAMES: Readonly<Record<Floor, string>> = {
   '-1': 'Floor −1 — The Mirror Corridor',
   '-2': 'Floor −2 — The Library',
   '-3': 'Floor −3 — The Cellar',
+  '-4': 'Floor −4 — The Projection Room',
 };
 
 /**

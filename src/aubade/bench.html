@@ -1,0 +1,62 @@
+<!-- ===== HÔTEL AUBADE · FLOOR −4 · THE BENCH =====
+     The one control surface in this hotel that is not diegetic furniture, and
+     AUBADE asks for it in as many words: the film stack "exposed as a
+     projectionist's bench you can operate". Every switch changes something in the
+     frame within one repaint, which is what makes it a bench rather than a
+     settings panel.
+
+     Real checkboxes rather than styled buttons, because that is what they are:
+     six independent on/off states with labels, which is the control a screen
+     reader, a keyboard and a browser all already understand. Rebuilding it from
+     `div`s would cost all three and gain a tick that is a slightly different
+     brass.
+
+     The note under each label names the mechanism rather than the effect — "gate
+     weave" is a thing a gate does and "camera shake" is a thing an editor chooses
+     — and `aria-describedby` ties it to the control so it is read as part of it
+     rather than as loose prose beside it.
+
+     The plate above them is the rate, and it is deliberately not a control. The
+     line under it says so. The bench operates the apparatus; the sun operates the
+     film, and a visitor who could wind the machine back up to twenty-four at noon
+     would have been handed this floor's whole answer to the clock in one click. -->
+
+<!-- The floor test is in here rather than in `aubade.html`, and that is the lint
+     config making the same argument a third time. The lobby's template is at its
+     complexity cap with the plate, the remarks, the instruction, the card, the
+     invitation and the lift in it; one more `@if` around this element put it over.
+     Held here, it costs a template that has one loop in it and nothing else.
+
+     `:host` is `display: contents` for exactly this reason — the element is always
+     mounted and this block decides whether anything is drawn, so the panel's own box
+     has to be inside the condition rather than on the host. -->
+@if (projector(); as running) {
+  <div class="bench">
+    <p class="bench__head">{{ copy.heading }}</p>
+    <p class="bench__hint">{{ copy.hint }}</p>
+
+    <p class="bench__rate">
+      <span class="bench__rate-state">{{ running }}</span>
+      <span class="bench__rate-fixed">{{ copy.fixed }}</span>
+    </p>
+
+    <ul class="bench__switches">
+      @for (control of switches(); track control.effect) {
+        <li class="bench__switch">
+          <input
+            type="checkbox"
+            class="bench__input"
+            [id]="'bench-' + control.effect"
+            [attr.aria-describedby]="'bench-note-' + control.effect"
+            [checked]="control.on"
+            (change)="thrown.emit(control.effect)"
+          />
+          <label class="bench__label" [attr.for]="'bench-' + control.effect">
+            {{ control.label }}
+          </label>
+          <span class="bench__note" [id]="'bench-note-' + control.effect">{{ control.note }}</span>
+        </li>
+      }
+    </ul>
+  </div>
+}

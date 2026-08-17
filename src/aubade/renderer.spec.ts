@@ -3,11 +3,13 @@ import { FIXED_STEP_MS, type IFrame } from './gl/loop';
 import { DEMOTE_ABOVE_MS, QUALITY_TIERS, WINDOW_FRAMES } from './gl/quality';
 import { StubWebGL2, stubCanvas } from './gl/webgl.testing';
 import { MAX_DRAWING_BUFFER_PIXELS } from './gl/viewport';
+import { THREADED } from './projection';
 import { HotelRenderer, type IHotelFrame } from './renderer';
 import { CELLAR_RIGS } from './rooms/cellar-rig';
 import { CORRIDOR_RIGS } from './rooms/corridor-rig';
 import { LIBRARY_RIGS } from './rooms/library-rig';
 import { INVITED_THRESHOLD, LIGHT_RIGS, rigFor } from './rooms/light-rig';
+import { PROJECTION_RIGS } from './rooms/projection-rig';
 
 /**
  * The renderer, driven against a recording context.
@@ -39,21 +41,24 @@ const NIGHT = LIGHT_RIGS.open;
  *
  * Most of these tests are about the renderer's plumbing rather than about any one
  * room, so they settle on the lobby and pass whichever lobby rig they are
- * interested in. The other three rigs still travel on every frame, because they do
+ * interested in. The other four rigs still travel on every frame, because they do
  * in the real thing — see the note on IHotelFrame.
  *
  * `stillness` and `breath` are zero here, which is a visitor who has just arrived
  * at the bottom of an exhale. Nothing above Floor −3 reads either, so it is the
- * quietest default rather than a meaningful one.
+ * quietest default rather than a meaningful one. `bench` is the bench as a visitor
+ * finds it, for the same reason: nothing above Floor −4 reads it.
  */
 const at = (lobby = NIGHT, depth = 0): IHotelFrame => ({
   lobby,
   corridor: CORRIDOR_RIGS.open,
   library: LIBRARY_RIGS.open,
   cellar: CELLAR_RIGS.open,
+  projection: PROJECTION_RIGS.open,
   depth,
   stillness: 0,
   breath: 0,
+  bench: THREADED,
 });
 
 /** A renderer over a stub, with the canvas laid out at a known size. */

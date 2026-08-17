@@ -184,10 +184,16 @@ export const EDITION: readonly IEditionSection[] = [
         floor: 'Floor −4',
         name: 'The Projection Room',
         body:
-          'A projectionist’s bench, and everything a projector does to a picture on its way to ' +
-          'the wall: the weave in the gate, the halation around a highlight, grain, the judder ' +
-          'of twenty-four frames a second, the cue dots that warn of a reel change. You can ' +
-          'operate it. The apparatus is the exhibit.',
+          'A bench, and a 35mm machine throwing a beam through three metres of dusty air and out ' +
+          'of a hole in the wall. Everything a projector does to a picture on its way to the ' +
+          'wall is here and all six of them are switches you can throw: the weave in the gate, ' +
+          'the halation round a highlight, grain, the judder, the flare where the print has been ' +
+          'spliced, the cue dots that warn of a reel change. The apparatus is the exhibit. What ' +
+          'the sun takes on this floor is not light and not writing — it is speed. The machine ' +
+          'runs at twenty-four frames a second at astronomical night and slows as the night ends, ' +
+          'and by the time the sun is up it has stopped altogether with the lamp still on, which ' +
+          'is a thing that does to a frame of film exactly what you would expect. There is no ' +
+          'switch on the bench for that.',
       },
       {
         floor: 'Floor −5',
@@ -205,11 +211,11 @@ export const EDITION: readonly IEditionSection[] = [
         'a cross-fade between two pictures — it is one piece of arithmetic becoming another ' +
         'piece of arithmetic, in full view, which is the only honest way to move between two ' +
         'rooms that are made of nothing but arithmetic.',
-      'At the time of writing, Floor 0, Floor −1, Floor −2 and Floor −3 exist and the lift runs ' +
-        'between them, one floor at a time. The two floors below are written and not built, which ' +
-        'is exactly why you can read them here and not walk into them. The distinction is kept on ' +
-        'purpose: this is a place that tells you what it can and cannot do, and a hotel ' +
-        'advertising rooms it does not have is worse than a hotel with four very good ones.',
+      'At the time of writing, Floor 0, Floor −1, Floor −2, Floor −3 and Floor −4 exist and the ' +
+        'lift runs between them, one floor at a time. The floor below is written and not built, ' +
+        'which is exactly why you can read it here and not walk into it. The distinction is kept ' +
+        'on purpose: this is a place that tells you what it can and cannot do, and a hotel ' +
+        'advertising rooms it does not have is worse than a hotel with five very good ones.',
       'The lift does not run while the hotel is shut. If you are here in daylight there is a ' +
         'control at the desk that opens the place anyway, and it opens the lift with it.',
     ],

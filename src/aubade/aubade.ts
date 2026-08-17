@@ -8,8 +8,10 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { Bench, type ISwitch } from './bench';
 import { breathAt, settleStep } from './cellar';
 import {
+  BENCH_COPY,
   CELLAR_COPY,
   CORRIDOR_COPY,
   DESK_COPY,
@@ -18,12 +20,14 @@ import {
   INVITATION,
   LIBRARY_COPY,
   LIFT_COPY,
+  PROJECTION_COPY,
   READER_CUE,
   RENDER_NOTES,
   STILLNESS_COPY,
   SUNSET_CARD,
   describeCountdown,
   formatClockTime,
+  type IDeskCopy,
 } from './desk';
 import {
   canCall,
@@ -37,17 +41,36 @@ import {
 } from './descent';
 import { FrameLoop, type IFrame } from './gl/loop';
 import { forcedState, readTheSun, SUN_INTERVAL_MS } from './hour';
+import { FILM_STACK, THREADED, toggled, type FilmEffect, type IBench } from './projection';
 import { prefersReducedMotion } from './reduced-motion';
 import type { HotelRenderer } from './renderer';
 import { cellarRigFor } from './rooms/cellar-rig';
 import { corridorRigFor } from './rooms/corridor-rig';
 import { libraryRigFor } from './rooms/library-rig';
 import { rigFor } from './rooms/light-rig';
+import { projectionRigFor } from './rooms/projection-rig';
 import type { IAubadeClock } from './solar';
 import type { AubadeState } from './solar/state';
 
 /** Where the desk card stops counting hours and starts describing a season. */
 const MILLISECONDS_PER_DAY = 86_400_000;
+
+/**
+ * Which set of five plates belongs to which floor.
+ *
+ * A table rather than the chain of `if`s this was, and the reason is the same one
+ * `camera/drift.ts` gives about its anchors: at two floors a conditional reads
+ * better than a lookup, at five it does not, and at five it is also over the
+ * cyclomatic budget the lint config enforces. Indexed twice — floor, then hour —
+ * which is exactly what the thing is.
+ */
+const PLATES: Readonly<Record<Floor, Readonly<Record<AubadeState, IDeskCopy>>>> = {
+  0: DESK_COPY,
+  '-1': CORRIDOR_COPY,
+  '-2': LIBRARY_COPY,
+  '-3': CELLAR_COPY,
+  '-4': PROJECTION_COPY,
+};
 
 /**
  * `/aubade` — Floor 0, The Desk.
@@ -119,6 +142,7 @@ const MILLISECONDS_PER_DAY = 86_400_000;
  */
 @Component({
   selector: 'app-aubade',
+  imports: [Bench],
   templateUrl: './aubade.html',
   // `tokens.css` first: it declares the palette both AUBADE routes are drawn
   // in, so the lobby and the Reader's Edition cannot drift into two brasses.
@@ -188,17 +212,7 @@ export class Aubade implements AfterViewInit, OnDestroy {
    * One lookup rather than a branch in the template, and it is the same shape on
    * both floors so nothing downstream has to know which one it got.
    */
-  public readonly copy = computed(() => {
-    const floor = this.floor();
-    const state = this.state();
-    if (floor === -3) {
-      return CELLAR_COPY[state];
-    }
-    if (floor === -2) {
-      return LIBRARY_COPY[state];
-    }
-    return floor === -1 ? CORRIDOR_COPY[state] : DESK_COPY[state];
-  });
+  public readonly copy = computed(() => PLATES[this.floor()][this.state()]);
 
   /**
    * How far into the cellar the visitor has got, in three steps rather than in the
@@ -285,6 +299,58 @@ export class Aubade implements AfterViewInit, OnDestroy {
           enabled: true,
         };
       });
+  });
+
+  /**
+   * Which of the projectionist's six switches are down.
+   *
+   * A signal, unlike `car` and `stillness`, because this one is written by a person
+   * pressing a control and read by a template that has to re-render when they do —
+   * which is what signals are for, and the opposite of the two per-frame values that
+   * are deliberately plain fields.
+   *
+   * Held on the component rather than reset by the room, and it survives a ride. A
+   * visitor who switches the grain off, goes up to look at the library and comes back
+   * finds the bench where they left it, because a bench is a machine somebody has set
+   * rather than a preference the room has an opinion about.
+   */
+  public readonly bench = signal<IBench>(THREADED);
+
+  /**
+   * The six switches, as the template renders them: the mechanism's name, the line
+   * under it, and whether it is down.
+   *
+   * Derived from `FILM_STACK` rather than written out, so the order on screen is the
+   * order AUBADE names them in and a seventh effect is one entry in that array. The
+   * template's `@for` reads this and nothing else, which is what keeps a control
+   * surface of six items with three fields each inside the template complexity
+   * budget the Cellar's instruction already spent most of.
+   */
+  public readonly switches = computed<readonly ISwitch[]>(() => {
+    const bench = this.bench();
+    return FILM_STACK.map((effect) => ({
+      effect,
+      label: BENCH_COPY.effects[effect].label,
+      note: BENCH_COPY.effects[effect].note,
+      on: bench[effect],
+    }));
+  });
+
+  /**
+   * The plate beside the switches: what the machine is doing, which is the one thing
+   * on this floor the visitor cannot touch.
+   *
+   * `null` anywhere but Floor −4 and whenever there is no render to operate — a bench
+   * for a picture nobody can see is worse than no bench, which is the same argument
+   * `liftControls` makes about a lift.
+   */
+  public readonly projector = computed<string | null>(() => {
+    if (this.floor() !== -4 || this.mode() === 'closed') {
+      return null;
+    }
+
+    const rate = projectionRigFor(this.state(), this.invited()).rate;
+    return rate > 0 ? BENCH_COPY.running(rate) : BENCH_COPY.stopped;
   });
 
   /** The offer, the control, and what taking it leaves behind. */
@@ -488,6 +554,31 @@ export class Aubade implements AfterViewInit, OnDestroy {
   }
 
   /**
+   * Throw one of the switches on the bench.
+   *
+   * The one control in this hotel that is not diegetic furniture, and the one place
+   * a visitor is handed the apparatus rather than shown a room. AUBADE asks for the
+   * film stack to be "exposed as a projectionist's bench you can operate", and every
+   * switch here changes something in the frame within one repaint.
+   *
+   * Two-way, unlike the invitation, and the contrast is the point. The invitation is
+   * a door and a door with a handle on both sides is a toggle; this *is* a toggle,
+   * because a projectionist who could only ever turn things off would be operating a
+   * demolition rather than a machine.
+   *
+   * @param effect Which of the six.
+   */
+  public throwSwitch(effect: FilmEffect): void {
+    this.bench.update((bench) => toggled(bench, effect));
+
+    // A held frame has to be redrawn: a reduced-motion visitor just changed the
+    // picture and there is no loop coming to notice.
+    if (!this.loop?.running) {
+      this.loop?.renderOnce();
+    }
+  }
+
+  /**
    * Call the lift.
    *
    * Two paths, and the second one is not a degradation. With the loop running the
@@ -549,9 +640,11 @@ export class Aubade implements AfterViewInit, OnDestroy {
         corridor: corridorRigFor(state, invited),
         library: libraryRigFor(state, invited),
         cellar: cellarRigFor(state, invited),
+        projection: projectionRigFor(state, invited),
         depth: this.depthNow(frame.simulatedSeconds),
         stillness: this.stillness,
         breath: breathAt(frame.simulatedSeconds),
+        bench: this.bench(),
       })
     ) {
       // A lost context, or a disposed renderer. Stop rather than spin: a loop

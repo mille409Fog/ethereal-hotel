@@ -141,6 +141,19 @@
         </p>
       }
 
+      <!-- The projectionist's bench. Floor −4 only, and its own component: it is
+           the one thing on this route that is not the hotel talking, and a
+           control surface with a loop and three bindings an item does not fit
+           under this template's complexity cap on top of everything above it.
+           See `bench.ts`, where both halves of that are set out.
+
+           Unconditional here, and the floor test is inside the component, which is
+           the same cap deciding the same question one more time: the `@if` that
+           would have wrapped this is the eleventh branch in this template and there
+           is room for ten. `bench.html` has one loop in it and all the room in the
+           world. -->
+      <app-bench [switches]="switches()" [projector]="projector()" (thrown)="throwSwitch($event)" />
+
       <!-- Two cues, two destinations, and they are not the same offer. The
            first goes one screen down to this room written out at this hour; the
            second leaves for the Reader's Edition, which is the whole hotel and
@@ -188,7 +201,7 @@
       @for (paragraph of prose(); track paragraph) {
         <p>{{ paragraph }}</p>
       }
-      <p class="lobby__aside">Four floors of six. The other two are written and not built.</p>
+      <p class="lobby__aside">Five floors of six. The other one is written and not built.</p>
 
       <!-- The second of the two required links, and the one that is actually
            earned: somebody who has read this far has read about this room and

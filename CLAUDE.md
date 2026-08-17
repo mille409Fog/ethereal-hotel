@@ -55,25 +55,25 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 
 ## Where to look — don't read them all
 
-| File                | Size | Read it when                                                                                                                          |
-| ------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROADMAP.md`        | 4K   | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here. |
-| `README.md`         | 6K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                 |
-| `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                 |
-| `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                    |
-| `AUBADE.md`         | 19K  | Only if the task touches `/aubade` (a separate WebGL project). Six phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`), and the Cellar on Floor −3 (`cellar.ts`, `rooms/cellar-rig.ts`, `adapted()`). The Library's *room* has landed too (`rooms/library-rig.ts`, `mapLibrary`) — its phase has not, because the sentence in eight writing systems is what that phase is, so the item stays on the list. |
-| `CONTRIBUTING.md`   | 6K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                          |
+| File                | Size | Read it when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROADMAP.md`        | 4K   | **Any question of "what should I build".** Numbered items with Definitions of Done, plus a "Deliberately not doing" list. Start here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `README.md`         | 6K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `AUBADE.md`         | 21K  | Only if the task touches `/aubade` (a separate WebGL project). Seven phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`), the Cellar on Floor −3 (`cellar.ts`, `rooms/cellar-rig.ts`, `adapted()`), and the Projection Room on Floor −4 (`projection.ts`, `bench.ts`, `rooms/projection-rig.ts`, `projected()`). The Library's _room_ has landed too (`rooms/library-rig.ts`, `mapLibrary`) — its phase has not, because the sentence in eight writing systems is what that phase is, so the item stays on the list. |
+| `CONTRIBUTING.md`   | 6K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
 left from 1 so the list always reads 1, 2, 3, 4. The reasoning that survived a finished item moved
 into the code or the config it describes. Two consequences: the numbers are positions in a queue,
 not stable ids, so never cite one from outside the file — describe the item instead — and any
-cross-reference *inside* the file has to be re-pointed when you renumber. Read the preamble before
+cross-reference _inside_ the file has to be re-pointed when you renumber. Read the preamble before
 proposing work; it carries the constraints the items assume.
 
 The docs no longer carry a known-stale list: a finished ROADMAP item rewrote `README.md` down to one
 page and made `ARCHITECTURE.md` the reference doc, fixing the drift that section used to warn about. Two
-habits are what let that rot set in, so avoid both. Don't explain what FastAPI or RxJS *are* — the
+habits are what let that rot set in, so avoid both. Don't explain what FastAPI or RxJS _are_ — the
 reader knows. And don't restate the backend test count in another document: it was quoted in three
 places and disagreed with itself in all three. There are 26 test functions in `backend/tests/`
 today, this sentence is the only place that says so, and `check:docs` keeps it honest.
@@ -143,7 +143,7 @@ not leave the note behind when the suppression goes.
   per machine and structurally different across machines — 210KB in 364 objects on Windows, 97KB in
   163 on Linux CI, because Skia cannot embed Crimson Pro and decomposes it into a platform-specific
   number of Type3 fonts. A byte comparison could never pass in CI and re-rendering could never fix
-  it. `scripts/pdf-text.mjs` reads the text layer, which *is* identical everywhere; its one rule is
+  it. `scripts/pdf-text.mjs` reads the text layer, which _is_ identical everywhere; its one rule is
   that it never reads a coordinate, because glyph advances are not.
 - **GLSL lives inside a template literal, so a backtick in a shader comment ends the string** and
   the error lands thirty lines away. Same family: GLSL ES 3.00 reserves `half`, `sample`, `input`,
@@ -231,20 +231,21 @@ mistake for bugs:
   coming down the lift shaft at noon. `verify:shader` asserts both opposite orderings.
 - **Floor −2 does not run the clock at all, and that is the room.** In `rooms/library-rig.ts`
   five of six fields are one spread constant — the lamps are identical at every hour — and only
-  `inkStrength` moves, to *exactly* 0 at `shuttered`: a fully lit reading room with nothing
+  `inkStrength` moves, to _exactly_ 0 at `shuttered`: a fully lit reading room with nothing
   written in it. So `verify:shader` asserts a third, different claim, mean luma **flat** and the
   frame's deviation falling, because a mean cannot see this floor's hour. The library carries its
   own `exposure` too: `uExposure` is Floor 0's field and `tonemap` applies it to the whole frame,
   so un-blended the lobby's noon stop reached two storeys down and brightened the library by 8%.
 - **The lift is one uniform, and it counts floors.** `uDepth` is 0 in the lobby, 1 in the
-  corridor, 2 in the library, 3 in the cellar — depth is minus the floor, exactly — and `mapScene`
-  branches on which *pair* a ride is between, so a ride still evaluates two distance fields and a
+  corridor, 2 in the library, 3 in the cellar, 4 in the projection box — depth is minus the floor,
+  exactly — and `mapScene`
+  branches on which _pair_ a ride is between, so a ride still evaluates two distance fields and a
   settled floor one. AUBADE's phase note named the alternative (the lift becomes a fade) and it was
   rejected. **`mapScene` must also name each room exactly once**, which is a claim about the
   compiler rather than the frame: it is inlined at seven sites, so a room written twice is a
   second copy of its field in all seven, and writing it as early returns over a two-armed mix
   cost SwiftShader ten times the frame for a lobby that had not changed. Every integer must be
-  hit *exactly*, because the scene branch has no epsilon at all, and the
+  hit _exactly_, because the scene branch has no epsilon at all, and the
   mirror's second march only wakes inside `MORPH_EPSILON` of 1 — a two-sided band, not a
   threshold, or it stays awake down to a floor with no mirror in it. `MORPH_EPSILON` is declared
   twice (`descent.ts`, and GLSL, which cannot import) and `check:docs` fails on drift; a drifted
@@ -254,11 +255,26 @@ mistake for bugs:
   finished frame. `check:docs` fails if `uStillness` or `uAdaptation` appears inside
   `CELLAR_GLSL` — a room that knows how still you have been assembles itself, which is the thing
   this floor exists not to do — and if `adaptation` stops being **exactly 0** at `shuttered`. So
-  its frames are a *pair* rather than a series, and `verify:shader` asserts that shape: five
-  identical `arriving` frames, a settled one 3× brighter and *less* coloured, and the noon pair
+  its frames are a _pair_ rather than a series, and `verify:shader` asserts that shape: five
+  identical `arriving` frames, a settled one 3× brighter and _less_ coloured, and the noon pair
   equal. `arriving` is deliberately uncommitted (five copies of one picture). Under
   `prefers-reduced-motion` the room is handed over already resolved — that path draws one frame,
   so the alternative is black for ever.
+- **Floor −4 answers the sun with time, and the quantisation is deliberately not in the shader.**
+  The projector runs at 24fps at astronomical night and slows to **exactly 0** at noon, where one
+  frame burns through in the gate (`uBurn`, exactly 0 at every other hour). `filmFrameAt` in
+  `projection.ts` is the quantiser and `renderer.ts` poses the _camera_ at its result, because a
+  picture that steps under a viewpoint that glides is a filter rather than a room. So this floor is
+  the one whose claim no single frame can carry: `verify:shader` renders it at two seconds and
+  requires them to differ at night and to be identical at noon. `check:docs` holds the exact 0, the
+  `filmFrameAt` call in the renderer, and the six `STACK_*` bits plus the three reel constants,
+  each declared twice (`projection.ts` and GLSL, which cannot import).
+- **The bench is six controls and not seven.** `bench.ts` switches gate weave, halation, grain,
+  judder, splices and cue dots; the rate sits beside them as a readout and is not a control, because
+  a visitor who could restart the projector at noon has been handed the floor's answer to the clock.
+  `check:docs` fails if the template loses `throwSwitch`. The `@if` around the bench lives in
+  `bench.html` rather than in `aubade.html` because it is the eleventh branch in a template capped
+  at ten — that cap is real and has now shaped three files.
 - **The absent reflection is one argument**: `shadeSurface`'s `carried`, 1 in the room and 0 in
   the mirror. Deliberately unphysical — a correct mirror would show the lit floor — so passing
   1.0 gives a beautiful corridor about nothing. No test sees that, so `check:docs` does.
@@ -296,16 +312,16 @@ probably belongs in `ROADMAP.md` as reasoning rather than here as fact.
 
 The script deliberately does not check prose. These are the parts it cannot see, so they are on you:
 
-| If you change…                                   | Re-read and revise                                               |
-| ------------------------------------------------ | ---------------------------------------------------------------- |
-| What `/dashboard` or `/booking` actually do      | §What this repo is — the two-routes claim is the whole framing   |
-| A degradation path, badge, or fallback           | §What this repo is, §Don't helpfully add these                   |
-| Deployment target, `create_app` flags, Vercel    | §Traps — the Python split and the `requirements.txt` landmine    |
-| A gate, threshold, or CI job                     | §The five gates                                                  |
+| If you change…                                     | Re-read and revise                                               |
+| -------------------------------------------------- | ---------------------------------------------------------------- |
+| What `/dashboard` or `/booking` actually do        | §What this repo is — the two-routes claim is the whole framing   |
+| A degradation path, badge, or fallback             | §What this repo is, §Don't helpfully add these                   |
+| Deployment target, `create_app` flags, Vercel      | §Traps — the Python split and the `requirements.txt` landmine    |
+| A gate, threshold, or CI job                       | §The five gates                                                  |
 | A Lighthouse threshold or an `angular.json` budget | §The five gates, and the README's Gates section — it states them |
-| Anything in `ROADMAP.md` §Deliberately not doing | §Don't helpfully add these — it mirrors that list                |
-| Finishing a ROADMAP item that removes a section  | The doc-map row for whatever the item rewrote, and its size      |
-| Finishing an AUBADE phase                        | Its doc-map row; delete the phase and renumber the rest          |
+| Anything in `ROADMAP.md` §Deliberately not doing   | §Don't helpfully add these — it mirrors that list                |
+| Finishing a ROADMAP item that removes a section    | The doc-map row for whatever the item rewrote, and its size      |
+| Finishing an AUBADE phase                          | Its doc-map row; delete the phase and renumber the rest          |
 
 **Two failure modes to avoid.** Do not let this file grow into a seventh long document — it earns
 its place by being the short one, and anything over ~250 lines has stopped routing and started

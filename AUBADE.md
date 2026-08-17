@@ -58,7 +58,7 @@ one shader and one idea.
 | **−1** | **The Mirror Corridor** | A mirrored wall, rendered by a second march. Everything in the corridor reflects. Your light does not. You will notice this about four seconds later than you think you will.                               |
 | **−2** | **The Library**         | One sentence, migrating across eight writing systems — Latin, Greek, Cyrillic, Arabic, Devanagari, Hebrew, Han, Hangul — glyphs dissolving into one another rather than cutting.                            |
 | **−3** | **The Cellar**          | Meditation. Near-silence. The camera slows to a 4-7-8 breath and the room resolves only if you stay — in the eye, not in the room, which never changes at all. **Built.**                                   |
-| **−4** | **The Projection Room** | Film. The post-processing stack _is_ the exhibit: gate weave, halation, grain, 24fps judder, splice flashes, reel-change cue dots. Exposed as a projectionist's bench you can operate.                      |
+| **−4** | **The Projection Room** | Film. The post-processing stack _is_ the exhibit, applied to the whole frame rather than to a screen in it. Six switches on a bench you can operate. What the sun moves is the rate. **Built.**             |
 | **−5** | **The Box**             | Opera. A single aria drives the geometry. Silent by default — must be beautiful with the sound off, because for most visitors it will be.                                                                   |
 
 The elevator between floors is not a transition, it is a room. It is where the morph between two
@@ -163,16 +163,36 @@ headless Chromium and writes a PNG, which is a faster edit loop than reloading a
 Ship in this order. Each phase is deployable and each one is worth showing on its own. Do not
 start a phase before the previous one is live.
 
-Six phases have landed and been deleted from this list, per the rule at the top: **the clock**
+Seven phases have landed and been deleted from this list, per the rule at the top: **the clock**
 (`src/aubade/solar/`, checked against published almanac times for eight cities), **the lobby**
 (`/aubade` — `src/aubade/gl/`, `camera/`, `rooms/`, `renderer.ts`), **day, night and the
 invitation** (`rooms/light-rig.ts`, `desk.ts`, `fake-clock.ts`, and the shutter in
 `rooms/hotel.frag.ts`), **the Reader's Edition** (`/aubade/reader` — `src/aubade/reader/`, plus
 `hour.ts` and `tokens.css`, which the two routes now share), **the descent and the Mirror
 Corridor** (`descent.ts`, `rooms/corridor-rig.ts`, and the second half of `rooms/hotel.frag.ts`),
-and **the Cellar** (`cellar.ts`, `rooms/cellar-rig.ts`, and `adapted()` in `rooms/hotel.frag.ts`).
-Their reasoning moved into those files' header comments, which are dense and are the thing to read
-before touching any of them.
+**the Cellar** (`cellar.ts`, `rooms/cellar-rig.ts`, and `adapted()` in `rooms/hotel.frag.ts`), and
+**the Projection Room** (`projection.ts`, `bench.ts`, `rooms/projection-rig.ts`, and
+`projected()` in `rooms/hotel.frag.ts`). Their reasoning moved into those files' header comments,
+which are dense and are the thing to read before touching any of them.
+
+The Projection Room is the one that changed what a floor is allowed to _answer with_, so its shape
+is worth carrying forward too. The first three rooms answer the sun with light — the lobby
+brightens, the corridor's gas goes out, the library keeps its lamps and loses its writing. Floor −3
+answers with the visitor. Floor −4 answers with **time**: the projector runs at twenty-four frames
+a second at astronomical night and slows through eighteen, twelve and eight, and at noon it is
+stopped dead with the lamp still on and one frame burning through in the gate. Nothing about the
+light moves at any hour. What that costs is a fifth _shape_ of assertion, because no single frame
+can show a rate — `verify-shader.mjs` renders this floor at two different seconds and requires them
+to differ at astronomical night and to be identical to the byte at noon. The quantisation is in
+TypeScript rather than in GLSL for one reason worth remembering: the camera has to step too, and a
+room whose picture judders under a viewpoint that glides is a filter with a hotel painted on it.
+
+The bench is the other half of that phase and is the only control surface in the piece that is not
+diegetic furniture. Six switches — gate weave, halation, grain, judder, splice flashes, cue dots —
+each of which visibly changes the frame, in `bench.ts` with its own template and stylesheet. The
+rate is beside them as a readout and is deliberately not a control: the bench operates the
+apparatus, the sun operates the film, and a visitor who could wind the machine back up at noon
+would have been handed the floor's whole answer to the clock in one click.
 
 The Cellar is the one that changed what a floor is allowed to be, so its shape is worth carrying
 forward. The other three rooms answer the sun with light: the lobby brightens, the corridor's gas
@@ -206,18 +226,17 @@ lobby — it ignores `?t=<state>`, because a forced state next to a real elevati
 this page cannot tell, and no font size on it is expressed in `vw`, because a `vw` size shrinks
 when a reader zooms in.
 
-### Phases 1–3 — One room each
+### Phases 1–2 — One room each
 
 In this order, by ratio of impact to risk:
 
 1. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
    Devanagari shaping right or cut those two; broken shaping is an insult, not an effect. The
-   *room* is built and lit — what is left is the sentence, which is the phase.
-2. **The Projection Room** — the film stack, operable. Cheapest spectacle in the project.
-3. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
+   _room_ is built and lit — what is left is the sentence, which is the phase.
+2. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
    are the two things most likely to eat a week.
 
-The question a third floor raised is settled and the answer generalised, so a fourth room is no
+The question a third floor raised is settled and the answer generalised, so a further room is no
 longer an architectural decision. Two rooms fitted in one program because two distance fields can be
 mixed by one uniform; three did not extend that for free, and the fork was either `mapScene`
 branching on which pair is being mixed or the lift ceasing to be a mix and becoming a fade. The
@@ -225,14 +244,17 @@ branch was taken. `mapScene` now evaluates each room into its own local behind i
 chooses between locals, so a settled floor still costs one field, a ride still costs two, and
 another floor is one more guard and one more name. The rule that makes that true is that **no room
 may be named twice** — see the note in `hotel.frag.ts`, which is where the ten-times-slower frame is
-recorded.
+recorded. Two floors have arrived on those terms since it was written and neither touched the shape.
+The one part that does not stay flat is the pair of nested ternaries choosing between the locals: at
+five rooms that is as deep as it should go unaided, and a sixth is the moment to index an array of
+locals by the leg instead.
 
 Each new room owes the Reader's Edition a paragraph, and owes `check:docs` and
 `verify-shader.mjs` a committed frame per solar state. `reader/edition.ts` describes all six
 floors in the present tense and then says plainly which are built — a room that ships without
 moving itself out of that list has quietly made the page lie.
 
-### Phase 5 — The register
+### Phase 3 — The register
 
 Where the existing backend skills come back. `POST /api/aubade/visits` on arrival, `GET` for the
 register: city (from timezone, never IP), duration, floors reached, local solar state at arrival.
@@ -241,7 +263,7 @@ register: city (from timezone, never IP), duration, floors reached, local solar 
   Rate-limited. The register is legible as a feature of the fiction and defensible as a privacy
   decision in the same breath — say so in the README.
 
-### Phase 6 — Dawn
+### Phase 4 — Dawn
 
 The ending. A visitor present through actual civil twilight into actual sunrise at their location
 sees the hotel close: the countdown, the light arriving, the rooms shuttering in order, the last
@@ -290,7 +312,7 @@ Recorded now, while it is still cheap to avoid:
   bug.
 - **It never ships.** Six rooms is an ambition, not a commitment. The descent and the corridor were
   the rest of the project and they have landed, so **everything still on the list is optional** —
-  a finished two-floor hotel with a Reader's Edition beats an abandoned six-floor one by an
+  a finished five-floor hotel with a Reader's Edition beats an abandoned six-floor one by an
   enormous margin, and that is now the thing that exists rather than the thing being argued for.
 
 ---

@@ -105,6 +105,21 @@ export const STUB_UNIFORM_NAMES = [
   'uCellarFloor',
   'uCellarSky',
   'uCellarDust',
+  'uArcColour',
+  'uArcStrength',
+  'uBurn',
+  'uProjectionExposure',
+  'uProjectionFloor',
+  'uProjectionSky',
+  'uProjectionDust',
+  // The projector, not a rig — see projection.ts. Floor −4 answers the sun with a
+  // rate rather than with light, so these three carry a clock instead of a colour.
+  'uProjectorRate',
+  'uFilmTime',
+  'uFilmFrame',
+  // The bench. The only uniform in the piece that is about neither the building,
+  // the sun, nor the visitor — it is six switches somebody has been handed.
+  'uStack',
   // The visitor, not a rig — see cellar.ts. The only two uniforms in the piece
   // that are about the person rather than the building or the sun.
   'uStillness',
