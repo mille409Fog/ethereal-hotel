@@ -165,9 +165,14 @@ export const EDITION: readonly IEditionSection[] = [
           'each. No daylight has ever reached this floor and none of its light answers to any: ' +
           'every lamp burns at the same strength at three in the morning as at noon. What the ' +
           'sun takes here is the writing. The gilt goes off the spines as the night ends, and by ' +
-          'sunrise there is not one legible mark in a room as bright as it ever was. One ' +
-          'sentence is still to come, held in eight writing systems at once and dissolving ' +
-          'between them. Until it is written, the shelves say this floor’s piece for it.',
+          'sunrise there is not one legible mark in a room as bright as it ever was. Cut into ' +
+          'the frieze above the shelving, four times down each wall, is one sentence — Give me ' +
+          'shelter from the light — and it will not stay in one alphabet. Every few seconds it ' +
+          'migrates: English into Greek, Greek into Russian, Russian into Hebrew and back, each ' +
+          'letter deforming into the next rather than being swapped for it. Four hands, where ' +
+          'the plan asks for eight. Arabic, Devanagari, Han and Hangul are not there, and the ' +
+          'reason is written down: a translation nobody here can vouch for is not a thing to ' +
+          'carve on a wall. At noon the frieze is bare stone, under lamps that have not moved.',
       },
       {
         floor: 'Floor −3',

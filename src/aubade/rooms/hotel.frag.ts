@@ -291,6 +291,7 @@ const float MAT_WATER    = 20.0;
 const float MAT_IRON     = 21.0;
 const float MAT_ARC      = 22.0;
 const float MAT_SCREEN   = 23.0;
+const float MAT_FRIEZE   = 24.0;
 
 // How far outside a bounding box a ray may be before the box stands in for its
 // contents. Comfortably above SURFACE_EPSILON, so a ray can never terminate on a
@@ -306,6 +307,30 @@ const COMMON_SHADING_GLSL = `
 // ---------------------------------------------------------------------------
 // Materials
 // ---------------------------------------------------------------------------
+
+/**
+ * The sentence's distance field at a point on the frieze, in one writing system.
+ *
+ * textureLod rather than texture, and that is not a preference. This function is
+ * reached only from inside surfaceAlbedo, which is called from a branch on the
+ * material a ray happened to land on — non-uniform control flow, where a fetch that
+ * wants implicit derivatives is undefined behaviour. It renders correctly on a
+ * desktop driver and produces garbage or nothing on a tiler, which is the worst
+ * possible distribution of a bug. There is no mip chain on this texture either; see
+ * the contour in MAT_FRIEZE, which does the level of detail arithmetically.
+ *
+ * @param uv Where on the line, in [0, 1] on both axes.
+ * @param tile Which script, as an index into the atlas's stack of lines.
+ */
+float sentenceAt(vec2 uv, float tile) {
+  // Clamped inside the tile's own row. The lines are stacked with no gutter, so a
+  // linear fetch that strays past a join returns a blend of two writing systems —
+  // which is a real effect and emphatically the wrong one. A hundredth is a coarse
+  // clamp and a safe one at any tile height: the builder leaves a margin of
+  // SENTENCE_SPREAD tile pixels, a quarter of the tile, above and below the line.
+  float v = (tile + clamp(uv.y, 0.01, 0.99)) / SENTENCE_TILES;
+  return textureLod(uSentence, vec2(uv.x, v), 0.0).r;
+}
 
 /** Albedo, plus how rough the surface is and whether it is a metal. */
 vec3 surfaceAlbedo(float id, vec3 p, out float roughness, out float metallic) {
@@ -447,6 +472,68 @@ vec3 surfaceAlbedo(float id, vec3 p, out float roughness, out float metallic) {
     // lamps that were supposed to be lighting it. Gilt is reflective, not bright.
     roughness = mix(0.86, 0.30, gilt);
     return mix(cloth, vec3(0.40, 0.30, 0.13), gilt);
+  }
+
+  if (id == MAT_FRIEZE) {
+    // The sentence. Floor −2's subject, and the one surface in the hotel whose
+    // shape had to be tabulated rather than written down — see sentenceAt, and
+    // sentence.ts, which holds the four lines and the clock that walks them.
+    float along = (p.z - FRIEZE_NEAR_Z) / (FRIEZE_FAR_Z - FRIEZE_NEAR_Z);
+
+    // Reversed on the +x wall, and this one line is the difference between a
+    // sentence and half a sentence in a mirror. The two runs face one another, so a
+    // reader turning to one wall has their right hand down +z and a reader turning
+    // to the other has it down −z; a mapping that ran with +z on both is correct on
+    // one wall and backwards on the other, which is what this room rendered as
+    // first. Which side takes the flip is a fact about the camera basis in
+    // cameraRay, not about the room, so it is worth settling by looking at a
+    // frame rather than by reasoning about cross products — the reasoning gets the
+    // handedness wrong as easily as it gets it right, and the frame never does.
+    along = p.x > 0.0 ? 1.0 - along : along;
+
+    vec2 uv = vec2(
+      fract(along * SENTENCE_REPEATS),
+      (FRIEZE_TOP - p.y) / (FRIEZE_TOP - FRIEZE_BOTTOM)
+    );
+
+    // Eased here rather than in migrationAt, so that the mix and the shaping of the
+    // mix are on adjacent lines. Smoothstep, so the dissolve leaves and arrives at
+    // rest: a letter that begins changing shape at full speed reads as a cut with a
+    // blur over it, which is the thing AUBADE says this floor must not be.
+    //
+    // Both scripts are always fetched, including while the sentence is settled and
+    // the two indices are the same. The saving from branching is one texture read
+    // out of a 64KB atlas that is entirely in cache, and the cost would be a second
+    // code path through the only sampled surface in the piece.
+    float across = uMigration * uMigration * (3.0 - 2.0 * uMigration);
+    float field = mix(sentenceAt(uv, uScriptFrom), sentenceAt(uv, uScriptTo), across);
+
+    // The contour, softened with distance, which is this texture's whole level of
+    // detail scheme. There is no mip chain and there cannot be an implicit one —
+    // see sentenceAt — and a distance field is the one kind of texture where doing
+    // it analytically is not an approximation but the correct construction. Without
+    // it the far end of a 15.6m run at a grazing angle turns to shimmer.
+    float soften = clamp(0.020 + length(p - uEye) * 0.0060, 0.020, 0.150);
+    float letter = smoothstep(0.5 - soften, 0.5 + soften, field);
+
+    // On the face only. The band stands 35mm proud of the plaster, so it has a top
+    // and a bottom reveal, and a mapping in y and z alone paints the line down both
+    // of them in streaks.
+    letter *= 1.0 - smoothstep(0.004, 0.011, abs(abs(p.x) - FRIEZE_FACE_X));
+
+    // And the floor's one answer to the sun, applied exactly as it is applied to the
+    // gilt on the spines above. uInk is zero at the shuttered hour — not nearly zero
+    // — so at noon this band is bare stone in a room whose lamps have not moved.
+    // See rooms/library-rig.ts, which reserved this uniform for this sentence before
+    // the sentence existed.
+    letter *= uInk;
+
+    // Gilt on stone, and deliberately the same gold as the spines below it: same
+    // hotel, same gilder, same afternoon. The ground is a shade paler than the
+    // plaster it is set against, because a band that stands proud catches more of
+    // the reading lamps than a flat wall does.
+    roughness = mix(0.88, 0.30, letter);
+    return mix(vec3(0.074, 0.065, 0.062), vec3(0.40, 0.30, 0.13), letter);
   }
 
   if (id == MAT_MIRROR) {
@@ -1495,6 +1582,34 @@ const float SHELF_LAST  = 3.0;
 // what a shelf holds.
 const float SPINE_PITCH = 0.043;
 
+// The frieze: the band above the shelving that the sentence is cut into.
+//
+// It runs the length of the shelving rather than the length of the room, so it
+// starts and stops where the joinery does and reads as part of the same fit-out.
+// Standing proud by 35mm, because a band flush with the plaster is a decal and one
+// that stands off the wall takes the reading lamps along its lower edge — which is
+// what makes it legible in a room whose light all comes from below it.
+const float FRIEZE_BOTTOM = 2.62;
+const float FRIEZE_TOP    = 3.11;
+const float FRIEZE_PROUD  = 0.035;
+const float FRIEZE_NEAR_Z = CASE_NEAR_Z;
+const float FRIEZE_FAR_Z  = CASE_FAR_Z;
+
+const float FRIEZE_MID_Y  = (FRIEZE_BOTTOM + FRIEZE_TOP) * 0.5;
+const float FRIEZE_HALF_Y = (FRIEZE_TOP - FRIEZE_BOTTOM) * 0.5;
+const float FRIEZE_MID_Z  = (FRIEZE_NEAR_Z + FRIEZE_FAR_Z) * 0.5;
+const float FRIEZE_HALF_Z = (FRIEZE_FAR_Z - FRIEZE_NEAR_Z) * 0.5;
+const float FRIEZE_FACE_X = LIBRARY_HALF_WIDTH - FRIEZE_PROUD;
+
+// How many times the sentence is cut along the run.
+//
+// Four, and the number is a proportion rather than a preference. The run is 15.6m
+// and the band is 490mm, so four repeats make each one 3.90m by 0.49m — an aspect
+// of 7.96 against the atlas tile's 8.00, which is half a per cent of horizontal
+// stretch and is the difference between an inscription and a squashed one. Change
+// either dimension and this number is what has to move to keep the letters round.
+const float SENTENCE_REPEATS = 4.0;
+
 // The reading tables down the middle, and the lamp on each. The pitch is wide
 // because a reading room is mostly floor — tables too close together read as a
 // refectory, and this room is meant to be quiet rather than busy.
@@ -1604,6 +1719,27 @@ vec2 mapShelving(vec3 p) {
   return res;
 }
 
+/**
+ * The frieze band, down both walls.
+ *
+ * Folded on abs(x) exactly as the shelving under it is, and for the same reason: one
+ * run of arithmetic, two runs of joinery. The fold is a union of a box and its
+ * mirror image and is exact, so it costs one sdBox for both walls.
+ *
+ * The lettering is not here. A distance field is a shape and the sentence is a
+ * surface treatment — carving each glyph into this box would put a texture lookup
+ * inside the march, which is the most expensive place in the frame to put anything
+ * and would buy a relief nobody can see at this distance. See surfaceAlbedo.
+ */
+float mapFrieze(vec3 p) {
+  vec3 q = p;
+  q.x = abs(q.x);
+  return sdBox(
+    q - vec3(LIBRARY_HALF_WIDTH - FRIEZE_PROUD * 0.5, FRIEZE_MID_Y, FRIEZE_MID_Z),
+    vec3(FRIEZE_PROUD * 0.5, FRIEZE_HALF_Y, FRIEZE_HALF_Z)
+  );
+}
+
 /** Where the reading lamp on a given table hangs. Read by the geometry and the light. */
 vec3 readingLampPosition(float index) {
   return vec3(0.0, TABLE_TOP_Y + LAMP_RISE, index * TABLE_PITCH);
@@ -1695,6 +1831,7 @@ vec2 mapLibrary(vec3 p) {
 
   res = nearer(res, mapShelving(p));
   res = nearer(res, mapReadingTables(p));
+  res = nearer(res, vec2(mapFrieze(p), MAT_FRIEZE));
 
   return res;
 }
@@ -2392,6 +2529,27 @@ uniform float uLibraryExposure;
 uniform vec3  uLibraryFloor;
 uniform vec3  uLibrarySky;
 uniform float uLibraryDust;
+
+// Floor −2's sentence; see sentence.ts, and the frieze in LIBRARY_GLSL.
+//
+// The only sampler in the hotel. Every other surface in this building is arithmetic
+// all the way down, and this one is arithmetic that had to be tabulated: a line of
+// type is not expressible in closed form, so its distance function is stored rather
+// than evaluated. What the shader does with it is exactly what it does with every
+// other field — mixes two of them and takes a contour — which is the reason this is
+// a sampler2D of distances and not a texture of letters.
+uniform sampler2D uSentence;
+uniform float uScriptFrom;
+uniform float uScriptTo;
+uniform float uMigration;
+
+// How many lines the atlas holds, and how far the field runs before it clamps, in
+// tile pixels. Declared twice — here and in sentence.ts, which GLSL cannot import —
+// and check:docs fails on drift. A drifted tile count samples the wrong line and
+// looks like a font bug; a drifted spread reads the contour at the wrong level and
+// makes every letter in the room thinner or fatter than it was cut.
+const float SENTENCE_TILES  = 4.0;
+const float SENTENCE_SPREAD = 32.0;
 
 // Floor −3's light rig; see rooms/cellar-rig.ts. Six of these seven never vary
 // with the hour either, and the seventh — uAdaptation — is not about the room at

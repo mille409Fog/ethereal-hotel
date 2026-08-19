@@ -230,9 +230,43 @@ when a reader zooms in.
 
 In this order, by ratio of impact to risk:
 
-1. **The Library** — MSDF glyph atlas, eight scripts, morphing interpolation. Get the Arabic and
-   Devanagari shaping right or cut those two; broken shaping is an insult, not an effect. The
-   _room_ is built and lit — what is left is the sentence, which is the phase.
+1. **The Library** — _half landed._ The sentence is cut into the frieze above the shelving, four
+   times down each wall, and migrates: `sentence.ts`, `scripts/build-sentence-atlas.mjs`,
+   `scripts/sentence-field.mjs`, and `MAT_FRIEZE` in `rooms/hotel.frag.ts`. **Four writing systems
+   of the eight** — Latin, Greek, Cyrillic, Hebrew — and the four that are missing are missing for
+   a reason worth keeping on this list rather than resolving quietly.
+
+   Three things about it changed the plan above and should be read as amendments to it.
+
+   **It is an SDF atlas, not an MSDF one, and that is not a shortcut.** MSDF's three channels only
+   mean anything relative to one glyph's own corners; interpolating them between two different
+   scripts produces garbage at exactly the corners MSDF exists to protect. The morph is the whole
+   floor, so the atlas is single-channel true distance — which interpolates to a zero crossing
+   that *travels*, and a travelling zero crossing is a letter changing shape rather than two
+   letters cross-fading. `scripts/sentence-field.test.mjs` asserts precisely that and is the best
+   short statement of why this floor is built the way it is.
+
+   **The shaping problem was solved by not solving it.** The atlas is laid out by Playwright's
+   Chromium, which shapes with HarfBuzz — so ligatures, direction and bidi are answered by the
+   same engine a reader of that script uses daily, and the Hebrew comes back right-to-left for
+   free. That means Arabic and Devanagari are very probably a font subset and a table row away,
+   and the condition attached to them here is now the *other* half of the sentence rather than the
+   shaping half.
+
+   **What is actually left is people, not code.** The four missing scripts are cut on authorship:
+   `docs/aubade-credits.md` states the provenance of every line on the wall, and three of the four
+   that ship already say "not reviewed by a native speaker". Adding a fourth unvouched-for line in
+   an alphabet nobody involved reads is where that stops being honest and starts being decoration.
+   The remaining work is a named person per script who can read it — and the code path is one
+   subset and one row in `SENTENCE_SCRIPTS`, with nothing in the shader, the pipeline or the gates
+   counting to four.
+
+   Also worth carrying forward: this is the piece's **only asset**, against an opening paragraph
+   that says there is no asset pipeline. The reconciliation is in the build script's header and it
+   is not a loophole — what is committed is a sampled distance function, which is the same
+   construction every wall in the building is made of, and the shader does not composite it but
+   evaluates it, mixes two of them and takes a contour. A floor that needed a texture of *pictures*
+   would have been the wrong floor to build.
 2. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
    are the two things most likely to eat a week.
 

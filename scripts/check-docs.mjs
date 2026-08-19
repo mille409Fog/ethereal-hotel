@@ -616,6 +616,154 @@ check('the library keeps its light and loses its writing', () => {
   return problems;
 });
 
+// Floor −2's sentence, which is the floor's subject and the piece's only asset.
+//
+// `verify-shader.mjs` carries the half a frame can see: the library rendered in two
+// writing systems has to be two pictures at night and one picture at noon. What is
+// left for here is everything that is true of the *files* rather than of the image,
+// and all six of these fail without changing a frame on this machine.
+//
+// The `textureLod` one is the sharpest. `surfaceAlbedo` is reached from a branch on
+// which material a ray landed on — non-uniform control flow, where a fetch that wants
+// implicit derivatives is undefined behaviour. A desktop driver does the obvious
+// thing and renders it correctly; a tile-based mobile GPU is entitled to render
+// nothing. There is no way to catch that here except by reading the source, because
+// the machine that would fail is never the machine running the gate.
+check('the library says something, and stops saying it at dawn', () => {
+  const data = 'src/aubade/sentence.ts';
+  const shader = 'src/aubade/rooms/hotel.frag.ts';
+  const renderer = 'src/aubade/renderer.ts';
+  const credits = 'docs/aubade-credits.md';
+
+  if (!exists(data)) {
+    return [`${data} is gone, but CLAUDE.md and AUBADE.md both describe Floor −2's sentence.`];
+  }
+
+  const problems = [];
+  const sentence = read(data);
+  const glsl = read(shader);
+
+  // Which writing systems actually ship. AUBADE licenses cutting the ones whose
+  // shaping cannot be got right, so this is a list rather than a constant, and
+  // everything below is checked against its length rather than against four.
+  const table = /export const SENTENCE_SCRIPTS[\s\S]*?\n\];/.exec(sentence);
+  const shipped = table === null ? [] : [...table[0].matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
+
+  if (shipped.length === 0) {
+    return [`${data} declares no writing systems, so Floor −2 has no subject.`];
+  }
+
+  // The two constants GLSL cannot import and so has to be told twice. A drifted tile
+  // count samples the wrong line — or off the end of the atlas, which returns the
+  // clamped edge and renders as a blank frieze. A drifted spread reads the contour at
+  // the wrong level and makes every letter in the room thinner or fatter than it was
+  // cut, which looks like a font choice.
+  const tiles = /const float SENTENCE_TILES\s*=\s*([\d.]+);/.exec(glsl);
+  if (tiles === null || Number(tiles[1]) !== shipped.length) {
+    problems.push(
+      `${shader} declares SENTENCE_TILES as ${tiles === null ? 'nothing' : tiles[1]}, but ` +
+        `${data} ships ${shipped.length} writing systems (${shipped.join(', ')}). GLSL cannot ` +
+        `import the table, so the number is written twice and this is the only thing that ` +
+        `notices when they disagree.`
+    );
+  }
+
+  const declaredSpread = /const float SENTENCE_SPREAD\s*=\s*([\d.]+);/.exec(glsl);
+  const builtSpread = /export const ATLAS_SPREAD = (\d+);/.exec(sentence);
+  if (
+    declaredSpread === null ||
+    builtSpread === null ||
+    Number(declaredSpread[1]) !== Number(builtSpread[1])
+  ) {
+    problems.push(
+      `${shader}'s SENTENCE_SPREAD and ${data}'s ATLAS_SPREAD disagree ` +
+        `(${declaredSpread?.[1] ?? 'missing'} against ${builtSpread?.[1] ?? 'missing'}). The ` +
+        `atlas is built at one and read at the other, and the mismatch shows up as lettering ` +
+        `that is uniformly too heavy or too light rather than as anything obviously broken.`
+    );
+  }
+
+  // The floor's answer to the sun, applied to its subject. Without it the library has
+  // writing in it at noon, which is the one thing Floor −2 exists to refuse — and it
+  // is invisible at every other hour.
+  if (!/letter \*= uInk;/.test(glsl)) {
+    problems.push(
+      `${shader} no longer multiplies the frieze's lettering by uInk. The sentence has to fade ` +
+        `by exactly the rule the gilt on the spines follows, or Floor −2 keeps its subject at ` +
+        `noon in a room whose whole argument is that it does not.`
+    );
+  }
+
+  // Non-uniform control flow. See the note above this check.
+  if (/[^a-zA-Z]texture\(uSentence/.test(glsl) || !/textureLod\(uSentence/.test(glsl)) {
+    problems.push(
+      `${shader} fetches the sentence atlas with texture() rather than textureLod(). ` +
+        `surfaceAlbedo runs inside a branch on the material, so an implicit-derivative fetch is ` +
+        `undefined behaviour there: correct on the desktop driver this was written on, and ` +
+        `entitled to render nothing on a tiler.`
+    );
+  }
+
+  // The clock. A renderer that never calls migrationAt renders one script for ever,
+  // which is a perfectly good-looking library and is not this floor.
+  if (exists(renderer) && !/migrationAt\(/.test(read(renderer))) {
+    problems.push(
+      `${renderer} no longer calls migrationAt. The sentence would sit in whichever writing ` +
+        `system the uniforms last held, and a library with one unchanging inscription in it is ` +
+        `exactly what Floor −2 is not.`
+    );
+  }
+
+  // The built atlas, and whether it is the shape the table implies. Adding a writing
+  // system without rebuilding leaves a stale file whose last tile is somebody else's
+  // line, or is off the end of the texture.
+  const atlas = 'public/aubade-sentence.png';
+  if (!exists(atlas)) {
+    problems.push(
+      `${atlas} is missing. Floor −2's frieze renders as bare stone at every hour, which is ` +
+        `indistinguishable from the shuttered hour working correctly. Run \`npm run build:sentence\`.`
+    );
+  } else {
+    const bytes = readFileSync(path.join(repoRoot, atlas));
+    const width = bytes.readUInt32BE(16);
+    const height = bytes.readUInt32BE(20);
+    const tileWidth = Number(/export const ATLAS_TILE_WIDTH = (\d+);/.exec(sentence)?.[1] ?? 0);
+    const tileHeight = Number(/export const ATLAS_TILE_HEIGHT = (\d+);/.exec(sentence)?.[1] ?? 0);
+
+    if (width !== tileWidth || height !== tileHeight * shipped.length) {
+      problems.push(
+        `${atlas} is ${width}×${height}, but ${data} implies ` +
+          `${tileWidth}×${tileHeight * shipped.length} — ${shipped.length} lines at ` +
+          `${tileWidth}×${tileHeight}. The committed atlas is stale; run ` +
+          `\`npm run build:sentence\`.`
+      );
+    }
+  }
+
+  // AUBADE's sixth non-negotiable, which is about translations as much as about audio:
+  // "no scraped text ... an unattributed translation is worse". Every line on the wall
+  // has to be accounted for by name.
+  if (!exists(credits)) {
+    problems.push(
+      `${credits} is missing, but Floor −2 puts four translations on a wall. AUBADE's sixth ` +
+        `non-negotiable says an unattributed translation is worse than a takedown notice.`
+    );
+  } else {
+    const sourced = read(credits);
+    for (const id of shipped) {
+      if (!new RegExp(`\`${id}\``).test(sourced)) {
+        problems.push(
+          `${credits} has no entry for the '${id}' line, which ships on the frieze. A translation ` +
+            `on a wall with no stated provenance is the thing AUBADE's sixth non-negotiable ` +
+            `names outright.`
+        );
+      }
+    }
+  }
+
+  return problems;
+});
+
 // Floor −3's one idea, and it is the only floor whose claim is not about the room.
 //
 // The three floors above answer the sun with light, with the absence of light, and

@@ -24,6 +24,7 @@
 export interface IStubFailures {
   createShader?: boolean;
   createProgram?: boolean;
+  createTexture?: boolean;
   compile?: boolean;
   link?: boolean;
   contextLost?: boolean;
@@ -98,6 +99,11 @@ export const STUB_UNIFORM_NAMES = [
   'uLibraryFloor',
   'uLibrarySky',
   'uLibraryDust',
+  // Floor −2's sentence — see sentence.ts. The sampler is the only one in the piece.
+  'uSentence',
+  'uScriptFrom',
+  'uScriptTo',
+  'uMigration',
   'uCandleColour',
   'uCandleStrength',
   'uAdaptation',
@@ -136,6 +142,22 @@ export class StubWebGL2 {
   public readonly DEPTH_TEST = 0x0b71;
   public readonly CULL_FACE = 0x0b44;
   public readonly BLEND = 0x0be2;
+
+  // Texturing, for Floor −2's sentence atlas — the only sampled surface in the
+  // hotel. See src/aubade/sentence.ts.
+  public readonly TEXTURE_2D = 0x0de1;
+  public readonly TEXTURE0 = 0x84c0;
+  public readonly R8 = 0x8229;
+  public readonly RED = 0x1903;
+  public readonly UNSIGNED_BYTE = 0x1401;
+  public readonly TEXTURE_MAG_FILTER = 0x2800;
+  public readonly TEXTURE_MIN_FILTER = 0x2801;
+  public readonly TEXTURE_WRAP_S = 0x2802;
+  public readonly TEXTURE_WRAP_T = 0x2803;
+  public readonly LINEAR = 0x2601;
+  public readonly REPEAT = 0x2901;
+  public readonly CLAMP_TO_EDGE = 0x812f;
+  public readonly UNPACK_ALIGNMENT = 0x0cf5;
 
   /** Every call, in order. The assertions are mostly about this. */
   public readonly calls: IRecordedCall[] = [];
@@ -262,6 +284,50 @@ export class StubWebGL2 {
   public deleteProgram(program: object): void {
     this.record('deleteProgram', program);
     this.live.delete(program);
+  }
+
+  // -- texturing ------------------------------------------------------------
+  //
+  // Floor −2's sentence is the one thing in this piece that is sampled rather than
+  // evaluated, so the stub has to be able to hold a texture. Handles go into `live`
+  // like programs do, which is what lets the disposal test keep asserting that the
+  // renderer gives back everything it took.
+
+  public createTexture(): object | null {
+    this.record('createTexture');
+    if (this.failures.createTexture === true) {
+      return null;
+    }
+    const texture = handle('texture');
+    this.live.add(texture);
+    return texture;
+  }
+
+  public bindTexture(target: number, texture: object | null): void {
+    this.record('bindTexture', target, texture);
+  }
+
+  public activeTexture(unit: number): void {
+    this.record('activeTexture', unit);
+  }
+
+  public texImage2D(...args: readonly unknown[]): void {
+    this.record('texImage2D', ...args);
+  }
+
+  public texParameteri(target: number, name: number, value: number): void {
+    this.record('texParameteri', target, name, value);
+  }
+
+  public pixelStorei(name: number, value: number): void {
+    this.record('pixelStorei', name, value);
+  }
+
+  public deleteTexture(texture: object | null): void {
+    this.record('deleteTexture', texture);
+    if (texture !== null) {
+      this.live.delete(texture);
+    }
   }
 
   public getActiveUniform(program: object, index: number): { name: string } | null {

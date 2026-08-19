@@ -52,6 +52,7 @@ import {
 } from './gl/quality';
 import { drawingBufferSize, resizeDrawingBuffer } from './gl/viewport';
 import { benchMask, filmFrameAt, type IBench, type IFilmFrame } from './projection';
+import { migrationAt, SENTENCE_ATLAS_PATH } from './sentence';
 import { FULLSCREEN_VERTEX_SHADER } from './rooms/fullscreen.vert';
 import type { ICellarRig } from './rooms/cellar-rig';
 import type { ICorridorRig } from './rooms/corridor-rig';
@@ -130,6 +131,8 @@ export class HotelRenderer {
   private readonly program: WebGLProgram;
   private readonly uniforms: Map<string, WebGLUniformLocation | null>;
 
+  private readonly sentence: WebGLTexture | null;
+
   private governor: IGovernorState = INITIAL_GOVERNOR;
   private cssWidth = 1;
   private cssHeight = 1;
@@ -153,7 +156,102 @@ export class HotelRenderer {
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.BLEND);
 
+    this.sentence = this.createSentenceTexture();
+    void this.loadSentence();
+
     this.measure();
+  }
+
+  /**
+   * The atlas's texture, bound immediately and empty.
+   *
+   * One byte of zero, which the shader reads as "a long way outside every stroke" —
+   * so between the first frame and the atlas arriving over the network, Floor −2 is
+   * a fully lit library with a bare stone band above the shelving. That is not a
+   * loading state dressed up: it is *exactly* the picture the room shows at noon,
+   * when `uInk` is zero and there is nothing written anywhere in it. So a visitor on
+   * a slow connection sees the room in one of its real states rather than a hole,
+   * and if the fetch fails outright they keep it.
+   *
+   * @returns The texture, or `null` where there is no context to make one on.
+   */
+  private createSentenceTexture(): WebGLTexture | null {
+    const gl = this.gl;
+    const texture = gl.createTexture();
+    if (texture === null) {
+      return null;
+    }
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    // A 1024-wide R8 row is a multiple of four and would not need this; the 1×1
+    // placeholder below is not, and an alignment fault here is a diagonal smear
+    // rather than an error.
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 1, 1, 0, gl.RED, gl.UNSIGNED_BYTE, new Uint8Array([0]));
+
+    // Linear, and no mip chain. The shader's fetches are all `textureLod` at level
+    // zero — see `sentenceAt` — because it samples from non-uniform control flow,
+    // where implicit derivatives are undefined. The level of detail is done in the
+    // shader by widening the contour with distance instead.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    // Repeating across, because the inscription repeats along the run and the seam
+    // between one cutting of it and the next has to filter across correctly. Clamped
+    // up and down, because the stack of lines has no wrap: a fetch off the top of
+    // the first script must not return the bottom of the last.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    gl.uniform1i(this.at('uSentence'), 0);
+    return texture;
+  }
+
+  /**
+   * Fetch the built atlas and upload it, if this browser and this page can.
+   *
+   * Deliberately not awaited by anything and deliberately unable to fail loudly. The
+   * route's second non-negotiable is that the piece never blocks, and a sentence is
+   * not a precondition for a hotel: every failure below leaves the placeholder in
+   * place and the library rendering the picture described on `createSentenceTexture`.
+   *
+   * `colorSpaceConversion: 'none'` is the line that matters. The atlas is a sampled
+   * distance function that happens to be shaped like a greyscale image, and a browser
+   * that helpfully colour-manages it moves every contour in the room.
+   */
+  private async loadSentence(): Promise<void> {
+    // Reached through `window` for the same reason `pixelRatio` is: this file is
+    // linted with no assumed globals, and a bare `fetch` is an undeclared identifier
+    // rather than a browser API.
+    if (this.sentence === null || typeof window.createImageBitmap !== 'function') {
+      return;
+    }
+
+    try {
+      const response = await window.fetch(SENTENCE_ATLAS_PATH);
+      if (!response.ok) {
+        return;
+      }
+
+      const bitmap = await window.createImageBitmap(await response.blob(), {
+        colorSpaceConversion: 'none',
+        premultiplyAlpha: 'none',
+      });
+
+      if (this.disposed || this.gl.isContextLost()) {
+        bitmap.close();
+        return;
+      }
+
+      const gl = this.gl;
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.sentence);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, gl.RED, gl.UNSIGNED_BYTE, bitmap);
+      bitmap.close();
+    } catch {
+      // An offline visitor, a blocked request, a decoder that will not take the
+      // file: all of them are the shuttered library, which is a real room.
+    }
   }
 
   /**
@@ -346,6 +444,15 @@ export class HotelRenderer {
     gl.uniform3f(this.at('uLibrarySky'), ...library.ambientSky);
     gl.uniform1f(this.at('uLibraryDust'), library.dust);
 
+    // Which two writing systems the sentence is between, and how far. Evaluated at
+    // the room's own clock rather than at the camera's: `cameraSeconds` is bent
+    // towards the projector's quantised time near Floor −4, and the library is two
+    // floors above the nearest place that is true.
+    const migration = migrationAt(seconds);
+    gl.uniform1f(this.at('uScriptFrom'), migration.from);
+    gl.uniform1f(this.at('uScriptTo'), migration.to);
+    gl.uniform1f(this.at('uMigration'), migration.across);
+
     const cellar = hotel.cellar;
     gl.uniform3f(this.at('uCandleColour'), ...cellar.candleColour);
     gl.uniform1f(this.at('uCandleStrength'), cellar.candleStrength);
@@ -383,6 +490,7 @@ export class HotelRenderer {
 
     if (!this.gl.isContextLost()) {
       this.gl.deleteProgram(this.program);
+      this.gl.deleteTexture(this.sentence);
       this.gl.getExtension('WEBGL_lose_context')?.loseContext();
     }
   }

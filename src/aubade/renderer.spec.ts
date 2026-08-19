@@ -477,3 +477,84 @@ describe('disposal', () => {
     expect(gl.called('deleteProgram')).toBe(false);
   });
 });
+
+describe("Floor −2's sentence", () => {
+  it('binds an empty atlas before anything has been fetched', () => {
+    // The placeholder is one byte of zero, which the shader reads as "a long way
+    // outside every stroke". So the first frame of the library is a fully lit
+    // reading room with a bare stone frieze — which is not a loading state, it is
+    // exactly the room at noon. A visitor whose network never delivers keeps it.
+    const { gl } = build();
+
+    expect(gl.called('createTexture')).toBe(true);
+    const uploads = gl.callsTo('texImage2D');
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0].args).toContain(gl.R8);
+  });
+
+  it('puts the atlas on unit 0, where the shader looks for it', () => {
+    const { gl } = build();
+
+    expect(gl.callsTo('activeTexture')[0].args).toEqual([gl.TEXTURE0]);
+    expect(gl.uniformValue('uSentence')).toEqual([0]);
+  });
+
+  it('asks for no mip chain, because the shader fetches at a fixed level', () => {
+    // Every fetch in `sentenceAt` is textureLod — surfaceAlbedo runs inside a branch
+    // on the material, where implicit derivatives are undefined. A minification
+    // filter that wanted mips would sample an incomplete texture and render nothing.
+    const { gl } = build();
+    const filters = new Map(
+      gl.callsTo('texParameteri').map((call) => [call.args[1], call.args[2]])
+    );
+
+    expect(filters.get(gl.TEXTURE_MIN_FILTER)).toBe(gl.LINEAR);
+    expect(filters.get(gl.TEXTURE_MAG_FILTER)).toBe(gl.LINEAR);
+    // Repeating along the run, because the inscription is cut four times down each
+    // wall and the seams have to filter across; clamped up and down, because the
+    // stack of writing systems has no wrap and must not fetch the next one.
+    expect(filters.get(gl.TEXTURE_WRAP_S)).toBe(gl.REPEAT);
+    expect(filters.get(gl.TEXTURE_WRAP_T)).toBe(gl.CLAMP_TO_EDGE);
+  });
+
+  it('survives a driver that will not give it a texture', () => {
+    // Same shape as every other failure on this route: no sentence is a room, and a
+    // thrown error is a blank page.
+    const gl = new StubWebGL2({ createTexture: true });
+    const renderer = HotelRenderer.create(stubCanvas(gl));
+
+    expect(renderer).not.toBeNull();
+    expect(renderer?.render(frame(), at(NIGHT))).toBe(true);
+  });
+
+  it('sends the two writing systems the clock is between', () => {
+    const { gl, renderer } = build();
+    renderer.render(frame(), at(NIGHT));
+
+    // At second zero the sentence is settled in the first script, so both indices
+    // are 0 and the morph is *exactly* 0 — the shader mixes two sampled fields by
+    // this number, and a residual fraction is every letterform in the room
+    // permanently a little way into the next alphabet's shape.
+    expect(gl.uniformValue('uScriptFrom')).toEqual([0]);
+    expect(gl.uniformValue('uScriptTo')).toEqual([0]);
+    expect(gl.uniformValue('uMigration')).toEqual([0]);
+  });
+
+  it('is partway between two of them once the dissolve has started', () => {
+    const { gl, renderer } = build();
+    // Into the first dissolve: six seconds settled, then three across.
+    renderer.render(frame({ simulatedSeconds: 7.5, alpha: 0 }), at(NIGHT));
+
+    expect(gl.uniformValue('uScriptFrom')).toEqual([0]);
+    expect(gl.uniformValue('uScriptTo')).toEqual([1]);
+    expect(gl.uniformValue('uMigration')?.[0]).toBeCloseTo(0.5, 6);
+  });
+
+  it('gives the atlas back with everything else', () => {
+    const { gl, renderer } = build();
+    renderer.dispose();
+
+    expect(gl.callsTo('deleteTexture')).toHaveLength(1);
+    expect(gl.live.size).toBe(0);
+  });
+});

@@ -66,7 +66,7 @@
  * −1's Definition of Done asks for, which is whether a stranger reads the missing
  * reflection as deliberate inside ten seconds. That needs a stranger.
  */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -80,6 +80,7 @@ import { corridorRigFor } from '../src/aubade/rooms/corridor-rig.ts';
 import { libraryRigFor } from '../src/aubade/rooms/library-rig.ts';
 import { projectionRigFor } from '../src/aubade/rooms/projection-rig.ts';
 import { benchMask, filmFrameAt, THREADED } from '../src/aubade/projection.ts';
+import { migrationAt, SENTENCE_ATLAS_PATH } from '../src/aubade/sentence.ts';
 import { rigFor } from '../src/aubade/rooms/light-rig.ts';
 import { breathAt } from '../src/aubade/cellar.ts';
 import { AUBADE_STATES } from '../src/aubade/solar/state.ts';
@@ -161,6 +162,28 @@ const invited = hasFlag('invited');
 const FRAME_SECONDS = 3.7;
 const LATER_SECONDS = 9.37;
 
+/**
+ * Floor −2's second frame: the same room, the same instant, another writing system.
+ *
+ * The third probe, and it is a different *kind* of second frame from the two above
+ * it. `arriving` changes the visitor and `later` changes the clock; this one changes
+ * neither. It is the library at the same second, with the same dust in the same
+ * places and the same camera, and the only difference in the entire frame is which
+ * of the four lines is cut into the frieze.
+ *
+ * That isolation is what makes the assertion at the foot of this file exact rather
+ * than statistical. Compared against `library`, the pair must differ wherever there
+ * is ink and be **identical to the byte** at the shuttered hour, where `uInk` is zero
+ * and the band is bare stone — because with the clock held still there is nothing
+ * else left that could differ. Had this been done by taking the library twelve
+ * seconds later instead, the dust would have drifted and the noon pair could only
+ * ever have been compared with a tolerance.
+ *
+ * Settled in the second script rather than mid-dissolve, so what is being compared is
+ * two finished sentences rather than one sentence and a blend.
+ */
+const TURNED = { from: 1, to: 1, across: 0 };
+
 const FLOORS = [
   { name: 'lobby', depth: 0 },
   { name: 'lift', depth: 0.5 },
@@ -173,6 +196,7 @@ const FLOORS = [
   { name: 'threading', depth: 3.5 },
   { name: 'projection', depth: 4, after: FRAME_SECONDS },
   { name: 'later', depth: 4, after: LATER_SECONDS, probe: true },
+  { name: 'turning', depth: 2, script: TURNED, probe: true },
 ];
 
 /** The entries `--out` writes only when they are asked for by name. */
@@ -207,9 +231,25 @@ const depthOverride = readFlag('depth', null);
  * floors' anchors and sags in the middle of the ride. A single camera would put
  * the corridor's frames in the lobby's eye position, which is inside a wall.
  */
+/**
+ * The built sentence atlas, as a data URL for the page.
+ *
+ * Read from `public/` rather than rebuilt, because what this script verifies is what
+ * ships — the same committed file the browser fetches on the live route. A missing
+ * one is reported below rather than thrown: the shader still compiles and every
+ * floor but one still renders, and a run that says "the library has no sentence in
+ * it" is more use than a stack trace.
+ */
+const atlasFile = path.join(repoRoot, 'public', path.basename(SENTENCE_ATLAS_PATH));
+const sentenceAtlas = await readFile(atlasFile).then(
+  (bytes) => `data:image/png;base64,${bytes.toString('base64')}`,
+  () => null
+);
+
 const job = {
   vertexSource: FULLSCREEN_VERTEX_SHADER,
   fragmentSource: HOTEL_FRAGMENT_SHADER,
+  sentenceAtlas,
   width,
   height,
   seconds,
@@ -242,6 +282,10 @@ const job = {
         cellar: cellarRigFor(state, invited),
         projection,
         seconds: at,
+        // Which two of Floor −2's four writing systems are on the wall, from the
+        // same function the renderer calls — unless the entry names one, which only
+        // the `turning` probe does. See TURNED.
+        script: floor.script ?? migrationAt(at),
         filmTime: film.time,
         filmFrame: film.index,
         // The bench as a visitor finds it: everything on. A run with the stack
@@ -306,6 +350,10 @@ const job = {
     'uLibraryFloor',
     'uLibrarySky',
     'uLibraryDust',
+    'uSentence',
+    'uScriptFrom',
+    'uScriptTo',
+    'uMigration',
     'uCandleColour',
     'uCandleStrength',
     'uAdaptation',
@@ -344,7 +392,7 @@ const job = {
  *
  * @param {typeof job} input
  */
-function renderInPage(input) {
+async function renderInPage(input) {
   const canvas = document.createElement('canvas');
   canvas.width = input.width;
   canvas.height = input.height;
@@ -397,6 +445,29 @@ function renderInPage(input) {
   gl.uniform1i(at('uShadowSteps'), input.tier.shadowSteps);
   gl.uniform1i(at('uVolumetricSamples'), input.tier.volumetricSamples);
 
+  // Floor −2's sentence atlas, on unit 0. Uploaded exactly as `renderer.ts` uploads
+  // it, including the colour-space conversion being switched off: the atlas is a
+  // sampled distance function that happens to be shaped like a greyscale image, and
+  // a browser that helpfully colour-manages it moves every contour in the room.
+  let sentenceLoaded = false;
+  if (input.sentenceAtlas !== null) {
+    const image = new Image();
+    image.src = input.sentenceAtlas;
+    await image.decode();
+
+    const texture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, gl.RED, gl.UNSIGNED_BYTE, image);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.uniform1i(at('uSentence'), 0);
+    sentenceLoaded = true;
+  }
+
   gl.viewport(0, 0, input.width, input.height);
 
   const rendered = [];
@@ -447,6 +518,10 @@ function renderInPage(input) {
     gl.uniform3f(at('uLibraryFloor'), library.ambientFloor[0], library.ambientFloor[1], library.ambientFloor[2]);
     gl.uniform3f(at('uLibrarySky'), library.ambientSky[0], library.ambientSky[1], library.ambientSky[2]);
     gl.uniform1f(at('uLibraryDust'), library.dust);
+
+    gl.uniform1f(at('uScriptFrom'), frame.script.from);
+    gl.uniform1f(at('uScriptTo'), frame.script.to);
+    gl.uniform1f(at('uMigration'), frame.script.across);
 
     const cellar = frame.cellar;
     gl.uniform3f(at('uCandleColour'), cellar.candleColour[0], cellar.candleColour[1], cellar.candleColour[2]);
@@ -556,7 +631,7 @@ function renderInPage(input) {
     });
   }
 
-  return { ok: true, declared, frames: rendered };
+  return { ok: true, declared, sentenceLoaded, frames: rendered };
 }
 const browser = await chromium.launch();
 const page = await browser.newPage();
@@ -728,6 +803,60 @@ if (onlyState === null && !invited) {
           `reaching the shader but is not doing enough to be seen, which makes the floor's one ` +
           `answer to the clock invisible.`
       );
+    }
+
+    // And the sentence, which is a fourth different *shape* of claim again — a pair
+    // of scripts. The lobby and the corridor are asserted as an ordering over five
+    // frames, the library's light as a flat mean, the cellar as a pair of visitors
+    // and the projection box as a pair of instants. This one holds the clock, the
+    // camera, the dust and the light all still and changes one thing: which of the
+    // four writing systems is cut into the frieze.
+    //
+    // Both halves matter and they fail in opposite directions. If the two frames
+    // never differ, the atlas is not reaching the shader and the room has one
+    // sentence in one hand — the phase has silently not happened, under a frieze
+    // that still looks like an inscription. If they differ at noon, the sentence is
+    // not obeying uInk, and Floor −2's answer to the sun has a hole in it exactly
+    // where its subject is.
+    const turning = floorFrames('turning');
+
+    if (!result.sentenceLoaded) {
+      problems.push(
+        `No sentence atlas: ${path.relative(repoRoot, atlasFile)} could not be read. Floor −2's ` +
+          `frieze rendered as bare stone at every hour, which is what the shuttered hour is ` +
+          `supposed to look like and nothing else should. Run \`npm run build:sentence\`.`
+      );
+    } else if (turning.length === AUBADE_STATES.length) {
+      for (const settled of library) {
+        const other = turning.find((frame) => frame.state === settled.state);
+        if (other === undefined) {
+          continue;
+        }
+
+        // Byte-identical, and it can be, because nothing but the script differs
+        // between the two frames — see TURNED. This is the only place in this file
+        // where a fingerprint comparison is the *right* test rather than a blunt
+        // one, and it is for the same reason Floor −4's noon pair can use one.
+        const identical = settled.fingerprint === other.fingerprint;
+
+        if (settled.state === 'shuttered') {
+          if (!identical) {
+            problems.push(
+              `At noon the library is a different picture in its first writing system than in ` +
+                `its second. uInk is exactly zero at the shuttered hour, so the frieze is bare ` +
+                `stone and which line is cut into it cannot possibly matter — unless the ` +
+                `sentence is being drawn from something other than uInk, in which case Floor ` +
+                `−2 has writing left in it at noon.`
+            );
+          }
+        } else if (identical) {
+          problems.push(
+            `At ${settled.state} the library renders identically whichever writing system is on ` +
+              `the wall. The sentence is the floor: either the atlas is not bound, uScriptFrom ` +
+              `is not reaching the shader, or every tile in the atlas holds the same line.`
+          );
+        }
+      }
     }
   }
 
