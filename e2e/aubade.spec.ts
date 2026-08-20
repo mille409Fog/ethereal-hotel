@@ -248,12 +248,32 @@ test.describe('the aubade route', () => {
     // back up at noon would have been handed this floor's whole answer to the clock.
     await expect(page.getByText(/The hour sets the rate/)).toBeVisible();
 
+    // One floor further, to the bottom. The Projection Room used to be it, and the
+    // assertion that the shaft ended there was correct until Floor −5 landed — which
+    // is the second time this comment has had to be written and is why the shape of
+    // the test is now "ride to the end" rather than "ride four times".
+    await page.getByRole('button', { name: /Take the lift down/ }).click();
+
+    await expect(page.getByText('The Box')).toBeVisible();
+    await expect(page.getByText(/libretto/)).toBeVisible();
+
+    // The bench belongs to the floor above and has to have gone with it. A control
+    // surface that survives the room it operates is the clearest possible way to
+    // tell a visitor that none of this is real.
+    await expect(page.locator('.bench__input')).toHaveCount(0);
+
+    // The floor's silence, said out loud. AUBADE's sixth non-negotiable turns the
+    // absent aria into a promise about provenance rather than an unfinished feature,
+    // and the only way that reads as a decision is if the room says so — otherwise a
+    // visitor spends the floor hunting for a mute button.
+    await expect(page.getByText(/no sound on this floor/i)).toBeVisible();
+
     // *Now* the shaft ends, so there is one control and it goes up.
     await expect(page.getByRole('button', { name: /Take the lift down/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Take the lift up/ })).toBeEnabled();
 
     const label = await page.locator('canvas').getAttribute('aria-label');
-    expect(label).toContain('projection box');
+    expect(label).toContain('opera box');
     expect(label).toContain('drawn in real time');
 
     expect(errors).toEqual([]);

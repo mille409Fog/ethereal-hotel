@@ -49,6 +49,8 @@
  *   uDepth = 3            the cellar's field, exactly
  *   3 < uDepth < 4        cellar and projection box evaluated and mixed — a ride
  *   uDepth = 4            the projection box's field, exactly
+ *   4 < uDepth < 5        projection box and the Box evaluated and mixed — a ride
+ *   uDepth = 5            the Box's field, exactly
  *
  * AUBADE's phase note says a third room does not extend a two-room design for
  * free, and names the fork: either `mapScene` starts branching on which pair is
@@ -107,7 +109,7 @@
  *   uTime               the room's clock in seconds (simulated, not wall clock)
  *   uEye, uTarget       camera pose from `camera/drift.ts`
  *   uRoll               camera roll in radians
- *   uDepth              the lift: 0 Floor 0, 1 Floor −1, 2 Floor −2
+ *   uDepth              the lift: 0 Floor 0, down to 5 Floor −5
  *   uMarchSteps         primary march iteration cap    ┐ the quality ladder,
  *   uShadowSteps        soft-shadow iteration cap      │ from `gl/quality.ts`
  *   uVolumetricSamples  samples along the view ray     ┘
@@ -292,6 +294,9 @@ const float MAT_IRON     = 21.0;
 const float MAT_ARC      = 22.0;
 const float MAT_SCREEN   = 23.0;
 const float MAT_FRIEZE   = 24.0;
+const float MAT_VELVET   = 25.0;
+const float MAT_GILT     = 26.0;
+const float MAT_LUSTRE   = 27.0;
 
 // How far outside a bounding box a ray may be before the box stands in for its
 // contents. Comfortably above SURFACE_EPSILON, so a ray can never terminate on a
@@ -635,6 +640,53 @@ vec3 surfaceAlbedo(float id, vec3 p, out float roughness, out float metallic) {
     return vec3(0.006, 0.008, 0.009);
   }
 
+  if (id == MAT_VELVET) {
+    // Floor −5, and most of the near half of that frame. Silk velvet, which is not
+    // the same material as the corridor's wool runner and must not be shaded like
+    // it: wool scatters and velvet does not, because velvet is a forest of upright
+    // fibres and what it does with light depends almost entirely on whether you are
+    // looking along them or across them.
+    //
+    // That is sheen, and it is the whole of why this material exists rather than
+    // reusing MAT_RUNNER. It is a retroreflective rim — brightest where the surface
+    // turns away from the eye, which is the exact opposite of a specular highlight
+    // and is the thing that makes velvet unmistakable in a photograph. Without it a
+    // box lined in this stuff reads as red felt, and the room loses the one surface
+    // quality that says money.
+    //
+    // The rim cannot be computed here, because surfaceAlbedo has no view vector. So
+    // what this returns is the ground, and shadeSurface adds the sheen — see the
+    // Floor −5 block there, which is the only place in this shader where a material
+    // is finished outside this function.
+    float pile = sin(p.x * 190.0) * sin(p.y * 176.0) * 0.004;
+    roughness = 0.90;
+    return vec3(0.098, 0.014, 0.021) + pile;
+  }
+
+  if (id == MAT_GILT) {
+    // The balustrade's roll, the chair frames, the tier lips and the proscenium.
+    // Water gilding over a red bole, which is why the same gold reads warmer here
+    // than the library's spines do — where the leaf has worn through, what is under
+    // it is the clay, and the clay is the colour of the room.
+    //
+    // Metallic, unlike the library's gilt, which is a paint. This is leaf, and leaf
+    // is metal: it has no diffuse term at all and its colour lives in the specular.
+    // That distinction is what stops the proscenium from glowing evenly in the dark
+    // at thirty-four metres, which is what it did when it was first shaded as MAT_BRASS.
+    metallic  = 1.0;
+    roughness = 0.34;
+    return vec3(0.62, 0.44, 0.17);
+  }
+
+  if (id == MAT_LUSTRE) {
+    // The chandelier's drops. Cut lead crystal, which is neither a metal nor a
+    // diffuse surface — what it is, is a lot of small flat faces at angles, and the
+    // only honest cheap model of that is a very tight lobe on an almost black
+    // ground. The light in them is the chandelier's own, added in shadeSurface.
+    roughness = 0.045;
+    return vec3(0.030, 0.029, 0.033);
+  }
+
   roughness = 0.5;
   return vec3(0.1);
 }
@@ -728,7 +780,8 @@ vec3 tonemap(vec3 colour) {
   colour *= uExposure * (floorWeight(0.0) + floorWeight(1.0)) +
             uLibraryExposure * floorWeight(2.0) +
             uCellarExposure * floorWeight(3.0) +
-            uProjectionExposure * floorWeight(4.0);
+            uProjectionExposure * floorWeight(4.0) +
+            uBoxExposure * floorWeight(5.0);
   return clamp((colour * (2.51 * colour + 0.03)) / (colour * (2.43 * colour + 0.59) + 0.14), 0.0, 1.0);
 }
 
@@ -2474,6 +2527,450 @@ vec2 mapProjection(vec3 p) {
 `;
 
 /**
+ * Floor −5 — The Box. An opera box, and the only room in this hotel that is not a
+ * room you are in.
+ *
+ * AUBADE's floor table gives it two sentences: "Opera. A single aria drives the
+ * geometry. Silent by default — must be beautiful with the sound off, because for
+ * most visitors it will be." Both halves shaped this floor, and the second one
+ * shaped it more than the first.
+ *
+ * ## The subject is on the other side of the balustrade
+ *
+ * Every room above this one is a volume with the visitor standing in the middle of
+ * it. This one is a ledge, two metres deep, with the whole subject of the floor
+ * outside it: the auditorium — the *house* — which at astronomical night is
+ * thirty-four metres of dark with a chandelier hanging in it and tiers of boxes
+ * going away on both sides. The box itself is small, close, red, and entirely
+ * secondary. That asymmetry is the room.
+ *
+ * It is also why this is the one floor where the lift is behind the visitor rather
+ * than at the far end of the shot. Every other room puts its doors in frame, and
+ * this one cannot: the far end of this room is the thing the room is for. A box is
+ * a place you look *out* of, and a camera turned round to keep the lift in shot
+ * would be a camera pointed at the back of the only floor with a view.
+ *
+ * ## What the sun does, and why it is a length
+ *
+ * **The house closes in.** `uHouse` is how deep the auditorium is, in metres, and it
+ * is the whole of this floor's answer to the hour: thirty-four at astronomical
+ * night, twenty-two, thirteen, six, and at the shuttered hour **exactly zero** —
+ * where the front wall is solid and flush with the balustrade and the Box is a
+ * sealed velvet cupboard about two metres deep. See `rooms/box-rig.ts` for why the
+ * sixth floor could not answer with a sixth weight in [0, 1], and for what the
+ * daytime picture is instead.
+ *
+ * The exactness is load-bearing in a way the other floors' zeros are not. `uInk`,
+ * `uAdaptation` and `uBurn` scale things that are in the scene either way; this
+ * decides whether a scene *exists*. At zero, `mapHouse` is never called — so noon
+ * on Floor −5 is the only state in this building that costs less to draw than its
+ * own night, and a `uHouse` of 0.02 is not a slightly shallower room, it is a
+ * two-centimetre slot with a chandelier crushed into it, drawn at full price.
+ *
+ * ## What the voice does, and what it does not
+ *
+ * The aria displaces the house and nothing else. The tiers breathe with the low
+ * bands, the chandelier's lustres ride the middle ones, and the proscenium's gilt
+ * takes the top of the singer's formant — and not one of those is inside the box.
+ *
+ * That is what makes this floor need no second knob for the shuttered hour. At noon
+ * there is no house, so there is nothing the voice can move, so the room is still —
+ * and it is still because the opera has been walled up rather than because a weight
+ * went to zero. The singer has not stopped. `box.ts` goes on returning a voice at
+ * noon exactly as it does at midnight, and can be tested as the pure function of one
+ * number that it is.
+ *
+ * **There is no audio.** `box.ts`'s header carries the whole of why — the sixth
+ * non-negotiable is a question about provenance, and provenance is a question about
+ * people. What reaches this shader is a spectrum computed from a committed score,
+ * binned exactly as an `AnalyserNode` would bin it, so the day the sound arrives
+ * nothing in this file changes.
+ *
+ * ## Conventions
+ *
+ * Metres, +y up, +z away from the camera and out over the balustrade into the house.
+ * The floor plane at y = 0 is the box's own floor, shared with the five floors above
+ * for the reason at the foot of the lobby section — the house's floor is a long way
+ * below it and is never in frame, which is what a box is.
+ *
+ * **Nothing here may be named `BOX_*`.** Floor −4 already owns that prefix — its
+ * room is a projection box — and GLSL has one global namespace across the whole
+ * concatenated source, so a second `BOX_HALF_WIDTH` is a redefinition error thirty
+ * lines from anything that mentions it. This floor's own room is `LOGE_*`, which is
+ * what an opera box is called when it needs to be called something else, and the
+ * auditorium is `HOUSE_*`.
+ */
+const BOX_GLSL = `
+// ---------------------------------------------------------------------------
+// The box, in metres
+// ---------------------------------------------------------------------------
+const float LOGE_HALF_WIDTH = 1.45;
+const float LOGE_HEIGHT     = 2.35;
+// Deeper than a box needs to be, and the shuttered hour is why. At 2.65m the camera
+// stands 1.7m from the wall that arrives at noon, which is inside the distance at
+// which anything can be composed against it — the frame is then 1.5m tall at the
+// wall, so the blind arch overflowed it and read as a doorframe in front of the lens
+// rather than as a filled opening across the room. A metre of extra depth is a metre
+// of somewhere to stand.
+const float LOGE_NEAR_Z     = -3.10;
+
+// Where the box stops and the house begins. The balustrade sits on this plane and
+// everything beyond it is uHouse deep.
+const float BALUSTRADE_Z = 0.55;
+
+// The balustrade: a padded roll on a panelled front, at the height a forearm goes.
+const float RAIL_Y      = 0.92;
+const float RAIL_RADIUS = 0.075;
+
+// The libretto lamp on the rail: shielded, turned inward, and the brightest thing in
+// the near half of the frame at every hour. It is what makes the shuttered state a
+// picture rather than a dark rectangle — see rooms/box-rig.ts.
+const vec3 LAMP_AT = vec3(-0.96, 1.06, 0.42);
+
+// The two chairs. Gilt frames, velvet seats, and they are the only furniture: a box
+// this size holds two people and a hat.
+const float CHAIR_PITCH  = 0.62;
+const float CHAIR_Z      = -0.62;
+const float CHAIR_SEAT_Y = 0.44;
+
+// ---------------------------------------------------------------------------
+// The house, in metres — all of it beyond BALUSTRADE_Z, and none of it at noon
+// ---------------------------------------------------------------------------
+
+// How far the house reaches to either side of the box's axis, and how high. Fixed:
+// what the sun moves is the depth, and a house that shrank in three dimensions at
+// once would read as the camera pulling back rather than as the room arriving.
+const float HOUSE_HALF_WIDTH = 9.20;
+const float HOUSE_HEIGHT     = 11.40;
+
+// The tiers of boxes down both side walls: four levels, on a pitch that is one box.
+const float TIER_PITCH   = 2.30;
+const float TIER_FIRST   = 0.0;
+const float TIER_LAST    = 9.0;
+const float TIER_RISE    = 2.55;
+const float TIER_LEVELS  = 4.0;
+const float TIER_INSET   = 1.05;
+
+// The chandelier: hung on the house's axis, a third of the way in from the far wall
+// and well up. Its position is a fraction of uHouse in **both** z and y, so it hangs
+// in the middle of whatever house there is rather than in the middle of the house
+// there used to be.
+//
+// The y is the half that was learned from a failed gate rather than reasoned out,
+// and it is worth recording. Hung at a fixed height it stays at 7.3 as the house
+// closes, so by civil twilight it is above the top of the frame and behind the
+// visible recess — and the room, which is supposed to brighten as it shrinks, goes
+// *darker* between nautical and civil twilight because its only light has left the
+// shot. verify-shader.mjs caught exactly that, in those words.
+//
+// Making it descend is not a patch on the assertion. A chandelier is hung from the
+// ceiling of a house on a chain sized for that house, and this one is coming down
+// with the room it belongs to: the last thing before dawn is the light of the place
+// arriving at the height of somebody sitting in a box, which is the picture this
+// floor was always for.
+const float CHANDELIER_FRACTION = 0.62;
+const float CHANDELIER_DROP     = 0.159;
+const float CHANDELIER_BASE_Y   = 1.90;
+const float CHANDELIER_RADIUS   = 1.24;
+
+/**
+ * Where the chandelier hangs, for whatever house the hour has left.
+ *
+ * One declaration, read by the geometry, by the light and by the air — the same
+ * arrangement candlePosition() has three floors up and for the same reason: two
+ * declarations of one position is a light that drifts out of its own fitting the
+ * first time either is nudged, and here there would have been three.
+ */
+vec3 chandelierPosition() {
+  return vec3(
+    0.0,
+    CHANDELIER_BASE_Y + uHouse * CHANDELIER_DROP,
+    mix(BALUSTRADE_Z, BALUSTRADE_Z + uHouse, CHANDELIER_FRACTION)
+  );
+}
+
+/**
+ * How hard the voice is pushing, at one frequency band and one place in the house.
+ *
+ * The aria reaches the geometry through here and nowhere else. Two things about it
+ * are deliberate and both look like omissions.
+ *
+ * It takes a *distance* and delays by it, at roughly the speed of sound, so the far
+ * end of a thirty-four metre house is a tenth of a second behind the near end. That
+ * is not a flourish: a hall in which every surface moves on the same frame is a
+ * hall made of one rigid piece, and the whole reason to build a room this size is
+ * that it is not.
+ *
+ * And it is a function of uTime rather than of a phase accumulated per surface,
+ * because everything in this shader has to be evaluable at one instant with no
+ * history — see the note in projection.ts about why the quantisation is on the other
+ * side of the upload. A room that remembered would be a room that could not be
+ * rendered at second 47 without rendering seconds 0 to 46 first.
+ */
+float voicePush(int band, float away) {
+  vec4 lower = uVoiceLow;
+  vec4 upper = uVoiceHigh;
+  float amplitude =
+    band == 0 ? lower.x : band == 1 ? lower.y : band == 2 ? lower.z : band == 3 ? lower.w :
+    band == 4 ? upper.x : band == 5 ? upper.y : band == 6 ? upper.z : upper.w;
+
+  // 343 m/s, and the band's own frequency, so the low bands make long slow waves
+  // down the house and the high ones ripple. The centre frequencies are the
+  // geometric middles of box.ts's eight logarithmic bands.
+  //
+  // Named "away" rather than "distance", which is a GLSL built-in — the compiler
+  // takes the shadowing and then rejects the next call to it with a line number and
+  // no reason, which is the trap CLAUDE.md records about half, sample and input,
+  // and is the same trap wearing a different word.
+  //
+  // Note the quoting. This comment is inside a template literal, so a backtick here
+  // ends the shader thirty lines above the error it causes — the other trap on that
+  // list, and the one that cost this file a compile a moment ago.
+  float hz = 80.0 * pow(100.0, (float(band) + 0.5) / 8.0);
+  return amplitude * sin((uTime - away / 343.0) * hz * 0.16);
+}
+
+/**
+ * The tiers of boxes down one side wall, folded about the house's axis.
+ *
+ * Domain repetition in z, exactly as the corridor's doors and sconces are, and in y
+ * as well — which is the only place in this building anything repeats in two axes at
+ * once. A tier is a slab with a lip on it and a dark hole behind, and at this light
+ * level the hole is most of what reads.
+ */
+vec2 mapTiers(vec3 p) {
+  vec3 q = p;
+  q.x = abs(q.x);
+
+  float column = clamp(floor(q.z / TIER_PITCH), TIER_FIRST, TIER_LAST);
+  float level  = clamp(floor((q.y - 1.30) / TIER_RISE), 0.0, TIER_LEVELS - 1.0);
+
+  vec3 cell = vec3(
+    q.x - (HOUSE_HALF_WIDTH - TIER_INSET),
+    q.y - 1.30 - level * TIER_RISE,
+    q.z - (column + 0.5) * TIER_PITCH
+  );
+
+  // The voice, arriving late in proportion to how far away this box is. The low
+  // bands, because what a hall does under a big voice is move as a whole.
+  float away = length(vec3(q.x, q.y - 2.0, q.z));
+  float pushed = voicePush(0, away) * 0.020 + voicePush(1, away) * 0.014;
+
+  float front = sdBox(cell + vec3(pushed, 0.0, 0.0), vec3(0.10, 0.46, TIER_PITCH * 0.44));
+  vec2 res = vec2(front, MAT_VELVET);
+
+  // The gilt lip along the top of each tier, which is the only thing out here that
+  // catches enough light to draw a line.
+  float lip = sdBox(cell + vec3(pushed, -0.50, 0.0), vec3(0.14, 0.045, TIER_PITCH * 0.46));
+  res = nearer(res, vec2(lip, MAT_GILT));
+
+  return res;
+}
+
+/**
+ * The chandelier: a ring of lustres on a stem, in the middle of whatever house
+ * there is.
+ *
+ * The lustres ride the middle bands — the ones a voice's formants live in — and they
+ * ride them *individually*, keyed on their angle round the ring, so what a big note
+ * does is run a shiver round it rather than pump it. A chandelier that scaled with
+ * the music would be a visualiser, and this floor is one lazy decision away from
+ * being one at all times.
+ */
+vec2 mapChandelier(vec3 p) {
+  vec3 c = p - chandelierPosition();
+
+  float bound = length(c) - (CHANDELIER_RADIUS + 0.55);
+  if (bound > BOUND_SLACK) {
+    return vec2(bound, MAT_GILT);
+  }
+
+  // The stem up to the ceiling, and the corona at the bottom of it.
+  vec2 res = vec2(sdCylinderY(c - vec3(0.0, 1.60, 0.0), 1.60, 0.035), MAT_GILT);
+  res = nearer(res, vec2(sdCylinderY(c, 0.10, CHANDELIER_RADIUS * 0.34), MAT_GILT));
+
+  // Twenty-four lustres round the ring, folded by angle. The fold is what makes this
+  // one primitive rather than twenty-four, and the index it falls out of is what
+  // lets each one move on its own.
+  float angle = atan(c.z, c.x);
+  float slot = floor((angle / 6.28318 + 0.5) * 24.0);
+  float centred = (slot + 0.5) / 24.0 - 0.5;
+  float theta = centred * 6.28318;
+
+  float shiver = voicePush(3, length(c)) * 0.05 + voicePush(4, length(c) + slot * 0.11) * 0.07;
+  vec3 arm = c - vec3(
+    cos(theta) * CHANDELIER_RADIUS,
+    -0.16 + shiver,
+    sin(theta) * CHANDELIER_RADIUS
+  );
+
+  res = nearer(res, vec2(length(arm) - 0.075, MAT_LUSTRE));
+
+  return res;
+}
+
+/**
+ * Distance to the nearest surface of the house, and what it is made of.
+ *
+ * Only ever called when uHouse is above zero — see mapBox, where that guard is, and
+ * rooms/box-rig.ts for why it is a guard on existence rather than on a weight.
+ */
+vec2 mapHouse(vec3 p, float farZ) {
+  // The shell. Side walls, ceiling, the far wall at whatever depth the hour has
+  // left, and a near bound on the balustrade plane — which is what stops the house
+  // from reaching backwards through the box and dissolving its walls. No floor: the
+  // stalls are a long way below the box and out of frame, and a plane down there
+  // would be a plane the march pays for at every step and nobody ever sees.
+  vec2 res = vec2(p.z - BALUSTRADE_Z, MAT_PLASTER);
+  res = nearer(res, vec2(HOUSE_HALF_WIDTH - abs(p.x), MAT_PLASTER));
+  res = nearer(res, vec2(HOUSE_HEIGHT - p.y, MAT_PLASTER));
+  res = nearer(res, vec2(farZ - p.z, MAT_VELVET));
+
+  // The proscenium: a gilt frame standing off the far wall, which is what says the
+  // dark rectangle in the middle distance is a stage rather than a doorway.
+  vec3 arch = p - vec3(0.0, 4.10, farZ - 0.34);
+  float outer = sdBox(arch, vec3(5.40, 4.05, 0.30));
+  float inner = sdBox(arch, vec3(4.85, 3.60, 0.90));
+  float lit = voicePush(6, length(arch)) * 0.011 + voicePush(7, length(arch)) * 0.008;
+  res = nearer(res, vec2(carve(outer, inner) + lit, MAT_GILT));
+
+  float tierBound = HOUSE_HALF_WIDTH - TIER_INSET - 0.70 - abs(p.x);
+  res = tierBound > BOUND_SLACK
+    ? nearer(res, vec2(tierBound, MAT_VELVET))
+    : nearer(res, mapTiers(p));
+
+  res = nearer(res, mapChandelier(p));
+
+  return res;
+}
+
+/**
+ * The two chairs, folded about the box's axis.
+ *
+ * Gilt frames and velvet seats, and they do not move with the voice — nothing inside
+ * the box does. See the file comment: the aria displaces the house, and the box is
+ * the one place in this floor's frame that is standing still.
+ */
+vec2 mapChairs(vec3 p) {
+  vec3 c = p;
+  c.x = abs(c.x) - CHAIR_PITCH * 0.5;
+  c.z -= CHAIR_Z;
+
+  float bound = sdBox(c - vec3(0.0, 0.52, 0.0), vec3(0.29, 0.62, 0.30));
+  if (bound > BOUND_SLACK) {
+    return vec2(bound, MAT_VELVET);
+  }
+
+  vec2 res = vec2(sdBox(c - vec3(0.0, CHAIR_SEAT_Y, 0.0), vec3(0.22, 0.045, 0.22)), MAT_VELVET);
+  res = nearer(res, vec2(sdBox(c - vec3(0.0, 0.74, -0.20), vec3(0.20, 0.28, 0.04)), MAT_VELVET));
+
+  // Four legs, folded again — so two chairs and eight legs are one primitive.
+  vec3 leg = c;
+  leg.x = abs(leg.x) - 0.19;
+  leg.z = abs(leg.z) - 0.19;
+  res = nearer(res, vec2(sdBox(leg - vec3(0.0, 0.21, 0.0), vec3(0.022, 0.21, 0.022)), MAT_GILT));
+
+  return res;
+}
+
+/**
+ * Distance to the nearest surface of Floor −5, and what that surface is made of.
+ *
+ * The one map in this building with a scene inside it that may not exist. Everything
+ * above BALUSTRADE_Z is the box and is there at every hour; everything beyond it is
+ * the house and is there only while uHouse is above zero.
+ */
+vec2 mapBox(vec3 p) {
+  // The box's own shell: floor, side walls, ceiling, back wall — and **no front
+  // wall**, because the front of a box is where the house is.
+  //
+  // Velvet on the walls, because a box is lined rather than plastered and because
+  // the whole near half of this frame is a colour decision — see rooms/box-rig.ts on
+  // why the ambient here is the reddest in the building.
+  //
+  // The carpet stops at the balustrade: beyond it the floor falls away to the
+  // stalls, which is what a box is.
+  vec2 loge = vec2(max(p.y, p.z - BALUSTRADE_Z), MAT_RUNNER);
+  loge = nearer(loge, vec2(LOGE_HALF_WIDTH - abs(p.x), MAT_VELVET));
+  loge = nearer(loge, vec2(LOGE_HEIGHT - p.y, MAT_PLASTER));
+  loge = nearer(loge, vec2(p.z - LOGE_NEAR_Z, MAT_VELVET));
+
+  // The box and the house are **two rooms joined at the balustrade**, and joining
+  // them is the one piece of set-theory in this building — every other floor is a
+  // single convex volume with things standing in it.
+  //
+  // Both shells above are written inside-positive, so a room is the *intersection*
+  // of its walls and is assembled with nearer(), which is a min. Two rooms that open
+  // into one another are a *union*, which is the max — and getting that wrong is not
+  // a subtle error, it is the whole floor. Written as one more nearer(), the box's
+  // side walls and ceiling stay in the frame as unbounded planes all the way down
+  // the auditorium, and what renders is a red tunnel two metres nine across with a
+  // proscenium at the end of it: a corridor, on the floor directly below the one
+  // this hotel already has a corridor on.
+  //
+  // max() under-estimates the true distance near the join, which is the safe
+  // direction and is the same trade carve() makes one screen up.
+  vec2 res;
+  if (uHouse > 0.0) {
+    vec2 house = mapHouse(p, BALUSTRADE_Z + uHouse);
+    res = loge.x > house.x ? loge : house;
+  } else {
+    // No house at all, so the box closes and becomes convex again — and the front
+    // wall arrives by intersection, like any other wall of any other room here.
+    float shutZ = BALUSTRADE_Z + 0.09;
+    res = nearer(loge, vec2(shutZ - p.z, MAT_PLASTER));
+
+    // The blind arch: the proscenium's outline, filled in and not levelled.
+    //
+    // This is the whole of what makes the shuttered hour a picture rather than a
+    // blank end wall, and it is worth being clear that it is a claim rather than a
+    // decoration. Every other floor's daytime state is the same room under a
+    // different sun; this one is a room with its subject removed, and a flat wall
+    // says only that the renderer stopped. What says the opera was *taken out* is
+    // the shape of the opening still being visible in the plaster that replaced it —
+    // which is what a bricked-up arch looks like in any real building, because
+    // nobody ever bothers to make the fill flush.
+    //
+    // Deliberately not the proscenium's real dimensions. It is the arch as it would
+    // be seen from this box, which is small, off to one side, and a good deal lower
+    // than a visitor who was here at midnight would expect it to be.
+    vec3 blind = p - vec3(0.10, 1.52, shutZ - 0.035);
+    float face = sdBox(blind, vec3(0.88, 0.72, 0.035));
+    float sunk = sdBox(blind, vec3(0.75, 0.60, 0.30));
+    res = nearer(res, vec2(carve(face, sunk), MAT_GILT));
+  }
+
+  // The lift the visitor came down in, in the back wall — behind them, and the only
+  // floor where that is so. See the file comment.
+  float leaves = sdBox(p - vec3(0.0, 1.05, LOGE_NEAR_Z + 0.055), vec3(0.62, 1.05, 0.045));
+  float seam   = sdBox(p - vec3(0.0, 1.05, LOGE_NEAR_Z + 0.055), vec3(0.006, 1.02, 0.090));
+  res = nearer(res, vec2(carve(leaves, seam), MAT_TIMBER));
+
+  // The balustrade: a panelled front with a padded roll along the top of it.
+  float front = sdBox(p - vec3(0.0, RAIL_Y * 0.5, BALUSTRADE_Z), vec3(LOGE_HALF_WIDTH, RAIL_Y * 0.5, 0.075));
+  res = nearer(res, vec2(front, MAT_VELVET));
+  res = nearer(res, vec2(
+    sdCylinderY(vec3(p.z - BALUSTRADE_Z, p.x, p.y - RAIL_Y), LOGE_HALF_WIDTH, RAIL_RADIUS),
+    MAT_GILT
+  ));
+
+  // The libretto lamp, standing on the rail.
+  vec3 lamp = p - LAMP_AT;
+  float lampBound = length(lamp) - 0.22;
+  res = lampBound > BOUND_SLACK
+    ? nearer(res, vec2(lampBound, MAT_BRASS))
+    : nearer(res, nearer(
+        vec2(sdCylinderY(lamp - vec3(0.0, -0.10, 0.0), 0.045, 0.030), MAT_BRASS),
+        vec2(sdCappedCone(lamp, 0.070, 0.085, 0.052), MAT_ENAMEL)
+      ));
+
+  res = nearer(res, mapChairs(p));
+
+  return res;
+}
+`;
+
+/**
  * The uniforms, and the precision the whole program is compiled at.
  *
  * `#version 300 es` has to be the very first characters of the source — not the
@@ -2604,6 +3101,43 @@ uniform float uProjectorRate;
 // for nothing.
 uniform int uStack;
 
+// Floor −5's light rig; see rooms/box-rig.ts. Eight of these nine never vary with
+// the hour. What the hour moves here is the *size of the room* — uHouse, below,
+// which is a length in metres rather than a weight, and is exactly zero at the
+// shuttered hour, where there is no auditorium at all.
+uniform vec3  uChandelierColour;
+uniform float uChandelierStrength;
+uniform vec3  uLibrettoColour;
+uniform float uLibrettoStrength;
+uniform float uBoxExposure;
+uniform vec3  uBoxFloor;
+uniform vec3  uBoxSky;
+uniform float uBoxDust;
+
+// How deep the house is beyond the balustrade, in metres — Floor −5's whole answer
+// to the sun. Thirty-four at astronomical night, six at civil twilight, and exactly
+// zero at noon, where mapBox stops evaluating the auditorium entirely and the front
+// wall is solid. Every other floor's daytime state costs what its night state does;
+// this one is the only room in the hotel that is *cheaper* to draw at noon, because
+// there is less of it.
+uniform float uHouse;
+
+// The aria, as eight logarithmic bands from 80 Hz to 8 kHz — see box.ts, which
+// declares VOICE_BANDS and is where the seam for a real AnalyserNode is. Two vec4s
+// rather than a float[8], because an array uniform reflects under a name with a
+// subscript on it and verify:shader reads the reflection.
+//
+// Low band first: uVoiceLow.x is the fundamental's home and uVoiceHigh.w is the top
+// of the singer's formant. Already scaled by how much voice there is, so silence is
+// eight zeros and nothing here has to remember to multiply.
+uniform vec4  uVoiceLow;
+uniform vec4  uVoiceHigh;
+
+// How much voice there is, in [0, 1], on its own. Could be recovered from the eight
+// above and is uploaded because two things want it as a scalar and re-deriving it in
+// a shader costs more than a uniform does.
+uniform float uVoicePower;
+
 // The visitor, on Floor −3 only. Neither of these comes from a rig, because
 // neither is a fact about the hotel: uStillness is how long this person has kept
 // still (see cellar.ts) and uBreath is where the 4-7-8 cycle they are being paced
@@ -2725,38 +3259,67 @@ const SCENE_GLSL = `
  * conditional stops being readable in one line.
  */
 vec2 mapScene(vec3 p) {
-  // The leg the car is on, and how far along it. Four legs now — lobby to corridor,
-  // corridor to library, library to cellar, cellar to the projection box — and the
-  // last floor's leg index is clamped so that a settled depth of 4 reads as the end
-  // of leg 3 rather than as the start of a leg that does not exist.
-  float leg = clamp(floor(uDepth), 0.0, 3.0);
+  // The leg the car is on, and how far along it. Five legs now — lobby to corridor,
+  // corridor to library, library to cellar, cellar to the projection box, projection
+  // box to the Box — and the last floor's leg index is clamped so that a settled
+  // depth of 5 reads as the end of leg 4 rather than as the start of a leg that does
+  // not exist.
+  float leg = clamp(floor(uDepth), 0.0, 4.0);
   float t = uDepth - leg;
+  int here = int(leg);
 
   // Which rooms this leg needs. Only a ride asks for two of them; a settled floor
   // asks for one and skips the rest, which is what keeps an arrived floor at the
   // cost it had when it was the only floor.
-  bool onFirst  = leg < 0.5;
-  bool onSecond = leg > 0.5 && leg < 1.5;
-  bool onThird  = leg > 1.5 && leg < 2.5;
-  bool onFourth = leg > 2.5;
-
-  bool needLobby      = onFirst && t < 1.0;
-  bool needCorridor   = (onFirst && t > 0.0) || (onSecond && t < 1.0);
-  bool needLibrary    = (onSecond && t > 0.0) || (onThird && t < 1.0);
-  bool needCellar     = (onThird && t > 0.0) || (onFourth && t < 1.0);
-  bool needProjection = onFourth && t > 0.0;
+  bool needLobby      = here == 0 && t < 1.0;
+  bool needCorridor   = (here == 0 && t > 0.0) || (here == 1 && t < 1.0);
+  bool needLibrary    = (here == 1 && t > 0.0) || (here == 2 && t < 1.0);
+  bool needCellar     = (here == 2 && t > 0.0) || (here == 3 && t < 1.0);
+  bool needProjection = (here == 3 && t > 0.0) || (here == 4 && t < 1.0);
+  bool needBox        = here == 4 && t > 0.0;
 
   // Nothing, arbitrarily far off: it loses every mix and every compare it meets.
   const vec2 NOWHERE = vec2(MAX_DISTANCE * 2.0, -1.0);
 
-  vec2 lobby      = needLobby      ? mapLobby(p)      : NOWHERE;
-  vec2 corridor   = needCorridor   ? mapCorridor(p)   : NOWHERE;
-  vec2 library    = needLibrary    ? mapLibrary(p)    : NOWHERE;
-  vec2 cellar     = needCellar     ? mapCellar(p)     : NOWHERE;
-  vec2 projection = needProjection ? mapProjection(p) : NOWHERE;
+  // An array indexed by the leg, which is what AUBADE's phase note said the sixth
+  // room would be the moment for, and it is. The pair of nested ternaries this
+  // replaced was three levels deep at five rooms and would have been four at six —
+  // at which point the thing choosing between the floors is harder to read than any
+  // of the floors.
+  //
+  // Each room is still evaluated exactly once, into exactly one slot, behind its own
+  // guard. That rule is unchanged and is the load-bearing one — see the paragraph
+  // above about the seven inlining sites — and the array makes it easier to hold
+  // rather than harder, because a room written twice is now a slot assigned twice
+  // and that is visible in a way a duplicated ternary arm is not.
+  //
+  // The index is a uniform expression: uDepth is the same for every pixel in the
+  // draw, so every invocation takes the same slot and this is not divergent
+  // addressing. GLSL ES 3.00 takes a dynamic index into a local array; ES 1.00 would
+  // not have, which is most of why this shape was not available when the lift had
+  // two floors on it.
+  //
+  // One side effect of raising the leg clamp is worth recording, because it changed a
+  // floor nobody touched. The clamp puts the deepest floor at the *near* end of the
+  // last leg — t = 0 — where it used to sit at the far end of the one before it, at
+  // t = 1. Both are exact in principle. They are not equally exact in practice: a mix
+  // compiled as "a + (b - a) * t" evaluates the t = 1 case by subtracting NOWHERE's
+  // 80 metres from a distance of a millimetre and adding it back, which throws away
+  // most of the mantissa right where the march is deciding whether it has hit
+  // something. At t = 0 the same expression is "a + 0". So the deepest floor is now
+  // computed the way every other settled floor already was, and the projection room's
+  // committed frames moved by a few least-significant bits the first time this ran —
+  // no statistic saw it, and it is an improvement rather than a regression.
+  vec2 rooms[6];
+  rooms[0] = needLobby      ? mapLobby(p)      : NOWHERE;
+  rooms[1] = needCorridor   ? mapCorridor(p)   : NOWHERE;
+  rooms[2] = needLibrary    ? mapLibrary(p)    : NOWHERE;
+  rooms[3] = needCellar     ? mapCellar(p)     : NOWHERE;
+  rooms[4] = needProjection ? mapProjection(p) : NOWHERE;
+  rooms[5] = needBox        ? mapBox(p)        : NOWHERE;
 
-  vec2 above = onFirst ? lobby    : (onSecond ? corridor : (onThird ? library : cellar));
-  vec2 below = onFirst ? corridor : (onSecond ? library  : (onThird ? cellar  : projection));
+  vec2 above = rooms[here];
+  vec2 below = rooms[here + 1];
 
   // Whichever surface is nearer, biased by the lift, which is what keeps an
   // emitter in frame the whole way down. mix() is exact at both ends but the bias
@@ -2978,8 +3541,8 @@ float silvering(vec3 p) {
  * window in it rather than a dark room the moon has got into.
  */
 vec3 roomAmbient(vec3 n) {
-  // A weighted sum rather than nested mixes, now that there are five of them.
-  // It is still a convex combination: floorWeight's five values sum to exactly 1
+  // A weighted sum rather than nested mixes, now that there are six of them.
+  // It is still a convex combination: floorWeight's six values sum to exactly 1
   // at every depth, which is the property the function comment calls load-bearing
   // and this is the place it is load-bearing for. If they did not, the ambient
   // would dim in the middle of every ride for no reason anybody could name.
@@ -2988,12 +3551,13 @@ vec3 roomAmbient(vec3 n) {
   float w2 = floorWeight(2.0);
   float w3 = floorWeight(3.0);
   float w4 = floorWeight(4.0);
+  float w5 = floorWeight(5.0);
 
   return mix(
     uAmbientFloor * w0 + uCorridorFloor * w1 + uLibraryFloor * w2 + uCellarFloor * w3 +
-      uProjectionFloor * w4,
+      uProjectionFloor * w4 + uBoxFloor * w5,
     uAmbientSky * w0 + uCorridorSky * w1 + uLibrarySky * w2 + uCellarSky * w3 +
-      uProjectionSky * w4,
+      uProjectionSky * w4 + uBoxSky * w5,
     n.y * 0.5 + 0.5
   );
 }
@@ -3070,6 +3634,22 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
     float lit = framePicture(p.xy);
     return uArcColour * uArcStrength * lit * 0.14;
   }
+  if (id == MAT_LUSTRE) {
+    // The chandelier's drops, on Floor −5. Emissive rather than lit, and that is a
+    // decision about cost rather than about physics: a hundred-odd gas jets behind
+    // cut crystal is a light source with structure, and the honest version of it is
+    // a hundred shadow rays into a room that is already the largest volume in the
+    // building.
+    //
+    // What makes it read as crystal rather than as a ring of bulbs is that each drop
+    // is at its own angle round the ring, so each one takes the corona's light
+    // differently — the same fold mapChandelier uses to place them, reused here to
+    // vary them. Without it the ring is a smooth annulus and the eye reads a
+    // fluorescent hoop.
+    float angle = atan(p.z - uEye.z, p.x - uEye.x);
+    float facet = 0.55 + 0.45 * sin(angle * 24.0 + p.y * 40.0);
+    return uChandelierColour * uChandelierStrength * facet * 7.0;
+  }
 
   float roughness;
   float metallic;
@@ -3095,6 +3675,7 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
   float deeper = floorWeight(2.0);
   float deepest = floorWeight(3.0);
   float boxed = floorWeight(4.0);
+  float loge = floorWeight(5.0);
 
   vec3 diffuse = vec3(0.0);
   vec3 gloss   = vec3(0.0);
@@ -3395,6 +3976,78 @@ vec3 shadeSurface(vec3 p, vec3 n, vec3 viewDirection, float id, float carried) {
       specularLobe(n, viewDirection, toWork, roughness);
   }
 
+  // --- Floor −5: a chandelier in the house, and a lamp on the rail -------------
+  if (loge > MORPH_EPSILON) {
+    // The libretto lamp. Close, weak, and shielded — turned in towards where a
+    // person's hands would be on the rail, so what it lights is the near half of
+    // the box and almost nothing else. It is the only light on this floor at the
+    // shuttered hour, and it is why that hour is a picture instead of a dark
+    // rectangle.
+    vec3 toLamp = LAMP_AT - p;
+    float lampRange = length(toLamp);
+    toLamp /= max(lampRange, 0.0001);
+
+    // The shade is open downward and inward. Same construction as the library's
+    // banker's lamp, and the same trap noted there: toLamp points *from the surface
+    // to the lamp*, so a surface below it sees toLamp pointing up and the mask has
+    // to rise with toLamp.y.
+    float shade = smoothstep(-0.55, 0.10, toLamp.y);
+    float lit = max(dot(n, toLamp), 0.0) * shade / (1.0 + lampRange * lampRange * 2.4);
+
+    diffuse += loge * uLibrettoColour * uLibrettoStrength * lit;
+    gloss += loge * uLibrettoColour * uLibrettoStrength * lit *
+      specularLobe(n, viewDirection, toLamp, roughness);
+
+    // The chandelier, out in the house — and only if the hour has left a house for
+    // it to hang in. At uHouse == 0 this is skipped entirely, which is not a light
+    // being turned off: there is no auditorium, so there is nothing out there. See
+    // rooms/box-rig.ts.
+    if (uHouse > 0.0) {
+      vec3 toGas = chandelierPosition() - p;
+      float gasRange = length(toGas);
+      toGas /= max(gasRange, 0.0001);
+
+      // Inverse square, and it is doing more work here than anywhere else in this
+      // shader. This is the only room in the building whose one light is routinely
+      // more than twenty metres from the surface it is lighting, and the coefficient
+      // is what decides whether the house has a depth at all.
+      //
+      // 0.16 rather than the 0.055 this was written with, and the difference between
+      // the two frames is the difference between a theatre and a corridor. At 0.055
+      // the back wall of a thirty-four metre house comes back at four per cent of the
+      // near tier, which the tonemap lifts to something legible — so every surface
+      // reads at once, nothing is too far off to see, and the eye is given no cue
+      // that the room is long. At 0.16 the far half goes, and what is left is four
+      // tiers falling away into something the march can still resolve and the light
+      // cannot reach. AUBADE's line for this floor's prose is "most of it is too far
+      // off to resolve", and this constant is that sentence.
+      float gas = max(dot(n, toGas), 0.0) / (1.0 + gasRange * gasRange * 0.16);
+
+      // No shadow march. Deliberate, and the reason is the same one the cellar gives
+      // about its second march: the only things between a surface and the chandelier
+      // out here are the tiers, which are already facing away from it wherever they
+      // would occlude — so the ray would cost four hundred steps across the largest
+      // volume in the piece to confirm what the cosine has already said.
+      diffuse += loge * uChandelierColour * uChandelierStrength * gas;
+      gloss += loge * uChandelierColour * uChandelierStrength * gas *
+        specularLobe(n, viewDirection, toGas, roughness);
+    }
+
+    // The velvet's sheen, and the one place in this shader where a material is
+    // finished outside surfaceAlbedo — see MAT_VELVET there for why it has to be.
+    //
+    // Retroreflective: brightest where the surface turns *away*, which is the
+    // opposite of a specular highlight and is the whole visual signature of the
+    // stuff. One minus the facing term, raised, so it is a rim rather than a wash.
+    // Without it the box is red felt; with it, the fold of every surface in the near
+    // half of the frame is drawn by its own edge.
+    if (id == MAT_VELVET) {
+      float facing = abs(dot(n, viewDirection));
+      float sheen = pow(1.0 - facing, 3.4);
+      diffuse += loge * vec3(0.42, 0.10, 0.13) * sheen * 0.55;
+    }
+  }
+
   vec3 ambient = roomAmbient(n);
   float occlusion = ambientOcclusion(p, n);
 
@@ -3496,6 +4149,7 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
   float deeper = floorWeight(2.0);
   float deepest = floorWeight(3.0);
   float boxed = floorWeight(4.0);
+  float loge = floorWeight(5.0);
   vec3 lampAt = carriedPosition();
   float flame = carriedFlicker();
   vec3 candleAt = candlePosition();
@@ -3639,6 +4293,34 @@ vec3 scatteredLight(vec3 origin, vec3 rayDirection, float depth, float dither) {
             (1.0 + lensRange * lensRange * 0.35);
         }
       }
+    }
+
+    if (loge > MORPH_EPSILON && uHouse > 0.0) {
+      // The house's air, which on this floor is the subject rather than an
+      // atmosphere. An auditorium is the one interior whose far end is routinely
+      // invisible through its own air — that is not a defect of the building, it is
+      // the reason a theatre feels large — so this term is what turns thirty-four
+      // metres of dark into a distance rather than into a wall thirty-four metres
+      // away.
+      //
+      // Gated on there being a house at all. At noon the whole of this floor is two
+      // metres deep, and dust integrated across two metres of a lit cupboard is a
+      // haze over the one picture the shuttered state has.
+      float gasRange = length(chandelierPosition() - p);
+
+      // Only beyond the balustrade. The box's own air is nearly clean — it is a
+      // small upholstered room with people in it — and lighting it at the house's
+      // density puts a fog between the camera and the rail half a metre in front of
+      // it, which reads as a dirty lens rather than as a hall.
+      float outThere = smoothstep(BALUSTRADE_Z - 0.20, BALUSTRADE_Z + 1.40, p.z);
+
+      // The same falloff the surfaces get, and for the same reason. A haze that
+      // reaches the back of the house is a haze that fills it uniformly, and uniform
+      // haze does not read as air — it reads as a dirty frame. What says "distance"
+      // is the near air being lit and the far air not.
+      accumulated += loge * uChandelierColour * uChandelierStrength * outThere *
+        dustDensity(p, uTime) * glint * 0.0060 * uBoxDust /
+        (1.0 + gasRange * gasRange * 0.12);
     }
   }
 
@@ -4024,6 +4706,7 @@ export const HOTEL_FRAGMENT_SHADER = [
   LIBRARY_GLSL,
   CELLAR_GLSL,
   PROJECTION_GLSL,
+  BOX_GLSL,
   COMMON_SHADING_GLSL,
   SCENE_GLSL,
 ].join('\n');

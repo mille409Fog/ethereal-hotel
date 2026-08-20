@@ -9,6 +9,7 @@ import { CELLAR_RIGS } from './rooms/cellar-rig';
 import { CORRIDOR_RIGS } from './rooms/corridor-rig';
 import { LIBRARY_RIGS } from './rooms/library-rig';
 import { INVITED_THRESHOLD, LIGHT_RIGS, rigFor } from './rooms/light-rig';
+import { BOX_RIGS } from './rooms/box-rig';
 import { PROJECTION_RIGS } from './rooms/projection-rig';
 
 /**
@@ -55,6 +56,7 @@ const at = (lobby = NIGHT, depth = 0): IHotelFrame => ({
   library: LIBRARY_RIGS.open,
   cellar: CELLAR_RIGS.open,
   projection: PROJECTION_RIGS.open,
+  box: BOX_RIGS.open,
   depth,
   stillness: 0,
   breath: 0,

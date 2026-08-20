@@ -244,6 +244,26 @@ export const FLOOR_PROSE: Readonly<Record<Floor, readonly string[]>> = {
       'this bench and there is no switch for it.',
   ],
 
+  '-5': [
+    'Not a room you are in. A ledge two metres deep with a rail across the front of it, lined ' +
+      'to the ceiling in red silk, two gilt chairs, and a shielded lamp on the rail for reading ' +
+      'a libretto by. The lift is behind you. It is the only floor in this hotel where it is, ' +
+      'because it is the only floor where the far end is the thing worth looking at.',
+    'Over the rail: the house. At full dark it is thirty-four metres of it, with four tiers of ' +
+      'boxes going away down both sides, a gilt arch round a stage at the end, and a chandelier ' +
+      'hanging in the middle of the largest volume in this building. Most of it is too far off ' +
+      'to resolve. That is not the graphics failing; it is what a theatre is.',
+    'Something is being sung out there, and you cannot hear it. You can see it: the tiers move ' +
+      'a little with the low notes, arriving late at the far end because sound takes a tenth of ' +
+      'a second to cross a room this size, and the chandelier passes a shiver round its drops on ' +
+      'the high ones. There is no sound on this floor and there is not going to be one today — ' +
+      'the reason is written down, and it is about who wrote the music rather than about what a ' +
+      'browser will play.',
+    'What the sun does here is take the room away. Not the light — the room. Come back in ' +
+      'daylight and the house is gone, the rail runs along the foot of a flat wall, and this is ' +
+      'a red cupboard with two chairs in it and a lamp still lit.',
+  ],
+
   '-3': [
     'A brick barrel vault, springing off the wall heads at about shoulder height and closing ' +
       'overhead in one unbroken curve the length of the room. It was laid a ring at a time from ' +
@@ -493,6 +513,77 @@ export const PROJECTION_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
 };
 
 /**
+ * The five hours on Floor −5, in the Box's voice.
+ *
+ * The one floor whose plate has to describe something that is not in the room, and
+ * at four of the five hours most of what it says is about a space on the other side
+ * of a rail. At the fifth it is about a wall.
+ */
+export const BOX_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
+  open: {
+    plate: 'Floor −5. The house is full depth tonight, and there is nobody in any of it.',
+    picture:
+      'An opera box below ground, drawn in real time. A red silk-lined ledge with a gilt rail ' +
+      'and two chairs; beyond the rail, an auditorium some thirty-four metres deep, four tiers ' +
+      'of boxes going away into the dark on both sides, a gilt proscenium at the far end, and a ' +
+      'gas chandelier hanging in the middle of it.',
+    opening:
+      'The house is at its full depth and you cannot see the back of it. There are four tiers ' +
+      'of boxes down each side and nobody in one of them, and the chandelier is far enough away ' +
+      'to be a small thing rather than a bright one.',
+  },
+
+  late: {
+    plate: 'The back wall has become findable. It was not there an hour ago.',
+    picture:
+      'An opera box below ground, drawn in real time. The auditorium beyond the rail is ' +
+      'noticeably shallower than a house of this height should be; its far wall is close enough ' +
+      'to make out.',
+    opening:
+      'You can see the back of the house now. Nothing has been lit and nothing has been turned ' +
+      'up — the wall is simply nearer than it was, which is not a thing walls do, and it is the ' +
+      'first hour at which anybody who was here at midnight can tell.',
+  },
+
+  warning: {
+    plate: 'Thirteen metres. Close enough to count the seats on the opposite tier.',
+    picture:
+      'An opera box below ground, drawn in real time. The opposite tier of boxes is close ' +
+      'across a narrowed auditorium, and the chandelier hangs near enough to read as an object ' +
+      'rather than as a light.',
+    opening:
+      'The tier opposite is near enough to count. The chandelier has stopped being a light and ' +
+      'become a thing with parts, which is what happens to any light you get close enough to, ' +
+      'and it is getting closer because the room is.',
+  },
+
+  aubade: {
+    plate: 'Six metres. The back wall is close enough to touch, if the rail were not there.',
+    picture:
+      'An opera box below ground, drawn in real time. The auditorium has closed to a shallow ' +
+      'recess a few metres deep; its back wall stands close behind the gilt rail, and the ' +
+      'chandelier has gone up out of the frame.',
+    opening:
+      'What was a hall at midnight is a recess. The back wall is a few metres beyond the rail, ' +
+      'the chandelier has risen out of sight overhead rather than moved, and the singing is ' +
+      'still going on out there in a space with almost nowhere left to be.',
+  },
+
+  shuttered: {
+    plate: 'The house has gone. The rail is still here, and so is the lamp.',
+    picture:
+      'An opera box below ground, drawn in real time. A flat wall stands directly behind the ' +
+      'gilt rail where the auditorium was. The room is a shallow red velvet cupboard with two ' +
+      'chairs in it, lit by one small shaded lamp on the rail.',
+    opening:
+      'There is a wall behind the rail. Not a dark auditorium and not a shallow one — nothing, ' +
+      'bricked flush, with the balustrade running along the foot of it. What is left is about ' +
+      'two metres of red velvet, two chairs, and a reading lamp that is still lit, and it takes ' +
+      'a while in here to work out what the room was ever for.',
+  },
+};
+
+/**
  * The projectionist's bench: six switches, and one number that is not a switch.
  *
  * AUBADE asks for the film stack to be "exposed as a projectionist's bench you can
@@ -656,6 +747,7 @@ export const FLOOR_NAMES: Readonly<Record<Floor, string>> = {
   '-2': 'Floor −2 — The Library',
   '-3': 'Floor −3 — The Cellar',
   '-4': 'Floor −4 — The Projection Room',
+  '-5': 'Floor −5 — The Box',
 };
 
 /**

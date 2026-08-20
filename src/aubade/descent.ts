@@ -5,8 +5,8 @@
  * "where the morph between two distance fields happens in full view". Both
  * sentences land on the same variable. `uDepth` counts floors below the lobby —
  * 0 is the lobby's distance field exactly, 1 the corridor's, 2 the library's, 3
- * the cellar's, 4 the projection box's — and every part of the descent, which room
- * is drawn, where the camera stands,
+ * the cellar's, 4 the projection box's, 5 the Box's — and every part of the
+ * descent, which room is drawn, where the camera stands,
  * which lights exist, how much of the mirror is awake, is derived from it. There
  * is no second clock and no parallel animation to keep in step, because a descent
  * whose light and geometry are timed separately is a descent that will eventually
@@ -81,7 +81,7 @@
  * those, and the difference between what is written and what is built is a
  * distinction that page keeps on purpose.
  */
-export type Floor = 0 | -1 | -2 | -3 | -4;
+export type Floor = 0 | -1 | -2 | -3 | -4 | -5;
 
 /** Which way the car is going. */
 export type LiftDirection = 'down' | 'up';
@@ -90,10 +90,10 @@ export type LiftDirection = 'down' | 'up';
  * The floors, in the order the lift passes them. Depth is the index, which is
  * the whole of `depthForFloor`.
  */
-export const FLOORS: readonly Floor[] = [0, -1, -2, -3, -4];
+export const FLOORS: readonly Floor[] = [0, -1, -2, -3, -4, -5];
 
 /** The deepest floor built. The lift refuses to be called past it. */
-export const LOWEST_FLOOR: Floor = -4;
+export const LOWEST_FLOOR: Floor = -5;
 
 /**
  * How long one floor's ride lasts, in seconds of the room's clock.
@@ -192,7 +192,8 @@ export function floorAfter(from: Floor, direction: LiftDirection): Floor {
  *
  * @param floor Where the visitor is standing.
  * @returns 0 in the lobby, 1 in the corridor, 2 in the library, 3 in the cellar,
- *   4 in the projection box. Exact, for the reason in the file comment.
+ *   4 in the projection box, 5 in the Box. Exact, for the reason in the file
+ *   comment.
  */
 export function depthForFloor(floor: Floor): number {
   // Written out rather than as a bare negation, and the reason is the one value

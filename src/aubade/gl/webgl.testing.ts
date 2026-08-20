@@ -392,6 +392,10 @@ export class StubWebGL2 {
     this.record('uniform2f', location, x, y);
   }
 
+  public uniform4f(location: object | null, x: number, y: number, z: number, w: number): void {
+    this.record('uniform4f', location, x, y, z, w);
+  }
+
   public uniform3f(location: object | null, x: number, y: number, z: number): void {
     this.record('uniform3f', location, x, y, z);
   }

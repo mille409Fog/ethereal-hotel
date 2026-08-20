@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Aubade } from './aubade';
-import { FLOORS } from './descent';
+import { FLOORS, LOWEST_FLOOR, type Floor } from './descent';
 import { StubWebGL2 } from './gl/webgl.testing';
 import { benchMask, FILM_STACK, THREADED } from './projection';
 import { projectionRigFor } from './rooms/projection-rig';
@@ -174,11 +174,18 @@ describe('the aubade route', () => {
       const unbuilt = 6 - FLOORS.length;
       expect(text()).toMatch(new RegExp(`${SPELLED[FLOORS.length]} floors of six`, 'i'));
 
-      // The verb has to agree, which is the one thing a count derived from the shaft
-      // cannot do for itself. It has been "are" for four floors and it is "is" for
-      // five, and a floor landing is exactly when somebody would forget.
-      const verb = unbuilt === 1 ? 'is' : 'are';
-      expect(text()).toContain(`The other ${SPELLED[unbuilt]} ${verb} written and not built`);
+      // What follows the count depends on whether any floor is still missing, and
+      // the sentence changed shape when the last one landed: there is nothing left
+      // to be "written and not built", and what is unfinished is no longer a room.
+      // The claim the page has to keep making is that it says which, either way.
+      if (unbuilt > 0) {
+        // The verb has to agree, which is the one thing a count derived from the
+        // shaft cannot do for itself.
+        const verb = unbuilt === 1 ? 'is' : 'are';
+        expect(text()).toContain(`The other ${SPELLED[unbuilt]} ${verb} written and not built`);
+      } else {
+        expect(text()).toMatch(/no sound in it/i);
+      }
     });
   });
 
@@ -511,27 +518,41 @@ describe('the aubade route', () => {
        * Four floors down, without four rides. Same reduced-motion trick as the
        * cellar's, one call further.
        */
-      const goToTheBottom = async (state: AubadeState = 'open'): Promise<void> => {
+      /**
+       * Ride down to a floor, in as many one-floor calls as it takes.
+       *
+       * Derived from the floor rather than counted out, for the same reason the
+       * prose count above is derived from the shaft: a literal here is a number
+       * somebody has to remember to change in the commit that ships a floor, and
+       * forgetting it is invisible — every test still passes, against a lift that
+       * stopped one floor short of where it now goes.
+       */
+      const goDownTo = async (floor: Floor, state: AubadeState = 'open'): Promise<void> => {
         setHour(state);
         setReducedMotion(true);
         await render();
-        for (let step = 0; step < 4; step += 1) {
+        for (let step = 0; step < -floor; step += 1) {
           fixture.componentInstance.call('down');
         }
         fixture.detectChanges();
       };
 
-      it('reaches the projection box and stops there', async () => {
+      const goToTheBottom = (state?: AubadeState): Promise<void> => goDownTo(LOWEST_FLOOR, state);
+
+      /** Floor −4, which is where the bench is and is no longer the bottom. */
+      const goToTheBench = (state?: AubadeState): Promise<void> => goDownTo(-4, state);
+
+      it('reaches the Box and stops there', async () => {
         await goToTheBottom();
 
-        expect(fixture.componentInstance.floor()).toBe(-4);
-        expect(text()).toContain('The Projection Room');
+        expect(fixture.componentInstance.floor()).toBe(LOWEST_FLOOR);
+        expect(text()).toContain('The Box');
 
-        // The shaft ends. A fifth call is a lift asked to go through the bottom of
+        // The shaft ends. One more call is a lift asked to go through the bottom of
         // the building, and `canCall` is what stops it.
         fixture.componentInstance.call('down');
         fixture.detectChanges();
-        expect(fixture.componentInstance.floor()).toBe(-4);
+        expect(fixture.componentInstance.floor()).toBe(LOWEST_FLOOR);
       });
 
       it('offers only the way back up', async () => {
@@ -542,8 +563,20 @@ describe('the aubade route', () => {
         expect(controls[0].textContent).toContain('up');
       });
 
-      it('writes the room out in prose', async () => {
+      it('writes the Box out in prose, silence and all', async () => {
         await goToTheBottom();
+
+        expect(text()).toContain('libretto');
+        expect(text()).not.toContain('brass bell');
+
+        // The one thing about this floor a visitor cannot work out by looking, and
+        // the thing AUBADE's sixth non-negotiable turns into a promise: the room is
+        // silent, and it says so rather than leaving somebody hunting for a control.
+        expect(text()).toMatch(/no sound on this floor/i);
+      });
+
+      it('writes the projection box out in prose', async () => {
+        await goToTheBench();
 
         expect(text()).toContain('lamphouse');
         expect(text()).toContain('magazines');
@@ -555,14 +588,14 @@ describe('the aubade route', () => {
         // seconds, and a rate is the hardest thing in this work to see — a
         // photograph of a projector at eight frames a second and one at twenty-four
         // are the same photograph. So the plate says the number.
-        await goToTheBottom();
+        await goToTheBench();
 
         expect(text()).toContain('twenty-four');
         expect(fixture.componentInstance.projector()).toContain('24 frames a second');
       });
 
       it('hands over the bench, with all six switches down', async () => {
-        await goToTheBottom();
+        await goToTheBench();
 
         const boxes = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLInputElement>(
           '.bench__input'
@@ -574,7 +607,7 @@ describe('the aubade route', () => {
       });
 
       it('throws a switch and repaints, without touching the others', async () => {
-        await goToTheBottom();
+        await goToTheBench();
 
         const before = gl?.callsTo('drawArrays').length ?? 0;
         fixture.componentInstance.throwSwitch('grain');
@@ -594,7 +627,7 @@ describe('the aubade route', () => {
         // A bench is a machine somebody has set, not a preference the room holds an
         // opinion about. A visitor who switches the grain off, goes up to look at the
         // library and comes back finds it off.
-        await goToTheBottom();
+        await goToTheBench();
 
         fixture.componentInstance.throwSwitch('cues');
         fixture.componentInstance.call('up');
@@ -633,7 +666,7 @@ describe('the aubade route', () => {
       it('takes the bench away where there is no picture to operate', async () => {
         // A control that changes a frame nobody can see is worse than no control,
         // which is the same argument `liftControls` makes about a lift.
-        await goToTheBottom();
+        await goToTheBench();
         expect(fixture.componentInstance.projector()).not.toBeNull();
 
         fixture.componentInstance.mode.set('closed');

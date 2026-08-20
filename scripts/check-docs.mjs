@@ -307,6 +307,7 @@ check('every floor is lit by the clock, at every hour', () => {
     'src/aubade/rooms/library-rig.ts',
     'src/aubade/rooms/cellar-rig.ts',
     'src/aubade/rooms/projection-rig.ts',
+    'src/aubade/rooms/box-rig.ts',
     'src/aubade/desk.ts',
   ]) {
     if (!exists(file)) {
@@ -326,6 +327,7 @@ check('every floor is lit by the clock, at every hour', () => {
   const libraryRigs = read('src/aubade/rooms/library-rig.ts');
   const cellarRigs = read('src/aubade/rooms/cellar-rig.ts');
   const projectionRigs = read('src/aubade/rooms/projection-rig.ts');
+  const boxRigs = read('src/aubade/rooms/box-rig.ts');
   const copy = read('src/aubade/desk.ts');
   const entry = (state) => new RegExp(`^\\s{2}${state}:\\s*\\{`, 'm');
 
@@ -357,6 +359,14 @@ check('every floor is lit by the clock, at every hour', () => {
           `can only be made by writing all five hours out, including the four that are identical.`
       );
     }
+    if (!entry(state).test(boxRigs)) {
+      problems.push(
+        `BOX_RIGS has no rig for '${state}'. Floor −5's answer to the sun is one field in this ` +
+          `table — the light does not move and the depth of the auditorium does — and it can ` +
+          `only be made by writing all five hours out, including the four that are lit ` +
+          `identically.`
+      );
+    }
     if (!entry(state).test(projectionRigs)) {
       problems.push(
         `PROJECTION_RIGS has no rig for '${state}'. Floor −4's answer to the sun is one field in ` +
@@ -380,6 +390,9 @@ check('every floor is lit by the clock, at every hour', () => {
       problems.push(
         `PROJECTION_COPY has no line for '${state}'; the plate would render \`undefined\`.`
       );
+    }
+    if (!new RegExp(`BOX_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
+      problems.push(`BOX_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
     }
 
     // The phases' Definitions of Done, as pictures. One run writes all
@@ -409,6 +422,8 @@ check('every floor is lit by the clock, at every hour', () => {
       'cellar',
       'threading',
       'projection',
+      'raising',
+      'box',
     ]) {
       if (!exists(`docs/images/aubade-${floor}-${state}.webp`)) {
         problems.push(
@@ -1004,6 +1019,160 @@ check('the projection box keeps its light and loses its speed', () => {
       `${template} has no control calling throwSwitch. AUBADE asks for the film stack to be ` +
         `"exposed as a projectionist's bench you can operate"; a stack with no switches renders ` +
         `exactly the same room and has stopped being the phase.`
+    );
+  }
+
+  return problems;
+});
+
+// Floor −5, and the four things about it that nothing else in the repository would
+// notice going wrong.
+//
+// The first is the floor's whole answer to the sun. `BOX_RIGS.shuttered.house` is a
+// length in metres and is meant to be **exactly zero** — at which the auditorium
+// stops existing rather than getting dark, and `mapBox` never evaluates it. A house
+// of 0.2 renders a plausible dark slot behind the rail that no reader would query,
+// and `verify:shader` does catch that one, so this is the cheap duplicate of an
+// expensive check rather than the only line of defence.
+//
+// The second is the one no rendered frame can see at all. The room is silent, and
+// the reason it is silent is a licensing decision recorded in
+// `docs/aubade-credits.md`. A future instance "finishing the floor" by dropping in an
+// audio file is one import away from a takedown notice on a hiring artifact, and the
+// diff would look like progress.
+//
+// The third is the seam. `voiceAt` returns a band vector rather than a pitch
+// precisely so that an `AnalyserNode` can replace it without the shader changing; a
+// shader that started reading a pitch would work today and cost the floor the
+// property it was designed around.
+//
+// The fourth is a name. Floor −4's GLSL already owns the `BOX_` prefix — its room is
+// a projection box — and GLSL has one global namespace across the concatenated
+// source, so Floor −5's room is `LOGE_`. A `BOX_HALF_WIDTH` added here is a
+// redefinition error reported thirty lines from anything that mentions it.
+check('the Box keeps its light and loses its room', () => {
+  const rig = 'src/aubade/rooms/box-rig.ts';
+  const clock = 'src/aubade/box.ts';
+  const shader = 'src/aubade/rooms/hotel.frag.ts';
+  const credits = 'docs/aubade-credits.md';
+
+  for (const file of [rig, clock, shader, credits]) {
+    if (!exists(file)) {
+      return [`${file} is gone; CLAUDE.md says Floor −5 answers the sun with the size of the room.`];
+    }
+  }
+
+  const problems = [];
+  const rigSource = read(rig);
+  const clockSource = read(clock);
+  const shaderSource = read(shader);
+
+  // Exactly zero, and written as `0` rather than `0.0` or `0.00` so that the
+  // assertion is about the value a reader sees as well as the one the compiler does.
+  const shuttered = rigSource.match(/shuttered:\s*\{[\s\S]*?house:\s*([\d.]+)/);
+  if (shuttered === null) {
+    problems.push(
+      `Could not read BOX_RIGS.shuttered.house out of ${rig}. Floor −5's answer to the sun is ` +
+        `that field, and it is supposed to be exactly 0.`
+    );
+  } else if (Number(shuttered[1]) !== 0) {
+    problems.push(
+      `BOX_RIGS.shuttered.house is ${shuttered[1]}, not 0. Floor −5 answers the sun with the ` +
+        `depth of the auditorium, and at noon there is supposed to be no auditorium — not a ` +
+        `shallow one. A house that is nearly zero is a slot in the wall with a chandelier ` +
+        `jammed in it, and it is this floor's whole argument turned into a gradient at the one ` +
+        `hour the argument is about.`
+    );
+  }
+
+  // The house has to fall as the night ends, in the order AUBADE_STATES walks.
+  const depths = [...rigSource.matchAll(/^\s{4}house:\s*([\d.]+),/gm)].map(([, n]) => Number(n));
+  if (depths.length !== 5) {
+    problems.push(
+      `${rig} declares ${depths.length} house depths, not 5. Every solar state needs one; a ` +
+        `missing entry is a floor that stopped keeping the hotel's hours.`
+    );
+  } else {
+    for (let i = 1; i < depths.length; i += 1) {
+      if (depths[i] >= depths[i - 1]) {
+        problems.push(
+          `BOX_RIGS' house depths run ${depths.join(', ')}, which does not fall. Floor −5's ` +
+            `auditorium is supposed to close in as the night ends — that ordering is the floor.`
+        );
+        break;
+      }
+    }
+  }
+
+  // The room is silent, and the reason is a decision rather than an omission. This is
+  // the check that stops a future instance from "finishing" the floor with somebody
+  // else's recording, which is AUBADE's sixth non-negotiable and the one failure here
+  // that has a lawyer at the end of it.
+  for (const file of aubadeSources()) {
+    if (file.endsWith('.spec.ts')) continue;
+    if (/\bnew (webkit)?AudioContext\b|createAnalyser\(/i.test(read(file))) {
+      problems.push(
+        `${file} creates an AudioContext. Floor −5 is deliberately silent: AUBADE's sixth ` +
+          `non-negotiable forbids licensed audio, docs/aubade-credits.md records that the aria ` +
+          `has no cleared source yet, and the plate, the prose and the Reader's Edition all say ` +
+          `so out loud. Sound arrives when the provenance can be written in that file, not before.`
+      );
+    }
+  }
+
+  if (!/##\s*The aria/.test(read(credits))) {
+    problems.push(
+      `${credits} has no "The aria" section. AUBADE's sixth non-negotiable requires every line ` +
+        `and every note in this piece to be sourced there, and Floor −5's silence is itself a ` +
+        `provenance decision that has to be written down or it reads as an unfinished room.`
+    );
+  }
+
+  // The pair that proves the aria reaches the frame at all.
+  //
+  // This floor's headline claim is the one its own reference images cannot carry, and
+  // it went unchecked for a whole commit. `verify-shader.mjs` renders at second zero
+  // by default, and second zero is the very start of the first note, where the attack
+  // envelope is exactly 0 — so every committed frame showed a house standing perfectly
+  // still and no gate anywhere noticed that the voice was doing nothing. The fix is a
+  // probe holding the clock and swapping the singer; this is the check that the probe
+  // is still there, because deleting it would put the floor straight back to being
+  // verified in silence.
+  const gate = read('scripts/verify-shader.mjs');
+  if (!/name: 'hushed'/.test(gate) || !/voice: SILENT/.test(gate)) {
+    problems.push(
+      `scripts/verify-shader.mjs has lost the 'hushed' probe. It is the only thing in the ` +
+        `repository that checks Floor −5's actual subject — that the aria moves the house — ` +
+        `because the committed frames are single instants and a still cannot show a voice. ` +
+        `Without it the floor is verified with the singer silent, which is the one state it ` +
+        `is not about.`
+    );
+  }
+
+  // The seam. Bands rather than a pitch, in both declarations of the number.
+  if (!/export const VOICE_BANDS = (\d+)/.test(clockSource)) {
+    problems.push(
+      `${clock} no longer declares VOICE_BANDS. The whole reason voiceAt returns a band vector ` +
+        `rather than a note is that an AnalyserNode hands back bins — a shader written against a ` +
+        `pitch renders the same room today and has to be rewritten the day the sound arrives.`
+    );
+  }
+  for (const uniform of ['uVoiceLow', 'uVoiceHigh', 'uVoicePower', 'uHouse']) {
+    if (!new RegExp(`uniform\\s+\\w+\\s+${uniform};`).test(shaderSource)) {
+      problems.push(`${shader} no longer declares ${uniform}; Floor −5 would render unlit or unmoved.`);
+    }
+  }
+
+  // The prefix. Floor −4's room is a projection box and owns BOX_ in GLSL.
+  const boxGlsl = shaderSource.match(/const BOX_GLSL = `([\s\S]*?)\n`;/);
+  if (boxGlsl === null) {
+    problems.push(`${shader} has no BOX_GLSL block; Floor −5 has no room.`);
+  } else if (/\bBOX_[A-Z_]+\b/.test(boxGlsl[1])) {
+    problems.push(
+      `BOX_GLSL declares a BOX_-prefixed constant. Floor −4's PROJECTION_GLSL already owns that ` +
+        `prefix — its room is a projection box — and GLSL has one global namespace across the ` +
+        `concatenated source, so this is a redefinition error reported thirty lines from ` +
+        `anything that mentions it. Floor −5's room is LOGE_ and its auditorium is HOUSE_.`
     );
   }
 

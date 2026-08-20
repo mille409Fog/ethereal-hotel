@@ -51,6 +51,7 @@ import {
   type IQualityTier,
 } from './gl/quality';
 import { drawingBufferSize, resizeDrawingBuffer } from './gl/viewport';
+import { voiceAt, type IVoice } from './box';
 import { benchMask, filmFrameAt, type IBench, type IFilmFrame } from './projection';
 import { migrationAt, SENTENCE_ATLAS_PATH } from './sentence';
 import { FULLSCREEN_VERTEX_SHADER } from './rooms/fullscreen.vert';
@@ -59,6 +60,7 @@ import type { ICorridorRig } from './rooms/corridor-rig';
 import { HOTEL_FRAGMENT_SHADER } from './rooms/hotel.frag';
 import type { ILibraryRig } from './rooms/library-rig';
 import type { ILightRig } from './rooms/light-rig';
+import type { IBoxRig } from './rooms/box-rig';
 import type { IProjectionRig } from './rooms/projection-rig';
 
 /** What the renderer will say about itself, for the caption under the canvas. */
@@ -93,11 +95,14 @@ export interface IHotelFrame {
   /** Floor −4's rig — see `rooms/projection-rig.ts`. */
   readonly projection: IProjectionRig;
 
+  /** Floor −5's rig — see `rooms/box-rig.ts`. */
+  readonly box: IBoxRig;
+
   /**
    * The lift, as floors below the lobby: 0 is the lobby's distance field exactly,
-   * 1 the corridor's, 2 the library's, 3 the cellar's, 4 the projection box's, and
-   * between any adjacent pair the shader mixes them. From `descent.ts`, where the
-   * requirement that the endpoints be exact is spelled out.
+   * 1 the corridor's, 2 the library's, 3 the cellar's, 4 the projection box's, 5
+   * the Box's, and between any adjacent pair the shader mixes them. From
+   * `descent.ts`, where the requirement that the endpoints be exact is spelled out.
    */
   readonly depth: number;
 
@@ -464,6 +469,11 @@ export class HotelRenderer {
 
     this.uploadProjection(hotel.projection, film, hotel.bench);
 
+    // Floor −5. Evaluated at the wall second rather than at the projector's, because
+    // the aria is not on Floor −4's clock — a singer does not slow down because the
+    // machine one floor up has. `seconds`, not `posedAt`.
+    this.uploadBox(hotel.box, voiceAt(seconds));
+
     // The visitor. Not from a rig, because neither is a fact about the hotel.
     gl.uniform1f(this.at('uStillness'), hotel.stillness);
     gl.uniform1f(this.at('uBreath'), hotel.breath);
@@ -526,6 +536,42 @@ export class HotelRenderer {
     gl.uniform1f(this.at('uFilmTime'), film.time);
     gl.uniform1f(this.at('uFilmFrame'), film.index);
     gl.uniform1i(this.at('uStack'), benchMask(bench));
+  }
+
+  /**
+   * Floor −5's rig, and the aria that moves it.
+   *
+   * Lifted out of `render` for the same reason `uploadProjection` is — twelve names
+   * inline would put the method back over the lint config's cap — and it is the
+   * second of the two floors that pays for its own method.
+   *
+   * @param box The hour's rig. Its one hour-varying field is a length in metres.
+   * @param voice What the singer is doing at this instant, from `box.ts`. Silence is
+   *   eight zeros, which the shader reads as a house that is not being moved rather
+   *   than as a house that is not there — those are different, and the second one is
+   *   `box.house` being zero.
+   */
+  private uploadBox(box: IBoxRig, voice: IVoice): void {
+    const gl = this.gl;
+
+    gl.uniform3f(this.at('uChandelierColour'), ...box.chandelierColour);
+    gl.uniform1f(this.at('uChandelierStrength'), box.chandelierStrength);
+    gl.uniform3f(this.at('uLibrettoColour'), ...box.librettoColour);
+    gl.uniform1f(this.at('uLibrettoStrength'), box.librettoStrength);
+    gl.uniform1f(this.at('uBoxExposure'), box.exposure);
+    gl.uniform3f(this.at('uBoxFloor'), ...box.ambientFloor);
+    gl.uniform3f(this.at('uBoxSky'), ...box.ambientSky);
+    gl.uniform1f(this.at('uBoxDust'), box.dust);
+    gl.uniform1f(this.at('uHouse'), box.house);
+
+    // Eight bands as two vec4s — see the note over uVoiceLow in `hotel.frag.ts` for
+    // why this is not a `float[8]`. Read defensively rather than spread, because a
+    // short vector here would upload `undefined` as a NaN and take the whole frame
+    // black with nothing in the console.
+    const band = (index: number): number => voice.bands[index] ?? 0;
+    gl.uniform4f(this.at('uVoiceLow'), band(0), band(1), band(2), band(3));
+    gl.uniform4f(this.at('uVoiceHigh'), band(4), band(5), band(6), band(7));
+    gl.uniform1f(this.at('uVoicePower'), voice.power);
   }
 
   /** A uniform's location, or `null` — which `gl.uniform*` treats as a no-op. */

@@ -200,14 +200,62 @@ export const PROJECTION_EYE: IVec3 = { x: -1.6, y: 1.45, z: -3.0 };
 export const PROJECTION_TARGET: IVec3 = { x: 0.35, y: 1.05, z: 2.6 };
 
 /**
- * The five floors' anchors, in the order the lift passes them — so the index is
+ * Where a person stands on Floor −5: in the box, back from the rail, and seated.
+ *
+ * The lowest eye in the building and the only one that is not a standing height —
+ * 1.18 is a person in a chair, which is what a box is furnished for and what makes
+ * the balustrade read as something to look over rather than as a wall at waist
+ * height. Every other floor in this hotel is a room somebody is walking through.
+ *
+ * Back from the rail rather than at it, and that is the composition. Up against the
+ * balustrade the house fills the frame and the box is gone, so the floor becomes an
+ * auditorium seen from nowhere — which is a picture of an opera house rather than a
+ * picture of being in one. Half a metre back, the rail crosses the bottom of the
+ * frame, the near chair is in the corner of it, and the house is a bright thing
+ * beyond a dark near edge. That contrast is the room: the subject is out there and
+ * the visitor is in here, and both have to be in shot to say so.
+ *
+ * Off-axis to the left by a little, so the two chairs are not a symmetrical pair
+ * across the middle of the frame and the chandelier does not sit dead centre. The
+ * same argument the lobby's moonlight makes about crossing a frame rather than
+ * dividing it.
+ */
+export const BOX_EYE: IVec3 = { x: -0.34, y: 1.18, z: -2.05 };
+
+/**
+ * Aimed out over the rail and slightly up, into the house.
+ *
+ * Up, which no other target in this building is. Every room above this one is
+ * looked at level or downward — at a desk, down a corridor, at shelving, at flags,
+ * at a beam — because they are all rooms with floors that matter. This one is aimed
+ * above the horizontal because the house has eleven metres of height on it and the
+ * only things in it worth resolving, the chandelier and the upper tiers, are above
+ * the eye of somebody sitting down.
+ *
+ * It is also what keeps the stalls out of shot, which is deliberate rather than
+ * incidental: there is no floor modelled down there, and the reason there is none is
+ * that a box does not have one. A target ten centimetres lower would put the march
+ * through the gap where an auditorium's floor should be and out into the dark, and
+ * the bottom of every frame on this floor would be the void the model actually is.
+ *
+ * The z is far enough out that the aim does not swing as `uHouse` moves — it is a
+ * direction, not a point in the house, so the same composition survives all five
+ * hours. Aimed at something *in* the auditorium, the camera would turn through
+ * thirty degrees between midnight and dawn, and this floor's answer to the sun would
+ * be swamped by a camera move nobody asked for.
+ */
+export const BOX_TARGET: IVec3 = { x: 0.42, y: 2.9, z: 12.0 };
+
+/**
+ * The six floors' anchors, in the order the lift passes them — so the index is
  * the depth, exactly, which is the same identity `descent.ts` is built on.
  *
- * A table rather than five named pairs threaded through a branch, because the
+ * A table rather than six named pairs threaded through a branch, because the
  * interpolation below has to work between *whichever* pair the lift is straddling
  * and there is no version of that written as a conditional which survives a
- * sixth floor. Two floors have arrived since that was written and neither touched a
- * line of `anchorAt`, which is what the table was for.
+ * sixth floor. Three floors have arrived since that was written and none of them
+ * touched a line of `anchorAt`, which is what the table was for — the sixth being
+ * the one the sentence above was actually predicting.
  */
 const EYE_ANCHORS: readonly IVec3[] = [
   ANCHOR_EYE,
@@ -215,6 +263,7 @@ const EYE_ANCHORS: readonly IVec3[] = [
   LIBRARY_EYE,
   CELLAR_EYE,
   PROJECTION_EYE,
+  BOX_EYE,
 ];
 const TARGET_ANCHORS: readonly IVec3[] = [
   ANCHOR_TARGET,
@@ -222,6 +271,7 @@ const TARGET_ANCHORS: readonly IVec3[] = [
   LIBRARY_TARGET,
   CELLAR_TARGET,
   PROJECTION_TARGET,
+  BOX_TARGET,
 ];
 
 /**

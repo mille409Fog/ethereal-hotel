@@ -79,6 +79,8 @@ import { cellarRigFor } from '../src/aubade/rooms/cellar-rig.ts';
 import { corridorRigFor } from '../src/aubade/rooms/corridor-rig.ts';
 import { libraryRigFor } from '../src/aubade/rooms/library-rig.ts';
 import { projectionRigFor } from '../src/aubade/rooms/projection-rig.ts';
+import { boxRigFor } from '../src/aubade/rooms/box-rig.ts';
+import { ARIA, BEAT_SECONDS, SILENT, voiceAt } from '../src/aubade/box.ts';
 import { benchMask, filmFrameAt, THREADED } from '../src/aubade/projection.ts';
 import { migrationAt, SENTENCE_ATLAS_PATH } from '../src/aubade/sentence.ts';
 import { rigFor } from '../src/aubade/rooms/light-rig.ts';
@@ -184,6 +186,53 @@ const LATER_SECONDS = 9.37;
  */
 const TURNED = { from: 1, to: 1, across: 0 };
 
+/**
+ * The middle of a note of the aria, in seconds — derived from the score rather
+ * than written down, so that editing the music cannot silently un-aim this file.
+ *
+ * @param pick Chooses the note out of `ARIA`.
+ */
+const middleOfNote = (pick) => {
+  let start = 0;
+  const spans = ARIA.map((note) => {
+    const span = { note, start, length: note.beats * BEAT_SECONDS };
+    start += span.length;
+    return span;
+  });
+  const chosen = pick(spans);
+  return chosen.start + chosen.length * 0.5;
+};
+
+/**
+ * Floor −5's pair: the same room at the same instant, sung and unsung.
+ *
+ * The fourth probe, and it exists because **second zero is the one moment of the
+ * performance at which this floor is provably not itself.** Everything here is
+ * rendered at the run's second, which defaults to zero — and zero is the very start
+ * of the first note, where the attack envelope is exactly 0. So the whole floor was
+ * being verified, and its five reference frames committed, with the singer silent and
+ * the house standing perfectly still: the one state the room is not about. No single
+ * frame can show a voice, any more than one can show a rate.
+ *
+ * What separates this pair is the **voice and nothing else** — not the clock. That is
+ * the third probe's construction rather than the second's, and choosing it was not a
+ * matter of taste. Taking the two instants a few seconds apart is the obvious way and
+ * it cannot work here: the camera breathes, so two different seconds are two different
+ * camera poses, and the noon pair below could then only ever be compared with a
+ * tolerance. TURNED says exactly this about the library one floor up. Holding the
+ * clock and swapping the voice leaves the dust, the camera and every other floor
+ * identical, so the difference in the frame *is* the aria and the comparison can be
+ * an identity.
+ *
+ * The committed frames are the singing ones, deliberately. A reference image of this
+ * room at rest would be a picture of the one thing it does not do.
+ */
+const SINGING = voiceAt(
+  middleOfNote((spans) =>
+    spans.reduce((loudest, span) => (span.note.dynamic > loudest.note.dynamic ? span : loudest))
+  )
+);
+
 const FLOORS = [
   { name: 'lobby', depth: 0 },
   { name: 'lift', depth: 0.5 },
@@ -197,6 +246,9 @@ const FLOORS = [
   { name: 'projection', depth: 4, after: FRAME_SECONDS },
   { name: 'later', depth: 4, after: LATER_SECONDS, probe: true },
   { name: 'turning', depth: 2, script: TURNED, probe: true },
+  { name: 'raising', depth: 4.5, voice: SINGING },
+  { name: 'box', depth: 5, voice: SINGING },
+  { name: 'hushed', depth: 5, voice: SILENT, probe: true },
 ];
 
 /** The entries `--out` writes only when they are asked for by name. */
@@ -281,6 +333,13 @@ const job = {
         library: libraryRigFor(state, invited),
         cellar: cellarRigFor(state, invited),
         projection,
+        box: boxRigFor(state, invited),
+        // The aria, from the same function the renderer calls, at the wall second
+        // rather than at the projector's — a singer does not slow down because the
+        // machine one floor up has. Unless the entry names a voice, which the Floor
+        // −5 entries do: see SINGING for why that pair holds the clock still and
+        // swaps the singer rather than the other way round.
+        voice: floor.voice ?? voiceAt(at),
         seconds: at,
         // Which two of Floor −2's four writing systems are on the wall, from the
         // same function the renderer calls — unless the entry names one, which only
@@ -541,6 +600,23 @@ async function renderInPage(input) {
     gl.uniform3f(at('uProjectionSky'), projection.ambientSky[0], projection.ambientSky[1], projection.ambientSky[2]);
     gl.uniform1f(at('uProjectionDust'), projection.dust);
     gl.uniform1f(at('uProjectorRate'), projection.rate);
+
+    const box = frame.box;
+    gl.uniform3f(at('uChandelierColour'), box.chandelierColour[0], box.chandelierColour[1], box.chandelierColour[2]);
+    gl.uniform1f(at('uChandelierStrength'), box.chandelierStrength);
+    gl.uniform3f(at('uLibrettoColour'), box.librettoColour[0], box.librettoColour[1], box.librettoColour[2]);
+    gl.uniform1f(at('uLibrettoStrength'), box.librettoStrength);
+    gl.uniform1f(at('uBoxExposure'), box.exposure);
+    gl.uniform3f(at('uBoxFloor'), box.ambientFloor[0], box.ambientFloor[1], box.ambientFloor[2]);
+    gl.uniform3f(at('uBoxSky'), box.ambientSky[0], box.ambientSky[1], box.ambientSky[2]);
+    gl.uniform1f(at('uBoxDust'), box.dust);
+    gl.uniform1f(at('uHouse'), box.house);
+
+    const voice = frame.voice;
+    const band = (index) => voice.bands[index] ?? 0;
+    gl.uniform4f(at('uVoiceLow'), band(0), band(1), band(2), band(3));
+    gl.uniform4f(at('uVoiceHigh'), band(4), band(5), band(6), band(7));
+    gl.uniform1f(at('uVoicePower'), voice.power);
     gl.uniform1f(at('uFilmTime'), frame.filmTime);
     gl.uniform1f(at('uFilmFrame'), frame.filmFrame);
     gl.uniform1i(at('uStack'), frame.stack);
@@ -1089,6 +1165,185 @@ if (onlyState === null && !invited) {
     }
   }
 
+  // The Box's claim, and it is a sixth different one again — different in shape from
+  // all five above it, which is the test of whether the floor was worth building.
+  //
+  // Floor 0 orders its five frames by brightness, Floor −1 orders them the other way,
+  // Floor −2 holds the mean flat and drops the spread, Floor −3 compares two visitors,
+  // Floor −4 compares two instants. Floor −5 is about **how much room there is**, and
+  // the quantity that sees that is neither a level nor an identity: it is how much of
+  // the frame is far away.
+  //
+  // The quantity that sees it is the **brightest pixel in the frame**, and which
+  // object that pixel belongs to is the whole of the argument.
+  //
+  // At every hour with a house in it, the brightest thing in shot is the chandelier,
+  // which is an emitter and clips. At noon there is no house, so there is no
+  // chandelier — not a dimmed one, not a distant one, none — and the brightest thing
+  // left is a shaded reading lamp on the rail, which is nearly two stops down. So the
+  // peak falls, and it falls because an object has left the room.
+  //
+  // This was first written as a count of distinct luma levels, on the theory that a
+  // long hall occupies a long gradient and a cupboard cannot. The frames said
+  // otherwise — the noon frame has *more* levels than the night one, because a lamp
+  // falling off across two metres of near velvet is itself a long smooth gradient and
+  // the night frame is mostly black. The check also happened to be spelled `.levels`
+  // against a field called `.distinct`, so it compared `undefined` and passed
+  // everything. Both halves of that are worth leaving recorded: the premise was
+  // wrong, and a check with a wrong premise that never runs looks exactly like a
+  // check that works.
+  const box = floorFrames('box');
+
+  if (box.length === AUBADE_STATES.length) {
+    const night = box[0];
+    const day = box[box.length - 1];
+
+    // The exact half, and the one that would fail silently. BOX_RIGS.shuttered.house
+    // is meant to be exactly 0 — no auditorium, not a shallow one — and a house 200mm
+    // deep renders as a perfectly plausible dark slot behind the rail that nobody
+    // would query by eye. What gives it away is that the chandelier is still hanging
+    // in it, and a clipped emitter in frame is not a thing a statistic can miss.
+    if (day.max > night.max * 0.9) {
+      problems.push(
+        `At noon the Box's brightest pixel is ${day.max.toFixed(1)} against ${night.max.toFixed(1)} ` +
+          `at astronomical night, which is too close for the chandelier to have gone. ` +
+          `BOX_RIGS.shuttered.house is meant to be exactly 0: there is no auditorium at noon, so ` +
+          `there is nothing for the chandelier to hang in and mapBox never reaches it, leaving a ` +
+          `shaded reading lamp as the brightest thing on the floor. A house that is nearly zero ` +
+          `rather than zero is a dark slot with a chandelier still in it.`
+      );
+    }
+
+    // And the half that actually holds the exactness, which the peak above does not.
+    //
+    // A house of 200mm was rendered to find out, and it slipped the peak test cleanly:
+    // the slot is too shallow to hold the chandelier's corona, so the brightest pixel
+    // falls to the reading lamp exactly as it does at zero. What it could not fake was
+    // the **direction the frame moves in**.
+    //
+    // The four hours with a house in them brighten as it shrinks, because a nearer far
+    // wall and a nearer chandelier put more lit surface in shot. A house that is small
+    // but present is the end of that ramp and is therefore the *brightest* frame of the
+    // five. A house that is genuinely absent is not on the ramp at all — the light it
+    // was carrying has left the building, and the frame drops below even the
+    // thirty-four metre one.
+    //
+    // So the claim is a discontinuity rather than a threshold, and it is the sixth
+    // distinct shape of assertion in this file: noon must be darker than every hour
+    // that has a house in it. Nothing continuous can satisfy that, which is the point.
+    const brightestNight = Math.max(...box.slice(0, -1).map((frame) => frame.mean));
+    if (day.mean >= brightestNight) {
+      problems.push(
+        `At noon the Box is mean luma ${day.mean.toFixed(1)}, which is no darker than the ` +
+          `brightest hour that has a house in it (${brightestNight.toFixed(1)}). That is the ` +
+          `signature of a house that is small rather than absent: BOX_RIGS.house falls all night ` +
+          `and the room brightens as it does, so a shuttered frame sitting at the top of that ramp ` +
+          `is the ramp continuing. BOX_RIGS.shuttered.house is meant to be exactly 0 — at which ` +
+          `the chandelier leaves the building and the frame drops off the ramp entirely.`
+      );
+    }
+
+    // And the ordering, which is what says the house closes *gradually* rather than
+    // simply being there and then not. As `house` falls the far end of the room comes
+    // forward into the light, so the frame loses its longest gradients and its mean
+    // rises — the room gets smaller and brighter together, which is the opposite of
+    // every other floor in this building and is the point.
+    const brightening = box.slice(0, -1);
+    for (let i = 1; i < brightening.length; i += 1) {
+      if (brightening[i].mean <= brightening[i - 1].mean) {
+        problems.push(
+          `The Box's ${brightening[i].state} frame (mean luma ${brightening[i].mean.toFixed(1)}) ` +
+            `is no brighter than ${brightening[i - 1].state} ` +
+            `(${brightening[i - 1].mean.toFixed(1)}). BOX_RIGS.house is supposed to fall as the ` +
+            `night ends, and a shallower house puts its far wall and its chandelier nearer the ` +
+            `camera — so the frame brightens as the room shrinks. Nothing in this rig is a ` +
+            `dimmer; if the order has reversed, something is lighting this floor by the hour.`
+        );
+      }
+    }
+
+    // The lights themselves do not move, which is this floor's other half and is the
+    // claim a reader is most likely to doubt, because the five frames plainly differ.
+    // Seven of the rig's eight fields are identical across all five hours; what
+    // changes is a dimension.
+    //
+    // The quantity that sees *that* is the **darkest** pixel, and it is the mirror of
+    // the check above. The deepest shadow on this floor is in the box — a corner of
+    // velvet the house never reaches, lit by the libretto lamp's falloff and the
+    // ambient and nothing else — so it is the one part of the frame that is the same
+    // two metres of room at every hour. It cannot move unless somebody has put the
+    // sun into this floor's light, which is the failure the whole rig is written to
+    // make visible. A mean would not do: the mean is *supposed* to move here.
+    // And the claim the floor is actually named for, which nothing above tests and
+    // which no single frame can carry: **the aria moves the geometry**.
+    //
+    // The two instants are the loudest note of the score and the rest at the end of
+    // it, so the only thing that differs between them is how hard the singer is
+    // pushing. At every hour with a house, that has to change the picture — the tiers
+    // ride the low bands, the chandelier's lustres ride the middle ones and the
+    // proscenium takes the top of the singer's formant, so a pair that matches means
+    // the voice is not reaching the shader at all.
+    //
+    // Asserted on the fingerprint rather than on the statistics, for the reason the
+    // projection box's pair gives: the displacements are centimetres and the mean,
+    // deviation and chroma do not move enough to put a threshold anywhere sane. The
+    // question is whether the two are the same *picture*, which is an identity, and
+    // identity wants the pixels.
+    const hushed = floorFrames('hushed');
+    for (const state of AUBADE_STATES) {
+      const singing = box.find((frame) => frame.state === state);
+      const silent = hushed.find((frame) => frame.state === state);
+      if (singing === undefined || silent === undefined) {
+        continue;
+      }
+
+      const same = singing.fingerprint === silent.fingerprint;
+      const hasHouse = state !== 'shuttered';
+
+      if (hasHouse && same) {
+        problems.push(
+          `At ${state} the Box is pixel-identical sung and unsung — the same second, the same ` +
+            `camera, the loudest note of the aria against silence. This floor's whole subject ` +
+            `is that the singing moves the house, so those have to be different pictures. An ` +
+            `identical pair means uVoiceLow and uVoiceHigh are not reaching voicePush, or the ` +
+            `displacements have been tuned down to nothing.`
+        );
+      }
+
+      // And the exact half, which is this floor's answer to the sun arriving from a
+      // completely different direction. At noon there is no house, so there is
+      // nothing the voice can move — every displacement in this shader is inside
+      // mapHouse, and mapBox never calls it. The singer has not stopped and voiceAt
+      // returns exactly what it returns at midnight; the room simply has nowhere left
+      // to put it. So the noon pair must be identical **to the byte**, and if it ever
+      // is not, something on this floor has been wired to move the box itself — which
+      // would be a room that answers the sun with a second thing, and this floor is
+      // built to answer with one.
+      if (!hasHouse && !same) {
+        problems.push(
+          `At noon the Box is not the same picture sung and unsung. BOX_RIGS.shuttered.house ` +
+            `is 0, so there is no auditorium for the voice to displace and the aria cannot ` +
+            `reach the frame at all. Something outside mapHouse is reading uVoiceLow, ` +
+            `uVoiceHigh or uVoicePower — the box itself is meant to be the one part of this ` +
+            `floor that never moves.`
+        );
+      }
+    }
+
+    const floors = box.map((frame) => frame.min);
+    const darkest = Math.min(...floors);
+    if (Math.max(...floors) - darkest > Math.max(darkest, 1) * 0.5) {
+      problems.push(
+        `The Box's darkest pixel spans ${darkest.toFixed(1)}–${Math.max(...floors).toFixed(1)} ` +
+          `across the five hours. Floor −5 is lit identically at every hour — seven of the eight ` +
+          `fields in rooms/box-rig.ts are the same in all five rigs — and what the sun moves is ` +
+          `the depth of the house, not the light in it. The deepest shadow in the box is the one ` +
+          `place the house never reached, so a shadow that lifts with the hour means this floor ` +
+          `has been wired to another floor's rig.`
+      );
+    }
+  }
+
   // A ride is between two floors and has to look like neither. A ride whose halfway
   // frame matches one of its endpoints is a cut with a delay in it, which is the
   // one thing "visible and unhurried" rules out — and it is exactly what a morph
@@ -1108,6 +1363,7 @@ if (onlyState === null && !invited) {
     ['descent', ['corridor', 'library']],
     ['sinking', ['library', 'arriving']],
     ['threading', ['cellar', 'projection']],
+    ['raising', ['projection', 'box']],
   ]) {
     for (const moving of floorFrames(ride)) {
       for (const floor of ends) {

@@ -50,9 +50,9 @@ const ride = (from: Floor, direction: LiftDirection, steps = 300): number[] =>
 
 describe('the lift', () => {
   describe('the shaft it runs in', () => {
-    it('serves five floors, deepest last', () => {
-      expect(FLOORS).toEqual([0, -1, -2, -3, -4]);
-      expect(LOWEST_FLOOR).toBe(-4);
+    it('serves six floors, deepest last', () => {
+      expect(FLOORS).toEqual([0, -1, -2, -3, -4, -5]);
+      expect(LOWEST_FLOOR).toBe(-5);
     });
 
     it('parks each floor on an exact depth, and depth is minus the floor', () => {

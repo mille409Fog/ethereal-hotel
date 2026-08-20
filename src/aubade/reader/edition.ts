@@ -204,8 +204,20 @@ export const EDITION: readonly IEditionSection[] = [
         floor: 'Floor −5',
         name: 'The Box',
         body:
-          'An opera box, one aria, and the geometry of the room moving to it. It has to be ' +
-          'worth looking at in silence, because for most visitors it will be silent.',
+          'Not a room you are in. A ledge two metres deep, lined in red silk, with a gilt rail, ' +
+          'two chairs and a shaded lamp for reading a libretto by. The lift is behind you — the ' +
+          'only floor where it is, because it is the only one whose far end is the thing worth ' +
+          'looking at. Over the rail is the house: thirty-four metres of it at full dark, four ' +
+          'tiers of boxes going away down both sides, a gilt arch round a stage, and a gas ' +
+          'chandelier in the middle of the largest volume in this building. Most of it is too ' +
+          'far off to resolve, which is not the drawing failing but what a theatre is. An aria ' +
+          'is being sung out there and you cannot hear it. You can see it: the tiers move with ' +
+          'the low notes and arrive late at the far end, because sound takes a tenth of a ' +
+          'second to cross a room this size. What the sun takes here is not the light or the ' +
+          'writing or the speed — it is the room. The house closes in as the night ends, and ' +
+          'the chandelier comes down with the ceiling it hangs from. By full day it is gone: ' +
+          'the rail runs along the foot of a flat wall with the shape of the arch still in the ' +
+          'plaster that filled it.',
       },
     ],
     coda: [
@@ -216,11 +228,14 @@ export const EDITION: readonly IEditionSection[] = [
         'a cross-fade between two pictures — it is one piece of arithmetic becoming another ' +
         'piece of arithmetic, in full view, which is the only honest way to move between two ' +
         'rooms that are made of nothing but arithmetic.',
-      'At the time of writing, Floor 0, Floor −1, Floor −2, Floor −3 and Floor −4 exist and the ' +
-        'lift runs between them, one floor at a time. The floor below is written and not built, ' +
-        'which is exactly why you can read it here and not walk into it. The distinction is kept ' +
-        'on purpose: this is a place that tells you what it can and cannot do, and a hotel ' +
-        'advertising rooms it does not have is worse than a hotel with five very good ones.',
+      'At the time of writing Floor 0, Floor −1, Floor −2, Floor −3, Floor −4 and Floor −5 ' +
+        'exist and the lift runs between them, one floor at a time. One thing in the list above ' +
+        'is written and not built, and it is not a room: the Box has no sound in it. The aria is ' +
+        'a score rather than a recording, and nobody can hear a note. The reason is not ' +
+        'technical — it is that a piece which promises not to use anybody else’s music without ' +
+        'saying whose it is has to be able to say whose it is, and that is a question about ' +
+        'people rather than code. The distinction is kept on purpose: this is a place that tells ' +
+        'you what it can and cannot do.',
       'The lift does not run while the hotel is shut. If you are here in daylight there is a ' +
         'control at the desk that opens the place anyway, and it opens the lift with it.',
     ],

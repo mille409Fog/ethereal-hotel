@@ -59,7 +59,7 @@ one shader and one idea.
 | **−2** | **The Library**         | One sentence, migrating across eight writing systems — Latin, Greek, Cyrillic, Arabic, Devanagari, Hebrew, Han, Hangul — glyphs dissolving into one another rather than cutting.                            |
 | **−3** | **The Cellar**          | Meditation. Near-silence. The camera slows to a 4-7-8 breath and the room resolves only if you stay — in the eye, not in the room, which never changes at all. **Built.**                                   |
 | **−4** | **The Projection Room** | Film. The post-processing stack _is_ the exhibit, applied to the whole frame rather than to a screen in it. Six switches on a bench you can operate. What the sun moves is the rate. **Built.**             |
-| **−5** | **The Box**             | Opera. A single aria drives the geometry. Silent by default — must be beautiful with the sound off, because for most visitors it will be.                                                                   |
+| **−5** | **The Box**             | Opera. An aria drives the geometry of the house beyond the balustrade, and what the sun takes is the house itself. Silent, and it says so. **Room built, sound not.**                                       |
 
 The elevator between floors is not a transition, it is a room. It is where the morph between two
 distance fields happens in full view, and it is the cheapest place in the piece to be spectacular.
@@ -140,7 +140,8 @@ Fail any of these and the piece is worse than not building it.
 
 Build it in this repo, as `src/aubade/`, on a lazy route (`/aubade`), with **its own design
 tokens and zero shared CSS**. One deploy, one CI, the existing lint/test/a11y safeguards apply for
-free, and the portfolio links to it directly.
+free, and the portfolio links to it direc
+tly.
 
 The isolation is not optional. `src/styles.css` is the hotel-gothic system for the resume site;
 Aubade must not import it, extend it, or leak into it. If the two ever need the same value, copy
@@ -242,7 +243,7 @@ In this order, by ratio of impact to risk:
    mean anything relative to one glyph's own corners; interpolating them between two different
    scripts produces garbage at exactly the corners MSDF exists to protect. The morph is the whole
    floor, so the atlas is single-channel true distance — which interpolates to a zero crossing
-   that *travels*, and a travelling zero crossing is a letter changing shape rather than two
+   that _travels_, and a travelling zero crossing is a letter changing shape rather than two
    letters cross-fading. `scripts/sentence-field.test.mjs` asserts precisely that and is the best
    short statement of why this floor is built the way it is.
 
@@ -250,7 +251,7 @@ In this order, by ratio of impact to risk:
    Chromium, which shapes with HarfBuzz — so ligatures, direction and bidi are answered by the
    same engine a reader of that script uses daily, and the Hebrew comes back right-to-left for
    free. That means Arabic and Devanagari are very probably a font subset and a table row away,
-   and the condition attached to them here is now the *other* half of the sentence rather than the
+   and the condition attached to them here is now the _other_ half of the sentence rather than the
    shaping half.
 
    **What is actually left is people, not code.** The four missing scripts are cut on authorship:
@@ -265,10 +266,67 @@ In this order, by ratio of impact to risk:
    that says there is no asset pipeline. The reconciliation is in the build script's header and it
    is not a loophole — what is committed is a sampled distance function, which is the same
    construction every wall in the building is made of, and the shader does not composite it but
-   evaluates it, mixes two of them and takes a contour. A floor that needed a texture of *pictures*
+   evaluates it, mixes two of them and takes a contour. A floor that needed a texture of _pictures_
    would have been the wrong floor to build.
-2. **The Box** — opera, WebAudio FFT → geometry. Last, because audio licensing and autoplay policy
-   are the two things most likely to eat a week.
+
+2. **The Box** — _half landed._ The room is built and the sound is not, and the split is not the
+   one this line predicted. `box.ts`, `rooms/box-rig.ts`, `BOX_GLSL` in `rooms/hotel.frag.ts`.
+
+   **Autoplay turned out not to be a risk at all**, because it was answered by the concept rather
+   than worked around. This floor was already required to be worth looking at in silence, "because
+   for most visitors it will be" — taken to its end, that is a room with no audio graph in it, and
+   a piece with no audio graph has no autoplay policy to lose to. An aria is being sung in a house
+   five floors under the street and nobody in the building can hear a note of it. A hotel that
+   refuses is the concept; this is the floor where the refusal is about the work itself.
+
+   **Licensing is the half that is left, and it is the Library's cut again.** The sixth
+   non-negotiable is a question about provenance, provenance is a question about people, and
+   `docs/aubade-credits.md` now states the three routes open and what each costs. The melody is the
+   author's own and is committed as a score; what is missing is a cleared voice to sing it.
+
+   The seam is one function. `voiceAt` in `box.ts` returns **eight logarithmic bands from 80 Hz to
+   8 kHz** — what an `AnalyserNode` hands back, binned as it would be binned — rather than the note
+   that is sounding. That was the single decision worth making early: a shader written against a
+   pitch renders the same room today and has to be rewritten the day the sound arrives, at which
+   point the floor changes when it was only supposed to become audible. Replacing `voiceAt` with a
+   read of an analyser changes nothing in the shader, the rig, the uniforms or the committed frames.
+
+   Two things about the room changed the plan above and should be read as amendments to it.
+
+   **The sixth floor answers with space, and it had to.** Five answers were already spent — light
+   arriving, light leaving, writing leaving, the visitor's own eye, and speed — and three of those
+   five are a weight in [0, 1] that reaches exactly zero at noon. A fourth would have been the same
+   answer in a different hat. So `house` is a **length in metres**: the auditorium is thirty-four
+   metres deep at astronomical night and closes as the night ends, and at the shuttered hour it is
+   exactly zero — no auditorium, a solid wall flush with the balustrade, and a red cupboard two
+   metres deep with a reading lamp still lit in it. It is the only room in the hotel that is
+   _cheaper to draw at noon_, because there is less of it.
+
+   That also forced a sixth _shape_ of assertion, which is the real test of whether a floor was
+   worth building. The frames cannot be ordered by brightness, held flat, paired by visitor or
+   paired by instant. What `verify-shader.mjs` requires instead is a **discontinuity**: the four
+   hours with a house in them brighten as it shrinks, and noon must be darker than all of them —
+   which nothing continuous can satisfy, and which a house of 200mm fails while looking entirely
+   plausible in the frame. That last was measured rather than assumed; the check before it, on peak
+   luma, passed a 200mm house cleanly.
+
+   **And the floor needed a seventh assertion for the thing it is actually named after**, which was
+   very nearly missed. A still cannot show a voice any more than it can show a rate — and worse,
+   the script renders at second 0 by default, which is the start of the aria's first note where the
+   attack envelope is exactly zero. So the whole floor was verified, and its five reference images
+   committed, with the singer silent and the house standing perfectly still. Every gate passed.
+
+   The `hushed` probe is the answer, and it swaps the **voice** rather than the clock. Two instants
+   a few seconds apart would also be two camera poses, because the camera breathes — so the noon
+   comparison could then only ever carry a tolerance, which is the trap `TURNED` records one floor
+   up. Holding the second and silencing the singer makes the difference in the frame *be* the aria:
+   noon is required identical to the byte, since there is no house for the voice to move, and the
+   four night hours are required to differ.
+
+   **The lift is behind the visitor here, and only here.** Every other room puts its doors at the
+   far end of the shot. This one cannot, because the far end is the thing the room is for — a box
+   is a place you look _out_ of, and a camera turned round to keep the lift in frame is a camera
+   pointed at the back of the only floor with a view.
 
 The question a third floor raised is settled and the answer generalised, so a further room is no
 longer an architectural decision. Two rooms fitted in one program because two distance fields can be
@@ -279,9 +337,11 @@ chooses between locals, so a settled floor still costs one field, a ride still c
 another floor is one more guard and one more name. The rule that makes that true is that **no room
 may be named twice** — see the note in `hotel.frag.ts`, which is where the ten-times-slower frame is
 recorded. Two floors have arrived on those terms since it was written and neither touched the shape.
-The one part that does not stay flat is the pair of nested ternaries choosing between the locals: at
-five rooms that is as deep as it should go unaided, and a sixth is the moment to index an array of
-locals by the leg instead.
+The one part that did not stay flat was the pair of nested ternaries choosing between the locals,
+and the sixth room is where they were replaced by an array of six locals indexed by the leg — which
+is what this paragraph said would happen, at the floor it said it would happen at. The index is a
+uniform expression, so every invocation takes the same slot and it is not divergent addressing;
+measured, the Box and the ride into it cost what the lobby costs.
 
 Each new room owes the Reader's Edition a paragraph, and owes `check:docs` and
 `verify-shader.mjs` a committed frame per solar state. `reader/edition.ts` describes all six

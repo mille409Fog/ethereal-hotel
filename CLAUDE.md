@@ -61,7 +61,7 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 | `README.md`         | 6K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `AUBADE.md`         | 24K  | Only if the task touches `/aubade` (a separate WebGL project). Seven phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`), the Cellar on Floor −3 (`cellar.ts`, `rooms/cellar-rig.ts`, `adapted()`), and the Projection Room on Floor −4 (`projection.ts`, `bench.ts`, `rooms/projection-rig.ts`, `projected()`). The Library on Floor −2 is half landed: the room, and now the sentence (`sentence.ts`, `scripts/build-sentence-atlas.mjs`, `MAT_FRIEZE`) in **four** writing systems of the eight. The item stays on the list, because the other four are cut on authorship rather than on code — see `docs/aubade-credits.md`. |
+| `AUBADE.md`         | 28K  | Only if the task touches `/aubade` (a separate WebGL project). Seven phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`), the Cellar on Floor −3 (`cellar.ts`, `rooms/cellar-rig.ts`, `adapted()`), and the Projection Room on Floor −4 (`projection.ts`, `bench.ts`, `rooms/projection-rig.ts`, `projected()`). **Two floors are half landed, and both are cut on authorship rather than on code — see `docs/aubade-credits.md`.** The Library on Floor −2 has its room and its sentence (`sentence.ts`, `scripts/build-sentence-atlas.mjs`, `MAT_FRIEZE`) in **four** writing systems of the eight. The Box on Floor −5 has its room (`box.ts`, `rooms/box-rig.ts`, `BOX_GLSL`) and **no sound at all** — no `AudioContext` exists, which is a licensing decision the piece states out loud rather than an unfinished one. |
 | `CONTRIBUTING.md`   | 6K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
@@ -236,15 +236,43 @@ mistake for bugs:
   frame's deviation falling, because a mean cannot see this floor's hour. The library carries its
   own `exposure` too: `uExposure` is Floor 0's field and `tonemap` applies it to the whole frame,
   so un-blended the lobby's noon stop reached two storeys down and brightened the library by 8%.
+- **Floor −5 answers with space, and `house` is a length rather than a weight.** The auditorium
+  beyond the balustrade is 34m deep at astronomical night and **exactly 0** at `shuttered`, where
+  `mapBox` stops evaluating it entirely — so noon is the only state in the building that costs
+  *less* to draw than its own night. That forced a sixth shape of assertion: `verify:shader`
+  requires a **discontinuity**, noon darker than all four hours that have a house in them, because
+  the four brighten as the house shrinks and nothing continuous can step off that ramp. A house of
+  200mm passes a peak-luma check and fails this one; that was measured. `check:docs` holds the
+  exact 0, the falling order, the `LOGE_`/`HOUSE_` prefixes (Floor −4's GLSL already owns `BOX_`,
+  and GLSL has one global namespace), and the fact that **no `AudioContext` exists anywhere in
+  `src/aubade/`** — the room is silent because the aria has no cleared provenance, which
+  `docs/aubade-credits.md` states and the plate, the prose and the Reader's Edition all say out
+  loud. `voiceAt` in `box.ts` returns eight logarithmic bands, not a pitch, so an `AnalyserNode`
+  can replace it without the shader changing; that is the whole reason the seam is shaped that way.
+- **A still cannot show a voice, so Floor −5 is verified as a pair — and the pair swaps the
+  singer, not the clock.** `verify:shader` renders at second 0 by default, which is the start of
+  the aria's first note where the attack envelope is *exactly* 0: the floor was briefly shipped
+  with every committed frame showing a house standing perfectly still, and nothing noticing. The
+  `hushed` probe fixes it by holding the second and the camera and setting `voice: SILENT`, so the
+  only difference in the frame is the aria — which lets the noon pair be asserted **identical to
+  the byte** (no house, so the voice cannot reach the frame) and the four night hours asserted
+  different. Taking two instants seconds apart instead cannot work here and the reason is not
+  obvious: the camera breathes, so two seconds are two camera poses and noon could only ever be
+  compared with a tolerance. `TURNED` records the same trap one floor up. `check:docs` fails if
+  the probe goes.
 - **The lift is one uniform, and it counts floors.** `uDepth` is 0 in the lobby, 1 in the
-  corridor, 2 in the library, 3 in the cellar, 4 in the projection box — depth is minus the floor,
-  exactly — and `mapScene`
+  corridor, 2 in the library, 3 in the cellar, 4 in the projection box, 5 in the Box — depth is
+  minus the floor, exactly — and `mapScene`
   branches on which _pair_ a ride is between, so a ride still evaluates two distance fields and a
   settled floor one. AUBADE's phase note named the alternative (the lift becomes a fade) and it was
   rejected. **`mapScene` must also name each room exactly once**, which is a claim about the
   compiler rather than the frame: it is inlined at seven sites, so a room written twice is a
   second copy of its field in all seven, and writing it as early returns over a two-armed mix
-  cost SwiftShader ten times the frame for a lobby that had not changed. Every integer must be
+  cost SwiftShader ten times the frame for a lobby that had not changed. The sixth room is where
+  the pair of nested ternaries choosing between the locals became **an array of six locals indexed
+  by the leg**, exactly as AUBADE's phase note said it should at this floor; the index is a uniform
+  expression, so it is not divergent addressing, and it measured at parity with the lobby. Every
+  integer must be
   hit _exactly_, because the scene branch has no epsilon at all, and the
   mirror's second march only wakes inside `MORPH_EPSILON` of 1 — a two-sided band, not a
   threshold, or it stays awake down to a floor with no mirror in it. `MORPH_EPSILON` is declared

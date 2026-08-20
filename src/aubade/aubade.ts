@@ -12,6 +12,7 @@ import { Bench, type ISwitch } from './bench';
 import { breathAt, settleStep } from './cellar';
 import {
   BENCH_COPY,
+  BOX_COPY,
   CELLAR_COPY,
   CORRIDOR_COPY,
   DESK_COPY,
@@ -48,6 +49,7 @@ import { cellarRigFor } from './rooms/cellar-rig';
 import { corridorRigFor } from './rooms/corridor-rig';
 import { libraryRigFor } from './rooms/library-rig';
 import { rigFor } from './rooms/light-rig';
+import { boxRigFor } from './rooms/box-rig';
 import { projectionRigFor } from './rooms/projection-rig';
 import type { IAubadeClock } from './solar';
 import type { AubadeState } from './solar/state';
@@ -70,6 +72,7 @@ const PLATES: Readonly<Record<Floor, Readonly<Record<AubadeState, IDeskCopy>>>> 
   '-2': LIBRARY_COPY,
   '-3': CELLAR_COPY,
   '-4': PROJECTION_COPY,
+  '-5': BOX_COPY,
 };
 
 /**
@@ -641,6 +644,7 @@ export class Aubade implements AfterViewInit, OnDestroy {
         library: libraryRigFor(state, invited),
         cellar: cellarRigFor(state, invited),
         projection: projectionRigFor(state, invited),
+        box: boxRigFor(state, invited),
         depth: this.depthNow(frame.simulatedSeconds),
         stillness: this.stillness,
         breath: breathAt(frame.simulatedSeconds),
