@@ -1,45 +1,57 @@
 /**
- * The Library's sentence: one line of writing that will not stay in one script.
+ * The Library's sentence: one line of writing that will not stay in one language.
  *
  * AUBADE gives Floor −2 a single idea — "One sentence, migrating across eight
- * writing systems, glyphs dissolving into one another rather than cutting" — and
- * `rooms/library-rig.ts` built the room around the half of it that is a light rig.
- * This file is the other half: what the sentence says, which hands it is written
- * in, and where in a thirty-six second cycle it currently is between two of them.
+ * languages in seven writing systems, glyphs dissolving into one another rather
+ * than cutting" — and `rooms/library-rig.ts` built the room around the half of it
+ * that is a light rig. This file is the other half: what the sentence says, which
+ * hands it is written in, and where in a forty-second cycle it currently is
+ * between two of them.
  *
- * ## Four hands, not eight, and that is a decision rather than a stopping point
+ * ## Eight languages, seven hands, and the difference is the floor
  *
- * AUBADE's phase note says, in as many words, "get the Arabic and Devanagari
- * shaping right or cut those two; broken shaping is an insult, not an effect."
- * That licence is taken here and extended by the same argument to Han and Hangul,
- * for two different reasons that happen to point the same way.
+ * The table below migrates between *languages*. Seven writing systems is what
+ * eight languages happen to cost, rather than the thing being counted — and the
+ * distinction is not pedantry, because English and French share an alphabet. That
+ * pair is the proof the room is not about alphabets: the dissolve between them is
+ * the same travelling zero crossing as every other, moving a fraction of the
+ * distance, and if the floor still reads as the same event there then the floor
+ * was never about letterforms in the first place.
  *
- * The first is shaping. Every script below is *unjoined*: a Greek sigma, a
- * Cyrillic ze and a Hebrew mem are the same shape wherever in a word they fall,
- * and Hebrew's five final forms are separate codepoints rather than a contextual
- * substitution. So the line that goes into the atlas is the line that was typed,
- * and there is no shaper to get wrong. Arabic joins, Devanagari reorders its
- * matras and stacks conjuncts, and both are a class of correctness this file
- * cannot assert about itself.
+ * It also makes the order a constraint rather than a list. Two lines in one hand
+ * placed next to each other morph over a distance short enough to read as a typo
+ * being corrected, so English and French sit as far apart in the cycle as the
+ * other six allow. `adjacentSameScript` is that rule written down, and
+ * `sentence.spec.ts` is the only thing that enforces it — a table in the wrong
+ * order renders perfectly.
  *
- * The second is authorship, and it is the one AUBADE's sixth non-negotiable is
- * actually about. `docs/aubade-credits.md` states the provenance of every line
- * below, and `check:docs` fails if a script ships without an entry there. Four
- * lines whose provenance is written down beat eight where half are hoped for.
+ * ## Shaping was answered by not doing it, and authorship by asking
  *
- * The remaining four are a data change and a font, not an architecture: add an
- * entry, re-run `npm run build:sentence`, and the atlas grows a tile. Nothing in
- * the shader, the renderer or the gates counts to four.
+ * AUBADE's phase note says "get the Arabic and Devanagari shaping right or cut
+ * those two; broken shaping is an insult, not an effect." Neither happened. The
+ * atlas is laid out by Playwright's Chromium, which shapes with HarfBuzz — so
+ * Arabic's joining forms, Devanagari's reordered matras and stacked conjuncts, and
+ * both right-to-left runs are answered by the same engine that answers them for a
+ * reader of those scripts every day. See `scripts/build-sentence-atlas.mjs`, whose
+ * header is where that argument lives.
+ *
+ * What outlived the shaping problem was authorship, which is what AUBADE's sixth
+ * non-negotiable is actually about: a line nobody here can vouch for is not a
+ * thing to carve on a wall. That is why this table was four rows long for as long
+ * as it was, and why it is eight now — every line below has a named reviewer in
+ * `docs/aubade-credits.md`, and `check:docs` fails if one reaches the frieze
+ * without one. Chinese is not here for exactly that reason and no other.
  *
  * ## The order is the order the letterforms are related in
  *
- * Latin, Greek, Cyrillic, Hebrew — and then back to Latin. Three of those four
- * transitions are between neighbours on the same family tree: Latin's letters are
- * Greek letters that went west, Cyrillic's are Greek letters that went north, and
- * a dissolve between two related hands reads as a letter *drifting* rather than
- * as one letter being swapped for another. The fourth is the wrap, Hebrew back to
- * Latin, which is the one jump in the cycle with nothing shared at either end —
- * and it is the one that reads, correctly, as the sentence starting over.
+ * English, Greek, Russian — three neighbours on one family tree, since Latin's
+ * letters are Greek letters that went west and Cyrillic's are Greek letters that
+ * went north, and a dissolve between two related hands reads as a letter
+ * *drifting* rather than as one letter being swapped for another. Then Hebrew into
+ * Arabic, two right-to-left abjads, which is the same argument again in the other
+ * direction of writing. French, Hindi and Korean are the jumps, and the wrap from
+ * Korean back to English is the one with nothing shared at either end — the one
+ * that reads, correctly, as the sentence starting over.
  *
  * ## The sentence fades with the spines, and by the same uniform
  *
@@ -55,7 +67,17 @@
 
 /** A writing system the sentence passes through, and the line it says in it. */
 export interface ISentenceScript {
-  /** Stable identifier. Names the writing system, not the language. */
+  /**
+   * Stable identifier. Names the **language**, not the writing system.
+   *
+   * It named the writing system until French arrived, and French is what made that
+   * wrong: `latin` was the English line only for as long as English was the one
+   * language in the table written in Latin letters. The id is load-bearing beyond
+   * this file — it is the name of the vendored face in `scripts/library-fonts/`, the
+   * key `check:docs` matches a row of `docs/aubade-credits.md` by, and the name the
+   * atlas builder registers the `@font-face` under — so the two sides of each of
+   * those pairs move together or the gate says so.
+   */
   readonly id: string;
 
   /** The writing system, in English, for the credits and the Reader's Edition. */
@@ -65,10 +87,16 @@ export interface ISentenceScript {
   readonly language: string;
 
   /**
-   * The sentence. Typed as it is laid out: every script here is unjoined and
-   * unreordered, so the atlas builder hands this string to the browser and gets
-   * back the line a reader of that script would expect. See the file comment for
-   * why that is a property of *these four* rather than of writing in general.
+   * The sentence, in logical order — the order it is typed and stored, which for
+   * Arabic and Hebrew is not the order it is drawn in.
+   *
+   * Nothing here reorders, substitutes or joins anything. The atlas builder hands
+   * this string to Chromium, and HarfBuzz returns the line a reader of that script
+   * would expect: Arabic's initial, medial and final forms selected and joined,
+   * Devanagari's matras moved to where they are read rather than where they are
+   * typed, and both right-to-left runs laid out from the right. That is a property
+   * of the layout engine rather than of these particular eight lines, which is why
+   * adding a ninth is a row and a font.
    */
   readonly text: string;
 
@@ -76,19 +104,32 @@ export interface ISentenceScript {
   readonly direction: 'ltr' | 'rtl';
 
   /**
-   * The face, as a Google Fonts family name. Two files cover all four scripts —
-   * Noto Serif carries Latin, Greek and Cyrillic between them — which is why the
-   * frieze reads as one inscription in four hands rather than four inscriptions.
+   * The face, as a Google Fonts family name.
+   *
+   * Five families cover the eight lines, because Noto Serif carries English,
+   * French, Greek and Russian between them — which is why the frieze reads as one
+   * inscription in several hands rather than as several inscriptions. The other
+   * four are the Noto serifs for their scripts, except Arabic: Google publishes no
+   * "Noto Serif Arabic", and Naskh *is* the Arabic serif tradition rather than a
+   * substitute for one.
+   *
+   * Each line is still cut its own subset under its own `aubade-<id>` name — see
+   * `loadFonts` in the atlas builder, which explains why four subsets sharing the
+   * real family name would silently draw each other's lines.
    */
   readonly family: string;
 
   /**
    * Tracking, in ems, for the inscription.
    *
-   * A field rather than a constant because it is the first thing a joining script
-   * will need set to zero: letter-spacing an Arabic line pulls the joins apart and
-   * produces exactly the insult AUBADE names. None of the four below joins, so all
-   * four can carry the loose tracking a carved inscription wants.
+   * A field rather than a constant because a carved inscription wants loose letters
+   * and two of these scripts cannot have them. Letter-spacing Arabic pulls its
+   * joins apart, and letter-spacing Devanagari opens gaps in the shirorekha — the
+   * headline that runs across the top of a word — which is the same fault in a
+   * different place: a line that is meant to be continuous, broken at every glyph.
+   * Both are set to **exactly 0**, and both were checked by eye against the built
+   * atlas rather than reasoned about, because this is the one property of the
+   * frieze no gate in the repository can see.
    */
   readonly tracking: number;
 }
@@ -111,7 +152,7 @@ export const SENTENCE_SOURCE = 'Give me shelter from the light.';
  */
 export const SENTENCE_SCRIPTS: readonly ISentenceScript[] = [
   {
-    id: 'latin',
+    id: 'english',
     script: 'Latin',
     language: 'English',
     text: SENTENCE_SOURCE,
@@ -129,7 +170,7 @@ export const SENTENCE_SCRIPTS: readonly ISentenceScript[] = [
     tracking: 0.08,
   },
   {
-    id: 'cyrillic',
+    id: 'russian',
     script: 'Cyrillic',
     language: 'Russian',
     text: 'Укрой меня от света.',
@@ -146,7 +187,96 @@ export const SENTENCE_SCRIPTS: readonly ISentenceScript[] = [
     family: 'Noto Serif Hebrew',
     tracking: 0.06,
   },
+  {
+    id: 'arabic',
+    script: 'Arabic',
+    language: 'Arabic',
+    text: 'امنحني مأوىً من الضوء.',
+    direction: 'rtl',
+    family: 'Noto Naskh Arabic',
+    tracking: 0,
+  },
+  {
+    id: 'french',
+    script: 'Latin',
+    language: 'French',
+    text: 'Offre-moi un abri contre la lumière.',
+    direction: 'ltr',
+    family: 'Noto Serif',
+    tracking: 0.08,
+  },
+  {
+    id: 'hindi',
+    script: 'Devanagari',
+    language: 'Hindi',
+    text: 'मुझे रोशनी से पनाह दो।',
+    direction: 'ltr',
+    family: 'Noto Serif Devanagari',
+    tracking: 0,
+  },
+  {
+    id: 'korean',
+    script: 'Hangul',
+    language: 'Korean',
+    text: '빛을 피할 안식처를 내게 주오.',
+    direction: 'ltr',
+    family: 'Noto Serif KR',
+    tracking: 0.06,
+  },
 ];
+
+/**
+ * Every place in the cycle where one line dissolves into another in the same hand.
+ *
+ * ## Why this is a rule and not a preference
+ *
+ * The floor migrates between *languages*, and seven writing systems is what eight
+ * languages happen to cost — so English and French are the one pair in the table
+ * that share an alphabet. AUBADE is explicit about what that costs if they are
+ * allowed to sit next to each other: "a short morph between two Latin lines reads as
+ * a typo being corrected rather than as the sentence moving". The dissolve still
+ * works — the zero crossing still travels — it just travels a fraction of the
+ * distance, and a visitor reads the result as a spelling change rather than as the
+ * room's one idea.
+ *
+ * So the table's order is a constraint rather than a list, and this is the constraint
+ * written down. Nothing at runtime calls it: the renderer does not care, and a table
+ * that violated it would render perfectly. `sentence.spec.ts` is the only caller, and
+ * that is the point — this is the shape of claim `check:docs` cannot make, because
+ * the answer is not in any one file's text.
+ *
+ * Adjacency **wraps**. The last line dissolving back into the first is a transition
+ * like any other — `migrationAt` treats it as one — and it is the pair most easily
+ * forgotten, because it is the only one that is not two rows next to each other on
+ * the screen.
+ *
+ * @param scripts The table to check, in cycle order. Defaults to the shipped one.
+ * @returns One pair of indices into `scripts` for each adjacent pair sharing a
+ *   `script`, in cycle order, each pair in cycle order — `[from, to]`, so the wrap
+ *   pair reads `[length - 1, 0]` rather than `[0, length - 1]`. Empty when the table
+ *   is well ordered, which is what the test asserts of the shipped table.
+ */
+export function adjacentSameScript(
+  scripts: readonly ISentenceScript[] = SENTENCE_SCRIPTS
+): ReadonlyArray<readonly [number, number]> {
+  // Fewer than two lines is not a cycle. The guard is before the modulo rather than
+  // inside it because `1 % 1` is 0: a table of one wraps onto itself and would be
+  // reported as dissolving into itself, which is not a pair and not a fault.
+  if (scripts.length < 2) {
+    return [];
+  }
+
+  const clashes: Array<readonly [number, number]> = [];
+
+  for (let from = 0; from < scripts.length; from += 1) {
+    const to = (from + 1) % scripts.length;
+    if (scripts[from].script === scripts[to].script) {
+      clashes.push([from, to]);
+    }
+  }
+
+  return clashes;
+}
 
 /**
  * How long the sentence holds still in one language, in seconds.
@@ -276,7 +406,23 @@ export function migrationAt(seconds: number): ISentenceMorph {
  */
 export const ATLAS_TILE_WIDTH = 1024;
 
-/** The atlas's tile height, in pixels. One line, with room above and below it. */
+/**
+ * The atlas's tile height, in pixels. One line, with room above and below it.
+ *
+ * It has to clear `ATLAS_SPREAD` above the tallest ink and below the lowest, or a
+ * field clamps against the tile boundary and morphs into its neighbour's edge
+ * rather than into its neighbour's letters. That was the open question when Arabic
+ * and Devanagari were added — Devanagari hangs a headline above and stacks
+ * conjuncts below — and the atlas is one column of equal tiles, so a line that did
+ * not fit moved this number for all eight.
+ *
+ * Measured, rather than reasoned about: at the size the eight lines share, the
+ * tightest tile is the **Arabic**, not the Devanagari, at 33 pixels of clearance
+ * top and bottom against a spread of 32. Devanagari has 37. So 128 stands, with one
+ * pixel in hand on the line nobody expected to be the binding one — which is worth
+ * remembering before a ninth line is added, because it will very likely be this
+ * constant that moves.
+ */
 export const ATLAS_TILE_HEIGHT = 128;
 
 /**

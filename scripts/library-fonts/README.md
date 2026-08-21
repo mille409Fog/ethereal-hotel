@@ -1,17 +1,20 @@
 # Library fonts
 
-Four faces, vendored as woff2, used by `scripts/build-sentence-atlas.mjs` to lay out Floor −2's
+Eight faces, vendored as woff2, used by `scripts/build-sentence-atlas.mjs` to lay out Floor −2's
 sentence before it is turned into a distance field. They are **not** shipped to the browser: the
 only thing that reaches a visitor is `public/aubade-sentence.png`, which is a sampled distance
 function rather than a font.
 
-## Why these are four kilobytes each and not four megabytes
+## Why these are a few kilobytes each and not a few megabytes
 
 Each file is subsetted by the Google Fonts `text=` endpoint to exactly the glyphs of its own line.
-A full Noto Serif is about 400KB and a full Noto Serif SC — which this directory will need if Han
-ever ships — is nearer twenty megabytes. Asked for one sentence, the same endpoint returns two or
-three kilobytes containing that sentence's glyphs and the layout tables that reach them, which is
+A full Noto Serif is about 400KB and a full Noto Serif KR is in the tens of megabytes. Asked for
+one sentence, the same endpoint returns two to five kilobytes containing that sentence's glyphs and
+the layout tables that reach them — the whole directory is about twenty-five kilobytes, which is
 small enough to commit without apology.
+
+The CJK case is the one the `text=` pipeline was really built for, and Korean is where it shows:
+`korean.woff2` is four kilobytes of a face that is otherwise unvendorable.
 
 `SOURCES.txt` records the exact request each file was fetched with. Re-fetch them all with:
 
@@ -38,16 +41,29 @@ notice.
 
 ## The faces
 
-| File                                        | Family            | Licence                   |
-| ------------------------------------------- | ----------------- | ------------------------- |
-| `latin.woff2`, `greek.woff2`, `cyrillic.woff2` | Noto Serif        | SIL Open Font License 1.1 |
-| `hebrew.woff2`                              | Noto Serif Hebrew | SIL Open Font License 1.1 |
+| File                                                            | Family                | Licence                   |
+| --------------------------------------------------------------- | --------------------- | ------------------------- |
+| `english.woff2`, `french.woff2`, `greek.woff2`, `russian.woff2` | Noto Serif            | SIL Open Font License 1.1 |
+| `hebrew.woff2`                                                  | Noto Serif Hebrew     | SIL Open Font License 1.1 |
+| `arabic.woff2`                                                  | Noto Naskh Arabic     | SIL Open Font License 1.1 |
+| `hindi.woff2`                                                   | Noto Serif Devanagari | SIL Open Font License 1.1 |
+| `korean.woff2`                                                  | Noto Serif KR         | SIL Open Font License 1.1 |
 
-Three of the four are subsets of the same family, which is why the frieze reads as one inscription
-in several hands rather than several inscriptions. They are registered under per-script family
-names at build time (`aubade-latin`, `aubade-greek`, …) because three faces sharing a real family
-name, weight and style resolve to whichever was added last — which would draw the English and Greek
-lines from the Russian subset, and those have none of their glyphs.
+Half of them are subsets of the same family, which is why the frieze reads as one inscription in
+several hands rather than several inscriptions. They are registered under per-line family names at
+build time (`aubade-english`, `aubade-french`, …) because four faces sharing a real family name,
+weight and style resolve to whichever was added last — which would draw the English, French and
+Greek lines from the Russian subset, and those have none of their glyphs.
 
-Provenance for the lines themselves — who translated what, and what is deliberately missing — is in
-`docs/aubade-credits.md`, which `npm run check:docs` holds against `SENTENCE_SCRIPTS`.
+**The files are named for the language, not the writing system**, and that is what French made
+necessary: `latin.woff2` was the English line only while English was the one language here written
+in Latin letters. The name is `SENTENCE_SCRIPTS`'s `id`, and `npm run check:docs` matches it
+against a row of `docs/aubade-credits.md` — so renaming one side alone fails loudly rather than
+quietly drawing the wrong line.
+
+Arabic is the one family not named "Noto Serif …": Google publishes no Noto Serif Arabic, and
+Naskh is the Arabic serif tradition rather than a substitute for one.
+
+Provenance for the lines themselves — who translated what, who reviewed it, and what is
+deliberately missing — is in `docs/aubade-credits.md`, which `npm run check:docs` holds against
+`SENTENCE_SCRIPTS`.

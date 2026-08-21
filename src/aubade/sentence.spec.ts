@@ -1,8 +1,10 @@
 import {
+  adjacentSameScript,
   ATLAS_SPREAD,
   ATLAS_TILE_HEIGHT,
   ATLAS_TILE_WIDTH,
   CYCLE_SECONDS,
+  type ISentenceScript,
   migrationAt,
   MIGRATION_SECONDS,
   SCRIPT_SECONDS,
@@ -132,20 +134,55 @@ describe('where the sentence is', () => {
 });
 
 describe('the sentence itself', () => {
-  it('ships only scripts whose lines need no shaping', () => {
-    // The cut AUBADE's phase note licenses, held as an assertion. Every codepoint
-    // below is from an unjoined, unreordered script; the moment an Arabic or a
-    // Devanagari line is added, this test is where somebody is told that the atlas
-    // builder's "type it and photograph it" approach has stopped being sufficient.
-    // Arabic and Devanagari, which are the two AUBADE names by name. Written as
-    // script properties rather than as codepoint ranges: the ranges contain
-    // combining marks, and a character class spanning those is exactly what makes a
-    // regex quietly match something other than what it looks like.
+  it('sets the shaped scripts at no tracking at all', () => {
+    // This test used to assert the opposite of what it asserts now: that no line
+    // contained an Arabic or a Devanagari codepoint, because the atlas builder's
+    // "type it and photograph it" was only sufficient for scripts that do not
+    // reorder or join. It was written to be the place somebody was told when those
+    // lines arrived. They have arrived, and what it was really guarding turned out
+    // to be one field.
+    //
+    // Chromium shapes both correctly — that half needed no assertion and could not
+    // have had one here, since nothing in a unit test lays out text. What a unit
+    // test *can* hold is the tracking, and tracking is the one setting that undoes
+    // correct shaping after the fact: it pulls Arabic's joins apart and breaks
+    // Devanagari's shirorekha into one segment per glyph. Exactly 0, both.
+    //
+    // Written as script properties rather than as codepoint ranges: the ranges
+    // contain combining marks, and a character class spanning those is exactly what
+    // makes a regex quietly match something other than what it looks like.
     const shaped = /[\p{Script=Arabic}\p{Script=Devanagari}]/u;
 
     for (const script of SENTENCE_SCRIPTS) {
       expect(script.text.length).toBeGreaterThan(0);
-      expect(shaped.test(script.text)).toBe(false);
+
+      if (shaped.test(script.text)) {
+        expect(script.tracking).toBe(0);
+      } else {
+        expect(script.tracking).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('says it in eight languages and seven hands', () => {
+    // The count the shader is told separately — SENTENCE_TILES in hotel.frag.ts,
+    // which GLSL cannot import and check:docs holds against this table. The seven is
+    // the interesting half: it is one fewer than eight because English and French
+    // share an alphabet, which is the fact the whole ordering rule below exists for.
+    expect(SENTENCE_SCRIPTS).toHaveLength(8);
+
+    const languages = SENTENCE_SCRIPTS.map((script) => script.language);
+    expect(new Set(languages).size).toBe(8);
+    expect(new Set(SENTENCE_SCRIPTS.map((script) => script.script)).size).toBe(7);
+  });
+
+  it('names every line for its language rather than its hand', () => {
+    // The rename French forced: `latin` was the English line only while English was
+    // the one language written in Latin letters. The id is the vendored face's
+    // filename and the key check:docs matches a credits row by, so it has to be the
+    // thing that stays unique.
+    for (const script of SENTENCE_SCRIPTS) {
+      expect(script.id).toBe(script.language.toLowerCase());
     }
   });
 
@@ -165,5 +202,77 @@ describe('the sentence itself', () => {
     expect(ATLAS_SPREAD * 4).toBeGreaterThanOrEqual(ATLAS_TILE_HEIGHT);
     expect(ATLAS_TILE_WIDTH % 4).toBe(0);
     expect(ATLAS_TILE_HEIGHT % 4).toBe(0);
+  });
+});
+
+/**
+ * The table's order, which is a constraint rather than a list.
+ *
+ * Eight languages in seven writing systems means exactly one pair of lines shares an
+ * alphabet, and where that pair sits is the difference between the floor's idea and a
+ * spellcheck. Nothing at runtime enforces it — a table in the wrong order renders
+ * beautifully — so this is the whole of the enforcement.
+ */
+describe('the order the sentence migrates in', () => {
+  /** A table of the given writing systems, in order. Only `script` is read. */
+  const table = (...scripts: readonly string[]): readonly ISentenceScript[] =>
+    scripts.map((script, index) => ({
+      id: `line-${index}`,
+      script,
+      language: `Language ${index}`,
+      text: 'x',
+      direction: 'ltr' as const,
+      family: 'Noto Serif',
+      tracking: 0.08,
+    }));
+
+  it('never dissolves one hand into itself, in the table that ships', () => {
+    // The assertion this function exists for. If it fails, two lines in the same
+    // alphabet have ended up next to each other and the morph between them reads as
+    // a typo being corrected — see AUBADE's note on French, which is the only line
+    // that can cause it.
+    expect(adjacentSameScript()).toEqual([]);
+  });
+
+  it('finds a pair sitting next to each other', () => {
+    expect(adjacentSameScript(table('Latin', 'Latin', 'Greek', 'Hebrew'))).toEqual([[0, 1]]);
+    expect(adjacentSameScript(table('Greek', 'Latin', 'Latin', 'Hebrew'))).toEqual([[1, 2]]);
+  });
+
+  it('finds the pair across the wrap, which is the one that gets forgotten', () => {
+    // The last line dissolving into the first is a transition like any other, and the
+    // only one that is not two rows adjacent on the screen.
+    expect(adjacentSameScript(table('Latin', 'Greek', 'Hebrew', 'Latin'))).toEqual([[3, 0]]);
+  });
+
+  it('reports pairs in cycle order, each as [from, to]', () => {
+    // Direction matters in the result as much as in the room: `[3, 0]` is the wrap
+    // and `[0, 3]` is a pair that does not exist.
+    expect(adjacentSameScript(table('Latin', 'Latin', 'Greek', 'Greek'))).toEqual([
+      [0, 1],
+      [2, 3],
+    ]);
+  });
+
+  it('reports every pair when the whole table is one hand', () => {
+    expect(adjacentSameScript(table('Latin', 'Latin', 'Latin'))).toEqual([
+      [0, 1],
+      [1, 2],
+      [2, 0],
+    ]);
+  });
+
+  it('finds nothing in a table too short to have a neighbour', () => {
+    // A table of one is the trap. Its only line both precedes and follows itself, so
+    // an unguarded wrap reports `[0, 0]` — a line dissolving into itself, which is
+    // not a pair and not a fault.
+    expect(adjacentSameScript(table())).toEqual([]);
+    expect(adjacentSameScript(table('Latin'))).toEqual([]);
+  });
+
+  it('compares hands rather than languages', () => {
+    // Two languages in one alphabet is the case; one language twice is not a case at
+    // all. `script` is the field that decides, and `language` must not be consulted.
+    expect(adjacentSameScript(table('Latin', 'Greek'))).toEqual([]);
   });
 });

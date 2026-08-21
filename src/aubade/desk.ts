@@ -223,9 +223,10 @@ export const FLOOR_PROSE: Readonly<Record<Floor, readonly string[]>> = {
       'at the same time.',
     'You set the light down somewhere on the way in. This room has its own, and it has never ' +
       'needed to borrow any.',
-    'One sentence is going to live in here, in eight writing systems at once, dissolving from ' +
-      'each into the next. It is not written yet, and until it is, this floor says what it has ' +
-      'to say with the spines.',
+    'Cut into the frieze above the shelving, four times down each wall, is one sentence. It is ' +
+      'said in eight languages and it will not hold still in any of them — every few seconds one ' +
+      'line deforms into the next rather than being swapped for it. Two of the eight are written ' +
+      'in the same alphabet, and that pair is the one worth waiting for.',
   ],
 
   '-4': [

@@ -167,12 +167,14 @@ export const EDITION: readonly IEditionSection[] = [
           'sun takes here is the writing. The gilt goes off the spines as the night ends, and by ' +
           'sunrise there is not one legible mark in a room as bright as it ever was. Cut into ' +
           'the frieze above the shelving, four times down each wall, is one sentence — Give me ' +
-          'shelter from the light — and it will not stay in one alphabet. Every few seconds it ' +
-          'migrates: English into Greek, Greek into Russian, Russian into Hebrew and back, each ' +
-          'letter deforming into the next rather than being swapped for it. Four hands, where ' +
-          'the plan asks for eight. Arabic, Devanagari, Han and Hangul are not there, and the ' +
-          'reason is written down: a translation nobody here can vouch for is not a thing to ' +
-          'carve on a wall. At noon the frieze is bare stone, under lamps that have not moved.',
+          'shelter from the light — and it will not stay in one language. Every few seconds it ' +
+          'migrates: English into Greek, Greek into Russian, Russian into Hebrew, Hebrew into ' +
+          'Arabic, then French, Hindi, Korean and back to the start, each letter deforming into ' +
+          'the next rather than being swapped for it. Eight languages and seven alphabets, ' +
+          'because English and French share one — and that pair is the proof the room is not ' +
+          'about alphabets, since the sentence moves there too. Every line was translated for ' +
+          'this piece and every translator is named. At noon the frieze is bare stone, under ' +
+          'lamps that have not moved.',
       },
       {
         floor: 'Floor −3',

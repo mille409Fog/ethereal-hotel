@@ -56,7 +56,7 @@ one shader and one idea.
 | ------ | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **0**  | **The Desk**            | The lobby. Raymarched interior, volumetric light through the transom, dust. The register lists prior guests — real ones, anonymised to city and duration. "A guest from Lisbon, 4h ago, stayed 11 minutes." |
 | **−1** | **The Mirror Corridor** | A mirrored wall, rendered by a second march. Everything in the corridor reflects. Your light does not. You will notice this about four seconds later than you think you will.                               |
-| **−2** | **The Library**         | One sentence, migrating across eight languages in seven writing systems — English, French, Greek, Russian, Hebrew, Arabic, Hindi, Korean — glyphs dissolving into one another rather than cutting.          |
+| **−2** | **The Library**         | One sentence, migrating across eight languages in seven writing systems — English, Greek, Russian, Hebrew, Arabic, French, Hindi, Korean — glyphs dissolving into one another rather than cutting. **Built.** |
 | **−3** | **The Cellar**          | Meditation. Near-silence. The camera slows to a 4-7-8 breath and the room resolves only if you stay — in the eye, not in the room, which never changes at all. **Built.**                                   |
 | **−4** | **The Projection Room** | Film. The post-processing stack _is_ the exhibit, applied to the whole frame rather than to a screen in it. Six switches on a bench you can operate. What the sun moves is the rate. **Built.**             |
 | **−5** | **The Box**             | Opera. An aria drives the geometry of the house beyond the balustrade, and what the sun takes is the house itself. Silent, and it says so. **Room built, sound not.**                                       |
@@ -164,7 +164,7 @@ headless Chromium and writes a PNG, which is a faster edit loop than reloading a
 Ship in this order. Each phase is deployable and each one is worth showing on its own. Do not
 start a phase before the previous one is live.
 
-Seven phases have landed and been deleted from this list, per the rule at the top: **the clock**
+Eight phases have landed and been deleted from this list, per the rule at the top: **the clock**
 (`src/aubade/solar/`, checked against published almanac times for eight cities), **the lobby**
 (`/aubade` — `src/aubade/gl/`, `camera/`, `rooms/`, `renderer.ts`), **day, night and the
 invitation** (`rooms/light-rig.ts`, `desk.ts`, `fake-clock.ts`, and the shutter in
@@ -173,8 +173,23 @@ invitation** (`rooms/light-rig.ts`, `desk.ts`, `fake-clock.ts`, and the shutter 
 Corridor** (`descent.ts`, `rooms/corridor-rig.ts`, and the second half of `rooms/hotel.frag.ts`),
 **the Cellar** (`cellar.ts`, `rooms/cellar-rig.ts`, and `adapted()` in `rooms/hotel.frag.ts`), and
 **the Projection Room** (`projection.ts`, `bench.ts`, `rooms/projection-rig.ts`, and
-`projected()` in `rooms/hotel.frag.ts`). Their reasoning moved into those files' header comments,
-which are dense and are the thing to read before touching any of them.
+`projected()` in `rooms/hotel.frag.ts`), and **the Library's sentence** (`sentence.ts`,
+`scripts/build-sentence-atlas.mjs`, `scripts/sentence-field.mjs`, and `MAT_FRIEZE` in
+`rooms/hotel.frag.ts`). Their reasoning moved into those files' header comments, which are dense
+and are the thing to read before touching any of them.
+
+The Library is the one whose delay was never technical, and that is the part worth carrying
+forward. It stood at four languages of eight for as long as it did because the missing four had
+nobody to vouch for them, and AUBADE's sixth non-negotiable makes an unattributed translation
+worse than a takedown notice. Nothing in the pipeline changed when they landed — a language is a
+row in `SENTENCE_SCRIPTS`, a subsetted face, a row in `docs/aubade-credits.md` and a rebuilt
+atlas, exactly as it was on the day the first four shipped. What changed is that four people read
+the lines. Two smaller things fell out of it and are now facts rather than plans: the ids name
+languages rather than scripts, because `latin` stopped being the English line the moment French
+existed; and the table's *order* became a constraint, since English and French share an alphabet
+and a morph between two Latin lines placed side by side reads as a typo being corrected.
+`adjacentSameScript` in `sentence.ts` is that constraint, and `sentence.spec.ts` is the only thing
+that enforces it — a table in the wrong order renders perfectly.
 
 The Projection Room is the one that changed what a floor is allowed to _answer with_, so its shape
 is worth carrying forward too. The first three rooms answer the sun with light — the lobby
@@ -227,115 +242,9 @@ lobby — it ignores `?t=<state>`, because a forced state next to a real elevati
 this page cannot tell, and no font size on it is expressed in `vw`, because a `vw` size shrinks
 when a reader zooms in.
 
-### Phases 1–2 — One room each
+### Phase 1 — One room
 
-In this order, by ratio of impact to risk:
-
-1. **The Library** — _half landed._ The sentence is cut into the frieze above the shelving, four
-   times down each wall, and migrates: `sentence.ts`, `scripts/build-sentence-atlas.mjs`,
-   `scripts/sentence-field.mjs`, and `MAT_FRIEZE` in `rooms/hotel.frag.ts`. **Four languages of the
-   eight** — English, Greek, Russian, Hebrew. The reason the others were missing has gone:
-   native-speaker review is now available for Korean, French, Arabic and Hindi, so what stood here
-   as a refusal is a queue of four lines.
-
-   Three things about it changed the plan above and should be read as amendments to it; what comes
-   after them is the work that is left.
-
-   **The floor migrates between languages, not between writing systems, and the table above now
-   says so.** That is a correction to this document rather than to the room — the shader has always
-   morphed one line into the next without caring what alphabet either was written in. But the
-   original eight were named as scripts, and naming them that way quietly made the writing system
-   the subject and the language a side effect of it. It is the other way round: the sentence is
-   being said in eight languages, and seven writing systems is what that happens to cost. **French
-   is the proof**, and it is why it is on the list at all — English to French is a migration with no
-   change of script whatsoever, and if the floor still reads as the same event there, the floor was
-   never about alphabets.
-
-   **It is an SDF atlas, not an MSDF one, and that is not a shortcut.** MSDF's three channels only
-   mean anything relative to one glyph's own corners; interpolating them between two different
-   scripts produces garbage at exactly the corners MSDF exists to protect. The morph is the whole
-   floor, so the atlas is single-channel true distance — which interpolates to a zero crossing
-   that _travels_, and a travelling zero crossing is a letter changing shape rather than two
-   letters cross-fading. `scripts/sentence-field.test.mjs` asserts precisely that and is the best
-   short statement of why this floor is built the way it is.
-
-   **The shaping problem was solved by not solving it.** The atlas is laid out by Playwright's
-   Chromium, which shapes with HarfBuzz — so ligatures, direction and bidi are answered by the
-   same engine a reader of that script uses daily, and the Hebrew comes back right-to-left for
-   free. The condition this list once attached to two of them — _get the Arabic and Devanagari
-   shaping right or cut those two_ — was answered by the layout engine before anyone here had to
-   answer it, and the authorship half that outlived it has now been answered separately.
-
-   **What is left is four lines, in this order.** Each is a font subset, a row in
-   `SENTENCE_SCRIPTS`, a row in `docs/aubade-credits.md`, and a rebuilt atlas — but each also has
-   one thing in it that is not boilerplate, and the notes are the reason they are listed
-   individually rather than as a single "add four languages" item.
-
-   - **Korean (Hangul)** — the safe one. Hangul composes syllable
-     blocks out of jamo, but the line goes in precomposed, so what is typed is what is laid out.
-     The only real cost is the face: a Noto Serif KR is megabytes whole and about a kilobyte
-     subset to one sentence, which is exactly the case the `text=` pipeline was built for.
-   - **French (Latin)** — the load-bearing one, per the amendment above: the only pair of lines
-     that _share_ a writing system, so its dissolve is a migration inside one alphabet — the same
-     travelling zero crossing, moving a fraction of the distance it moves between Greek and Hebrew.
-     Two things follow. **Place it away from English in the table**, or a short morph between two
-     Latin lines reads as a typo being corrected rather than as the sentence moving. And it still
-     needs its own subset: `build-sentence-atlas.mjs` names every face `aubade-<id>` and cuts it
-     down to that line's glyphs, so French's accents are not in the English face and are not
-     supposed to be.
-   - **Arabic** — joining forms and right-to-left, both of them HarfBuzz's problem rather than
-     ours, and Hebrew has already proved the RTL path end to end down to the `direction: 'rtl'`
-     field. The trap is `tracking`: the Latin lines are set at 0.08, and letter-spacing a cursive
-     script pulls its joins apart. It wants its own value, and it wants checking by eye.
-   - **Hindi (Devanagari)** — reordered vowel signs and stacked conjuncts, again HarfBuzz's. The
-     risk on this one is not shaping but the box. `ATLAS_TILE_HEIGHT` is 128, and Devanagari hangs
-     a headline above and stacks conjuncts below in a way the Latin box was never measured for. If
-     the line does not fit, the height moves for **every** tile — the atlas is one column of equal
-     tiles — and the whole thing is rebuilt.
-
-   **Chinese is the one that did not make the eight.** It was Han in the original table, it has no
-   reviewer, and under a language framing it is a ninth line rather than a missing script — so it
-   is off the queue rather than overdue on it. The bar is the one the other four have just cleared,
-   and nothing above shortens it.
-
-   **The code path is short but it is not zero, and the note that stood here was wrong about
-   that.** `SENTENCE_TILES` in `rooms/hotel.frag.ts` is a hardcoded `4.0` and GLSL cannot import
-   the table, so the shader _does_ count the lines and has to be edited in the same commit;
-   `check:docs` is the only thing that notices when the two disagree, and it also fails on a line
-   that reaches the wall with no provenance in `docs/aubade-credits.md`, and on a committed atlas
-   whose height is no longer the tile count. Run `npm run build:sentence` and
-   `npm run verify:shader` together, or the frieze samples off the end of the atlas and renders as
-   bare stone — which is indistinguishable from the shuttered hour working correctly.
-
-   **The reframe costs one rename, and it is cheaper before French lands than after.** The rows in
-   `SENTENCE_SCRIPTS` are keyed by script — `id: 'latin'` _is_ the English line — and the moment a
-   second Latin language exists that key stops being true. The ids should be languages: `english`,
-   `french`, `greek`, `russian`. That renames the four faces in `scripts/library-fonts/`, which are
-   `<id>.woff2`, and the four rows in `docs/aubade-credits.md`, which `check:docs` matches by id and
-   which fails loudly if only one side moves. Do it first and French is a row; do it afterwards and
-   French is a row plus a migration.
-
-   **The cadence is decided, and it shrinks the hold rather than the dissolve.** Eight lines at the
-   old nine seconds each is a seventy-two second cycle, and nobody sees one. The fix is not to hurry
-   the morph — the morph is the floor, and a dissolve fast enough to feel like a transition is a cut
-   with blur on it. It is the _hold_ that was sized wrongly: `SETTLED_SECONDS` was six because six
-   is long enough to read the line twice, and **this floor is not read**. Most visitors cannot read
-   most of these lines and are not meant to; what they are meant to catch is one sentence refusing
-   to stay still. So `SETTLED_SECONDS` goes **6 → 2** and `MIGRATION_SECONDS` stays at **3**: a turn
-   of five seconds, a full cycle of forty for eight languages, and the sentence in motion three
-   seconds in every five instead of one in every three. Nothing else moves — `migrationAt`'s tests
-   are written in terms of the constants rather than the numbers, and `verify:shader` reaches the
-   second line through `TURNED`, a morph passed by hand rather than a second on the clock, so no
-   committed frame changes.
-
-   Also worth carrying forward: this is the piece's **only asset**, against an opening paragraph
-   that says there is no asset pipeline. The reconciliation is in the build script's header and it
-   is not a loophole — what is committed is a sampled distance function, which is the same
-   construction every wall in the building is made of, and the shader does not composite it but
-   evaluates it, mixes two of them and takes a contour. A floor that needed a texture of _pictures_
-   would have been the wrong floor to build.
-
-2. **The Box** — _half landed._ The room is built and the sound is not, and the split is not the
+1. **The Box** — _half landed._ The room is built and the sound is not, and the split is not the
    one this line predicted. `box.ts`, `rooms/box-rig.ts`, `BOX_GLSL` in `rooms/hotel.frag.ts`.
 
    **Autoplay turned out not to be a risk at all**, because it was answered by the concept rather
@@ -345,7 +254,11 @@ In this order, by ratio of impact to risk:
    five floors under the street and nobody in the building can hear a note of it. A hotel that
    refuses is the concept; this is the floor where the refusal is about the work itself.
 
-   **Licensing is the half that is left, and it is the Library's cut again.** The sixth
+   **Licensing is the half that is left, and it is the cut the Library used to be making.** The
+   Library's version of it has now come off — the four lines it was refusing to guess at found
+   reviewers, and the refusal turned out to have been a queue. Do not over-read that here. Finding
+   four people who read Korean, French, Arabic and Hindi is a different size of problem from
+   clearing a voice to sing an aria, and the routes below are still the routes. The sixth
    non-negotiable is a question about provenance, provenance is a question about people, and
    `docs/aubade-credits.md` now states the three routes open and what each costs. The melody is the
    author's own and is committed as a score; what is missing is a cleared voice to sing it.
@@ -414,7 +327,7 @@ Each new room owes the Reader's Edition a paragraph, and owes `check:docs` and
 floors in the present tense and then says plainly which are built — a room that ships without
 moving itself out of that list has quietly made the page lie.
 
-### Phase 3 — The register
+### Phase 2 — The register
 
 Where the existing backend skills come back. `POST /api/aubade/visits` on arrival, `GET` for the
 register: city (from timezone, never IP), duration, floors reached, local solar state at arrival.
@@ -423,7 +336,7 @@ register: city (from timezone, never IP), duration, floors reached, local solar 
   Rate-limited. The register is legible as a feature of the fiction and defensible as a privacy
   decision in the same breath — say so in the README.
 
-### Phase 4 — Dawn
+### Phase 3 — Dawn
 
 The ending. A visitor present through actual civil twilight into actual sunrise at their location
 sees the hotel close: the countdown, the light arriving, the rooms shuttering in order, the last

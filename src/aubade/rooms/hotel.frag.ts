@@ -1535,12 +1535,15 @@ vec2 shaftBlade(vec3 p) {
  * Floor −2 — The Library. The room whose subject is writing, and which loses it.
  *
  * AUBADE's floor table gives this room one sentence: "One sentence, migrating
- * across eight writing systems — Latin, Greek, Cyrillic, Arabic, Devanagari,
- * Hebrew, Han, Hangul — glyphs dissolving into one another rather than cutting."
- * That sentence is a glyph atlas and a phase of its own. This file is the room it
- * will be read in, and the room is not a waiting area for it.
+ * across eight languages in seven writing systems — English, French, Greek,
+ * Russian, Hebrew, Arabic, Hindi, Korean — glyphs dissolving into one another
+ * rather than cutting." That sentence is `sentence.ts`, the atlas
+ * `scripts/build-sentence-atlas.mjs` tabulates it into, and `MAT_FRIEZE` below.
+ * Note that the table names *languages*: the floor migrates between what is being
+ * said, and seven alphabets is what eight sayings happen to cost. English and
+ * French share one, which is the pair that proves the room is not about alphabets.
  *
- * ## What the room says before the sentence arrives
+ * ## What the room says besides the sentence
  *
  * A library is already made of writing. Every spine on both walls is lettered,
  * and `uInk` — the one uniform on this floor the sun moves — takes that lettering
@@ -1556,9 +1559,9 @@ vec2 shaftBlade(vec3 p) {
  * five of its six fields being identical across all five hours is the claim rather
  * than an oversight.
  *
- * When the sentence lands it reads the same uniform, so it will fade at dawn by
- * the rule the spines already follow — which is the point of putting the rule in
- * before the sentence.
+ * The sentence reads that same uniform — `letter *= uInk` in `MAT_FRIEZE` — so it
+ * fades at dawn by exactly the rule the spines already followed, which is why the
+ * rule went in before the sentence did.
  *
  * ## The grooves are carved, and that is not a detail
  *
@@ -3045,7 +3048,7 @@ uniform float uMigration;
 // and check:docs fails on drift. A drifted tile count samples the wrong line and
 // looks like a font bug; a drifted spread reads the contour at the wrong level and
 // makes every letter in the room thinner or fatter than it was cut.
-const float SENTENCE_TILES  = 4.0;
+const float SENTENCE_TILES  = 8.0;
 const float SENTENCE_SPREAD = 32.0;
 
 // Floor −3's light rig; see rooms/cellar-rig.ts. Six of these seven never vary

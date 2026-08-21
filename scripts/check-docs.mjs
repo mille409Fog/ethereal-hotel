@@ -634,9 +634,9 @@ check('the library keeps its light and loses its writing', () => {
 // Floor −2's sentence, which is the floor's subject and the piece's only asset.
 //
 // `verify-shader.mjs` carries the half a frame can see: the library rendered in two
-// writing systems has to be two pictures at night and one picture at noon. What is
-// left for here is everything that is true of the *files* rather than of the image,
-// and all six of these fail without changing a frame on this machine.
+// languages has to be two pictures at night and one picture at noon. What is left for
+// here is everything that is true of the *files* rather than of the image, and all
+// seven of these fail without changing a frame on this machine.
 //
 // The `textureLod` one is the sharpest. `surfaceAlbedo` is reached from a branch on
 // which material a ray landed on — non-uniform control flow, where a fetch that wants
@@ -719,6 +719,28 @@ check('the library says something, and stops saying it at dawn', () => {
     );
   }
 
+  // The ordering rule, and the only reason it needs a check here at all: it is the
+  // one claim on this floor that nothing can observe. A drifted tile count renders a
+  // blank frieze and a drifted spread renders the wrong weight, but a table with
+  // English next to French renders *perfectly* — it just quietly stops being the
+  // floor, because a morph inside one alphabet reads as a spelling correction. The
+  // enforcement is a unit test rather than anything here, so what this checks is
+  // that the rule and its enforcement both still exist.
+  const spec = 'src/aubade/sentence.spec.ts';
+  if (!/export function adjacentSameScript\(/.test(sentence)) {
+    problems.push(
+      `${data} no longer exports adjacentSameScript. Eight languages in seven writing systems ` +
+        `means one pair shares an alphabet, and keeping that pair apart in the cycle is the whole ` +
+        `of the table's ordering rule — CLAUDE.md and AUBADE.md both state it.`
+    );
+  } else if (!exists(spec) || !/adjacentSameScript\(/.test(read(spec))) {
+    problems.push(
+      `${spec} no longer calls adjacentSameScript, so the table's ordering rule is written down ` +
+        `and enforced by nothing. This is the one claim about Floor −2 that no rendered frame can ` +
+        `falsify: a mis-ordered table looks exactly like a correct one.`
+    );
+  }
+
   // The clock. A renderer that never calls migrationAt renders one script for ever,
   // which is a perfectly good-looking library and is not this floor.
   if (exists(renderer) && !/migrationAt\(/.test(read(renderer))) {
@@ -760,8 +782,9 @@ check('the library says something, and stops saying it at dawn', () => {
   // has to be accounted for by name.
   if (!exists(credits)) {
     problems.push(
-      `${credits} is missing, but Floor −2 puts four translations on a wall. AUBADE's sixth ` +
-        `non-negotiable says an unattributed translation is worse than a takedown notice.`
+      `${credits} is missing, but Floor −2 puts ${shipped.length} translations on a wall. ` +
+        `AUBADE's sixth non-negotiable says an unattributed translation is worse than a takedown ` +
+        `notice.`
     );
   } else {
     const sourced = read(credits);
