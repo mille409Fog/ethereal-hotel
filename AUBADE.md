@@ -56,7 +56,7 @@ one shader and one idea.
 | ------ | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **0**  | **The Desk**            | The lobby. Raymarched interior, volumetric light through the transom, dust. The register lists prior guests — real ones, anonymised to city and duration. "A guest from Lisbon, 4h ago, stayed 11 minutes." |
 | **−1** | **The Mirror Corridor** | A mirrored wall, rendered by a second march. Everything in the corridor reflects. Your light does not. You will notice this about four seconds later than you think you will.                               |
-| **−2** | **The Library**         | One sentence, migrating across eight writing systems — Latin, Greek, Cyrillic, Arabic, Devanagari, Hebrew, Han, Hangul — glyphs dissolving into one another rather than cutting.                            |
+| **−2** | **The Library**         | One sentence, migrating across eight languages in seven writing systems — English, French, Greek, Russian, Hebrew, Arabic, Hindi, Korean — glyphs dissolving into one another rather than cutting.          |
 | **−3** | **The Cellar**          | Meditation. Near-silence. The camera slows to a 4-7-8 breath and the room resolves only if you stay — in the eye, not in the room, which never changes at all. **Built.**                                   |
 | **−4** | **The Projection Room** | Film. The post-processing stack _is_ the exhibit, applied to the whole frame rather than to a screen in it. Six switches on a bench you can operate. What the sun moves is the rate. **Built.**             |
 | **−5** | **The Box**             | Opera. An aria drives the geometry of the house beyond the balustrade, and what the sun takes is the house itself. Silent, and it says so. **Room built, sound not.**                                       |
@@ -233,11 +233,23 @@ In this order, by ratio of impact to risk:
 
 1. **The Library** — _half landed._ The sentence is cut into the frieze above the shelving, four
    times down each wall, and migrates: `sentence.ts`, `scripts/build-sentence-atlas.mjs`,
-   `scripts/sentence-field.mjs`, and `MAT_FRIEZE` in `rooms/hotel.frag.ts`. **Four writing systems
-   of the eight** — Latin, Greek, Cyrillic, Hebrew — and the four that are missing are missing for
-   a reason worth keeping on this list rather than resolving quietly.
+   `scripts/sentence-field.mjs`, and `MAT_FRIEZE` in `rooms/hotel.frag.ts`. **Four languages of the
+   eight** — English, Greek, Russian, Hebrew. The reason the others were missing has gone:
+   native-speaker review is now available for Korean, French, Arabic and Hindi, so what stood here
+   as a refusal is a queue of four lines.
 
-   Three things about it changed the plan above and should be read as amendments to it.
+   Three things about it changed the plan above and should be read as amendments to it; what comes
+   after them is the work that is left.
+
+   **The floor migrates between languages, not between writing systems, and the table above now
+   says so.** That is a correction to this document rather than to the room — the shader has always
+   morphed one line into the next without caring what alphabet either was written in. But the
+   original eight were named as scripts, and naming them that way quietly made the writing system
+   the subject and the language a side effect of it. It is the other way round: the sentence is
+   being said in eight languages, and seven writing systems is what that happens to cost. **French
+   is the proof**, and it is why it is on the list at all — English to French is a migration with no
+   change of script whatsoever, and if the floor still reads as the same event there, the floor was
+   never about alphabets.
 
    **It is an SDF atlas, not an MSDF one, and that is not a shortcut.** MSDF's three channels only
    mean anything relative to one glyph's own corners; interpolating them between two different
@@ -250,17 +262,71 @@ In this order, by ratio of impact to risk:
    **The shaping problem was solved by not solving it.** The atlas is laid out by Playwright's
    Chromium, which shapes with HarfBuzz — so ligatures, direction and bidi are answered by the
    same engine a reader of that script uses daily, and the Hebrew comes back right-to-left for
-   free. That means Arabic and Devanagari are very probably a font subset and a table row away,
-   and the condition attached to them here is now the _other_ half of the sentence rather than the
-   shaping half.
+   free. The condition this list once attached to two of them — _get the Arabic and Devanagari
+   shaping right or cut those two_ — was answered by the layout engine before anyone here had to
+   answer it, and the authorship half that outlived it has now been answered separately.
 
-   **What is actually left is people, not code.** The four missing scripts are cut on authorship:
-   `docs/aubade-credits.md` states the provenance of every line on the wall, and three of the four
-   that ship already say "not reviewed by a native speaker". Adding a fourth unvouched-for line in
-   an alphabet nobody involved reads is where that stops being honest and starts being decoration.
-   The remaining work is a named person per script who can read it — and the code path is one
-   subset and one row in `SENTENCE_SCRIPTS`, with nothing in the shader, the pipeline or the gates
-   counting to four.
+   **What is left is four lines, in this order.** Each is a font subset, a row in
+   `SENTENCE_SCRIPTS`, a row in `docs/aubade-credits.md`, and a rebuilt atlas — but each also has
+   one thing in it that is not boilerplate, and the notes are the reason they are listed
+   individually rather than as a single "add four languages" item.
+
+   - **Korean (Hangul)** — the safe one. Hangul composes syllable
+     blocks out of jamo, but the line goes in precomposed, so what is typed is what is laid out.
+     The only real cost is the face: a Noto Serif KR is megabytes whole and about a kilobyte
+     subset to one sentence, which is exactly the case the `text=` pipeline was built for.
+   - **French (Latin)** — the load-bearing one, per the amendment above: the only pair of lines
+     that _share_ a writing system, so its dissolve is a migration inside one alphabet — the same
+     travelling zero crossing, moving a fraction of the distance it moves between Greek and Hebrew.
+     Two things follow. **Place it away from English in the table**, or a short morph between two
+     Latin lines reads as a typo being corrected rather than as the sentence moving. And it still
+     needs its own subset: `build-sentence-atlas.mjs` names every face `aubade-<id>` and cuts it
+     down to that line's glyphs, so French's accents are not in the English face and are not
+     supposed to be.
+   - **Arabic** — joining forms and right-to-left, both of them HarfBuzz's problem rather than
+     ours, and Hebrew has already proved the RTL path end to end down to the `direction: 'rtl'`
+     field. The trap is `tracking`: the Latin lines are set at 0.08, and letter-spacing a cursive
+     script pulls its joins apart. It wants its own value, and it wants checking by eye.
+   - **Hindi (Devanagari)** — reordered vowel signs and stacked conjuncts, again HarfBuzz's. The
+     risk on this one is not shaping but the box. `ATLAS_TILE_HEIGHT` is 128, and Devanagari hangs
+     a headline above and stacks conjuncts below in a way the Latin box was never measured for. If
+     the line does not fit, the height moves for **every** tile — the atlas is one column of equal
+     tiles — and the whole thing is rebuilt.
+
+   **Chinese is the one that did not make the eight.** It was Han in the original table, it has no
+   reviewer, and under a language framing it is a ninth line rather than a missing script — so it
+   is off the queue rather than overdue on it. The bar is the one the other four have just cleared,
+   and nothing above shortens it.
+
+   **The code path is short but it is not zero, and the note that stood here was wrong about
+   that.** `SENTENCE_TILES` in `rooms/hotel.frag.ts` is a hardcoded `4.0` and GLSL cannot import
+   the table, so the shader _does_ count the lines and has to be edited in the same commit;
+   `check:docs` is the only thing that notices when the two disagree, and it also fails on a line
+   that reaches the wall with no provenance in `docs/aubade-credits.md`, and on a committed atlas
+   whose height is no longer the tile count. Run `npm run build:sentence` and
+   `npm run verify:shader` together, or the frieze samples off the end of the atlas and renders as
+   bare stone — which is indistinguishable from the shuttered hour working correctly.
+
+   **The reframe costs one rename, and it is cheaper before French lands than after.** The rows in
+   `SENTENCE_SCRIPTS` are keyed by script — `id: 'latin'` _is_ the English line — and the moment a
+   second Latin language exists that key stops being true. The ids should be languages: `english`,
+   `french`, `greek`, `russian`. That renames the four faces in `scripts/library-fonts/`, which are
+   `<id>.woff2`, and the four rows in `docs/aubade-credits.md`, which `check:docs` matches by id and
+   which fails loudly if only one side moves. Do it first and French is a row; do it afterwards and
+   French is a row plus a migration.
+
+   **The cadence is decided, and it shrinks the hold rather than the dissolve.** Eight lines at the
+   old nine seconds each is a seventy-two second cycle, and nobody sees one. The fix is not to hurry
+   the morph — the morph is the floor, and a dissolve fast enough to feel like a transition is a cut
+   with blur on it. It is the _hold_ that was sized wrongly: `SETTLED_SECONDS` was six because six
+   is long enough to read the line twice, and **this floor is not read**. Most visitors cannot read
+   most of these lines and are not meant to; what they are meant to catch is one sentence refusing
+   to stay still. So `SETTLED_SECONDS` goes **6 → 2** and `MIGRATION_SECONDS` stays at **3**: a turn
+   of five seconds, a full cycle of forty for eight languages, and the sentence in motion three
+   seconds in every five instead of one in every three. Nothing else moves — `migrationAt`'s tests
+   are written in terms of the constants rather than the numbers, and `verify:shader` reaches the
+   second line through `TURNED`, a morph passed by hand rather than a second on the clock, so no
+   committed frame changes.
 
    Also worth carrying forward: this is the piece's **only asset**, against an opening paragraph
    that says there is no asset pipeline. The reconciliation is in the build script's header and it
@@ -319,7 +385,7 @@ In this order, by ratio of impact to risk:
    The `hushed` probe is the answer, and it swaps the **voice** rather than the clock. Two instants
    a few seconds apart would also be two camera poses, because the camera breathes — so the noon
    comparison could then only ever carry a tolerance, which is the trap `TURNED` records one floor
-   up. Holding the second and silencing the singer makes the difference in the frame *be* the aria:
+   up. Holding the second and silencing the singer makes the difference in the frame _be_ the aria:
    noon is required identical to the byte, since there is no house for the voice to move, and the
    four night hours are required to differ.
 

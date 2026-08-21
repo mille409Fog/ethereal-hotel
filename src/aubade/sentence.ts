@@ -149,12 +149,18 @@ export const SENTENCE_SCRIPTS: readonly ISentenceScript[] = [
 ];
 
 /**
- * How long the sentence holds still in one script, in seconds.
+ * How long the sentence holds still in one language, in seconds.
  *
- * Long enough to be read twice by somebody who does not read that script, which is
- * the reading most visitors will be doing.
+ * Long enough to register as a finished sentence and no longer. This was six —
+ * long enough to *read* the line twice — and six is what a floor of eight
+ * languages cannot afford: at nine seconds a turn the full cycle is seventy-two,
+ * which nobody stays for. The hold is what gave way rather than the dissolve,
+ * because the dissolve is the room and the hold was sized for a reading that
+ * mostly does not happen. Most visitors cannot read most of these lines and are
+ * not meant to; what they are meant to catch is one sentence refusing to stay
+ * still.
  */
-export const SETTLED_SECONDS = 6;
+export const SETTLED_SECONDS = 2;
 
 /**
  * How long one script takes to become the next, in seconds.
@@ -164,13 +170,17 @@ export const SETTLED_SECONDS = 6;
  * distance fields, visible and unhurried", and this is the same event at the scale
  * of a letter. A dissolve fast enough to feel like a transition is a cut with
  * blur on it.
+ *
+ * It is now longer than the hold, which is the right proportion for this floor
+ * rather than an accident of shortening the other one: the sentence spends more
+ * of its time moving than standing, and the moving is the exhibit.
  */
 export const MIGRATION_SECONDS = 3;
 
-/** One script's whole turn: its hold, and its dissolve into the next. */
+/** One language's whole turn: its hold, and its dissolve into the next. */
 export const SCRIPT_SECONDS = SETTLED_SECONDS + MIGRATION_SECONDS;
 
-/** The full cycle. Four scripts at nine seconds each. */
+/** The full cycle. Every language in the table at five seconds each. */
 export const CYCLE_SECONDS = SCRIPT_SECONDS * SENTENCE_SCRIPTS.length;
 
 /**

@@ -11,6 +11,7 @@ import { LIBRARY_RIGS } from './rooms/library-rig';
 import { INVITED_THRESHOLD, LIGHT_RIGS, rigFor } from './rooms/light-rig';
 import { BOX_RIGS } from './rooms/box-rig';
 import { PROJECTION_RIGS } from './rooms/projection-rig';
+import { MIGRATION_SECONDS, SETTLED_SECONDS } from './sentence';
 
 /**
  * The renderer, driven against a recording context.
@@ -544,8 +545,14 @@ describe("Floor −2's sentence", () => {
 
   it('is partway between two of them once the dissolve has started', () => {
     const { gl, renderer } = build();
-    // Into the first dissolve: six seconds settled, then three across.
-    renderer.render(frame({ simulatedSeconds: 7.5, alpha: 0 }), at(NIGHT));
+    // Halfway into the first dissolve, expressed in the constants rather than as a
+    // number: a literal second here silently retunes itself into a different turn
+    // of the cycle the moment the cadence changes, and picks up whichever pair of
+    // languages happens to land on it.
+    renderer.render(
+      frame({ simulatedSeconds: SETTLED_SECONDS + MIGRATION_SECONDS / 2, alpha: 0 }),
+      at(NIGHT)
+    );
 
     expect(gl.uniformValue('uScriptFrom')).toEqual([0]);
     expect(gl.uniformValue('uScriptTo')).toEqual([1]);
