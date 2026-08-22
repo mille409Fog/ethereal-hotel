@@ -78,7 +78,9 @@ licence texts, and are unrelated to this.
 ## The aria
 
 Floor −5 — the Box — is an opera box looking into a house, and the geometry of that house moves
-to a single aria. The room is built. **The sound is not, and that is what this section is for.**
+to a single aria. **Everything on this floor is the author's own, nothing on it is licensed from
+anybody, and it makes no sound.** The last of those is the room rather than a gap in it, and this
+section is why.
 
 ### What ships
 
@@ -87,41 +89,59 @@ to a single aria. The room is built. **The sound is not, and that is what this s
 | The aria's melody, in `src/aubade/box.ts` as `ARIA` | The author's own, written for this piece. Nineteen notes in D minor, notated as semitones from middle C. Not transcribed from, quoted from, or derived from any existing work. |
 | The voice's spectrum, in `bandsFor`                 | A model, not a recording. A harmonic series under three formants, computed from the pitch. Nothing is sampled and nothing is played.                                           |
 
-### What does not ship, and why
+### Why there is no sound
 
-**There is no audio on Floor −5.** No `AudioContext` is created, nothing plays, and no visitor is
-asked to click before a room will work. What drives the geometry is the score above, evaluated at
-the room's clock and reduced to eight frequency bands — the same eight bands an `AnalyserNode`
-would hand back, binned the same way, so the shader is already written against the shape the real
-thing has.
+**No `AudioContext` exists anywhere in `src/aubade/`.** Nothing plays, and no visitor is asked to
+click before a room will work. What drives the geometry is the score above, evaluated at the
+room's clock and reduced to eight frequency bands — the same eight bands an `AnalyserNode` would
+hand back, binned the same way.
 
-AUBADE's sixth non-negotiable is the reason: _"No licensed audio, no scraped text. Public domain
-or self-recorded, sourced in a credits file."_ The phase note puts this floor last and says why —
-_"audio licensing and autoplay policy are the two things most likely to eat a week."_ Only one of
-those two turned out to be hard. Autoplay is answered by the piece being silent: a work with no
-audio graph has no autoplay policy to lose to, and AUBADE already required this floor to be worth
-looking at in silence _"because for most visitors it will be"_.
+The reason is not a licence that could not be obtained. **The aria has never been sung.** It is a
+score: nineteen notes written for this hotel, performed by nobody, and the tiers moving beyond the
+balustrade are the only performance it has ever had. AUBADE's second non-negotiable is _"It
+refuses"_, and this is the one floor that turns the refusal on the work itself rather than on the
+visitor — who is sitting in the best seat in the house and cannot hear a thing.
 
-Licensing is the one that remains, and it is the cut the Library used to be making too — until the
-four lines it was missing found reviewers and the refusal turned out to have been a queue. That is
-the encouraging reading of this section and it should not be over-read: the Library's blocker was
-finding four people, and this one is finding a cleared voice, which is the same *kind* of problem
-and not the same size. Three routes are open and each needs a decision this file cannot make on
-its own:
+That was not the plan, and the way it stopped being the plan is worth recording. The phase note
+put this floor last because _"audio licensing and autoplay policy are the two things most likely
+to eat a week"_, and both were expected to be fought. Neither was. Autoplay is answered by the
+piece being silent, since a work with no audio graph has no autoplay policy to lose to. And
+licensing turned out never to apply: `ARIA` is the author's own, so there was no third party to
+clear and there never had been. This section spent a while describing a floor waiting on
+provenance. It was a floor that had already found its ending.
 
-- **A public-domain recording.** Sound recordings published in the United States before 1930 are
-  in the public domain under the Music Modernization Act, which reaches the acoustic Caruso sides
-  and a good deal else. It costs a multi-megabyte binary in a repository whose only asset is an
-  eight-line distance field, and a 78's usable band is roughly 200 Hz to 3 kHz, which is most of an
-  eight-band spectrum arriving empty.
-- **A recording made for this piece.** The strongest line this file could print, and the only one
-  where the voice belongs to somebody named in it.
-- **Synthesis from the score above**, which needs no licence at all and would make the analyser
-  real without adding an asset.
+### The route that was declined
 
-**Until one of those is chosen and the provenance can be written down here, the floor is silent
-and says so.** It says so on the plate, in the prose under the room, and in the Reader's Edition,
-because a room that quietly did not do the thing its own documentation describes would be the
-failure this file exists to prevent. The code path is one function — `voiceAt` in
-`src/aubade/box.ts` — replaced by a read of an `AnalyserNode`. Nothing in the shader, the rig, the
-uniforms or the committed frames changes.
+One way of making this floor audible is worse than the others and is recorded here so it is not
+revisited. **Do not drop in a public-domain recording.**
+
+- **A public-domain recording.** Under the Music Modernization Act a sound recording published in
+  the United States falls into the public domain 100 years after publication, on the 1 January
+  following — so the line moves a year every January. Written in 2026 it stands at 1925 and
+  earlier, which reaches every Caruso side and a good deal else. Three costs, and the first one
+  decides it. **Such a recording does not sing this aria** — `ARIA` is the author's own and a
+  cleared Caruso side is Verdi, so this route does not find a voice for the score, it replaces the
+  score, and what is left is a floor about somebody else's opera. Second, a 78's usable band is
+  roughly 200 Hz to 3 kHz against eight bands running to 8 kHz: the lowest and the top two arrive
+  empty and stay empty, and the vector that `bandsFor` exists to keep from being a loudness meter
+  becomes one. Third, the _recording_ being public domain is not the _transfer_ being free, which
+  is where this route fails — UCSB licenses its restorations CC BY-NC and charges a use fee for
+  them, the Great 78 Project's rights page reads research and private study only and its
+  proprietors settled with UMG in 2025 on confidential terms, and the National Jukebox streams
+  under a gratis licence from Sony rather than a rights determination. Per-file reviewed statements
+  do exist on Wikimedia Commons. They are still Verdi. And it still costs a multi-megabyte binary
+  in a repository whose only asset is an eight-line distance field.
+
+The other two ways — a singer recorded for this piece, or synthesis from the score, which needs no
+licence at all — are not declined on the merits. They are simply not this floor. Either would make
+the aria audible, and in doing so would replace a room about not hearing it with a room about
+hearing it. That is a new floor, not a finished one.
+
+**The floor is silent and it says so out loud** — on the plate, in the prose under the room, and in
+the Reader's Edition — because a room that quietly did not do the thing its own documentation
+describes would be the failure this file exists to prevent.
+
+**The option is not burned.** `voiceAt` in `src/aubade/box.ts` returns a band vector rather than a
+pitch precisely so that a read of an `AnalyserNode` can replace it, and nothing in the shader, the
+rig, the uniforms or the committed frames would change. That seam was built before there was any
+decision to use it, and it stays built.

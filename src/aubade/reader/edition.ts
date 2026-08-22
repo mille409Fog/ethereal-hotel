@@ -231,13 +231,13 @@ export const EDITION: readonly IEditionSection[] = [
         'piece of arithmetic, in full view, which is the only honest way to move between two ' +
         'rooms that are made of nothing but arithmetic.',
       'At the time of writing Floor 0, Floor −1, Floor −2, Floor −3, Floor −4 and Floor −5 ' +
-        'exist and the lift runs between them, one floor at a time. One thing in the list above ' +
-        'is written and not built, and it is not a room: the Box has no sound in it. The aria is ' +
-        'a score rather than a recording, and nobody can hear a note. The reason is not ' +
-        'technical — it is that a piece which promises not to use anybody else’s music without ' +
-        'saying whose it is has to be able to say whose it is, and that is a question about ' +
-        'people rather than code. The distinction is kept on purpose: this is a place that tells ' +
-        'you what it can and cannot do.',
+        'exist and the lift runs between them, one floor at a time. All six are built. The Box ' +
+        'has no sound in it, and that is the room rather than a gap in it: the aria is a score ' +
+        'and not a recording — nineteen notes written for this hotel and never once sung — so ' +
+        'there is nothing to play, and the tiers moving out there are the only performance it ' +
+        'has ever had. A hotel that refuses is the whole of this place, and this is the floor ' +
+        'where the refusal is turned on the work itself rather than on you. You have the best ' +
+        'seat in the house and you cannot hear a thing.',
       'The lift does not run while the hotel is shut. If you are here in daylight there is a ' +
         'control at the desk that opens the place anyway, and it opens the lift with it.',
     ],

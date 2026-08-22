@@ -257,9 +257,9 @@ export const FLOOR_PROSE: Readonly<Record<Floor, readonly string[]>> = {
     'Something is being sung out there, and you cannot hear it. You can see it: the tiers move ' +
       'a little with the low notes, arriving late at the far end because sound takes a tenth of ' +
       'a second to cross a room this size, and the chandelier passes a shiver round its drops on ' +
-      'the high ones. There is no sound on this floor and there is not going to be one today — ' +
-      'the reason is written down, and it is about who wrote the music rather than about what a ' +
-      'browser will play.',
+      'the high ones. There is no sound on this floor and there is not going to be one. The ' +
+      'aria has never been sung by anybody — it is nineteen notes on paper — so what you are ' +
+      'watching is the only performance it has ever had.',
     'What the sun does here is take the room away. Not the light — the room. Come back in ' +
       'daylight and the house is gone, the rail runs along the foot of a flat wall, and this is ' +
       'a red cupboard with two chairs in it and a lamp still lit.',

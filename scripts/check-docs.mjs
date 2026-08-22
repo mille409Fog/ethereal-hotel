@@ -1059,9 +1059,11 @@ check('the projection box keeps its light and loses its speed', () => {
 // expensive check rather than the only line of defence.
 //
 // The second is the one no rendered frame can see at all. The room is silent, and
-// the reason it is silent is a licensing decision recorded in
-// `docs/aubade-credits.md`. A future instance "finishing the floor" by dropping in an
-// audio file is one import away from a takedown notice on a hiring artifact, and the
+// the silence is the finished state of the floor rather than a gap in it: the aria is
+// the author's own score and has never been sung, so there was never a licence to
+// obtain. `docs/aubade-credits.md` records that, and records the one route — a
+// public-domain recording — declined on the merits. A future instance "finishing the
+// floor" by dropping in an audio file would delete the room's whole subject, and the
 // diff would look like progress.
 //
 // The third is the seam. `voiceAt` returns a band vector rather than a pitch
@@ -1135,10 +1137,11 @@ check('the Box keeps its light and loses its room', () => {
     if (file.endsWith('.spec.ts')) continue;
     if (/\bnew (webkit)?AudioContext\b|createAnalyser\(/i.test(read(file))) {
       problems.push(
-        `${file} creates an AudioContext. Floor −5 is deliberately silent: AUBADE's sixth ` +
-          `non-negotiable forbids licensed audio, docs/aubade-credits.md records that the aria ` +
-          `has no cleared source yet, and the plate, the prose and the Reader's Edition all say ` +
-          `so out loud. Sound arrives when the provenance can be written in that file, not before.`
+        `${file} creates an AudioContext. Floor −5 is silent by decision, and that is the ` +
+          `finished state of the floor rather than a gap in it: the aria has never been sung, ` +
+          `and the plate, the prose and the Reader's Edition all say so out loud. Making it ` +
+          `audible replaces a room about not hearing it with a room about hearing it. Read ` +
+          `docs/aubade-credits.md before changing this.`
       );
     }
   }

@@ -137,15 +137,17 @@ describe('the Reader’s Edition', () => {
       }
     });
 
-    it('says which floors are built and which are only written', () => {
+    it('names every floor and says that all of them are built', () => {
       // The one place the fiction and the truth land on the same sentence.
-      // Everything on this page is present tense; some of the six floors do not
-      // exist; both facts are in the work rather than in a footnote.
+      // Everything on this page is present tense, and the page has to say plainly
+      // how much of that present tense is real — in the work rather than in a
+      // footnote.
       //
-      // This assertion is the reason AUBADE tells each new room it owes this page
-      // a paragraph. A floor that ships without moving itself out of the unbuilt
-      // list has quietly made the work lie, and the lie is invisible — the page
-      // still reads beautifully — so it is checked rather than remembered.
+      // This assertion is the reason AUBADE tells each room it owes this page a
+      // paragraph. It used to guard the other direction, when some of the six were
+      // written and unbuilt; all six exist now, so what it guards is the claim that
+      // they do. Either way the lie would be invisible — the page still reads
+      // beautifully — so it is checked rather than remembered.
       //
       // Derived from `FLOORS` rather than written out, and that is the whole point
       // of the check. Spelled as a literal it was a string somebody had to remember
@@ -158,8 +160,13 @@ describe('the Reader’s Edition', () => {
 
       const everything = prose().join(' ');
 
+      // Spelled as a word because the page is prose, and derived for the same
+      // reason the list above is: a literal is something somebody has to remember
+      // to edit in the commit that ships a floor.
+      const count = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
+
       expect(everything).toContain(`${built} exist and the lift runs between them`);
-      expect(everything).toContain('written and not built');
+      expect(everything).toContain(`All ${count[FLOORS.length]} are built`);
     });
 
     it('explains where the hour comes from, without naming a library', () => {

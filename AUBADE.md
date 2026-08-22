@@ -59,7 +59,7 @@ one shader and one idea.
 | **−2** | **The Library**         | One sentence, migrating across eight languages in seven writing systems — English, Greek, Russian, Hebrew, Arabic, French, Hindi, Korean — glyphs dissolving into one another rather than cutting. **Built.** |
 | **−3** | **The Cellar**          | Meditation. Near-silence. The camera slows to a 4-7-8 breath and the room resolves only if you stay — in the eye, not in the room, which never changes at all. **Built.**                                   |
 | **−4** | **The Projection Room** | Film. The post-processing stack _is_ the exhibit, applied to the whole frame rather than to a screen in it. Six switches on a bench you can operate. What the sun moves is the rate. **Built.**             |
-| **−5** | **The Box**             | Opera. An aria drives the geometry of the house beyond the balustrade, and what the sun takes is the house itself. Silent, and it says so. **Room built, sound not.**                                       |
+| **−5** | **The Box**             | Opera. An aria drives the geometry of the house beyond the balustrade, and what the sun takes is the house itself. Silent, and it says so. **Built.**                                                       |
 
 The elevator between floors is not a transition, it is a room. It is where the morph between two
 distance fields happens in full view, and it is the cheapest place in the piece to be spectacular.
@@ -164,7 +164,7 @@ headless Chromium and writes a PNG, which is a faster edit loop than reloading a
 Ship in this order. Each phase is deployable and each one is worth showing on its own. Do not
 start a phase before the previous one is live.
 
-Eight phases have landed and been deleted from this list, per the rule at the top: **the clock**
+Nine phases have landed and been deleted from this list, per the rule at the top: **the clock**
 (`src/aubade/solar/`, checked against published almanac times for eight cities), **the lobby**
 (`/aubade` — `src/aubade/gl/`, `camera/`, `rooms/`, `renderer.ts`), **day, night and the
 invitation** (`rooms/light-rig.ts`, `desk.ts`, `fake-clock.ts`, and the shutter in
@@ -173,10 +173,13 @@ invitation** (`rooms/light-rig.ts`, `desk.ts`, `fake-clock.ts`, and the shutter 
 Corridor** (`descent.ts`, `rooms/corridor-rig.ts`, and the second half of `rooms/hotel.frag.ts`),
 **the Cellar** (`cellar.ts`, `rooms/cellar-rig.ts`, and `adapted()` in `rooms/hotel.frag.ts`), and
 **the Projection Room** (`projection.ts`, `bench.ts`, `rooms/projection-rig.ts`, and
-`projected()` in `rooms/hotel.frag.ts`), and **the Library's sentence** (`sentence.ts`,
+`projected()` in `rooms/hotel.frag.ts`), **the Library's sentence** (`sentence.ts`,
 `scripts/build-sentence-atlas.mjs`, `scripts/sentence-field.mjs`, and `MAT_FRIEZE` in
+`rooms/hotel.frag.ts`), and **the Box** (`box.ts`, `rooms/box-rig.ts`, and `BOX_GLSL` in
 `rooms/hotel.frag.ts`). Their reasoning moved into those files' header comments, which are dense
 and are the thing to read before touching any of them.
+
+**Six floors exist and the hotel is complete as a building.** What is left below is not a room.
 
 The Library is the one whose delay was never technical, and that is the part worth carrying
 forward. It stood at four languages of eight for as long as it did because the missing four had
@@ -242,70 +245,53 @@ lobby — it ignores `?t=<state>`, because a forced state next to a real elevati
 this page cannot tell, and no font size on it is expressed in `vw`, because a `vw` size shrinks
 when a reader zooms in.
 
-### Phase 1 — One room
+The Box is the one that landed by being finished rather than by being completed, and that is the
+part worth carrying forward. Its phase note put the floor last because _"audio licensing and
+autoplay policy are the two things most likely to eat a week"_, and neither of them ate anything.
+Autoplay was answered by the concept: the floor was already required to be worth looking at in
+silence _"because for most visitors it will be"_, and taken to its end that is a room with no
+audio graph in it, which has no autoplay policy to lose to. Licensing was answered by arithmetic —
+`ARIA` is the author's own nineteen notes, so there was never a third party to clear and there
+never had been. For a while this document described a floor waiting on provenance. It was a floor
+that had already found its ending: an aria is being sung in a house five floors under the street
+and nobody in the building can hear a note of it, because nobody has ever sung it. A hotel that
+refuses is the concept, and this is the one floor that turns the refusal on the work itself rather
+than on the visitor. `docs/aubade-credits.md` carries the provenance and the one route — a
+public-domain recording — that is declined on the merits rather than left open.
 
-1. **The Box** — _half landed._ The room is built and the sound is not, and the split is not the
-   one this line predicted. `box.ts`, `rooms/box-rig.ts`, `BOX_GLSL` in `rooms/hotel.frag.ts`.
+**The sixth floor answers with space, and it had to.** Five answers were already spent — light
+arriving, light leaving, writing leaving, the visitor's own eye, and speed — and three of those
+five are a weight in [0, 1] that reaches exactly zero at noon. A fourth would have been the same
+answer in a different hat. So `house` is a **length in metres**: the auditorium is thirty-four
+metres deep at astronomical night and closes as the night ends, and at the shuttered hour it is
+exactly zero — no auditorium, a solid wall flush with the balustrade, and a red cupboard two metres
+deep with a reading lamp still lit in it. It is the only room in the hotel that is _cheaper to draw
+at noon_, because there is less of it.
 
-   **Autoplay turned out not to be a risk at all**, because it was answered by the concept rather
-   than worked around. This floor was already required to be worth looking at in silence, "because
-   for most visitors it will be" — taken to its end, that is a room with no audio graph in it, and
-   a piece with no audio graph has no autoplay policy to lose to. An aria is being sung in a house
-   five floors under the street and nobody in the building can hear a note of it. A hotel that
-   refuses is the concept; this is the floor where the refusal is about the work itself.
+That forced a sixth _shape_ of assertion, which is the real test of whether a floor was worth
+building. The frames cannot be ordered by brightness, held flat, paired by visitor or paired by
+instant. What `verify-shader.mjs` requires instead is a **discontinuity**: the four hours with a
+house in them brighten as it shrinks, and noon must be darker than all of them — which nothing
+continuous can satisfy, and which a house of 200mm fails while looking entirely plausible in the
+frame. That last was measured rather than assumed; the check before it, on peak luma, passed a
+200mm house cleanly.
 
-   **Licensing is the half that is left, and it is the cut the Library used to be making.** The
-   Library's version of it has now come off — the four lines it was refusing to guess at found
-   reviewers, and the refusal turned out to have been a queue. Do not over-read that here. Finding
-   four people who read Korean, French, Arabic and Hindi is a different size of problem from
-   clearing a voice to sing an aria, and the routes below are still the routes. The sixth
-   non-negotiable is a question about provenance, provenance is a question about people, and
-   `docs/aubade-credits.md` now states the three routes open and what each costs. The melody is the
-   author's own and is committed as a score; what is missing is a cleared voice to sing it.
+**And the floor needed a seventh assertion for the thing it is actually named after**, which was
+very nearly missed. A still cannot show a voice any more than it can show a rate — and worse, the
+script renders at second 0 by default, which is the start of the aria's first note where the attack
+envelope is exactly zero. So the whole floor was verified, and its five reference images committed,
+with the singer silent and the house standing perfectly still. Every gate passed. The `hushed`
+probe is the answer, and it swaps the **voice** rather than the clock: two instants a few seconds
+apart would also be two camera poses, because the camera breathes, so the noon comparison could
+then only ever carry a tolerance — the trap `TURNED` records one floor up. Holding the second and
+silencing the singer makes the difference in the frame _be_ the aria.
 
-   The seam is one function. `voiceAt` in `box.ts` returns **eight logarithmic bands from 80 Hz to
-   8 kHz** — what an `AnalyserNode` hands back, binned as it would be binned — rather than the note
-   that is sounding. That was the single decision worth making early: a shader written against a
-   pitch renders the same room today and has to be rewritten the day the sound arrives, at which
-   point the floor changes when it was only supposed to become audible. Replacing `voiceAt` with a
-   read of an analyser changes nothing in the shader, the rig, the uniforms or the committed frames.
-
-   Two things about the room changed the plan above and should be read as amendments to it.
-
-   **The sixth floor answers with space, and it had to.** Five answers were already spent — light
-   arriving, light leaving, writing leaving, the visitor's own eye, and speed — and three of those
-   five are a weight in [0, 1] that reaches exactly zero at noon. A fourth would have been the same
-   answer in a different hat. So `house` is a **length in metres**: the auditorium is thirty-four
-   metres deep at astronomical night and closes as the night ends, and at the shuttered hour it is
-   exactly zero — no auditorium, a solid wall flush with the balustrade, and a red cupboard two
-   metres deep with a reading lamp still lit in it. It is the only room in the hotel that is
-   _cheaper to draw at noon_, because there is less of it.
-
-   That also forced a sixth _shape_ of assertion, which is the real test of whether a floor was
-   worth building. The frames cannot be ordered by brightness, held flat, paired by visitor or
-   paired by instant. What `verify-shader.mjs` requires instead is a **discontinuity**: the four
-   hours with a house in them brighten as it shrinks, and noon must be darker than all of them —
-   which nothing continuous can satisfy, and which a house of 200mm fails while looking entirely
-   plausible in the frame. That last was measured rather than assumed; the check before it, on peak
-   luma, passed a 200mm house cleanly.
-
-   **And the floor needed a seventh assertion for the thing it is actually named after**, which was
-   very nearly missed. A still cannot show a voice any more than it can show a rate — and worse,
-   the script renders at second 0 by default, which is the start of the aria's first note where the
-   attack envelope is exactly zero. So the whole floor was verified, and its five reference images
-   committed, with the singer silent and the house standing perfectly still. Every gate passed.
-
-   The `hushed` probe is the answer, and it swaps the **voice** rather than the clock. Two instants
-   a few seconds apart would also be two camera poses, because the camera breathes — so the noon
-   comparison could then only ever carry a tolerance, which is the trap `TURNED` records one floor
-   up. Holding the second and silencing the singer makes the difference in the frame _be_ the aria:
-   noon is required identical to the byte, since there is no house for the voice to move, and the
-   four night hours are required to differ.
-
-   **The lift is behind the visitor here, and only here.** Every other room puts its doors at the
-   far end of the shot. This one cannot, because the far end is the thing the room is for — a box
-   is a place you look _out_ of, and a camera turned round to keep the lift in frame is a camera
-   pointed at the back of the only floor with a view.
+Two smaller things are now facts rather than plans. **The lift is behind the visitor here, and only
+here**, because the far end is the thing the room is for and a camera turned round to keep the lift
+in frame is a camera pointed at the back of the only floor with a view. And the seam stays built:
+`voiceAt` returns **eight logarithmic bands from 80 Hz to 8 kHz** rather than the note that is
+sounding, which is what an `AnalyserNode` hands back, so the decision to keep the floor silent
+costs nothing that could not be undone by replacing one function.
 
 The question a third floor raised is settled and the answer generalised, so a further room is no
 longer an architectural decision. Two rooms fitted in one program because two distance fields can be
@@ -322,12 +308,12 @@ is what this paragraph said would happen, at the floor it said it would happen a
 uniform expression, so every invocation takes the same slot and it is not divergent addressing;
 measured, the Box and the ride into it cost what the lobby costs.
 
-Each new room owes the Reader's Edition a paragraph, and owes `check:docs` and
-`verify-shader.mjs` a committed frame per solar state. `reader/edition.ts` describes all six
-floors in the present tense and then says plainly which are built — a room that ships without
-moving itself out of that list has quietly made the page lie.
+Each room owes the Reader's Edition a paragraph, and owes `check:docs` and `verify-shader.mjs` a
+committed frame per solar state. `reader/edition.ts` describes all six floors in the present tense
+and then says plainly that all six are built — that sentence was the ledger while the building was
+going up, and it is now a statement rather than a list. It still has to stay true.
 
-### Phase 2 — The register
+### Phase 1 — The register
 
 Where the existing backend skills come back. `POST /api/aubade/visits` on arrival, `GET` for the
 register: city (from timezone, never IP), duration, floors reached, local solar state at arrival.
@@ -336,7 +322,7 @@ register: city (from timezone, never IP), duration, floors reached, local solar 
   Rate-limited. The register is legible as a feature of the fiction and defensible as a privacy
   decision in the same breath — say so in the README.
 
-### Phase 3 — Dawn
+### Phase 2 — Dawn
 
 The ending. A visitor present through actual civil twilight into actual sunrise at their location
 sees the hotel close: the countdown, the light arriving, the rooms shuttering in order, the last
