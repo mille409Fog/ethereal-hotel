@@ -12,8 +12,8 @@
 # starlette's version, and 0.115 caps it below 0.39 — eight PYSEC advisories
 # short of a fix. 0.141 allows starlette 1.x, which clears all eight.
 fastapi==0.141.1
-uvicorn[standard]==0.32.0
-pydantic==2.9.2
+uvicorn[standard]==0.52.4
+pydantic==2.13.4
 # uvicorn[standard] pulls this in for the /ws protocol; pinned explicitly
 # because the WebSocket stream is a first-class feature, not an accident.
 websockets==13.1
@@ -24,8 +24,8 @@ websockets==13.1
 # environment variables — see the Configuration table in ARCHITECTURE.md.
 
 # Persistence
-SQLAlchemy==2.0.35
-alembic==1.13.3
+SQLAlchemy==2.0.52
+alembic==1.19.1
 
 # Used by db/seed.py, which runs on startup to populate an empty database.
 Faker==30.3.0
