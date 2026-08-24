@@ -43,13 +43,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # No `npm ci`. `npm audit` resolves package-lock.json against the
       # registry and never reads node_modules, so installing would cost a
       # minute to learn nothing this job does not already have.
       - name: Setup Node.js (from .nvmrc)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
 
@@ -71,7 +71,7 @@ jobs:
       # pins in the requirements files, and those do not vary by interpreter.
       # One run is the whole answer.
       - name: Setup Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -120,7 +120,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # No `queries:` override, which means the default security suite. The
       # security-and-quality suite was the obvious upgrade and is the wrong one
