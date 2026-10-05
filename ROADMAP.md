@@ -25,22 +25,6 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 1. Buy the domain
-
-**Effort:** S · **Why:** a generated Vercel subdomain reads as a scratch deploy. A name you
-own reads as a thing you maintain. The repo already says `jacobmiller.dev`; what is left is
-the purchase, DNS and the Vercel project. This is an hour and it changes how every other item is
-received.
-
-**DoD:**
-
-- [ ] Custom domain live on the Vercel project, HTTPS, apex and `www` both resolving with one
-      redirecting to the other.
-- [ ] `og:url`, canonical, and any absolute URLs in the README updated.
-- [ ] `README.md`, résumé, and GitHub profile point at the new domain. The résumé's copy is
-      `contact.site` in `src/app/resume/resume.data.ts` — change it there and run
-      `npm run resume:pdf`, or CI will fail on the stale PDF.
-
 ## Deliberately not doing
 
 Recorded so the next instance does not helpfully add them:
