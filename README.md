@@ -3,7 +3,7 @@
 [![Code Quality](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/code-quality.yml/badge.svg)](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/code-quality.yml)
 [![Supply chain](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/supply-chain.yml/badge.svg)](https://github.com/mille409Fog/ethereal-hotel/actions/workflows/supply-chain.yml)
 
-**Live demo: https://ethereal-hotel-pink.vercel.app/**
+**Live demo: https://jacobmiller.dev/**
 
 A hotel operations dashboard, Angular 22 and FastAPI, deployed as one Vercel project. Every
 figure on screen — occupancy, ADR, RevPAR, revenue — is derived from real booking rows in a

@@ -442,7 +442,7 @@ calls `load_dotenv()`, so configuration comes from **real environment variables*
 them in your shell, your `docker-compose.yml`, or your host's dashboard:
 
 ```bash
-export ALLOWED_ORIGINS="https://ethereal-hotel-pink.vercel.app"
+export ALLOWED_ORIGINS="https://jacobmiller.dev"
 export LOG_LEVEL=DEBUG
 python main.py
 ```

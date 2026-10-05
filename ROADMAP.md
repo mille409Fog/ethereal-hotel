@@ -27,8 +27,9 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## 1. Buy the domain
 
-**Effort:** S · **Why:** `ethereal-hotel-pink.vercel.app` reads as a scratch deploy. A name you
-own reads as a thing you maintain. This is an hour and it changes how every other item is
+**Effort:** S · **Why:** a generated Vercel subdomain reads as a scratch deploy. A name you
+own reads as a thing you maintain. The repo already says `jacobmiller.dev`; what is left is
+the purchase, DNS and the Vercel project. This is an hour and it changes how every other item is
 received.
 
 **DoD:**

@@ -75,7 +75,7 @@ const arg = (name, fallback) => {
 };
 
 const STREAM_URL = arg('stream-url', 'http://localhost:4200/dashboard');
-const POLL_URL = arg('poll-url', 'https://ethereal-hotel-pink.vercel.app/dashboard');
+const POLL_URL = arg('poll-url', 'https://jacobmiller.dev/dashboard');
 
 /**
  * 30 frames half a second apart: fifteen seconds of wall clock, sampled and

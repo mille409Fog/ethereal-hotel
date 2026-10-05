@@ -14,7 +14,7 @@ API_VERSION = "2.1.0"
 # Allowed CORS origins come from the ALLOWED_ORIGINS env var (comma-separated).
 # Falls back to the local dev servers when the var is unset so local dev "just
 # works". Set ALLOWED_ORIGINS in production, e.g.:
-#   ALLOWED_ORIGINS=https://ethereal-hotel-pink.vercel.app
+#   ALLOWED_ORIGINS=https://jacobmiller.dev
 _DEFAULT_ORIGINS = (
     "http://localhost:4200,"  # Angular dev server
     "http://localhost:5173,"  # Vite alternative

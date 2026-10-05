@@ -212,7 +212,7 @@ startup seeding they assume. There is no second copy of the wiring to keep in sy
 Frontend and API deploy as **one Vercel project**, so the browser sees a single origin:
 
 ```
-                      https://ethereal-hotel-pink.vercel.app
+                           https://jacobmiller.dev
                                       │
                      ┌────────────────┴────────────────┐
         /api/*  ─────┤  vercel.json rewrites           ├───── /*

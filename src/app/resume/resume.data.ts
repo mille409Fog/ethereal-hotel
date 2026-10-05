@@ -120,7 +120,7 @@ export const RESUME: IResume = {
     location: 'Denver, CO',
     linkedin: 'linkedin.com/in/jacob-miller-485603146',
     github: 'github.com/mille409Fog',
-    site: 'ethereal-hotel-pink.vercel.app',
+    site: 'jacobmiller.dev',
   },
   experience: [
     {

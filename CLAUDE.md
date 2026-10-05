@@ -4,7 +4,7 @@ Read this first. It exists so you don't have to read 80KB of Markdown to make a 
 
 ## What this repo is
 
-A portfolio site for Jacob Miller, deployed at https://ethereal-hotel-pink.vercel.app/. Angular 22
+A portfolio site for Jacob Miller, deployed at https://jacobmiller.dev/. Angular 22
 frontend, FastAPI backend, one Vercel project serving both. It looks like a hotel operations
 product; it is a hiring artifact. That distinction decides most arguments:
 

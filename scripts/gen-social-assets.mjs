@@ -161,7 +161,7 @@ const OG_HTML = `<!doctype html>
     <h1>Jacob Miller</h1>
     <p class="role">Senior Software Engineer</p>
     <p class="claim">Angular and FastAPI. A live operations dashboard reading real rows, and a booking flow the server actually validates.</p>
-    <div class="url">ethereal-hotel-pink.vercel.app</div>
+    <div class="url">jacobmiller.dev</div>
   </body>
 </html>`;
 

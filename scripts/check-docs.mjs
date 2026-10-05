@@ -22,8 +22,10 @@
 // worth knowing, which is why this exits non-zero rather than warning.
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { strayHosts } from './site-url.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => readFileSync(path.join(repoRoot, relative), 'utf8');
@@ -2047,9 +2049,37 @@ check('the images the docs embed exist, and the capture stays inside its budget'
   return problems;
 });
 
+// CLAUDE.md opens by saying where the site is deployed, and the build stamps
+// `siteUrl` into every route's card — but the address is also typed out by hand
+// in the README, the résumé, the OG card and a dozen more, and the move off
+// `*.vercel.app` found thirteen of them. This reads every tracked text file, so
+// the next move cannot land in twelve. `site-url.test.mjs` is skipped because
+// its fixtures have to name the old host.
+check('every file names the site by its one address', () => {
+  const { siteUrl } = JSON.parse(read('src/route-meta.json'));
+  const BINARY = /\.(png|jpe?g|webp|gif|ico|pdf|woff2?|ttf|otf|zip)$/i;
+  const SKIP = new Set(['scripts/site-url.test.mjs']);
+  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: repoRoot, encoding: 'utf8' })
+    .split('\0')
+    .filter((file) => file && !BINARY.test(file) && !SKIP.has(file) && exists(file));
+
+  const problems = [];
+  if (!CLAUDE_MD.includes(`deployed at ${siteUrl}/`)) {
+    problems.push(`CLAUDE.md no longer says the site is deployed at ${siteUrl}/, which route-meta.json does.`);
+  }
+  for (const file of tracked) {
+    for (const stray of strayHosts(read(file), siteUrl)) {
+      problems.push(
+        `${file} names the site as ${stray}; its address is ${siteUrl} (src/route-meta.json).`
+      );
+    }
+  }
+  return problems;
+});
+
 // ---------------------------------------------------------------------------
 
-const failures = checks.flatMap(([name, fn]) => fn().map((problem) => ({ name, problem })));
+const failures =checks.flatMap(([name, fn]) => fn().map((problem) => ({ name, problem })));
 
 if (failures.length === 0) {
   process.stdout.write(`CLAUDE.md: ${checks.length} checks passed.\n`);
