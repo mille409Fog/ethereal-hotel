@@ -394,10 +394,12 @@ test.describe('the reader’s edition', () => {
     const words = await page.locator('main').innerText();
     expect(words.trim().split(/\s+/).length).toBeGreaterThan(1000);
 
-    // The six floors, including the five that do not exist yet — and the
-    // sentence that says which is which.
+    // The six floors — and the sentence that says how many of them are real. It
+    // used to say which were "written and not built"; all six are built now, and
+    // `edition.spec.ts` derives the count from the shaft, so this only has to see
+    // that the claim reached the page.
     await expect(page.getByText('The Mirror Corridor')).toBeVisible();
-    await expect(page.getByText(/written and not built/)).toBeVisible();
+    await expect(page.getByText(/All six are built/)).toBeVisible();
   });
 
   test('says what the sun is doing, in words', async ({ page }) => {

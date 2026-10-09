@@ -39,6 +39,7 @@
  * where a floor reaches out and changes something above it.
  */
 
+import { voiceAt, type IVoice } from './box';
 import { breathe } from './camera/drift';
 import { createRenderingContext } from './gl/context';
 import { FIXED_STEP_MS, type IFrame } from './gl/loop';
@@ -51,17 +52,16 @@ import {
   type IQualityTier,
 } from './gl/quality';
 import { drawingBufferSize, resizeDrawingBuffer } from './gl/viewport';
-import { voiceAt, type IVoice } from './box';
 import { benchMask, filmFrameAt, type IBench, type IFilmFrame } from './projection';
-import { migrationAt, SENTENCE_ATLAS_PATH } from './sentence';
-import { FULLSCREEN_VERTEX_SHADER } from './rooms/fullscreen.vert';
+import type { IBoxRig } from './rooms/box-rig';
 import type { ICellarRig } from './rooms/cellar-rig';
 import type { ICorridorRig } from './rooms/corridor-rig';
+import { FULLSCREEN_VERTEX_SHADER } from './rooms/fullscreen.vert';
 import { HOTEL_FRAGMENT_SHADER } from './rooms/hotel.frag';
 import type { ILibraryRig } from './rooms/library-rig';
 import type { ILightRig } from './rooms/light-rig';
-import type { IBoxRig } from './rooms/box-rig';
 import type { IProjectionRig } from './rooms/projection-rig';
+import { migrationAt, SENTENCE_ATLAS_PATH } from './sentence';
 
 /** What the renderer will say about itself, for the caption under the canvas. */
 export interface IRenderReport {
@@ -292,11 +292,26 @@ export class HotelRenderer {
    *
    * Called once at construction and thereafter only from the component's
    * `ResizeObserver`. See the file comment for why this is not done per frame.
+   *
+   * @returns Whether the size differs from the last one read, which is what the
+   *   component repaints a held still on. A `ResizeObserver` reports once on
+   *   `observe()` whether or not anything moved, and that report arrives just
+   *   after the reduced-motion still has been drawn — so repainting on every
+   *   notification drew every still twice, and on a CPU rasteriser the second
+   *   copy of a 1280×720 raymarch was the difference between the e2e lobby
+   *   tests passing and timing out.
    */
-  public measure(): void {
-    const rect = this.canvas.getBoundingClientRect();
-    this.cssWidth = rect.width;
-    this.cssHeight = rect.height;
+  public measure(): boolean {
+    const currentMeasurements = this.canvas.getBoundingClientRect();
+    if (
+      this.cssHeight !== currentMeasurements.height ||
+      this.cssWidth !== currentMeasurements.width
+    ) {
+      this.cssWidth = currentMeasurements.width;
+      this.cssHeight = currentMeasurements.height;
+      return true;
+    }
+    return false;
   }
 
   /** The tier and scale in force, for the caption. */

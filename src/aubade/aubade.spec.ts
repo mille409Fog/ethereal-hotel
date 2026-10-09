@@ -907,9 +907,24 @@ describe('the aubade route', () => {
       await render();
       expect(gl?.callsTo('drawArrays')).toHaveLength(1);
 
+      const stage = canvas() as HTMLCanvasElement;
+      stage.getBoundingClientRect = () => ({ width: 400, height: 300 }) as DOMRect;
       fireResize?.();
 
       expect(gl?.callsTo('drawArrays')).toHaveLength(2);
+    });
+
+    it('does not repaint a still when nothing moved', async () => {
+      // The observer reports once on `observe()` regardless, and that report
+      // lands just after the still was drawn. Repainting on it drew every
+      // reduced-motion lobby twice — invisible on a GPU, and on the CPU
+      // rasteriser the e2e suite runs on, the second copy timed the lobby out.
+      setReducedMotion(true);
+      await render();
+
+      fireResize?.();
+
+      expect(gl?.callsTo('drawArrays')).toHaveLength(1);
     });
 
     it('does not draw an extra frame while the loop is running', async () => {

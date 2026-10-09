@@ -811,10 +811,12 @@ export class Aubade implements AfterViewInit, OnDestroy {
    */
   private watchSize(canvas: HTMLCanvasElement, renderer: HotelRenderer): void {
     this.observer = new ResizeObserver(() => {
-      renderer.measure();
+      const moved = renderer.measure();
       // A stopped loop still has to repaint, or a reduced-motion visitor who
-      // resizes the window is left looking at a stretched still.
-      if (!this.loop?.running) {
+      // resizes the window is left looking at a stretched still. Only when the
+      // size actually moved, though: the observer's first report is unconditional
+      // and lands right after the still was drawn — see `measure()`.
+      if (moved && !this.loop?.running) {
         this.loop?.renderOnce();
       }
     });

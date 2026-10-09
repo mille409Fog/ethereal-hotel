@@ -372,6 +372,50 @@ describe('sizing', () => {
     expect(gl.callsTo('viewport')).toHaveLength(2);
   });
 
+  describe('saying whether the canvas moved', () => {
+    // The component repaints a held still on this answer, and only on it. A
+    // `true` that should have been `false` is a second full raymarch for every
+    // reduced-motion visitor; a `false` that should have been `true` is a still
+    // stretched across a canvas that changed shape under it.
+    const resize = (canvas: HTMLCanvasElement, width: number, height: number): void => {
+      canvas.getBoundingClientRect = () => ({ width, height }) as DOMRect;
+    };
+
+    it('says no to the size it was built at', () => {
+      // The observer's first report, which arrives whether or not anything moved.
+      const { renderer } = build();
+      expect(renderer.measure()).toBe(false);
+    });
+
+    it('says yes when the width moves', () => {
+      const { canvas, renderer } = build();
+      resize(canvas, 800, 720);
+      expect(renderer.measure()).toBe(true);
+    });
+
+    it('says yes when only the height moves', () => {
+      const { canvas, renderer } = build();
+      resize(canvas, 1280, 600);
+      expect(renderer.measure()).toBe(true);
+    });
+
+    it('says yes once per move, and no to the same size read again', () => {
+      const { canvas, renderer } = build();
+      resize(canvas, 800, 600);
+      expect(renderer.measure()).toBe(true);
+      expect(renderer.measure()).toBe(false);
+    });
+
+    it('says yes for a sub-pixel move', () => {
+      // A zoom step or a fractional layout lands here, and the drawing buffer is
+      // the CSS size times the device pixel ratio, so half a CSS pixel can be a
+      // whole buffer pixel. Rounding before comparing would hide it.
+      const { canvas, renderer } = build();
+      resize(canvas, 1280.5, 720);
+      expect(renderer.measure()).toBe(true);
+    });
+  });
+
   it('holds the pixel ceiling on a very large canvas', () => {
     const { canvas, renderer } = build({ width: 3840, height: 2160 });
     renderer.render(frame(), at(NIGHT));
