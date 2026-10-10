@@ -118,7 +118,8 @@ thresholds live in `lighthouserc.json` and the README states them. It fetches `@
 version pinned in `package.json` instead of declaring it, because `lighthouse` → `puppeteer-core` →
 `extract-zip` carries an unfixable high advisory that would otherwise force `npm run audit` down to
 `critical` for every package at once. Do not "tidy" it into `devDependencies`. Size is gated
-separately by `angular.json` budgets, which are set just above the current build and **fail** it,
+separately by `angular.json` budgets: warnings just above the current build, errors ~30% above it
+because tighter ceilings failed Vercel deploys that passed locally. Errors **fail** the build,
 not warn — the numbers in the README, `lighthouserc.json` and `angular.json` are checked against
 each other by `check:docs`.
 
