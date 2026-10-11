@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import type { Result } from 'axe-core';
 import { stubBookingApi } from './support/backend';
+import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
 
 /**
  * The six routes the app actually has. `/` is the portfolio page;
@@ -85,10 +86,10 @@ async function waitForSettledBooking(page: Page): Promise<void> {
  * depend on. Both states are supposed to pass the audit, which is the point.
  */
 async function waitForSettledAubade(page: Page): Promise<void> {
-  // Twenty seconds rather than the default five, for the reason given over the
-  // twin of this helper in `aubade.spec.ts`: it is waiting on a lazy chunk, a
-  // shader compile and one CPU-rasterised raymarch, not on a widget settling.
-  await expect(page.getByText('Unlocking the lobby')).toBeHidden({ timeout: 20_000 });
+  // The same wait `aubade.spec.ts` uses, budget and all — see `support/lobby.ts`.
+  // This used to carry its own twenty seconds, and the two copies went stale
+  // together when the shader outgrew them.
+  await waitForTheLobby(page);
 }
 
 test.describe('accessibility', () => {
@@ -117,6 +118,8 @@ test.describe('accessibility', () => {
         await waitForSettledBooking(page);
       }
       if (route.path === '/aubade') {
+        // The lobby's budget alone outlasts the default test timeout.
+        testInfo.setTimeout(LOBBY_TIMEOUT + 20_000);
         await waitForSettledAubade(page);
       }
 

@@ -106,7 +106,9 @@ it needs no running server. Two more commands ride in that job because they need
 frame. That last one exists because the shaders are the only code here whose compiler would
 otherwise first run in production — `tsc` cannot read them and the unit tests drive a stub context
 that never looks at the source. Add `-- --out some.png` to look at the frame; it renders through
-SwiftShader, so it says nothing about speed.
+SwiftShader, so it says nothing about speed. Both steps carry `if: ${{ !cancelled() }}`: without
+it a red suite skipped them, and the shader gate went unrun on every push for two months.
+`check:docs` fails if a step after the suite loses the condition.
 
 Another job runs `npm run check:docs`, which fails when this file's claims stop matching the repo.
 See §Keeping this file honest — if you change something documented here, that check is how you find
@@ -181,13 +183,16 @@ not leave the note behind when the suppression goes.
   `lhci` cannot forward Chrome flags regardless. CONTRIBUTING has the direct-run command that
   shows the scores. The thresholds are enforced by the Linux CI job — do not loosen them, and do
   not conclude the site regressed, on the strength of a local `EPERM`.
-- **Run `e2e/aubade.spec.ts` at `--workers=2` before believing a local failure.** SwiftShader is a
-  CPU rasteriser and the default ten workers oversubscribe this box: measured at a clean `HEAD`,
-  16 of 16 pass at two workers and 15 at ten, the straggler being whichever test has to fetch the
-  renderer chunk and draw a first frame under the most contention. Two is also what a four-core CI
-  runner gives itself, so it is the honest local reading. Do not "fix" a failure by shrinking
-  viewports or raising timeouts on the strength of a local run — shrinking the viewport is what
-  `renders the lobby` exists to resist, and the Linux CI job is what decides.
+- **Every `/aubade` page JIT-compiles the whole shader before its first frame, and that is what
+  the e2e budget pays for.** On SwiftShader the compile dominates and ignores the viewport —
+  3.6s at 64×64 against 5.4s at 1280×720 here — and it blocks the main thread, so every assertion
+  on the page waits behind it. CI is three to five times slower than this box, so a local pass
+  says little: the suite went red for two months at a 20s budget that passed here every time.
+  `LOBBY_TIMEOUT` in `e2e/support/lobby.ts` is the one budget both specs use, and the
+  `Lobby headroom:` line at the end of every Playwright run (`scripts/lobby-headroom.mjs`) is how
+  to size it — it warns on CI past half the budget. Raise the budget from a CI headroom line,
+  never a local one, and look at what made the shader dearer first. Do not shrink viewports to
+  buy time either; `renders the lobby` exists to resist that.
 - **A 1280×720 frame costs about 1.5s here, and that number is a canary.** It read 13s once, and
   the box was not the reason — `mapScene` had grown a third floor in a way that named seven rooms
   where three would do, which cost ten times the frame and timed out twelve CI tests.

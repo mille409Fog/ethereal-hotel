@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
 
 /**
  * `/aubade` smoke test — the only check that runs the whole stack in a browser.
@@ -24,24 +25,21 @@ import { expect, test, type Page } from '@playwright/test';
  * use a small viewport so the cost is a fraction of a core rather than all of
  * one. None of this weakens the tests: the interesting question is whether a
  * frame reaches the canvas, not how many.
- */
-
-/**
- * The plate stops saying this once the renderer chunk has resolved and the first
- * frame is on the canvas.
  *
- * Given its own budget rather than the default five seconds, because that is what
- * it is actually waiting for: a lazy chunk, a shader compile, and one raymarched
- * frame rasterised on the CPU. Five seconds is a sensible default for a widget
- * settling and a coin toss for this — it passed the whole suite one run and failed
- * here the next, on a box doing nothing differently. Twenty leaves ten inside the
- * test timeout for whatever the test came to assert.
+ * ## Why this file runs on one worker
+ *
+ * Reduced motion bounds what a test draws; it does nothing about the compile,
+ * which every page pays in full before its first frame — see `support/lobby.ts`
+ * for what that costs. With the config's `fullyParallel`, two of these tests
+ * landed on the two CI workers at once and spent their budgets compiling against
+ * each other. `mode: 'default'` keeps the file's tests in order on one worker,
+ * while the other worker gets through the rest of the suite; unlike `serial`, a
+ * failure here does not skip the tests after it.
+ *
+ * The timeout is the lobby's budget plus room for what each test came to assert,
+ * because the default thirty seconds is less than the lobby alone is allowed.
  */
-const LOBBY_TIMEOUT = 20_000;
-
-async function waitForTheLobby(page: Page): Promise<void> {
-  await expect(page.getByText('Unlocking the lobby')).toBeHidden({ timeout: LOBBY_TIMEOUT });
-}
+test.describe.configure({ mode: 'default', timeout: LOBBY_TIMEOUT + 20_000 });
 
 /** Open the route with the camera held still — see the file comment. */
 async function openStill(page: Page): Promise<void> {
@@ -487,11 +485,11 @@ test.describe('the camera', () => {
     // that needs more than the default budget. Screenshotting a WebGL canvas
     // forces a readback, and a readback has to interleave with a raymarch that is
     // being rasterised on the same CPUs — so this waits on the contention rather
-    // than on the page. It passes in about ten seconds alone and overruns thirty
-    // beside another worker, which is a fact about SwiftShader and not about the
-    // camera. `test.slow()` rather than a raised default: every other test here
-    // draws one frame and stops, and none of them should be allowed to quietly
-    // take ninety seconds.
+    // than on the page. It passes in about ten seconds alone and took ninety-six
+    // on CI beside another worker, which is a fact about SwiftShader and not
+    // about the camera. `test.slow()` triples the file's timeout for this test
+    // alone: every other test here draws one frame and stops, and none of them
+    // should be allowed to quietly take this long.
     test.slow();
 
     await page.goto('/aubade');

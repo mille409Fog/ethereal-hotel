@@ -128,7 +128,15 @@ jobs:
       # drifted. It runs here because it needs the Chromium installed above, and
       # for the same reason as everything else in this job: paying the browser
       # download twice to learn two things is worse than learning both once.
+      #
+      # `!cancelled()` on this step and the next, so a red e2e step cannot skip
+      # them. Without it they ran only when the suite passed, which meant the
+      # shader gate went unrun on every push from 2026-08-15 to 2026-10-11 —
+      # four floors of GLSL checked only by whoever remembered to run it. Sharing
+      # a job is an economy; it must not make one gate hostage to another.
+      # `check:docs` fails if either step loses the condition.
       - name: Check the committed résumé PDF is current
+        if: ${{ !cancelled() }}
         run: npm run resume:check
 
       # AUBADE's shaders are the only code in this repository whose compiler
@@ -139,6 +147,7 @@ jobs:
       # a build-time compiler like everything else. It says nothing about speed
       # — SwiftShader is a CPU rasteriser — only about correctness.
       - name: Compile and render the Aubade shaders
+        if: ${{ !cancelled() }}
         run: npm run verify:shader
 
       # `if: always()` because these only matter when the step above failed:

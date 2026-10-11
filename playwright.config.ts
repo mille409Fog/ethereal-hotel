@@ -17,7 +17,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: 0,
-  reporter: process.env['CI'] ? [['github'], ['html', { open: 'never' }]] : [['list']],
+  // The headroom line runs everywhere: it is how a slowly growing Aubade shader
+  // shows up as a warning on a green run instead of as timeouts on red ones —
+  // see `scripts/lobby-headroom.mjs`.
+  reporter: process.env['CI']
+    ? [['github'], ['html', { open: 'never' }], ['./scripts/lobby-headroom.mjs']]
+    : [['list'], ['./scripts/lobby-headroom.mjs']],
 
   use: {
     baseURL: `http://localhost:${PORT}`,

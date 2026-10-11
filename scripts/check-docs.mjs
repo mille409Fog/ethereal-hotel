@@ -1456,6 +1456,48 @@ check('quoted config values still match the files they came from', () => {
   return problems;
 });
 
+// The gates that share the e2e job. `resume:check` and `verify:shader` sit after
+// the Playwright suite because they need the Chromium it installs, and a step in
+// GitHub Actions is skipped once an earlier one fails unless it says otherwise. So
+// a red suite silently switched off both — the shader gate went unrun on every
+// push for two months while the suite timed out on a growing shader, and nothing
+// on the run page said a gate was missing rather than passing. Each step after
+// the suite has to opt back in.
+check('a failing e2e suite cannot switch off the gates behind it', () => {
+  const problems = [];
+  const ci = read('.github/workflows/code-quality.yml');
+  const job = /^ {2}e2e:\n([\s\S]*?)(?=^ {2}\S|(?![\s\S]))/m.exec(ci);
+  if (job === null) {
+    return ['CLAUDE.md describes an e2e job in code-quality.yml; there is no `e2e:` job in it.'];
+  }
+
+  const steps = job[1].split(/^(?= {6}- name: )/m).slice(1);
+  const suite = steps.findIndex((step) => /run: npm run e2e\b/.test(step));
+  if (suite === -1) {
+    return ['The e2e job in code-quality.yml no longer runs `npm run e2e`.'];
+  }
+
+  const after = steps.slice(suite + 1);
+  for (const gate of ['resume:check', 'verify:shader']) {
+    if (!after.some((step) => step.includes(`npm run ${gate}`))) {
+      problems.push(
+        `CLAUDE.md says \`npm run ${gate}\` rides in the e2e job; it is no longer after the suite.`
+      );
+    }
+  }
+  for (const step of after) {
+    const name = /- name: (.*)/.exec(step)?.[1] ?? '(unnamed)';
+    if (!/^\s+if: .*(!cancelled\(\)|always\(\))/m.test(step)) {
+      problems.push(
+        `The e2e job's step "${name}" runs after the Playwright suite without ` +
+          '`if: ${{ !cancelled() }}`, so a failing suite skips it and the run page shows it ' +
+          'as skipped rather than failed. Add the condition.'
+      );
+    }
+  }
+  return problems;
+});
+
 // The social-preview set. Everything here fails silently and off-site: a card
 // is rendered by Slack or LinkedIn, from a crawl this repo never sees, and the
 // first sign of a broken one is a link that has already been pasted somewhere
