@@ -19,6 +19,11 @@ product; it is a hiring artifact. That distinction decides most arguments:
   living in `src/aubade/`, sharing this deployment and nothing else — no styles, no services, no
   tokens, and imports that only ever point one way. `AUBADE.md` is its spec; treat it as a second
   repository that happens to be in this folder.
+- **`triage/` is a CI-triage agent for this repo's own pipeline**, also separate from the two
+  routes: it never touches `src/`. `triage/docs/` holds its brief, architecture and ADRs. Its
+  hard rule is **$0 beyond the owner's Claude Pro subscription**: the model is reached only
+  through `claude -p`, `ANTHROPIC_API_KEY` must never exist, and every `claude` process passes
+  `ci_triage/billing_guard.py` first. Do not route around it, and never pass `--bare`.
 - The owner writes and thinks in long form. `ROADMAP.md` and `AUBADE.md` are the actual planning
   documents — they carry reasoning, not just tasks. Read the relevant one before proposing work.
 
@@ -57,12 +62,12 @@ wholly mechanical commits (formatting, dependency bumps, generated files). When 
 
 | File                | Size | Read it when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | ------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROADMAP.md`        | 3K   | **Any question of "what should I build".** Numbered items with Definitions of Done (none open right now — ask before inventing one), plus a "Deliberately not doing" list. Start here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `ROADMAP.md`        | 4K   | **Any question of "what should I build".** Numbered items with Definitions of Done (one open: the CI triage agent — ask before inventing another), plus a "Deliberately not doing" list. Start here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `README.md`         | 6K   | Almost never — it is a one-page shop window that links here and to `ARCHITECTURE.md`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `ARCHITECTURE.md`   | 25K  | The reference doc: API shapes, the error contract, transports and badges, deployment, env vars, a11y.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `backend/README.md` | 15K  | You are working inside `backend/` — DB schema, seeding, streaming design, Alembic.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `AUBADE.md`         | 27K  | Only if the task touches `/aubade` (a separate WebGL project). Nine phases have landed: the clock (`src/aubade/solar/`), the lobby, the five solar states that light it, the Reader's Edition (`src/aubade/reader/`), the descent to Floor −1 (`descent.ts`, `rooms/corridor-rig.ts`), the Cellar on Floor −3 (`cellar.ts`, `rooms/cellar-rig.ts`, `adapted()`), the Projection Room on Floor −4 (`projection.ts`, `bench.ts`, `rooms/projection-rig.ts`, `projected()`), and the Library's sentence on Floor −2 (`sentence.ts`, `scripts/build-sentence-atlas.mjs`, `MAT_FRIEZE`) in **all eight** languages, and the Box on Floor −5 (`box.ts`, `rooms/box-rig.ts`, `BOX_GLSL`). **All six floors are built; what is left in that file is not a room.** The Box has **no sound at all** and no `AudioContext` exists anywhere in `src/aubade/` — that is the finished state of the floor, not a gap in it. The aria is the author's own score and has never been sung, so there was never a licence to obtain; `docs/aubade-credits.md` carries the provenance and the one route that is declined on the merits. |
-| `CONTRIBUTING.md`   | 6K   | Setup and the five gates. This is where "how do I run it" lives; the README only links here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `CONTRIBUTING.md`   | 6K   | Setup and the six gates. This is where "how do I run it" lives; the README only links here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 **`ROADMAP.md` deletes items as they land** rather than checking them off, and renumbers what is
 left from 1 so the list always reads 1, 2, 3, 4. The reasoning that survived a finished item moved
@@ -86,7 +91,7 @@ they are the way they are. Read the header before changing the file; the answer 
 types, no linter and no reviewer, so its header carries the coordinate conventions and the three
 decisions that buy the frame rate.
 
-## The five gates
+## The six gates
 
 CI (`.github/workflows/code-quality.yml`) runs these. Run them before claiming done:
 
@@ -94,8 +99,9 @@ CI (`.github/workflows/code-quality.yml`) runs these. Run them before claiming d
 npm run code-quality      # Prettier --check + ESLint --max-warnings 0
 npm test                  # Vitest + coverage thresholds from angular.json
 npm run test:scripts      # node --test over scripts/*.test.mjs — no browser, no dependency
-npm run code-quality:py   # ruff format --check, ruff check, mypy --strict
+npm run code-quality:py   # ruff format --check, ruff check, mypy --strict (backend/, api/, triage/)
 npm run test:backend      # pytest
+npm run test:triage       # pytest over triage/ — its own pytest.ini, so its own command
 ```
 
 `npm run e2e` (build + Playwright smoke/axe) is a separate CI job. It needs
@@ -370,8 +376,8 @@ The script deliberately does not check prose. These are the parts it cannot see,
 | What `/dashboard` or `/booking` actually do        | §What this repo is — the two-routes claim is the whole framing   |
 | A degradation path, badge, or fallback             | §What this repo is, §Don't helpfully add these                   |
 | Deployment target, `create_app` flags, Vercel      | §Traps — the Python split and the `requirements.txt` landmine    |
-| A gate, threshold, or CI job                       | §The five gates                                                  |
-| A Lighthouse threshold or an `angular.json` budget | §The five gates, and the README's Gates section — it states them |
+| A gate, threshold, or CI job                       | §The six gates                                                   |
+| A Lighthouse threshold or an `angular.json` budget | §The six gates, and the README's Gates section — it states them  |
 | Anything in `ROADMAP.md` §Deliberately not doing   | §Don't helpfully add these — it mirrors that list                |
 | Finishing a ROADMAP item that removes a section    | The doc-map row for whatever the item rewrote, and its size      |
 | Finishing an AUBADE phase                          | Its doc-map row; delete the phase and renumber the rest          |

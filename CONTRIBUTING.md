@@ -34,7 +34,7 @@ database and labels itself "simulated data".
 
 ## Before you open a PR
 
-Run the same gates CI does. All five must pass:
+Run the same gates CI does. All six must pass:
 
 ```bash
 npm run code-quality      # Prettier + ESLint (--max-warnings 0)
@@ -42,6 +42,7 @@ npm test                  # Vitest + coverage thresholds
 npm run test:scripts      # node --test over scripts/*.test.mjs
 npm run code-quality:py   # ruff format --check, ruff check, mypy --strict
 npm run test:backend      # pytest
+npm run test:triage       # pytest over triage/, the CI-triage agent
 ```
 
 `npm run e2e` additionally builds and runs the Playwright suite (smoke + accessibility). It

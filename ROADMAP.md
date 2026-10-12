@@ -25,6 +25,30 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
+## 1. CI triage agent (`triage/`)
+
+An agent that explains why this repository's own CI failed. It is a separate tree under
+`triage/`, beside the site rather than in it, the way `/aubade` is.
+[`triage/docs/PROJECT_BRIEF.md`](triage/docs/PROJECT_BRIEF.md) is its spec and
+[`triage/docs/ARCHITECTURE.md`](triage/docs/ARCHITECTURE.md) says which parts exist. It
+is built in stages, each ending with the maintainer's sign-off: baseline, single LLM
+calls, agent loop, durability, guardrails, evaluation, observability, deployment.
+
+**The constraint every stage assumes:** it costs $0 beyond the existing Claude Pro
+subscription. Model access is `claude -p`, never the API, and every `claude` process
+passes the billing guard first (ADR 0004 in `triage/docs/decisions/`).
+
+**DoD:**
+
+- On the held-out set, category accuracy is ≥ 85% and the suggested fix names a file
+  the real fix touched in ≥ 60% of cases. Both beat the rule-based baseline, by margins
+  stated in `triage/docs/`.
+- A failure in Actions produces a triage record on the run within 2 minutes.
+- Nothing is published outside the run without human approval.
+- No path can bill anything beyond the subscription.
+
+Effort: weeks, in stages.
+
 ## Deliberately not doing
 
 Recorded so the next instance does not helpfully add them:

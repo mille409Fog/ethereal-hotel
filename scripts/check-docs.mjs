@@ -1428,6 +1428,7 @@ check('quoted config values still match the files they came from', () => {
     'test:scripts',
     'code-quality:py',
     'test:backend',
+    'test:triage',
     'e2e',
     'audit',
   ]) {

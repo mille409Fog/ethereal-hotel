@@ -52,7 +52,7 @@ line-length = 88
 # there, so `from db import ...` is a first-party import. Telling ruff where the
 # source root is keeps isort from filing those under third-party. `api/` imports
 # the same modules after putting ./backend on sys.path, so it shares the root.
-src = ["backend"]
+src = ["backend", "triage"]
 
 extend-exclude = [
   "backend/venv",
@@ -90,7 +90,7 @@ select = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["config", "db", "main", "routers", "schemas", "services"]
+known-first-party = ["config", "db", "main", "routers", "schemas", "services", "ci_triage", "cli"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"  # `.database` is fine, `..db` is not
@@ -119,8 +119,11 @@ python_version = "3.11"
 # Same reason as ruff's `src`: imports resolve relative to ./backend. That also
 # resolves `api/index.py`'s imports, which reach the same modules through the
 # sys.path entry it installs at runtime.
-mypy_path = "backend"
-files = ["backend", "api"]
+#
+# triage/ is the CI-triage agent (triage/docs/). It shares this config and the backend's
+# venv rather than carrying a second toolchain, and it imports from its own root the same way.
+mypy_path = "backend,triage"
+files = ["backend", "api", "triage"]
 exclude = "^backend/(venv|alembic/versions)/"
 
 strict = true

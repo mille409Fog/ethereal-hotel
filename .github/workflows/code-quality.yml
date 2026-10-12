@@ -257,11 +257,13 @@ jobs:
       # Vercel deployment entrypoint — it is the code that actually serves the
       # hosted demo, so it is held to the same bar as backend/, not exempted
       # for being four statements long.
+      # triage/ (the CI-triage agent, triage/docs/) shares this venv and this config
+      # rather than carrying a second toolchain, so it rides in this job.
       - name: Run Ruff (lint)
-        run: ruff check backend/ api/
+        run: ruff check backend/ api/ triage/
 
       - name: Run Ruff (format check)
-        run: ruff format --check backend/ api/
+        run: ruff format --check backend/ api/ triage/
 
       # No path argument: `files` in pyproject.toml names both trees, and
       # passing one here would silently override it.
@@ -271,3 +273,12 @@ jobs:
       - name: Run pytest
         run: pytest
         working-directory: backend
+
+      # Its own step, not a second path on the one above: pytest reads one config per
+      # invocation, and the two trees each have their own pytest.ini. The billing
+      # guard's tests are in here, so `!cancelled()` keeps a red backend suite from
+      # skipping them.
+      - name: Run pytest (triage)
+        if: ${{ !cancelled() }}
+        run: pytest
+        working-directory: triage
