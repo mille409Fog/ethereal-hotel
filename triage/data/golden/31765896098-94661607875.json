@@ -1,0 +1,38 @@
+{
+  "case": {
+    "branch": "development-alpha",
+    "created_at": "2026-08-14T03:08:41Z",
+    "event": "push",
+    "excerpt": {
+      "error_lines": ["Process completed with exit code 1."],
+      "source_lines": 485,
+      "text": "[… 435 lines omitted …]\n     renderer version, so it genuinely is stale; regenerating is correct.\n  3. This script's layout or the fonts in scripts/resume-fonts/ changed.\n\n##[error]Process completed with exit code 1.\nNode 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/\n##[group]Run actions/upload-artifact@v4\nwith:\n  name: playwright-report\n  path: playwright-report/\ntest-results/\n\n  retention-days: 7\n  if-no-files-found: ignore\n  compression-level: 6\n  overwrite: false\n  include-hidden-files: false\n[… 34 lines omitted …]",
+      "truncated": true
+    },
+    "failed_steps": ["Check the committed résumé PDF is current"],
+    "head_sha": "4eec7e5035d1f6205315a5c166bd96ffd2c332dd",
+    "job": "End-to-end (smoke, axe, keyboard, reduced motion)",
+    "job_id": 94661607875,
+    "run_id": 31765896098,
+    "workflow": "Code Quality"
+  },
+  "category": "environment",
+  "evidence": {
+    "fix_files": [
+      ".github/workflows/code-quality.yml",
+      "CLAUDE.md",
+      "CONTRIBUTING.md",
+      "scripts/check-docs.mjs",
+      "scripts/pdf-normalize.mjs",
+      "scripts/pdf-normalize.test.mjs",
+      "scripts/pdf-text.mjs",
+      "scripts/pdf-text.test.mjs",
+      "scripts/render-resume.mjs"
+    ],
+    "fix_run_id": 31812801036,
+    "fix_sha": "0ea26a0235863198d806604ea91f32614a68bab7",
+    "same_sha_rerun": false
+  },
+  "note": "The résumé gate compared PDF bytes, and Chromium's PDF differs between Windows and Linux; fixed by comparing the text layer instead (scripts/pdf-normalize.mjs). FLAG: arguably the gate itself was wrong.",
+  "split": "tune"
+}

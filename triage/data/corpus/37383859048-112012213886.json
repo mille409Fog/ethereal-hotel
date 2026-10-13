@@ -1,0 +1,20 @@
+{
+  "branch": "development-alpha",
+  "created_at": "2026-10-05T22:39:29Z",
+  "event": "push",
+  "excerpt": {
+    "error_lines": [
+      "1) [chromium] › e2e/aubade.spec.ts:385:7 › the reader’s edition › is a real thing to read on its own",
+      "Process completed with exit code 1."
+    ],
+    "source_lines": 536,
+    "text": "[… 143 lines omitted …]\n155 packages are looking for funding\n  run `npm fund` for details\n\n23 vulnerabilities (2 low, 13 moderate, 6 high, 2 critical)\n\nTo address all issues, run:\n  npm audit fix\n\nRun `npm audit` for details.\n##[group]Run npx playwright install --with-deps --only-shell chromium\nnpx playwright install --with-deps --only-shell chromium\nshell: /usr/bin/bash -e {0}\n##[endgroup]\nInstalling dependencies...\nSwitching to root user to install dependencies...\nGet:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]\n[… 263 lines omitted …]\n\nRunning 44 tests using 2 workers\n························F\n##[error]  1) [chromium] › e2e/aubade.spec.ts:385:7 › the reader’s edition › is a real thing to read on its own\n    Error: expect(locator).toBeVisible() failed\n\n    Locator: getByText(/written and not built/)\n    Expected: visible\n    Timeout: 5000ms\n    Error: element(s) not found\n\n    Call log:\n      - Expect \"toBeVisible\" with timeout 5000ms\n      - waiting for getByText(/written and not built/)\n\n\n      398 |     // sentence that says which is which.\n      399 |     await expect(page.getByText('The Mirror Corridor')).toBeVisible();\n    > 400 |     await expect(page.getByText(/written and not built/)).toBeVisible();\n          |                                                           ^\n      401 |   });\n      402 |\n[… 3 lines omitted …]\n\n  1) [chromium] › e2e/aubade.spec.ts:385:7 › the reader’s edition › is a real thing to read on its own\n\n    Error: expect(locator).toBeVisible() failed\n\n    Locator: getByText(/written and not built/)\n    Expected: visible\n    Timeout: 5000ms\n    Error: element(s) not found\n\n    Call log:\n      - Expect \"toBeVisible\" with timeout 5000ms\n      - waiting for getByText(/written and not built/)\n\n\n      398 |     // sentence that says which is which.\n      399 |     await expect(page.getByText('The Mirror Corridor')).toBeVisible();\n    > 400 |     await expect(page.getByText(/written and not built/)).toBeVisible();\n          |                                                           ^\n      401 |   });\n      402 |\n[… 20 lines omitted …]\n##[notice]  1 failed\n    [chromium] › e2e/aubade.spec.ts:385:7 › the reader’s edition › is a real thing to read on its own\n  43 passed (3.5m)\n##[error]Process completed with exit code 1.\n##[group]Run actions/upload-artifact@v4\nwith:\n  name: playwright-report\n  path: playwright-report/\ntest-results/\n\n  retention-days: 7\n  if-no-files-found: ignore\n  compression-level: 6\n  overwrite: false\n  include-hidden-files: false\n##[endgroup]\n[… 32 lines omitted …]",
+    "truncated": true
+  },
+  "failed_steps": ["Run end-to-end suite"],
+  "head_sha": "cf6642a105070e9f8ddfd0880cd358c94c71dc8e",
+  "job": "End-to-end (smoke, axe, keyboard, reduced motion)",
+  "job_id": 112012213886,
+  "run_id": 37383859048,
+  "workflow": "Code Quality"
+}

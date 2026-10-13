@@ -17,7 +17,12 @@ One: the maintainer of this repository. Nobody else's pipeline is in scope.
 
 ## Inputs and outputs
 
-**Input:** one failed GitHub Actions run of this repository (its id).
+**Input:** one failed _job_ in a GitHub Actions run of this repository. A run where
+two jobs failed is two cases, because they usually fail for different reasons.
+
+**Off by default.** Nothing runs unless someone types a command, and the Stage 5
+trigger only fires while the repository variable `TRIAGE_ENABLED` is `true`
+(ADR 0005).
 
 **Output:** a triage record containing:
 
@@ -95,5 +100,7 @@ Re-check it at Stage 3, before the first real call, and record what was found in
   31–166 KB, and every rotation stays in git history permanently, so storing them raw would grow
   the repository on every failure. The trimming rule is built in Stage 2. GitHub masks secrets in
   logs before they are stored, and the repository is already public. A scrub pass runs anyway.
-- **Open (decided at Stage 2):** whether the labelled golden set is a frozen copy kept apart from
-  the rolling window, so scores stay comparable over time.
+- **Golden set: a frozen copy**, kept apart from the rolling window in
+  `triage/data/golden/` so scores stay comparable over time. It is built once from the
+  corpus. Claude drafts each category, the maintainer confirms it, and the newest 30%
+  by time are held out.

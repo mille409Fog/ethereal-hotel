@@ -1,0 +1,36 @@
+{
+  "case": {
+    "branch": "development-alpha",
+    "created_at": "2026-08-20T22:37:18Z",
+    "event": "push",
+    "excerpt": {
+      "error_lines": ["Process completed with exit code 1."],
+      "source_lines": 237,
+      "text": "[… 175 lines omitted …]\n\n❯ Building...\n✔ Building...\n▲ [WARNING] total scripts exceeded maximum budget. Budget 860.00 kB was not met by 36.14 kB with a total of 896.14 kB.\nInitial chunk files | Names         |  Raw size | Estimated transfer size\n\nstyles-PRJDRRTS.css | styles        |  11.50 kB |                 1.80 kB\nmain-VJBQBW4G.js    | main          |  46 bytes |                46 bytes\n\n                    | Initial total |  11.54 kB |                 1.85 kB\n\nLazy chunk files    | Names         |  Raw size | Estimated transfer size\nmain-Bl1o92lu.js    | -             | 255.27 kB |                69.80 kB\nchunk-CCxhj2Vk.js   | dashboard     | 229.24 kB |                67.28 kB\nchunk-B_K-Kot5.js   | renderer      | 214.40 kB |                58.16 kB\nchunk-BNqGkFaf.js   | booking       |  67.39 kB |                15.72 kB\n[… 8 lines omitted …]\nApplication bundle generation failed. [10.624 seconds] - 2026-08-20T22:37:49.945Z\n\n\n✘ [ERROR] total scripts exceeded maximum budget. Budget 870.00 kB was not met by 26.14 kB with a total of 896.14 kB.\n\n\n##[error]Process completed with exit code 1.\nNode 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/\n##[group]Run actions/upload-artifact@v4\nwith:\n  name: lighthouse-reports\n  path: .lighthouseci/\n  retention-days: 7\n  if-no-files-found: ignore\n  compression-level: 6\n  overwrite: false\n  include-hidden-files: false\n##[endgroup]\n(node:2400) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n[… 19 lines omitted …]",
+      "truncated": true
+    },
+    "failed_steps": ["Run Lighthouse CI (fails below the thresholds in lighthouserc.json)"],
+    "head_sha": "a3721a6095eb8148a951439b31fbf201273851b5",
+    "job": "Budgets (Lighthouse — performance, a11y, best practices)",
+    "job_id": 96605247469,
+    "run_id": 32425079586,
+    "workflow": "Code Quality"
+  },
+  "category": "threshold",
+  "evidence": {
+    "fix_files": [
+      "AUBADE.md",
+      "CLAUDE.md",
+      "README.md",
+      "angular.json",
+      "docs/aubade-credits.md",
+      "src/aubade/renderer.spec.ts",
+      "src/aubade/sentence.ts"
+    ],
+    "fix_run_id": 32499960147,
+    "fix_sha": "f4df850ba6dd237dc24424774b806c3d87966662",
+    "same_sha_rerun": false
+  },
+  "note": "Total scripts 896 kB against the 870 kB angular.json budget, from the repo's own growth; fixed by raising the budget.",
+  "split": "tune"
+}

@@ -1,0 +1,54 @@
+{
+  "case": {
+    "branch": "dependabot/pip/python-runtime-5f9c5e60f9",
+    "created_at": "2026-08-24T19:28:30Z",
+    "event": "pull_request",
+    "excerpt": {
+      "error_lines": [
+        "1) [chromium] › e2e/a11y.spec.ts:182:7 › keyboard operability › the first Tab reaches a skip link that jumps to main content",
+        "2) [chromium] › e2e/a11y.spec.ts:96:9 › accessibility › aubade has no critical or serious axe violations",
+        "2) [chromium] › e2e/a11y.spec.ts:96:9 › accessibility › aubade has no critical or serious axe violations",
+        "3) [chromium] › e2e/aubade.spec.ts:54:7 › the aubade route › renders the lobby ───────────────────",
+        "3) [chromium] › e2e/aubade.spec.ts:54:7 › the aubade route › renders the lobby ───────────────────",
+        "4) [chromium] › e2e/aubade.spec.ts:80:7 › the aubade route › reaches the real renderer, not the text fallback",
+        "4) [chromium] › e2e/aubade.spec.ts:80:7 › the aubade route › reaches the real renderer, not the text fallback",
+        "5) [chromium] › e2e/aubade.spec.ts:89:7 › the aubade route › writes the room out in prose, alongside the canvas and not instead of it",
+        "5) [chromium] › e2e/aubade.spec.ts:89:7 › the aubade route › writes the room out in prose, alongside the canvas and not instead of it",
+        "6) [chromium] › e2e/aubade.spec.ts:102:7 › the aubade route › the cue scrolls to the prose instead of leaving the piece",
+        "6) [chromium] › e2e/aubade.spec.ts:102:7 › the aubade route › the cue scrolls to the prose instead of leaving the piece",
+        "7) [chromium] › e2e/aubade.spec.ts:120:7 › the aubade route › the lift reaches the floor below ───",
+        "8) [chromium] › e2e/aubade.spec.ts:173:7 › the aubade route › the lift reaches the bottom of the shaft",
+        "8) [chromium] › e2e/aubade.spec.ts:173:7 › the aubade route › the lift reaches the bottom of the shaft",
+        "9) [chromium] › e2e/aubade.spec.ts:282:7 › the aubade route › is lit by whatever the sun is doing where the visitor is",
+        "9) [chromium] › e2e/aubade.spec.ts:282:7 › the aubade route › is lit by whatever the sun is doing where the visitor is",
+        "10) [chromium] › e2e/aubade.spec.ts:296:7 › the aubade route › carries a link to the Reader’s Edition on both of its screens",
+        "10) [chromium] › e2e/aubade.spec.ts:296:7 › the aubade route › carries a link to the Reader’s Edition on both of its screens",
+        "11) [chromium] › e2e/aubade.spec.ts:385:7 › the reader’s edition › is a real thing to read on its own",
+        "12) [chromium] › e2e/aubade.spec.ts:310:7 › the aubade route › is reachable from the portfolio ───",
+        "12) [chromium] › e2e/aubade.spec.ts:310:7 › the aubade route › is reachable from the portfolio ───",
+        "13) [chromium] › e2e/aubade.spec.ts:430:7 › the reader’s edition › goes back to the lobby, and the lobby comes back here",
+        "13) [chromium] › e2e/aubade.spec.ts:430:7 › the reader’s edition › goes back to the lobby, and the lobby comes back here",
+        "14) [chromium] › e2e/aubade.spec.ts:479:7 › the camera › breathes when motion is allowed ─────────",
+        "Process completed with exit code 1."
+      ],
+      "source_lines": 1281,
+      "text": "[… 431 lines omitted …]\n\nRunning 44 tests using 2 workers\n······F\n##[error]  1) [chromium] › e2e/a11y.spec.ts:182:7 › keyboard operability › the first Tab reaches a skip link that jumps to main content\n    Error: expect(locator).toHaveText(expected) failed\n\n    Locator: locator(':focus')\n    Expected pattern: /skip to (main )?content/i\n    Timeout: 5000ms\n    Error: element(s) not found\n\n    Call log:\n      - Expect \"toHaveText\" with timeout 5000ms\n      - waiting for locator(':focus')\n\n\n      185 |     await page.keyboard.press('Tab');\n      186 |     const skipLink = page.locator(':focus');\n    > 187 |     await expect(skipLink).toHaveText(/skip to (main )?content/i);\n          |                            ^\n      188 |\n      189 |     // Deliberately not `toBeVisible()`: this link is parked at `top: -100px`\n      190 |     // until focused, and Playwright counts an element with a non-empty box as\n        at /home/runner/work/ethereal-hotel/ethereal-hotel/e2e/a11y.spec.ts:187:28\n·······T\n##[error]  2) [chromium] › e2e/a11y.spec.ts:96:9 › accessibility › aubade has no critical or serious axe violations\n    Test timeout of 30000ms exceeded.\n##[error]  2) [chromium] › e2e/a11y.spec.ts:96:9 › accessibility › aubade has no critical or serious axe violations\n    Error: expect(locator).toBeHidden() failed\n\n    Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: visible\n    Timeout:  20000ms\n\n    Call log:\n      - Expect \"toBeHidden\" with timeout 20000ms\n      - waiting for getByText('Unlocking the lobby')\n\n\n      89 |   // twin of this helper in `aubade.spec.ts`: it is waiting on a lazy chunk, a\n[… 6 lines omitted …]\n        at waitForSettledAubade (/home/runner/work/ethereal-hotel/ethereal-hotel/e2e/a11y.spec.ts:91:55)\n        at /home/runner/work/ethereal-hotel/ethereal-hotel/e2e/a11y.spec.ts:120:15\nT\n##[error]  3) [chromium] › e2e/aubade.spec.ts:54:7 › the aubade route › renders the lobby ───────────────────\n    Test timeout of 30000ms exceeded.\n##[error]  3) [chromium] › e2e/aubade.spec.ts:54:7 › the aubade route › renders the lobby ───────────────────\n    Error: expect(locator).toBeHidden() failed\n\n    Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: undefined\n\n\n      41 |\n      42 | async function waitForTheLobby(page: Page): Promise<void> {\n    > 43 |   await expect(page.getByText('Unlocking the lobby')).toBeHidden({ timeout: LOBBY_TIMEOUT });\n         |                                                       ^\n      44 | }\n      45 |\n[… 1 lines omitted …]\n        at waitForTheLobby (/home/runner/work/ethereal-hotel/ethereal-hotel/e2e/aubade.spec.ts:43:55)\n        at /home/runner/work/ethereal-hotel/ethereal-hotel/e2e/aubade.spec.ts:62:11\nT\n##[error]  4) [chromium] › e2e/aubade.spec.ts:80:7 › the aubade route › reaches the real renderer, not the text fallback\n    Test timeout of 30000ms exceeded.\n##[error]  4) [chromium] › e2e/aubade.spec.ts:80:7 › the aubade route › reaches the real renderer, not the text fallback\n    Error: expect(locator).toBeHidden() failed\n\n    Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: undefined\n\n    Call log:\n      - Expect \"toBeHidden\" with timeout 20000ms\n      - waiting for getByText('Unlocking the lobby')\n\n\n      41 |\n      42 | async function waitForTheLobby(page: Page): Promise<void> {\n[… 6 lines omitted …]\n        at openStill (/home/runner/work/ethereal-hotel/ethereal-hotel/e2e/aubade.spec.ts:50:9)\n        at /home/runner/work/ethereal-hotel/ethereal-hotel/e2e/aubade.spec.ts:81:5\nT\n##[error]  5) [chromium] › e2e/aubade.spec.ts:89:7 › the aubade route › writes the room out in prose, alongside the canvas and not instead of it\n    Test timeout of 30000ms exceeded.\n##[error]  5) [chromium] › e2e/aubade.spec.ts:89:7 › the aubade route › writes the room out in prose, alongside the canvas and not instead of it\n    Error: expect(locator).toBeHidden() failed\n\n    Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: undefined\n\n    Call log:\n      - Expect \"toBeHidden\" with timeout 20000ms\n      - waiting for getByText('Unlocking the lobby')\n\n\n      41 |\n      42 | async function waitForTheLobby(page: Page): Promise<void> {\n[… 6 lines omitted …]\n        at openStill (/home/runner/work/ethereal-hotel/ethereal-hotel/e2e/aubade.spec.ts:50:9)\n        at /home/runner/work/ethereal-hotel/ethereal-hotel/e2e/aubade.spec.ts:95:5\nT\n##[error]  6) [chromium] › e2e/aubade.spec.ts:102:7 › the aubade route › the cue scrolls to the prose instead of leaving the piece\n    Test timeout of 30000ms exceeded.\n##[error]  6) [chromium] › e2e/aubade.spec.ts:102:7 › the aubade route › the cue scrolls to the prose instead of leaving the piece\n    Error: expect(locator).toBeHidden() failed\n\n    Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: undefined\n\n    Call log:\n      - Expect \"toBeHidden\" with timeout 20000ms\n      - waiting for getByText('Unlocking the lobby')\n\n\n      41 |\n      42 | async function waitForTheLobby(page: Page): Promise<void> {\n[… 663 lines omitted …]\n    [chromium] › e2e/aubade.spec.ts:430:7 › the reader’s edition › goes back to the lobby, and the lobby comes back here\n    [chromium] › e2e/aubade.spec.ts:479:7 › the camera › breathes when motion is allowed ───────────\n  30 passed (5.8m)\n##[error]Process completed with exit code 1.\nNode 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/\n##[group]Run actions/upload-artifact@v4\nwith:\n  name: playwright-report\n  path: playwright-report/\ntest-results/\n\n  retention-days: 7\n  if-no-files-found: ignore\n  compression-level: 6\n  overwrite: false\n  include-hidden-files: false\n[… 35 lines omitted …]",
+      "truncated": true
+    },
+    "failed_steps": ["Run end-to-end suite"],
+    "head_sha": "5f8df234748828723299c20f62c4401e3233efa4",
+    "job": "End-to-end (smoke, axe, keyboard, reduced motion)",
+    "job_id": 97562874201,
+    "run_id": 32768362122,
+    "workflow": "Code Quality"
+  },
+  "category": "threshold",
+  "evidence": {
+    "fix_files": [],
+    "fix_run_id": null,
+    "fix_sha": null,
+    "same_sha_rerun": false
+  },
+  "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+  "split": "tune"
+}

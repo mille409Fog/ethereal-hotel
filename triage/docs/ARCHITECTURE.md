@@ -46,19 +46,21 @@ flowchart TD
 
 ## What exists today
 
-Only the billing guard is built. Everything else in the diagram is the plan, and each
-item lands in the stage named here.
+The billing guard and the data pipeline are built. Everything else in the diagram is
+the plan, and each item lands in the stage named here.
 
-| Piece                               | Where                                                   | Status                                                |
-| ----------------------------------- | ------------------------------------------------------- | ----------------------------------------------------- |
-| Billing guard                       | `ci_triage/billing_guard.py`, `ci_triage/claude_cli.py` | **Built.** `npm run triage:doctor` runs it            |
-| Fetch, trim, corpus                 | —                                                       | Stage 2, with a rule-based classifier as the baseline |
-| Classify (single LLM call)          | —                                                       | Stage 3                                               |
-| Agent loop + MCP tools              | —                                                       | Stage 4                                               |
-| Trigger in Actions, resumable state | —                                                       | Stage 5                                               |
-| Approval gate, injection defences   | —                                                       | Stage 6                                               |
-| Golden set, eval harness            | —                                                       | Stage 7                                               |
-| Traces dashboard                    | —                                                       | Stage 8                                               |
+| Piece                               | Where                                                     | Status                                        |
+| ----------------------------------- | --------------------------------------------------------- | --------------------------------------------- |
+| Billing guard                       | `ci_triage/billing_guard.py`, `ci_triage/claude_cli.py`   | **Built.** `npm run triage:doctor` runs it    |
+| Fetch, trim, corpus                 | `ci_triage/fetch.py`, `trim.py`, `corpus.py`, `github.py` | **Built.** Corpus in `triage/data/corpus/`    |
+| Fix evidence, labels, freeze        | `ci_triage/labels.py`, `triage/data/labels.json`          | **Built.** Golden set frozen once confirmed   |
+| Rule baseline + scorecard           | `ci_triage/baseline.py`, `ci_triage/evaluate.py`          | **Built.** Scores in [RESULTS.md](RESULTS.md) |
+| Classify (single LLM call)          | —                                                         | Stage 3                                       |
+| Agent loop + MCP tools              | —                                                         | Stage 4                                       |
+| Trigger in Actions, resumable state | —                                                         | Stage 5                                       |
+| Approval gate, injection defences   | —                                                         | Stage 6                                       |
+| Larger golden set, LLM-as-judge     | —                                                         | Stage 7                                       |
+| Traces dashboard                    | —                                                         | Stage 8                                       |
 
 ## The building blocks, mapped
 
@@ -91,8 +93,15 @@ make that true, and the brief's §Cost ceiling explains why it matters.
 
 ## Commands
 
-| Command                   | What it does                                                                  |
-| ------------------------- | ----------------------------------------------------------------------------- |
-| `npm run test:triage`     | pytest over `triage/tests/`                                                   |
-| `npm run code-quality:py` | ruff and mypy-strict, over `triage/` along with `backend/` and `api/`         |
-| `npm run triage:doctor`   | Runs the billing guard against this machine and says whether `claude` may run |
+| Command                   | What it does                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------ |
+| `npm run test:triage`     | pytest over `triage/tests/`                                                    |
+| `npm run code-quality:py` | ruff and mypy-strict, over `triage/` along with `backend/` and `api/`          |
+| `npm run triage:doctor`   | Runs the billing guard against this machine and says whether `claude` may run  |
+| `npm run triage:fetch`    | Adds new failed runs to the corpus and rotates it to 50 runs (`gh`, read-only) |
+| `npm run triage:label`    | Finds each new case's fix in history and adds it to `labels.json`              |
+| `npm run triage:freeze`   | Copies confirmed labels into the golden set, once                              |
+| `npm run triage:eval`     | Scores the rule baseline against the golden set                                |
+
+None of these runs on its own: the project is off by default
+([ADR 0005](decisions/0005-off-by-default.md)).

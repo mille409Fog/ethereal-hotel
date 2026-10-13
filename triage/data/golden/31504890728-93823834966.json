@@ -1,0 +1,31 @@
+{
+  "case": {
+    "branch": "dependabot/npm_and_yarn/lint-and-test-7f742423a1",
+    "created_at": "2026-08-11T15:02:43Z",
+    "event": "pull_request",
+    "excerpt": {
+      "error_lines": [
+        "1) [chromium] › e2e/a11y.spec.ts:160:7 › reduced motion › the looping heartbeat and pulse animations are stopped",
+        "Process completed with exit code 1."
+      ],
+      "source_lines": 547,
+      "text": "[… 160 lines omitted …]\n158 packages are looking for funding\n  run `npm fund` for details\n\n17 vulnerabilities (3 low, 8 moderate, 6 high)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues (including breaking changes), run:\n  npm audit fix --force\n\nRun `npm audit` for details.\n##[group]Run npx playwright install --with-deps --only-shell chromium\nnpx playwright install --with-deps --only-shell chromium\nshell: /usr/bin/bash -e {0}\n##[endgroup]\n[… 241 lines omitted …]\n\nRunning 7 tests using 2 workers\n······F\n##[error]  1) [chromium] › e2e/a11y.spec.ts:160:7 › reduced motion › the looping heartbeat and pulse animations are stopped\n    Error: expect(received).toEqual(expected) // deep equality\n\n    - Expected  -  1\n    + Received  + 12\n\n    - Array []\n    + Array [\n    +   \"unnamed\",\n    +   \"heartbeat\",\n    +   \"pulse-glow\",\n    +   \"pulse-glow\",\n    +   \"pulse-glow\",\n    +   \"pulse-glow\",\n[… 15 lines omitted …]\n\n  1) [chromium] › e2e/a11y.spec.ts:160:7 › reduced motion › the looping heartbeat and pulse animations are stopped\n\n    Error: expect(received).toEqual(expected) // deep equality\n\n    - Expected  -  1\n    + Received  + 12\n\n    - Array []\n    + Array [\n    +   \"unnamed\",\n    +   \"heartbeat\",\n    +   \"pulse-glow\",\n    +   \"pulse-glow\",\n    +   \"pulse-glow\",\n    +   \"pulse-glow\",\n[… 32 lines omitted …]\n##[notice]  1 failed\n    [chromium] › e2e/a11y.spec.ts:160:7 › reduced motion › the looping heartbeat and pulse animations are stopped\n  6 passed (6.8s)\n##[error]Process completed with exit code 1.\nNode 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/\n##[group]Run actions/upload-artifact@v4\nwith:\n  name: playwright-a11y-report\n  path: playwright-report/\ntest-results/\n\n  retention-days: 7\n  if-no-files-found: ignore\n  compression-level: 6\n  overwrite: false\n  include-hidden-files: false\n[… 34 lines omitted …]",
+      "truncated": true
+    },
+    "failed_steps": ["Run accessibility suite"],
+    "head_sha": "2d58551b7c16d9dba0933848da42f310da562f98",
+    "job": "Accessibility (axe, keyboard, reduced motion)",
+    "job_id": 93823834966,
+    "run_id": 31504890728,
+    "workflow": "Code Quality"
+  },
+  "category": "dependency",
+  "evidence": {
+    "fix_files": [],
+    "fix_run_id": null,
+    "fix_sha": null,
+    "same_sha_rerun": false
+  },
+  "note": "The reduced-motion test failed only on Dependabot bumps (Angular, lint-and-test) and was never fixed on those branches.",
+  "split": "tune"
+}

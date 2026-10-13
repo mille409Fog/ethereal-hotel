@@ -127,3 +127,53 @@ Volume is about 35 failures a month and the budget is zero. GitHub Actions alrea
 gives a durable, retried trigger for free, and committed JSON files give versioned
 storage that can be reviewed in a diff. Each is the production-shaped answer scaled to
 the problem actually being solved.
+
+## Stage 2 — Deterministic baseline
+
+### Concepts
+
+**A baseline is the number to beat.** Before any model is involved, the simplest thing
+that could work is built and scored. Without one, "the AI scores 85%" means nothing,
+because rules or even a constant guess might score that too. The weakest baseline of
+all is always to answer the commonest class (here 50% on holdout), and every other
+number should be read against it.
+
+**Typed models between steps.** fetch → `FailedJob` → classify → `Category`. Each
+arrow is a dataclass validated on the way in, so each step can be tested alone, and
+Stage 3 can replace the classifier without touching anything else.
+
+**Idempotency.** Running a step twice has the same effect as running it once:
+deterministic filenames (run and job id), stable JSON bytes, atomic writes (a temp file
+then a rename), and skipping work that is already done. A second fetch here made no
+log requests and changed no file. That's what makes automatic retries safe in Stage 5.
+
+**Labels from history, and their limits.** The fix for a failure is the diff from the
+_last_ failing run to the first passing one. The first draft diffed from the original
+failure and produced 119-file answer keys that any guess would hit. Branches that
+were abandoned have no fix at all, and re-runs on the same commit are the only direct
+evidence of flakiness.
+
+**A perfect score is a warning.** 100% on holdout here came from three places: the
+rule author had seen the holdout, the labels and the rules read the same signals, and
+the data is three recurring problems. Data leakage, circular labels and an unvarying
+test set are the classic ways an evaluation lies, and spotting them is the point.
+
+### Interview questions
+
+**Q: Your baseline scored 100%. Why didn't you celebrate?**
+Because the holdout had been seen by whoever wrote the rules, the labels were drafted
+from the same signals the rules test, and the failure history is three recurring
+causes. A score is only as independent as the people and data that produced it. I
+reported it with those caveats and moved the comparison to the metric that wasn't
+compromised, fix-file accuracy at 50%.
+
+**Q: How did you label real CI failures?**
+Mechanically where possible: the fix is the diff between the last failing run and the
+first passing run of the same job on the same branch. The category took judgment, so
+it was drafted, confirmed by a human who knew the history, then frozen, with the
+newest 30% held out by time.
+
+**Q: What does idempotency buy you here?**
+Retries without side effects. The fetch skips runs it already has, writes stable bytes
+atomically, and rotates by run, so running it twice, or killing it halfway, leaves a
+valid corpus.

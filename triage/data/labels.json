@@ -1,0 +1,875 @@
+{
+  "31504890728-93823834966": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "The reduced-motion test failed only on Dependabot bumps (Angular, lint-and-test) and was never fixed on those branches.",
+    "proposed": "dependency"
+  },
+  "31504957196-93824056764": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "The reduced-motion test failed only on Dependabot bumps (Angular, lint-and-test) and was never fixed on those branches.",
+    "proposed": "dependency"
+  },
+  "31506504740-93829325008": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "The reduced-motion test failed only on Dependabot bumps (Angular, lint-and-test) and was never fixed on those branches.",
+    "proposed": "dependency"
+  },
+  "31635032857-94243084720": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": 31635034189,
+      "fix_sha": "24078cdefaf0382a19ea6fe4d1f67c21282a9cd5",
+      "same_sha_rerun": true
+    },
+    "note": "Dependabot's updater hit an npm peer-dependency conflict (typescript@7, ERESOLVE). same_sha_rerun is misleading here: Dependabot runs are separate update jobs on the same commit, not re-runs of this one.",
+    "proposed": "dependency"
+  },
+  "31724996935-94531045383": {
+    "category": "environment",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "CONTRIBUTING.md",
+        "scripts/check-docs.mjs",
+        "scripts/pdf-normalize.mjs",
+        "scripts/pdf-normalize.test.mjs",
+        "scripts/pdf-text.mjs",
+        "scripts/pdf-text.test.mjs",
+        "scripts/render-resume.mjs"
+      ],
+      "fix_run_id": 31812801036,
+      "fix_sha": "0ea26a0235863198d806604ea91f32614a68bab7",
+      "same_sha_rerun": false
+    },
+    "note": "The résumé gate compared PDF bytes, and Chromium's PDF differs between Windows and Linux; fixed by comparing the text layer instead (scripts/pdf-normalize.mjs). FLAG: arguably the gate itself was wrong.",
+    "proposed": "environment"
+  },
+  "31725292781-94532050604": {
+    "category": "environment",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "The résumé gate compared PDF bytes, and Chromium's PDF differs between Windows and Linux; fixed by comparing the text layer instead (scripts/pdf-normalize.mjs). FLAG: arguably the gate itself was wrong.",
+    "proposed": "environment"
+  },
+  "31750972952-94616399349": {
+    "category": "environment",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "CONTRIBUTING.md",
+        "scripts/check-docs.mjs",
+        "scripts/pdf-normalize.mjs",
+        "scripts/pdf-normalize.test.mjs",
+        "scripts/pdf-text.mjs",
+        "scripts/pdf-text.test.mjs",
+        "scripts/render-resume.mjs"
+      ],
+      "fix_run_id": 31812801036,
+      "fix_sha": "0ea26a0235863198d806604ea91f32614a68bab7",
+      "same_sha_rerun": false
+    },
+    "note": "The résumé gate compared PDF bytes, and Chromium's PDF differs between Windows and Linux; fixed by comparing the text layer instead (scripts/pdf-normalize.mjs). FLAG: arguably the gate itself was wrong.",
+    "proposed": "environment"
+  },
+  "31755857450-94631313400": {
+    "category": "environment",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "CONTRIBUTING.md",
+        "scripts/check-docs.mjs",
+        "scripts/pdf-normalize.mjs",
+        "scripts/pdf-normalize.test.mjs",
+        "scripts/pdf-text.mjs",
+        "scripts/pdf-text.test.mjs",
+        "scripts/render-resume.mjs"
+      ],
+      "fix_run_id": 31812801036,
+      "fix_sha": "0ea26a0235863198d806604ea91f32614a68bab7",
+      "same_sha_rerun": false
+    },
+    "note": "The résumé gate compared PDF bytes, and Chromium's PDF differs between Windows and Linux; fixed by comparing the text layer instead (scripts/pdf-normalize.mjs). FLAG: arguably the gate itself was wrong.",
+    "proposed": "environment"
+  },
+  "31765896098-94661607875": {
+    "category": "environment",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "CONTRIBUTING.md",
+        "scripts/check-docs.mjs",
+        "scripts/pdf-normalize.mjs",
+        "scripts/pdf-normalize.test.mjs",
+        "scripts/pdf-text.mjs",
+        "scripts/pdf-text.test.mjs",
+        "scripts/render-resume.mjs"
+      ],
+      "fix_run_id": 31812801036,
+      "fix_sha": "0ea26a0235863198d806604ea91f32614a68bab7",
+      "same_sha_rerun": false
+    },
+    "note": "The résumé gate compared PDF bytes, and Chromium's PDF differs between Windows and Linux; fixed by comparing the text layer instead (scripts/pdf-normalize.mjs). FLAG: arguably the gate itself was wrong.",
+    "proposed": "environment"
+  },
+  "31909846612-95073153401": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "31962469280-95202434805": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "31974708948-95232331624": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "31978077117-95240461239": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32046692134-95436136436": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32061356443-95483136164": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": 32061357052,
+      "fix_sha": "63e708b222247c914dc4eab4f2004a699efc84f0",
+      "same_sha_rerun": true
+    },
+    "note": "Dependabot's updater hit an npm peer-dependency conflict (typescript@7, ERESOLVE). same_sha_rerun is misleading here: Dependabot runs are separate update jobs on the same commit, not re-runs of this one.",
+    "proposed": "dependency"
+  },
+  "32061458180-95483453488": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32061522684-95483653951": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32061538656-95483704258": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32061547283-95483731976": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Angular bump grew the initial bundle from under 15 kB to ~265 kB and tripped the angular.json budget. Cause is the upgrade, the mechanism is the budget. FLAG: could be threshold.",
+    "proposed": "dependency"
+  },
+  "32061547283-95483732014": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Angular bump grew the initial bundle from under 15 kB to ~265 kB and tripped the angular.json budget. Cause is the upgrade, the mechanism is the budget. FLAG: could be threshold.",
+    "proposed": "dependency"
+  },
+  "32061547283-95483732066": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Angular bump grew the initial bundle from under 15 kB to ~265 kB and tripped the angular.json budget. Cause is the upgrade, the mechanism is the budget. FLAG: could be threshold.",
+    "proposed": "dependency"
+  },
+  "32061548169-95483734076": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32061560860-95483778922": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32425079586-96605247469": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        "AUBADE.md",
+        "CLAUDE.md",
+        "README.md",
+        "angular.json",
+        "docs/aubade-credits.md",
+        "src/aubade/renderer.spec.ts",
+        "src/aubade/sentence.ts"
+      ],
+      "fix_run_id": 32499960147,
+      "fix_sha": "f4df850ba6dd237dc24424774b806c3d87966662",
+      "same_sha_rerun": false
+    },
+    "note": "Total scripts 896 kB against the 870 kB angular.json budget, from the repo's own growth; fixed by raising the budget.",
+    "proposed": "threshold"
+  },
+  "32425079586-96605247749": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        "AUBADE.md",
+        "CLAUDE.md",
+        "README.md",
+        "angular.json",
+        "docs/aubade-credits.md",
+        "src/aubade/renderer.spec.ts",
+        "src/aubade/sentence.ts"
+      ],
+      "fix_run_id": 32499960147,
+      "fix_sha": "f4df850ba6dd237dc24424774b806c3d87966662",
+      "same_sha_rerun": false
+    },
+    "note": "Total scripts 896 kB against the 870 kB angular.json budget, from the repo's own growth; fixed by raising the budget.",
+    "proposed": "threshold"
+  },
+  "32425079586-96605247772": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Total scripts 896 kB against the 870 kB angular.json budget, from the repo's own growth; fixed by raising the budget.",
+    "proposed": "threshold"
+  },
+  "32499960147-96827106109": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32506448079-96847573757": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32586732124-97064127591": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32768243722-97562498597": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32768330789-97562775380": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32768333019-97562782285": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32768361400-97562872205": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Angular bump grew the initial bundle from under 15 kB to ~265 kB and tripped the angular.json budget. Cause is the upgrade, the mechanism is the budget. FLAG: could be threshold.",
+    "proposed": "dependency"
+  },
+  "32768361400-97562872245": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Angular bump grew the initial bundle from under 15 kB to ~265 kB and tripped the angular.json budget. Cause is the upgrade, the mechanism is the budget. FLAG: could be threshold.",
+    "proposed": "dependency"
+  },
+  "32768361400-97562872297": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Branch coverage 91.95% against the 92% threshold.",
+    "proposed": "threshold"
+  },
+  "32768362122-97562874201": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "32768574510-97563539053": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "33430638651-99614850939": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "34155666732-101846850603": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [
+        "ARCHITECTURE.md",
+        "CLAUDE.md",
+        "README.md",
+        "ROADMAP.md",
+        "angular.json",
+        "backend/README.md",
+        "backend/config.py",
+        "package-lock.json",
+        "package.json",
+        "public/jacob-miller-resume.pdf",
+        "public/og-image.png",
+        "scripts/capture-stream.mjs",
+        "scripts/check-docs.mjs",
+        "scripts/gen-social-assets.mjs",
+        "scripts/site-url.mjs",
+        "scripts/site-url.test.mjs",
+        "src/app/resume/resume.data.ts",
+        "src/index.html",
+        "src/route-meta.json"
+      ],
+      "fix_run_id": 37668691654,
+      "fix_sha": "22cfc3d3a79748996b8d7d70f8bcf793fa9875bf",
+      "same_sha_rerun": false
+    },
+    "note": "Angular bump grew the initial bundle from under 15 kB to ~265 kB and tripped the angular.json budget. Cause is the upgrade, the mechanism is the budget. FLAG: could be threshold.",
+    "proposed": "dependency"
+  },
+  "34155666732-101846850612": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [
+        "ARCHITECTURE.md",
+        "CLAUDE.md",
+        "README.md",
+        "ROADMAP.md",
+        "angular.json",
+        "backend/README.md",
+        "backend/config.py",
+        "package-lock.json",
+        "package.json",
+        "public/jacob-miller-resume.pdf",
+        "public/og-image.png",
+        "scripts/capture-stream.mjs",
+        "scripts/check-docs.mjs",
+        "scripts/gen-social-assets.mjs",
+        "scripts/site-url.mjs",
+        "scripts/site-url.test.mjs",
+        "src/app/resume/resume.data.ts",
+        "src/index.html",
+        "src/route-meta.json"
+      ],
+      "fix_run_id": 37668691654,
+      "fix_sha": "22cfc3d3a79748996b8d7d70f8bcf793fa9875bf",
+      "same_sha_rerun": false
+    },
+    "note": "Angular bump grew the initial bundle from under 15 kB to ~265 kB and tripped the angular.json budget. Cause is the upgrade, the mechanism is the budget. FLAG: could be threshold.",
+    "proposed": "dependency"
+  },
+  "34155666732-101846850684": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Angular bump grew the initial bundle from under 15 kB to ~265 kB and tripped the angular.json budget. Cause is the upgrade, the mechanism is the budget. FLAG: could be threshold.",
+    "proposed": "dependency"
+  },
+  "34155666741-101846850728": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "npm audit failed on high-severity advisories (fast-uri) in the dependency tree; fixed by updating package.json and package-lock.json.",
+    "proposed": "dependency"
+  },
+  "34886939029-104119803126": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": ["package-lock.json", "package.json"],
+      "fix_run_id": 37804070167,
+      "fix_sha": "a7711b632327ae433733a6a06f41e34a12e4b1ec",
+      "same_sha_rerun": false
+    },
+    "note": "npm audit failed on high-severity advisories (fast-uri) in the dependency tree; fixed by updating package.json and package-lock.json.",
+    "proposed": "dependency"
+  },
+  "34886939096-104119803759": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "37383859005-112012213109": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": ["package-lock.json", "package.json"],
+      "fix_run_id": 37803711423,
+      "fix_sha": "640ea2567d13f20a26e605fd8eabcf45ef71d36c",
+      "same_sha_rerun": false
+    },
+    "note": "npm audit failed on high-severity advisories (fast-uri) in the dependency tree; fixed by updating package.json and package-lock.json.",
+    "proposed": "dependency"
+  },
+  "37383859048-112012213886": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression. Lower confidence: a different test, same fix.",
+    "proposed": "threshold"
+  },
+  "37385355841-112017165099": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression. Lower confidence: a different test, same fix.",
+    "proposed": "threshold"
+  },
+  "37385355866-112017164502": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": ["package-lock.json", "package.json"],
+      "fix_run_id": 37803711423,
+      "fix_sha": "640ea2567d13f20a26e605fd8eabcf45ef71d36c",
+      "same_sha_rerun": false
+    },
+    "note": "npm audit failed on high-severity advisories (fast-uri) in the dependency tree; fixed by updating package.json and package-lock.json.",
+    "proposed": "dependency"
+  },
+  "37668222352-112952870426": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression. Lower confidence: a different test, same fix.",
+    "proposed": "threshold"
+  },
+  "37668222353-112952870294": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": ["package-lock.json", "package.json"],
+      "fix_run_id": 37803711423,
+      "fix_sha": "640ea2567d13f20a26e605fd8eabcf45ef71d36c",
+      "same_sha_rerun": false
+    },
+    "note": "npm audit failed on high-severity advisories (fast-uri) in the dependency tree; fixed by updating package.json and package-lock.json.",
+    "proposed": "dependency"
+  },
+  "37668535128-112953970142": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": ["package-lock.json", "package.json"],
+      "fix_run_id": 37804070167,
+      "fix_sha": "a7711b632327ae433733a6a06f41e34a12e4b1ec",
+      "same_sha_rerun": false
+    },
+    "note": "npm audit failed on high-severity advisories (fast-uri) in the dependency tree; fixed by updating package.json and package-lock.json.",
+    "proposed": "dependency"
+  },
+  "37668691654-112954506356": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "37668691757-112954507072": {
+    "category": "dependency",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "npm audit failed on high-severity advisories (fast-uri) in the dependency tree; fixed by updating package.json and package-lock.json.",
+    "proposed": "dependency"
+  },
+  "37803711443-113402338025": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "37804070508-113403604491": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [],
+      "fix_run_id": null,
+      "fix_sha": null,
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression. Lower confidence: a different test, same fix.",
+    "proposed": "threshold"
+  },
+  "37956366869-113907787789": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  },
+  "38077356702-114287016590": {
+    "category": "threshold",
+    "evidence": {
+      "fix_files": [
+        ".github/workflows/code-quality.yml",
+        "CLAUDE.md",
+        "e2e/a11y.spec.ts",
+        "e2e/aubade.spec.ts",
+        "e2e/support/lobby.ts",
+        "playwright.config.ts",
+        "scripts/check-docs.mjs",
+        "scripts/lobby-headroom.mjs",
+        "scripts/lobby-headroom.test.mjs"
+      ],
+      "fix_run_id": 38167106032,
+      "fix_sha": "6b948ede4c69a90d9be853bb8d992503b23c5fd8",
+      "same_sha_rerun": false
+    },
+    "note": "Aubade's lobby JIT-compiles its shader on SwiftShader and missed the e2e time budget (LOBBY_TIMEOUT): CI is 3-5x slower than a local run. Fixed by raising the budget in e2e/support/lobby.ts. FLAG: arguably environment (runner speed), and for runs right after a shader change possibly regression.",
+    "proposed": "threshold"
+  }
+}

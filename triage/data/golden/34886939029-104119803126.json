@@ -1,0 +1,28 @@
+{
+  "case": {
+    "branch": "dependabot/npm_and_yarn/other-npm-09b4c31aa7",
+    "created_at": "2026-09-14T19:26:53Z",
+    "event": "pull_request",
+    "excerpt": {
+      "error_lines": ["Process completed with exit code 1."],
+      "source_lines": 277,
+      "text": "[… 146 lines omitted …]\nnpm audit --audit-level=high\nshell: /usr/bin/bash -e {0}\n##[endgroup]\n# npm audit report\n\n@angular/common  22.0.0-next.0 - 22.1.0\nSeverity: moderate\nDepends on vulnerable versions of @angular/core\nAngular: Information Leak via `HttpTransferCache` Bypass When Using `withRequestsMadeViaParent` - https://github.com/advisories/GHSA-p297-fm68-3q8c\nfix available via `npm audit fix`\nnode_modules/@angular/common\n  @angular/forms  4.4.0-RC.0 - 4.4.0 || 22.0.0-next.0 - 22.1.0\n  Depends on vulnerable versions of @angular/common\n  Depends on vulnerable versions of @angular/core\n  Depends on vulnerable versions of @angular/platform-browser\n  node_modules/@angular/forms\n[… 48 lines omitted …]\nnode_modules/baseline-browser-mapping\n\nbrowserslist  <=4.28.6\nSeverity: high\nBrowserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM - https://github.com/advisories/GHSA-c83g-rgw3-j3cx\nBrowserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats) - https://github.com/advisories/GHSA-73wf-gq98-2v4g\nfix available via `npm audit fix`\nnode_modules/browserslist\n\nesbuild  0.27.3 - 0.28.0\nesbuild allows arbitrary file read when running the development server on Windows - https://github.com/advisories/GHSA-g7r4-m6w7-qqqr\nfix available via `npm audit fix`\nnode_modules/vite/node_modules/esbuild\n\nfast-uri  3.0.0 - 3.1.5\nSeverity: high\nfast-uri vulnerable to host confusion via skipped IDN canonicalization on scheme-relative references - https://github.com/advisories/GHSA-5jgf-p345-68v8\nfast-uri vulnerable to server-side request forgery via malformed IPv6 normalization - https://github.com/advisories/GHSA-f65p-4m7j-42xc\nfast-uri vulnerable to server-side request forgery via repeated hostname percent-decoding - https://github.com/advisories/GHSA-fph4-wmhf-6fwf\nfast-uri vulnerable to host confusion via percent-encoded scheme normalization - https://github.com/advisories/GHSA-jqff-g426-hqxp\nfix available via `npm audit fix`\nnode_modules/fast-uri\n\nhono  <=4.13.4\nSeverity: moderate\nHono: Incomplete fix for CVE-2026-39408: `toSSG()` still writes files outside the output directory - https://github.com/advisories/GHSA-gqvv-2mrq-wpjv\nHono: Unbounded dot-notation nesting in `parseBody()` can cause memory exhaustion - https://github.com/advisories/GHSA-g6gw-c38x-mqfc\nHono: Query parser reads parameters after the URL fragment, causing cache-key and proxy interpretation differentials - https://github.com/advisories/GHSA-crvj-82cr-hjcx\n[… 1 lines omitted …]\nnode_modules/hono\n\njs-yaml  4.0.0 - 4.3.1\nSeverity: high\njs-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources - https://github.com/advisories/GHSA-2883-xcg3-v3hh\nfix available via `npm audit fix`\nnode_modules/js-yaml\n\nqs  2.2.5 - 6.15.3\nSeverity: moderate\nqs array-limit bypass via bracket-key comma parsing - https://github.com/advisories/GHSA-x5fp-wj9c-mxmx\nqs: Denial of Service via Attacker Controlled isBuffer - https://github.com/advisories/GHSA-4mjr-xmp4-gh2g\nfix available via `npm audit fix`\nnode_modules/qs\n\n\n19 vulnerabilities (3 low, 13 moderate, 3 high)\n\nTo address all issues, run:\n  npm audit fix\n##[error]Process completed with exit code 1.\nNode 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/\nPost job cleanup.\n[command]/usr/bin/git version\ngit version 2.55.0\nTemporarily overriding HOME='/home/runner/work/_temp/6de14f83-ce11-4977-82ed-281e272d3012' before making global git config changes\nAdding repository directory to the temporary git global config as a safe directory\n[command]/usr/bin/git config --global --add safe.directory /home/runner/work/ethereal-hotel/ethereal-hotel\n[command]/usr/bin/git config --local --name-only --get-regexp core\\.sshCommand\n[command]/usr/bin/git submodule foreach --recursive sh -c \"git config --local --name-only --get-regexp 'core\\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\"\n[command]/usr/bin/git config --local --name-only --get-regexp http\\.https\\:\\/\\/github\\.com\\/\\.extraheader\nhttp.https://github.com/.extraheader\n[command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader\n[… 5 lines omitted …]",
+      "truncated": true
+    },
+    "failed_steps": ["npm audit (fails at high and above)"],
+    "head_sha": "ce314f58299d2402d379283ca287fe43b852a4b1",
+    "job": "Advisories (npm audit, pip-audit)",
+    "job_id": 104119803126,
+    "run_id": 34886939029,
+    "workflow": "Supply chain"
+  },
+  "category": "dependency",
+  "evidence": {
+    "fix_files": ["package-lock.json", "package.json"],
+    "fix_run_id": 37804070167,
+    "fix_sha": "a7711b632327ae433733a6a06f41e34a12e4b1ec",
+    "same_sha_rerun": false
+  },
+  "note": "npm audit failed on high-severity advisories (fast-uri) in the dependency tree; fixed by updating package.json and package-lock.json.",
+  "split": "holdout"
+}

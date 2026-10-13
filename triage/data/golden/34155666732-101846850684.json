@@ -1,0 +1,28 @@
+{
+  "case": {
+    "branch": "dependabot/npm_and_yarn/angular-c32c05d08e",
+    "created_at": "2026-09-07T19:27:40Z",
+    "event": "pull_request",
+    "excerpt": {
+      "error_lines": ["Process completed with exit code 1."],
+      "source_lines": 460,
+      "text": "[… 414 lines omitted …]\n\nApplication bundle generation failed. [8.839 seconds] - 2026-09-07T19:28:29.414Z\n\n▲ [WARNING] bundle initial exceeded maximum budget. Budget 13.00 kB was not met by 253.86 kB with a total of 266.86 kB.\n\n\n✘ [ERROR] bundle initial exceeded maximum budget. Budget 15.00 kB was not met by 251.86 kB with a total of 266.86 kB.\n\n\n##[error]Process completed with exit code 1.\nNode 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/\n##[group]Run actions/upload-artifact@v4\nwith:\n  name: playwright-report\n  path: playwright-report/\ntest-results/\n\n  retention-days: 7\n  if-no-files-found: ignore\n  compression-level: 6\n  overwrite: false\n  include-hidden-files: false\n[… 24 lines omitted …]",
+      "truncated": true
+    },
+    "failed_steps": ["Run end-to-end suite"],
+    "head_sha": "55e1cc59d21e8f4b7555b784eda8162c560906e1",
+    "job": "End-to-end (smoke, axe, keyboard, reduced motion)",
+    "job_id": 101846850684,
+    "run_id": 34155666732,
+    "workflow": "Code Quality"
+  },
+  "category": "dependency",
+  "evidence": {
+    "fix_files": [],
+    "fix_run_id": null,
+    "fix_sha": null,
+    "same_sha_rerun": false
+  },
+  "note": "Angular bump grew the initial bundle from under 15 kB to ~265 kB and tripped the angular.json budget. Cause is the upgrade, the mechanism is the budget. FLAG: could be threshold.",
+  "split": "holdout"
+}
