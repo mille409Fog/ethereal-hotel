@@ -16,7 +16,7 @@ uvicorn[standard]==0.32.0
 pydantic==2.9.2
 # uvicorn[standard] pulls this in for the /ws protocol; pinned explicitly
 # because the WebSocket stream is a first-class feature, not an accident.
-websockets==13.1
+websockets==17.0.1
 
 # python-dotenv was here but nothing imports it: config.py reads os.getenv
 # directly and no code calls load_dotenv(). Rather than wire up a .env loader
