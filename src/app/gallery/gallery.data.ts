@@ -77,11 +77,44 @@ export interface IPainting {
   readonly image: IReproduction;
 }
 
+/**
+ * How the frame around the reproduction is built. One per colour, and each is
+ * a block of CSS in `gallery.css` keyed on `data-frame`; the names describe the
+ * object, so the stylesheet reads like a framer's order rather than a theme.
+ */
+export type FrameStyle = 'lacquer' | 'gilt' | 'nocturne' | 'oak' | 'blush' | 'ebony' | 'float';
+
+/**
+ * The room a colour's painting is hung in: the card, its type, and the mount.
+ *
+ * Data rather than CSS so `gallery.data.spec.ts` can hold every text colour to
+ * WCAG AA against its own surface. Seven palettes are seven chances to ship
+ * unreadable labels, and axe only scans whichever colour the e2e run presses.
+ */
+export interface IPalette {
+  /** The card's background. */
+  readonly surface: string;
+  /** Hairlines: the card edge, rules, the bar beside each reading. */
+  readonly border: string;
+  /** Body text. At least 4.5:1 on `surface`. */
+  readonly text: string;
+  /** Labels and secondary text. At least 4.5:1 on `surface`. */
+  readonly muted: string;
+  /** Decorative only: button outline and glow. Never text. */
+  readonly accent: string;
+  /** The accent as text: kicker and links. At least 4.5:1 on `surface`. */
+  readonly accentText: string;
+  /** The mount between frame and painting. */
+  readonly mat: string;
+  readonly frame: FrameStyle;
+}
+
 export interface IColour {
   readonly id: string;
   readonly name: string;
   /** The orb's core colour. Decorative: the name and mood carry the meaning. */
   readonly hex: string;
+  readonly palette: IPalette;
   /** Two or three words, shown under the orb. */
   readonly mood: string;
   /** One sentence on what the colour has been taken to mean. */
@@ -97,6 +130,16 @@ export const COLOURS: readonly IColour[] = [
     id: 'crimson',
     name: 'Crimson',
     hex: '#c4182f',
+    palette: {
+      surface: '#22080d',
+      border: '#5c1422',
+      text: '#f2e4e6',
+      muted: '#c9a3aa',
+      accent: '#d0233c',
+      accentText: '#f2909f',
+      mat: '#120407',
+      frame: 'lacquer',
+    },
     mood: 'Passion & alarm',
     connotation:
       'Red is the colour the body answers before the mind does: desire, danger, a pulse you can hear.',
@@ -231,6 +274,16 @@ export const COLOURS: readonly IColour[] = [
     id: 'gold',
     name: 'Gold',
     hex: '#e0a92a',
+    palette: {
+      surface: '#1e170a',
+      border: '#5e4a1c',
+      text: '#f3ead2',
+      muted: '#c9b88e',
+      accent: '#d9a53a',
+      accentText: '#ecc76c',
+      mat: '#0e0b05',
+      frame: 'gilt',
+    },
     mood: 'Radiance & reverence',
     connotation:
       'Gold is light you can hold: the colour of icons and harvests, and of the last hour of the sun.',
@@ -406,6 +459,16 @@ export const COLOURS: readonly IColour[] = [
     id: 'blue',
     name: 'Blue',
     hex: '#2f5fd0',
+    palette: {
+      surface: '#0a1222',
+      border: '#22385f',
+      text: '#e2e9f5',
+      muted: '#9fb1cf',
+      accent: '#4a78e0',
+      accentText: '#94b4f7',
+      mat: '#050912',
+      frame: 'nocturne',
+    },
     mood: 'Solitude & reverie',
     connotation: 'Blue is distance: the colour of things far away, at night, or very deep down.',
     paintings: [
@@ -580,6 +643,16 @@ export const COLOURS: readonly IColour[] = [
     id: 'green',
     name: 'Green',
     hex: '#3c9a58',
+    palette: {
+      surface: '#0c1a11',
+      border: '#28513a',
+      text: '#e3efe5',
+      muted: '#a3c2ab',
+      accent: '#3c9a58',
+      accentText: '#8fd2a2',
+      mat: '#e9e4d2',
+      frame: 'oak',
+    },
     mood: 'Renewal & calm',
     connotation:
       'Green is the colour the eye rests on: growth and shade, and water that has stood still long enough to grow.',
@@ -754,6 +827,16 @@ export const COLOURS: readonly IColour[] = [
     id: 'rose',
     name: 'Rose',
     hex: '#ec8fae',
+    palette: {
+      surface: '#26131c',
+      border: '#6a3850',
+      text: '#f7e8ee',
+      muted: '#d2aebd',
+      accent: '#e584a6',
+      accentText: '#f5abc5',
+      mat: '#f4dfe7',
+      frame: 'blush',
+    },
     mood: 'Tenderness & delight',
     connotation:
       'Pink is red with the danger taken out: flushed skin and blossom, the colour of being at ease.',
@@ -886,6 +969,16 @@ export const COLOURS: readonly IColour[] = [
     id: 'shadow',
     name: 'Umber',
     hex: '#8a5a3a',
+    palette: {
+      surface: '#17100b',
+      border: '#4a3322',
+      text: '#ece0d4',
+      muted: '#bea48c',
+      accent: '#9a6a44',
+      accentText: '#d9ab80',
+      mat: '#0a0705',
+      frame: 'ebony',
+    },
     mood: 'Gravity & grief',
     connotation:
       'Umber and black are where light runs out: mourning and weight, the things painting usually looks away from.',
@@ -1016,6 +1109,18 @@ export const COLOURS: readonly IColour[] = [
     id: 'pale',
     name: 'Pearl',
     hex: '#ece6d6',
+    // The one light room: stillness and clarity read as a pale wall, so the
+    // text inverts to dark ink rather than the site's usual light-on-dark.
+    palette: {
+      surface: '#ece6d8',
+      border: '#c9bfa8',
+      text: '#2a241c',
+      muted: '#5f5546',
+      accent: '#8c7a55',
+      accentText: '#6e5526',
+      mat: '#faf7ef',
+      frame: 'float',
+    },
     mood: 'Stillness & clarity',
     connotation:
       'Pale is the colour of quiet: morning light on plaster, a page before anything is written on it.',

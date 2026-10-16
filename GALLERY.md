@@ -96,6 +96,18 @@ locally.
   `docs/analytics.md` too, which `check:docs` enforces. The page also currently promises that
   nothing about a choice is stored.
 - **Group sizes are deliberately unequal**, as the brief allowed.
+- **Each colour hangs its painting in a room of its own.** `palette` on each colour sets the
+  card's surface, type, hairlines, accent and mat, and `gallery.ts` passes them to the card as
+  `--room-*` custom properties. `palette.frame` picks one of seven frame treatments in
+  `gallery.css`, keyed on `data-frame`: lacquer, gilt, nocturne, oak, blush, ebony and float. The
+  palettes live in data, not CSS, so `gallery.data.spec.ts` can hold every text colour to 4.5:1
+  on its own surface. axe only sees whichever colour the e2e run presses, which leaves the other
+  six unchecked in the browser. Pearl is the one light room, so it switches off the global
+  heading shadow from `styles.css`, which smudges type on a pale ground.
+- **The all-scripts size warning moved from 950 kB to 975 kB** when the gallery chunk (about
+  53 kB raw) took the build to 951 kB. Only the 1200 kB error limit is gated. The README says
+  warnings sit just above today's build, and the move keeps that true. If the collection grows
+  much more, load the prose as JSON from `public/` instead of compiling it into the chunk.
 
 ## What was verified, and what was not
 

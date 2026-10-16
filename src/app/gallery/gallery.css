@@ -161,13 +161,18 @@
   cursor: pointer;
 }
 
-.gallery-link-button:focus-visible,
-.gallery-button:focus-visible {
+.gallery-link-button:focus-visible {
   outline: 2px solid var(--color-blood-text);
   outline-offset: 3px;
 }
 
-/* ----- The hung painting ----- */
+/* ----- The hung painting -----
+   The card is a room dressed in the chosen colour. `gallery.ts` sets the
+   `--room-*` properties from that colour's palette in `gallery.data.ts`, where
+   a test holds every text colour to AA contrast; nothing below names a colour
+   of its own except the frames, which are objects rather than type. Each
+   fallback is the site's token, so the card is still legible if the binding
+   is ever lost. */
 
 .gallery-empty {
   color: var(--color-text-secondary);
@@ -180,10 +185,17 @@
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 2.5rem;
   align-items: start;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--room-surface, var(--color-surface));
+  color: var(--room-text, var(--color-text));
+  border: 1px solid var(--room-border, var(--color-border));
   border-radius: 4px;
   padding: 2rem;
+  box-shadow: 0 0 80px -30px var(--room-accent, transparent);
+  transition:
+    background-color 0.5s ease,
+    color 0.5s ease,
+    border-color 0.5s ease,
+    box-shadow 0.5s ease;
 }
 
 /* On a desktop the painting stays in view while the text beside it scrolls. */
@@ -194,34 +206,156 @@
   text-align: center;
 }
 
+/* The frame and the mat. Unframed by default; every colour picks one of the
+   `data-frame` treatments below. `line-height: 0` stops the inline image
+   leaving a strip of mat under itself for a text descender. */
+.hung-mount {
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  background: var(--room-mat, transparent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
 /* `width`/`height` attributes give the browser the aspect ratio before the
    file arrives, so the frame is reserved rather than jumping open. */
 .hung-image {
   display: block;
   max-width: 100%;
-  max-height: 78vh;
+  max-height: 70vh;
   width: auto;
   height: auto;
   margin: 0 auto;
+}
+
+/* Crimson: red lacquer, lit from the top left, so the frame itself has a
+   bevel; the dark mat keeps the red off the painting's own edge. */
+[data-frame='lacquer'] .hung-mount {
+  padding: clamp(8px, 1.4vw, 14px);
+  border: clamp(7px, 1.2vw, 12px) solid #8e1124;
+  border-top-color: #b3203a;
+  border-left-color: #a01a31;
+  border-bottom-color: #5e0a17;
+  border-right-color: #6f0d1d;
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 12px 32px rgba(0, 0, 0, 0.55);
+    0 0 0 2px #2a050b,
+    0 20px 44px rgba(0, 0, 0, 0.65),
+    0 0 52px rgba(208, 35, 60, 0.3);
+}
+
+/* Gold: a gilt moulding with a gold fillet against the picture. The gradient
+   is what reads as metal; a flat yellow border reads as plastic. */
+[data-frame='gilt'] .hung-mount {
+  padding: clamp(10px, 1.8vw, 18px);
+  border: clamp(10px, 1.8vw, 16px) solid #b8892f;
+  border-image: linear-gradient(
+      135deg,
+      #6f4c15 0%,
+      #f2d17a 20%,
+      #a8792a 42%,
+      #f7df92 60%,
+      #8a621f 80%,
+      #d9b05a 100%
+    )
+    1;
+  box-shadow:
+    0 0 0 1px #3d2c0c,
+    0 22px 48px rgba(0, 0, 0, 0.6),
+    0 0 64px rgba(217, 165, 58, 0.24);
+}
+
+[data-frame='gilt'] .hung-image {
+  outline: 2px solid #c9a24a;
+}
+
+/* Blue: no moulding at all. A deep night mat behind a single silver line,
+   with a second hairline floating off it, like a print in a museum case. */
+[data-frame='nocturne'] .hung-mount {
+  padding: clamp(16px, 3vw, 32px);
+  border: 1px solid #8ea3c4;
+  box-shadow:
+    0 0 0 5px var(--room-surface, #0a1222),
+    0 0 0 6px #3f5479,
+    0 24px 50px rgba(0, 0, 0, 0.6),
+    0 0 72px rgba(74, 120, 224, 0.26);
+}
+
+/* Green: a plain oak frame and a cream mat, the way a landscape hangs in a
+   country house rather than a gallery. */
+[data-frame='oak'] .hung-mount {
+  padding: clamp(12px, 2.4vw, 24px);
+  border: clamp(10px, 1.6vw, 14px) solid #6b4a29;
+  border-image: linear-gradient(
+      90deg,
+      #5a3f22,
+      #8a6438 18%,
+      #6b4a29 38%,
+      #93703f 58%,
+      #5f4324 78%,
+      #80603a
+    )
+    1;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.55);
+}
+
+[data-frame='oak'] .hung-image {
+  outline: 1px solid rgba(70, 55, 30, 0.45);
+}
+
+/* Rose: a wide blush mat with softened corners and a halo, the only frame
+   here that is gentle rather than heavy. */
+[data-frame='blush'] .hung-mount {
+  padding: clamp(14px, 3vw, 28px);
+  border: 3px solid #d79ab3;
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 6px var(--room-surface, #26131c),
+    0 0 0 7px #a86080,
+    0 18px 40px rgba(0, 0, 0, 0.5),
+    0 0 64px rgba(229, 132, 166, 0.26);
+}
+
+/* Umber: heavy ebonised wood with almost no mat, so the painting sits deep
+   inside the frame, the way an old master does. */
+[data-frame='ebony'] .hung-mount {
+  padding: clamp(3px, 0.6vw, 6px);
+  border: clamp(14px, 2.4vw, 22px) solid #0b0806;
+  border-top-color: #2a1e15;
+  border-left-color: #1d150f;
+  box-shadow:
+    0 0 0 1px #4a3322,
+    0 30px 60px rgba(0, 0, 0, 0.75);
+}
+
+/* Pearl: a float mount on a pale wall. White mat, a hairline, and a shadow
+   soft enough to belong to daylight. */
+/* The one light room. `styles.css` gives every h1–h3 a dark drop shadow,
+   which lifts type off a dark page and smudges it on a pale one. */
+[data-frame='float'] :is(h2, h3) {
+  text-shadow: none;
+}
+
+[data-frame='float'] .hung-mount {
+  padding: clamp(16px, 3vw, 30px);
+  border: 1px solid #d8cfbb;
+  box-shadow:
+    0 1px 2px rgba(60, 50, 30, 0.15),
+    0 16px 36px rgba(60, 50, 30, 0.2);
 }
 
 .hung-credit {
   margin-top: 0.75rem;
   font-size: 0.9rem;
-  color: var(--color-text-muted);
+  color: var(--room-muted, var(--color-text-muted));
 }
 
 .hung-credit a,
-.hung-source a,
-.gallery-back {
-  color: var(--color-blood-text);
+.hung-source a {
+  color: var(--room-accent-text, var(--color-blood-text));
 }
 
 .hung-header {
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--room-border, var(--color-border));
   padding-bottom: 1rem;
   margin-bottom: 1.25rem;
 }
@@ -231,14 +365,14 @@
   font-size: 0.75rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-blood-text);
+  color: var(--room-accent-text, var(--color-blood-text));
   margin: 0 0 0.4rem;
 }
 
 .hung-title {
   font-family: var(--font-serif);
   font-size: clamp(1.4rem, 3vw, 1.9rem);
-  color: var(--color-text);
+  color: var(--room-text, var(--color-text));
   margin: 0 0 0.4rem;
 }
 
@@ -248,13 +382,10 @@
   outline: none;
 }
 
-.hung-byline {
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
+.hung-byline,
 .hung-life {
-  color: var(--color-text-muted);
+  color: var(--room-muted, var(--color-text-secondary));
+  margin: 0;
 }
 
 .hung-facts {
@@ -276,7 +407,7 @@
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--room-muted, var(--color-text-muted));
   padding-top: 0.3rem;
 }
 
@@ -300,29 +431,28 @@
 .hung-techniques dt,
 .hung-lenses dt {
   font-weight: 600;
-  color: var(--color-text);
 }
 
 .hung-techniques dd,
 .hung-lenses dd {
-  border-left: 2px solid var(--color-border);
+  border-left: 2px solid var(--room-border, var(--color-border));
   margin: 0.2rem 0 0.9rem;
   padding-left: 1rem;
-  color: var(--color-text-secondary);
+  color: var(--room-muted, var(--color-text-secondary));
 }
 
 .hung-source {
   font-size: 0.95rem;
-  color: var(--color-text-muted);
+  color: var(--room-muted, var(--color-text-muted));
   margin: 0 0 1.5rem;
 }
 
 .gallery-button {
   padding: 0.7rem 1.4rem;
   background: transparent;
-  border: 1px solid var(--color-blood);
+  border: 1px solid var(--room-accent, var(--color-blood));
   border-radius: 2px;
-  color: var(--color-text);
+  color: var(--room-text, var(--color-text));
   font-family: var(--font-serif);
   font-size: 0.85rem;
   letter-spacing: 0.08em;
@@ -331,7 +461,12 @@
 }
 
 .gallery-button:hover {
-  background: rgba(157, 34, 53, 0.25);
+  background: color-mix(in srgb, var(--room-accent, var(--color-blood)) 22%, transparent);
+}
+
+.gallery-button:focus-visible {
+  outline: 2px solid var(--room-accent-text, var(--color-blood-text));
+  outline-offset: 3px;
 }
 
 /* ----- How the choice is made ----- */
@@ -357,6 +492,7 @@
 .gallery-back {
   display: block;
   text-align: center;
+  color: var(--color-blood-text);
 }
 
 @media (max-width: 860px) {
@@ -375,7 +511,7 @@
   }
 
   .hung-image {
-    max-height: 65vh;
+    max-height: 60vh;
   }
 
   .orbs {

@@ -63,6 +63,27 @@ export class Gallery {
   public readonly colour = signal<IColour | null>(null);
   public readonly painting = signal<IPainting | null>(null);
 
+  /**
+   * The chosen colour's palette as custom properties on the card. Everything
+   * inside reads these, so one binding re-dresses the whole room, and the frame
+   * style is a `data-frame` attribute alongside it.
+   */
+  public readonly room = computed((): Record<string, string> => {
+    const palette = this.colour()?.palette;
+    if (!palette) {
+      return {};
+    }
+    return {
+      '--room-surface': palette.surface,
+      '--room-border': palette.border,
+      '--room-text': palette.text,
+      '--room-muted': palette.muted,
+      '--room-accent': palette.accent,
+      '--room-accent-text': palette.accentText,
+      '--room-mat': palette.mat,
+    };
+  });
+
   /** How many other paintings the chosen colour could still show. */
   public readonly others = computed(() => (this.colour()?.paintings.length ?? 1) - 1);
 

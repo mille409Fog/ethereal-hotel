@@ -40,15 +40,25 @@
     </section>
 
     @if (painting(); as work) {
-      <article class="hung" aria-labelledby="painting-title" #hung>
+      <article
+        class="hung"
+        aria-labelledby="painting-title"
+        [style]="room()"
+        [attr.data-frame]="colour()?.palette?.frame"
+        #hung
+      >
         <figure class="hung-frame">
-          <img
-            class="hung-image"
-            [src]="'/gallery/' + work.image.file"
-            [width]="work.image.width"
-            [height]="work.image.height"
-            [alt]="work.image.alt"
-          />
+          <!-- The mount is the frame and the mat around the picture; each
+               colour builds it differently from `data-frame` on the card. -->
+          <div class="hung-mount">
+            <img
+              class="hung-image"
+              [src]="'/gallery/' + work.image.file"
+              [width]="work.image.width"
+              [height]="work.image.height"
+              [alt]="work.image.alt"
+            />
+          </div>
           <figcaption class="hung-credit">
             Public-domain reproduction via
             <a [href]="'https://commons.wikimedia.org/wiki/File:' + work.image.commons"

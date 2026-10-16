@@ -12,6 +12,21 @@ import { COLOURS, IPainting, ORBS_SHOWN } from './gallery.data';
 
 const paintings: readonly IPainting[] = COLOURS.flatMap((colour) => colour.paintings);
 
+/** WCAG 2 relative luminance of a `#rrggbb` colour. */
+function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((at) => {
+    const channel = parseInt(hex.slice(at, at + 2), 16) / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG 2 contrast ratio between two `#rrggbb` colours. */
+function contrast(a: string, b: string): number {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
+
 describe('gallery collection', () => {
   it('partitions the paintings: no work appears in two colours', () => {
     const slugs = paintings.map((painting) => painting.slug);
@@ -39,6 +54,34 @@ describe('gallery collection', () => {
       expect(colour.hex).toMatch(/^#[0-9a-f]{6}$/);
       expect(colour.mood.trim().length).toBeGreaterThan(0);
       expect(colour.connotation.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('hangs each colour in a room of its own', () => {
+    const frames = COLOURS.map((colour) => colour.palette.frame);
+    const surfaces = COLOURS.map((colour) => colour.palette.surface);
+    expect(new Set(frames).size, 'two colours share a frame').toBe(COLOURS.length);
+    expect(new Set(surfaces).size, 'two colours share a surface').toBe(COLOURS.length);
+    for (const colour of COLOURS) {
+      const swatches = Object.entries(colour.palette).filter(([name]) => name !== 'frame');
+      for (const [name, value] of swatches) {
+        expect(value, `${colour.id}.palette.${name}`).toMatch(/^#[0-9a-f]{6}$/);
+      }
+    }
+  });
+
+  it('keeps every palette readable: AA contrast for each text colour on its surface', () => {
+    // axe enforces this in the browser, but only for the one colour the e2e
+    // run happens to press. Six palettes would otherwise go unaudited.
+    for (const colour of COLOURS) {
+      const { surface, text, muted, accentText } = colour.palette;
+      for (const [role, ink] of Object.entries({ text, muted, accentText })) {
+        const ratio = contrast(ink, surface);
+        expect(
+          ratio,
+          `${colour.id} ${role} ${ink} on ${surface} is ${ratio.toFixed(2)}:1`
+        ).toBeGreaterThanOrEqual(4.5);
+      }
     }
   });
 

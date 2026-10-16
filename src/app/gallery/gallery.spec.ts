@@ -75,6 +75,21 @@ describe('Gallery', () => {
     expect(el().querySelector(`article a[href="${painting.source}"]`)).toBeTruthy();
   });
 
+  it("dresses the card in the chosen colour's palette and frame", async () => {
+    const article = (): HTMLElement => el().querySelector('article') as HTMLElement;
+
+    await press(orbs()[0]);
+    expect(article().dataset['frame']).toBe(COLOURS[0].palette.frame);
+    expect(article().style.getPropertyValue('--room-surface')).toBe(COLOURS[0].palette.surface);
+
+    // A second colour re-dresses the same card rather than keeping the first.
+    await press(orbs()[1]);
+    expect(article().dataset['frame']).toBe(COLOURS[1].palette.frame);
+    expect(article().style.getPropertyValue('--room-accent-text')).toBe(
+      COLOURS[1].palette.accentText
+    );
+  });
+
   it('moves focus to the painting, which may be out of view below the orbs', async () => {
     await press(orbs()[0]);
     expect(document.activeElement?.id).toBe('painting-title');
