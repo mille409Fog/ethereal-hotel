@@ -54,6 +54,15 @@ export class Projects {
       link: '/booking',
       linkLabel: 'View Live Demo',
     },
+    {
+      name: 'The Gallery',
+      description:
+        'Choose a colour, get a painting: 24 public-domain works in 7 groups, every label checked against a source',
+      category: 'Interactive',
+      tech: ['Angular 22', 'Signals', 'Node', 'WebP'],
+      link: '/gallery',
+      linkLabel: 'Open the Gallery',
+    },
     // The three below are the NDA engagements. Their descriptions are
     // deliberately thin — the argument they make is in the case study, not on
     // the card, and a card that tried to carry it would be the vague-paragraph

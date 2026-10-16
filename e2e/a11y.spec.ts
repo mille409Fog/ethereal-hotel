@@ -5,9 +5,14 @@ import { stubBookingApi } from './support/backend';
 import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
 
 /**
- * The six routes the app actually has. `/` is the portfolio page;
- * `/dashboard` and `/booking` are the live demos and `/work` is the case
- * studies. The last two are the separate WebGL work.
+ * The seven routes the app actually has. `/` is the portfolio page;
+ * `/dashboard` and `/booking` are the live demos, `/work` is the case
+ * studies and `/gallery` the colour-to-painting guide. The last two are the
+ * separate WebGL work.
+ *
+ * `/gallery` is scanned with a painting hung, not at rest: the label is most
+ * of what there is to audit on that page, and it does not exist until an orb
+ * is pressed.
  *
  * `/aubade` is scanned for a reason the first four are not: a canvas is opaque
  * to assistive technology, so the whole a11y surface of that route is the prose
@@ -26,6 +31,7 @@ const ROUTES = [
   { path: '/dashboard', name: 'dashboard' },
   { path: '/booking', name: 'booking' },
   { path: '/work', name: 'case studies' },
+  { path: '/gallery', name: 'gallery' },
   { path: '/aubade', name: 'aubade' },
   { path: '/aubade/reader', name: 'aubade reader' },
 ] as const;
@@ -75,6 +81,15 @@ async function waitForSettledBooking(page: Page): Promise<void> {
 }
 
 /**
+ * The gallery shows only orbs until one is pressed. Focus landing on the
+ * painting's heading is the sign the label has rendered.
+ */
+async function hangAPainting(page: Page): Promise<void> {
+  await page.locator('button.orb').first().click();
+  await expect(page.locator('#painting-title')).toBeFocused();
+}
+
+/**
  * Aubade fetches its renderer chunk before it knows what it can show, so the
  * plate says "Unlocking the lobby…" for a moment. Scanning then would audit a
  * state no visitor sees for long, and — worse — would miss whichever of the
@@ -116,6 +131,9 @@ test.describe('accessibility', () => {
       }
       if (route.path === '/booking') {
         await waitForSettledBooking(page);
+      }
+      if (route.path === '/gallery') {
+        await hangAPainting(page);
       }
       if (route.path === '/aubade') {
         // The lobby's budget alone outlasts the default test timeout.

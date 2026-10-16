@@ -47,6 +47,7 @@ check('files CLAUDE.md points at still exist', () => {
     'README.md',
     'ARCHITECTURE.md',
     'AUBADE.md',
+    'GALLERY.md',
     'CONTRIBUTING.md',
     'backend/README.md',
     'api/index.py',

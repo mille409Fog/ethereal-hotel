@@ -13,6 +13,7 @@
     "verify:shader": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-shader.mjs",
     "build:sentence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-sentence-atlas.mjs",
     "check:sentence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-sentence-atlas.mjs --check",
+    "gallery:fetch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fetch-gallery.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:backend": "node scripts/py-tool.mjs pytest backend/",

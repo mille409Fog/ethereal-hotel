@@ -26,6 +26,11 @@ export const routes: Routes = [
     title: meta.work.title,
   },
   {
+    path: meta.gallery.path,
+    loadComponent: () => import('./gallery/gallery').then((m) => m.Gallery),
+    title: meta.gallery.title,
+  },
+  {
     // A separate work, and the only two routes whose components live outside
     // `src/app/`. See AUBADE.md: it shares this deployment and nothing else —
     // no styles, no services, no tokens — and the import direction only ever

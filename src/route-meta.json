@@ -23,6 +23,11 @@
       "title": "Case Studies - Jacob Miller",
       "description": "Three decisions from work I cannot show you the code for. The code is the part under NDA; the reasoning is not, and the reasoning is the part worth reading."
     },
+    "gallery": {
+      "path": "gallery",
+      "title": "The Gallery - Jacob Miller",
+      "description": "Choose a colour and a painting is hung for it: twenty-four public-domain works in seven colour groups, each with where to see it, how it was made and three ways of looking at it."
+    },
     "aubade": {
       "path": "aubade",
       "title": "Hôtel Aubade - Floor 0, The Desk",

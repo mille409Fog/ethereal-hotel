@@ -1,0 +1,149 @@
+<!-- ===== THE GALLERY =====
+     `main`, matching `/work`: this route renders nothing else. -->
+<main class="gallery-page">
+  <div class="gallery-inner">
+    <header class="gallery-header">
+      <h1 class="gallery-title">The Gallery</h1>
+      <p class="gallery-subtitle">
+        Choose the colour closest to how you feel, and a painting is hung for it, with where it
+        lives, how it was made and three ways of looking at it.
+      </p>
+    </header>
+
+    <!-- The orbs are toggle buttons rather than a radio group: choosing is an
+         action with a visible result, and pressing a lit orb again is a valid
+         request for another painting, which a radio cannot express. The colour
+         is decoration; the name and mood are the button's text. -->
+    <section class="orbs-section" aria-labelledby="orbs-heading">
+      <h2 id="orbs-heading" class="visually-hidden">Choose a colour</h2>
+      <ul class="orbs">
+        @for (orb of offered(); track orb.id; let i = $index) {
+          <li>
+            <button
+              type="button"
+              class="orb"
+              [style.--orb]="orb.hex"
+              [style.--i]="i"
+              [attr.aria-pressed]="colour()?.id === orb.id"
+              (click)="choose(orb)"
+            >
+              <span class="orb-sphere" aria-hidden="true"></span>
+              <span class="orb-name">{{ orb.name }}</span>
+              <span class="orb-mood">{{ orb.mood }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+      <button type="button" class="gallery-link-button" (click)="reshuffle()">
+        Show me different colours
+      </button>
+    </section>
+
+    @if (painting(); as work) {
+      <article class="hung" aria-labelledby="painting-title" #hung>
+        <figure class="hung-frame">
+          <img
+            class="hung-image"
+            [src]="'/gallery/' + work.image.file"
+            [width]="work.image.width"
+            [height]="work.image.height"
+            [alt]="work.image.alt"
+          />
+          <figcaption class="hung-credit">
+            Public-domain reproduction via
+            <a [href]="'https://commons.wikimedia.org/wiki/File:' + work.image.commons"
+              >Wikimedia Commons</a
+            >.
+          </figcaption>
+        </figure>
+
+        <div class="hung-text">
+          <header class="hung-header">
+            <p class="hung-kicker">{{ colour()?.name }} · {{ colour()?.mood }}</p>
+            <h2 id="painting-title" class="hung-title" tabindex="-1" #paintingHeading>
+              {{ work.title }}
+            </h2>
+            <p class="hung-byline">
+              {{ work.artist }} <span class="hung-life">({{ work.artistLife }})</span>,
+              {{ work.made }}
+            </p>
+          </header>
+
+          <dl class="hung-facts">
+            <div>
+              <dt>Where it is</dt>
+              <dd>{{ work.museum }}, {{ work.city }}</dd>
+            </div>
+            <div>
+              <dt>Medium</dt>
+              <dd>{{ work.medium }}</dd>
+            </div>
+            <div>
+              <dt>Size</dt>
+              <dd>{{ work.size }}</dd>
+            </div>
+          </dl>
+
+          <section class="hung-part">
+            <h3 class="hung-part-label">Why {{ colour()?.name }}</h3>
+            <p>{{ work.whyThisColour }}</p>
+          </section>
+
+          <section class="hung-part">
+            <h3 class="hung-part-label">How it was made</h3>
+            <dl class="hung-techniques">
+              @for (technique of work.techniques; track technique.name) {
+                <dt>{{ technique.name }}</dt>
+                <dd>{{ technique.detail }}</dd>
+              }
+            </dl>
+          </section>
+
+          <section class="hung-part">
+            <h3 class="hung-part-label">Ways of looking</h3>
+            <dl class="hung-lenses">
+              <dt>From across the room</dt>
+              <dd>{{ work.lenses.distance }}</dd>
+              <dt>Up close</dt>
+              <dd>{{ work.lenses.close }}</dd>
+              <dt>In its time</dt>
+              <dd>{{ work.lenses.context }}</dd>
+            </dl>
+          </section>
+
+          <p class="hung-source">
+            Date, medium, size and collection checked against
+            <a [href]="work.source">{{ sourceName(work) }}</a
+            >. Collections lend works and take them down for conservation, so check with the museum
+            before you travel.
+          </p>
+
+          @if (others() > 0) {
+            <button type="button" class="gallery-button" (click)="another()">
+              Another {{ colour()?.name }} painting
+            </button>
+          }
+        </div>
+      </article>
+    } @else {
+      <p class="gallery-empty">Nothing is hanging yet. Choose a colour above.</p>
+    }
+
+    <!-- The whole of the "engine", said plainly, with the counts read from the
+         data. If this paragraph and recommend.ts ever disagree, the paragraph
+         is the bug report. -->
+    <aside class="gallery-method" aria-labelledby="method-heading">
+      <h2 id="method-heading" class="gallery-method-title">How the choice is made</h2>
+      <p>
+        {{ paintingCount }} paintings are divided into {{ colourCount }} colour groups of
+        {{ smallestGroup }} to {{ largestGroup }}, and no painting belongs to more than one. You are
+        offered {{ shownCount }} of the colours, drawn at random. Choose one and a painting from its
+        group is picked at random, never the one already on the wall. There is no model and no
+        profile, and nothing about your choice is stored. The groupings and the readings are one
+        person's interpretation; the facts on each label link to their source.
+      </p>
+    </aside>
+
+    <a class="gallery-back" href="/">← Back to the rest of the site</a>
+  </div>
+</main>
