@@ -1,0 +1,31 @@
+{
+  "case_id": "37383859005-112012213109",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "dependency",
+    "confidence": "medium",
+    "evidence": [
+      "piscina  5.0.0 - 5.3.1\nSeverity: critical",
+      "undici  7.0.0 - 7.29.0\nSeverity: high",
+      "23 vulnerabilities (2 low, 13 moderate, 6 high, 2 critical)",
+      "feat: domain change (no package.json or package-lock.json in the changed files)",
+      "Advisories job: \"job skipped, run success\" on all 5 earlier runs on development-alpha"
+    ],
+    "fix_rationale": "The audit output says a fix is available via `npm audit fix`. That updates the lockfile to patched versions of the transitive dependencies. If a fix needs a major bump, add an override in package.json.",
+    "hypothesis": "npm audit --audit-level=high failed because new advisories were published against packages already in the lockfile: piscina (critical), undici, brace-expansion, browserslist, fast-uri and js-yaml (high). The commit only changed domain, docs and assets, not dependencies. Earlier runs on development-alpha skipped this job, so this is the first real audit.",
+    "suggested_files": ["package-lock.json", "package.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4791,
+    "cache_read_input_tokens": 10237,
+    "cost_usd": 0.0267557,
+    "duration_ms": 6247,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 4,
+    "output_tokens": 656
+  }
+}

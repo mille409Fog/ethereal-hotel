@@ -9,7 +9,7 @@ from collections import Counter
 from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 
-from ci_triage.models import Category, FailedJob, GoldenCase, Split
+from ci_triage.models import Category, FailedJob, GoldenCase, Split, TriageRecord
 
 Classifier = Callable[[FailedJob], Category]
 FileSuggester = Callable[[FailedJob, Collection[str]], tuple[str, ...]]
@@ -95,4 +95,38 @@ def render(card: Scorecard) -> str:
     for expected in categories:
         row = [str(card.confusion[(expected, got)]) for got in categories]
         lines.append(f"| **{expected.value}** | " + " | ".join(row) + " |")
+    return "\n".join(lines)
+
+
+def render_spend(records: list[TriageRecord]) -> str:
+    """What a model-backed run spent: calls, fallbacks, tokens, notional cost, time.
+
+    Cost is Claude Code's estimate at API list prices. Nothing is billed on the
+    subscription, so it reads as quota used, not money.
+    """
+    used = [r.usage for r in records if r.usage is not None]
+    fallbacks = [r for r in records if r.source == "rules"]
+    lines = [
+        f"Cases: {len(records)} ({len(records) - len(fallbacks)} answered by the "
+        f"model, {len(fallbacks)} fell back to rules)",
+    ]
+    for record in fallbacks:
+        lines.append(f"  - {record.case_id}: {record.fallback_reason}")
+    if not used:
+        return "\n".join(lines)
+    seconds = sorted(u.duration_ms / 1000 for u in used)
+    fresh_input = sum(u.input_tokens + u.cache_creation_input_tokens for u in used)
+    cached_input = sum(u.cache_read_input_tokens for u in used)
+    lines += [
+        f"Calls: {sum(u.attempts for u in used)} process(es), "
+        f"{sum(u.num_turns for u in used)} turn(s), model "
+        + ", ".join(sorted({u.model for u in used})),
+        f"Tokens: {fresh_input:,} input + {cached_input:,} from cache, "
+        f"{sum(u.output_tokens for u in used):,} output",
+        f"Notional cost: ${sum(u.cost_usd for u in used):.4f} total, "
+        f"${sum(u.cost_usd for u in used) / len(used):.4f} per case "
+        "(API list price; not billed on the subscription)",
+        f"Latency per case: median {seconds[len(seconds) // 2]:.1f}s, "
+        f"max {seconds[-1]:.1f}s",
+    ]
     return "\n".join(lines)

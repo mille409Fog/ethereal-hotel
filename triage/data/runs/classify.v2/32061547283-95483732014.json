@@ -1,0 +1,29 @@
+{
+  "case_id": "32061547283-95483732014",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "✘ [ERROR] bundle initial exceeded maximum budget. Budget 15.00 kB was not met by 250.62 kB with a total of 265.62 kB.",
+      "▲ [WARNING] bundle initial exceeded maximum budget. Budget 13.00 kB was not met by 252.62 kB with a total of 265.62 kB.",
+      "Application bundle generation failed. [8.640 seconds] - 2026-08-17T19:40:50.343Z"
+    ],
+    "fix_rationale": "The bundle budgets are configured in angular.json, so check them first and raise them or correct the units. If the Dependabot bump really inflated the bundle, the Angular versions in package.json and package-lock.json are the next place to look.",
+    "hypothesis": "The Angular production build inside `npm run lighthouse` failed before Lighthouse ran. The initial bundle is 265.62 kB, which exceeds the configured initial-bundle budgets (13 kB warning, 15 kB error). The branch is a Dependabot Angular bump, so the upgrade may have grown the bundle. The budget values also look far too low for an Angular app, so they may be misconfigured.",
+    "suggested_files": ["angular.json", "package.json", "package-lock.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 2671,
+    "cache_read_input_tokens": 14056,
+    "cost_usd": 0.0258276,
+    "duration_ms": 10087,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1373
+  }
+}

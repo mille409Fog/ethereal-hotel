@@ -1,0 +1,35 @@
+{
+  "case_id": "31909846612-95073153401",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Error: expect(locator).toBeHidden() failed\n\n    Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: visible\n    Timeout:  5000ms",
+      "Test timeout of 30000ms exceeded.",
+      "/** The plate stops saying this once the renderer chunk has resolved. */",
+      "32 passed (3.9m)"
+    ],
+    "fix_rationale": "The wait for the lobby is a fixed 5s expect timeout inside a 30s test timeout. Raise those limits in the Playwright config and the shared lobby helper, or cut the work done before the plate clears. The failing specs all call that wait.",
+    "hypothesis": "On the CI runner, the aubade lobby never got past the \"Unlocking the lobby\" plate within the 5000ms expect timeout. The renderer chunk or WebGL scene was likely too slow under headless software rendering. Dependent tests then hit the 30s test timeout. This is a missed time limit, not an outright failure.",
+    "suggested_files": [
+      "e2e/support/lobby.ts",
+      "e2e/aubade.spec.ts",
+      "playwright.config.ts",
+      "e2e/a11y.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4467,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.025292099999999998,
+    "duration_ms": 5007,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 680
+  }
+}

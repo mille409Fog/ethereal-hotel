@@ -1,0 +1,30 @@
+{
+  "case_id": "37668691757-112954507072",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "dependency",
+    "confidence": "high",
+    "evidence": [
+      "10 vulnerabilities (4 moderate, 6 high)",
+      "2026-10-07T18:37:14Z b989d24aa7 (push): job failure, run failure — failed: npm audit (fails at high and above)",
+      "2026-10-05T22:54:12Z c05308b6bf (push): job failure, run failure — failed: npm audit (fails at high and above)",
+      "undici  7.0.0 - 7.29.0 Severity: high ... fix available via `npm audit fix`"
+    ],
+    "fix_rationale": "Every advisory reports a fix via `npm audit fix`, so refreshing the transitive versions in package-lock.json (with overrides in package.json if needed) should clear the gate. This is best done on development-alpha, not in the Dependabot PR.",
+    "hypothesis": "npm audit fails on high-severity advisories (brace-expansion, browserslist, fast-uri, js-yaml, source-map-js, undici) in transitive dependencies. The same job was already failing on development-alpha before this Dependabot Angular bump, so the bump didn't cause it. The cause is lockfile version drift against newly published advisories.",
+    "suggested_files": ["package-lock.json", "package.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4701,
+    "cache_read_input_tokens": 9862,
+    "cost_usd": 0.026528200000000002,
+    "duration_ms": 5571,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 4,
+    "output_tokens": 673
+  }
+}

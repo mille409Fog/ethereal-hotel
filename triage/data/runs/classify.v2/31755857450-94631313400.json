@@ -1,0 +1,35 @@
+{
+  "case_id": "31755857450-94631313400",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "regression",
+    "confidence": "low",
+    "evidence": [
+      "3. This script's layout or the fonts in scripts/resume-fonts/ changed.",
+      "##[error]Process completed with exit code 1.",
+      "renderer version, so it genuinely is stale; regenerating is correct."
+    ],
+    "fix_rationale": "Regenerate and commit the résumé PDF with the render script. If the diff comes from the renderer or fonts rather than the content, check render-resume.mjs and the résumé data.",
+    "hypothesis": "The \"committed résumé PDF is current\" check failed because the committed PDF no longer matches what scripts/render-resume.mjs generates from the current résumé data, layout or fonts. The excerpt lists the possible causes, and the log doesn't show which one applies. The most likely one is that résumé data or layout changed without the PDF being regenerated and committed.",
+    "suggested_files": [
+      "public/jacob-miller-resume.pdf",
+      "scripts/render-resume.mjs",
+      "src/app/resume/resume.data.ts",
+      "public/Jacob_Miller_Resume_Scribe.pdf",
+      "scripts/pdf-text.mjs"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 482,
+    "cache_read_input_tokens": 6903,
+    "cost_usd": 0.007632300000000001,
+    "duration_ms": 3979,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 501
+  }
+}

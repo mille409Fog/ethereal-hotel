@@ -1,0 +1,37 @@
+{
+  "case_id": "31506504740-93829325008",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "regression",
+    "confidence": "medium",
+    "evidence": [
+      "1) [chromium] › e2e/a11y.spec.ts:160:7 › reduced motion › the looping heartbeat and pulse animations are stopped",
+      "- Array []",
+      "+   \"heartbeat\",",
+      "+   \"pulse-glow\",",
+      "6 passed (6.3s)"
+    ],
+    "fix_rationale": "The animations are defined in CSS, so the prefers-reduced-motion rule needs to disable heartbeat/pulse-glow (global styles or the dashboard component CSS). The test and package.json are the fallback if the Angular upgrade changed behavior or the test's selection of animations.",
+    "hypothesis": "Under prefers-reduced-motion, the heartbeat and pulse-glow CSS animations are still running (plus an \"unnamed\" one), so the test expecting no running looping animations fails. Likely the reduced-motion override no longer covers these animations, or the Angular bump changed component style handling or an animation so the override is bypassed. The failure is deterministic: the other 6 tests passed.",
+    "suggested_files": [
+      "src/styles.css",
+      "src/app/dashboard/dashboard-header/dashboard-header.css",
+      "src/app/dashboard/metrics-grid/metrics-grid.css",
+      "e2e/a11y.spec.ts",
+      "package.json"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 1859,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.0137501,
+    "duration_ms": 4718,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 569
+  }
+}

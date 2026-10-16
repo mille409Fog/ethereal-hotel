@@ -1,0 +1,36 @@
+{
+  "case_id": "37804070508-113403604491",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "dependency",
+    "confidence": "low",
+    "evidence": [
+      "Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: visible\n    Timeout:  20000ms",
+      "2 × locator resolved to <p _ngcontent-ng-c1258585031=\"\" class=\"lobby__state lobby__state--quiet\">Unlocking the lobby…</p>",
+      "Error: frame.evaluate: Test timeout of 30000ms exceeded.",
+      "Expected pattern: /skip to (main )?content/i",
+      "32 passed (5.4m)"
+    ],
+    "fix_rationale": "Identify the bumped packages in the Dependabot diff and pin or revert the offending one in package.json and package-lock.json. If the cause is the Playwright or axe bump, adjust playwright.config.ts instead. The lobby-unlock and WebGL code in src/aubade/gl/context.ts is the next place to look.",
+    "hypothesis": "A grouped Dependabot npm upgrade most likely broke the aubade route in the browser. The lobby never finishes \"Unlocking the lobby…\", so every aubade, reader and axe test times out. The skip-link test also fails because focus never lands on it after the first Tab. The excerpt doesn't show which package changed, so this is inferred from the branch and the failure pattern.",
+    "suggested_files": [
+      "package.json",
+      "package-lock.json",
+      "src/aubade/gl/context.ts",
+      "playwright.config.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4846,
+    "cache_read_input_tokens": 5981,
+    "cost_usd": 0.0291761,
+    "duration_ms": 6709,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 919
+  }
+}

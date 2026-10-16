@@ -1,0 +1,35 @@
+{
+  "case_id": "37385355841-112017165099",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "environment",
+    "confidence": "medium",
+    "evidence": [
+      "Protocol error (Runtime.callFunctionOn): Internal server error, session closed.",
+      "Test timeout of 30000ms exceeded.",
+      "35 passed (4.4m)",
+      "2026-10-05T22:39:29Z cf6642a105 (push): job failure, run failure — failed: Run end-to-end suite",
+      "feat: secondary domain changes — CLAUDE.md | 2 +-, ROADMAP.md | 16 ----------------"
+    ],
+    "fix_rationale": "The fix is in the Chromium launch flags (software GL such as SwiftShader) and the worker count in the Playwright config and workflow, or in how the aubade spec waits for the renderer. The commit only touched docs, so no application code is implicated.",
+    "hypothesis": "The aubade WebGL specs fail because the headless Chromium session on the runner dies mid-test (\"Protocol error ... session closed\"). The renderer is likely unstable under software GL. The failure predates this commit: the job has failed on development-alpha for weeks, and this commit only edited docs.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "playwright.config.ts",
+      ".github/workflows/code-quality.yml"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5134,
+    "cache_read_input_tokens": 10715,
+    "cost_usd": 0.029995499999999998,
+    "duration_ms": 7424,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 4,
+    "output_tokens": 838
+  }
+}

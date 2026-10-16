@@ -1,0 +1,31 @@
+{
+  "case_id": "37804070508-113403604491",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Locator: getByText('Unlocking the lobby') Expected: hidden Received: visible Timeout: 20000ms",
+      "e2e/aubade.spec.ts:40:const LOBBY_TIMEOUT = 20_000;",
+      "development-alpha 2026-10-08T15:48:01Z 640ea2567d (push): job failure — failed: Run end-to-end suite",
+      "development-alpha 2026-10-07T18:37:14Z b989d24aa7: aubade.spec.ts:54 'renders the lobby' and :80 'reaches the real renderer' already failing",
+      "Test timeout of 30000ms exceeded."
+    ],
+    "fix_rationale": "The lobby wait (20s) and the per-test timeout (30s) are set in the e2e specs and the Playwright config. Raising them, or making the lobby load faster in CI, addresses the missed time limits. The dependabot bump itself needs no change.",
+    "hypothesis": "The aubade lobby never finishes loading within the fixed 20s wait (LOBBY_TIMEOUT), so tests that wait for it hit their 20s or 30s limits. This was already happening on development-alpha before the Playwright and axe bump, so the upgrade did not cause it. The slow CI runner is the likely reason, and later tests then fail with it.",
+    "suggested_files": ["e2e/aubade.spec.ts", "e2e/a11y.spec.ts", "playwright.config.ts"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 8325,
+    "cache_read_input_tokens": 31089,
+    "cost_usd": 0.047964900000000005,
+    "duration_ms": 11368,
+    "input_tokens": 8,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 7,
+    "output_tokens": 1154
+  }
+}

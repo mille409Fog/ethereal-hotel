@@ -1,0 +1,119 @@
+{
+  "branch": "dependabot/npm_and_yarn/angular-c32c05d08e",
+  "created_at": "2026-09-07T19:27:40Z",
+  "earlier": [
+    {
+      "branch": "dependabot/npm_and_yarn/angular-341a2ec7ce",
+      "case_id": "32768361400-97562872245",
+      "created_at": "2026-08-24T19:28:30Z",
+      "error_lines": ["Process completed with exit code 1."],
+      "failed_steps": ["Run Lighthouse CI (fails below the thresholds in lighthouserc.json)"],
+      "sha": "a772afcc9d79221528c061a7670d66490b7e1a07"
+    },
+    {
+      "branch": "development-alpha",
+      "case_id": "32425079586-96605247469",
+      "created_at": "2026-08-20T22:37:18Z",
+      "error_lines": ["Process completed with exit code 1."],
+      "failed_steps": ["Run Lighthouse CI (fails below the thresholds in lighthouserc.json)"],
+      "sha": "a3721a6095eb8148a951439b31fbf201273851b5"
+    },
+    {
+      "branch": "dependabot/npm_and_yarn/angular-341a2ec7ce",
+      "case_id": "32061547283-95483732014",
+      "created_at": "2026-08-17T19:39:20Z",
+      "error_lines": ["Process completed with exit code 1."],
+      "failed_steps": ["Run Lighthouse CI (fails below the thresholds in lighthouserc.json)"],
+      "sha": "b6370eaf57a2345520c3ff631696b2911d9e57df"
+    }
+  ],
+  "history": {
+    "dependabot/npm_and_yarn/angular-c32c05d08e": [],
+    "development-alpha": [
+      {
+        "created_at": "2026-08-22T17:06:30Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "failure",
+        "sha": "e59443b0bd1e9d3feb8b902af923a3f995e6517d"
+      },
+      {
+        "created_at": "2026-08-21T17:06:51Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "failure",
+        "sha": "0707c81d5ad406f489238fa99685fd9d697a1852"
+      },
+      {
+        "created_at": "2026-08-21T15:52:32Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "failure",
+        "sha": "f4df850ba6dd237dc24424774b806c3d87966662"
+      },
+      {
+        "created_at": "2026-08-20T22:37:18Z",
+        "event": "push",
+        "failed_steps": ["Run Lighthouse CI (fails below the thresholds in lighthouserc.json)"],
+        "job_conclusion": "failure",
+        "run_conclusion": "failure",
+        "sha": "a3721a6095eb8148a951439b31fbf201273851b5"
+      },
+      {
+        "created_at": "2026-08-19T16:42:06Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "cancelled",
+        "sha": "53c8be409bd4752c0b6538a0a844e510d6f4fe3d"
+      },
+      {
+        "created_at": "2026-08-17T16:40:34Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "failure",
+        "sha": "63e708b222247c914dc4eab4f2004a699efc84f0"
+      },
+      {
+        "created_at": "2026-08-16T23:04:07Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "failure",
+        "sha": "5314f3ce53f95db8aad56226ec1e11814ab837f2"
+      },
+      {
+        "created_at": "2026-08-16T21:51:20Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "failure",
+        "sha": "8dfdcf262409dec410a8cf1a70b2f6d99a1742f5"
+      },
+      {
+        "created_at": "2026-08-16T17:43:46Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "failure",
+        "sha": "ebe6a952c0b17cc14db28adde47414214fbdf720"
+      },
+      {
+        "created_at": "2026-08-15T21:35:16Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "failure",
+        "sha": "49687af495758fa95366f07dee0126beb489b2ff"
+      }
+    ],
+    "main": []
+  },
+  "job": "Budgets (Lighthouse — performance, a11y, best practices)",
+  "sha": "55e1cc59d21e8f4b7555b784eda8162c560906e1",
+  "workflow": "Code Quality"
+}

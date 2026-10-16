@@ -1,0 +1,37 @@
+{
+  "case_id": "31974708948-95232331624",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Error: expect(locator).toBeHidden() failed",
+      "Locator:  getByText('Unlocking the lobby')",
+      "Expected: hidden",
+      "Received: visible",
+      "Test timeout of 30000ms exceeded."
+    ],
+    "fix_rationale": "The shared lobby-wait helper and the Playwright timeouts set the limits that were missed, so raising them or reducing the work done before the lobby is ready is the usual fix. The angular.json script budget is already over by 19.77 kB, so it is a secondary candidate.",
+    "hypothesis": "The aubade lobby never finished loading within the fixed wait. \"Unlocking the lobby\" stayed visible for the full 20s toBeHidden timeout, and the other aubade tests then hit the 30s test timeout. The lobby is probably slow to become ready on the CI runner's software-rendered headless Chromium. The build also shows the script bundle over budget (warning only), so the lazy chunk may be heavier.",
+    "suggested_files": [
+      "e2e/support/lobby.ts",
+      "playwright.config.ts",
+      "e2e/aubade.spec.ts",
+      "e2e/a11y.spec.ts",
+      "angular.json"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5283,
+    "cache_read_input_tokens": 16779,
+    "cost_usd": 0.0350879,
+    "duration_ms": 9731,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1227
+  }
+}

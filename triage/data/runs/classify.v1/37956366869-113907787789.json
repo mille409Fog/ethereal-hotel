@@ -1,0 +1,37 @@
+{
+  "case_id": "37956366869-113907787789",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "environment",
+    "confidence": "low",
+    "evidence": [
+      "Error: expect(locator).toBeHidden() failed",
+      "- locator resolved to <p _ngcontent-ng-c1258585031=\"\" class=\"lobby__state lobby__state--quiet\">Unlocking the lobby…</p>",
+      "Test timeout of 30000ms exceeded.",
+      "Test timeout of 90000ms exceeded.",
+      "38 passed (4.2m)"
+    ],
+    "fix_rationale": "The lobby wait helper, Playwright launch args and timeouts, and the workflow's browser setup control how the GL lobby starts on the runner. If the lobby is instead genuinely stuck, src/aubade/gl/context.ts is the next place to look.",
+    "hypothesis": "The WebGL lobby on the aubade route never finishes \"Unlocking the lobby…\" within the 20s wait on the CI runner, probably because headless chromium-shell uses slow software GL. Every failing test goes through the lobby unlock, while the other 38 tests pass.",
+    "suggested_files": [
+      "e2e/support/lobby.ts",
+      "playwright.config.ts",
+      "e2e/aubade.spec.ts",
+      "src/aubade/gl/context.ts",
+      ".github/workflows/code-quality.yml"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 3559,
+    "cache_read_input_tokens": 5981,
+    "cost_usd": 0.024158100000000002,
+    "duration_ms": 6532,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 932
+  }
+}

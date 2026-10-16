@@ -1,0 +1,37 @@
+{
+  "case_id": "37803711443-113402338025",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "environment",
+    "confidence": "low",
+    "evidence": [
+      "- waiting for getByText('Unlocking the lobby')",
+      "Expected: hidden",
+      "Received: visible",
+      "Test timeout of 30000ms exceeded.",
+      "31 passed (5.5m)"
+    ],
+    "fix_rationale": "The Playwright launch args (for example SwiftShader/WebGL flags) and the browser install step in the workflow decide whether the lobby can initialise on CI. The GL context code and the lobby wait helper are the next places to check if the config isn't the cause.",
+    "hypothesis": "Every aubade-route test fails because the lobby never leaves its \"Unlocking the lobby…\" state, so the WebGL scene never becomes ready. The 31 other tests pass, so this looks like headless Chromium on the CI runner (installed with --only-shell) lacking working WebGL. A regression in the aubade bootstrap is the alternative.",
+    "suggested_files": [
+      "playwright.config.ts",
+      ".github/workflows/code-quality.yml",
+      "src/aubade/gl/context.ts",
+      "e2e/support/lobby.ts",
+      "src/aubade/aubade.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5248,
+    "cache_read_input_tokens": 16010,
+    "cost_usd": 0.037551,
+    "duration_ms": 11568,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1495
+  }
+}

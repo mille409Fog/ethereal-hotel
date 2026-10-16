@@ -1,0 +1,36 @@
+{
+  "case_id": "32506448079-96847573757",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Locator:  getByText('Unlocking the lobby')",
+      "Expected: hidden",
+      "Timeout:  20000ms",
+      "Received: \"\""
+    ],
+    "fix_rationale": "The ready-wait (20s) and per-test timeout (30s) are set in the aubade spec, the lobby helper and the Playwright config, so raising them is the usual fix. If that is not enough, reduce the work done at load, which means the quality settings.",
+    "hypothesis": "The aubade e2e tests time out waiting for the WebGL lobby to become ready (\"Unlocking the lobby\" never hides within 20s, and the page title stays empty). On the headless CI runner with software rendering, the scene does not finish loading inside the fixed wait and test timeouts.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "e2e/support/lobby.ts",
+      "playwright.config.ts",
+      "src/aubade/gl/quality.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 3981,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.021258100000000002,
+    "duration_ms": 3791,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 471
+  }
+}

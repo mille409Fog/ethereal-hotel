@@ -1,0 +1,30 @@
+{
+  "case_id": "31978077117-95240461239",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Locator:  getByText('Unlocking the lobby')",
+      "Expected: hidden",
+      "Timeout:  20000ms"
+    ],
+    "fix_rationale": "The lobby wait is defined in the e2e lobby helper and the spec. The global test timeout is in the Playwright config. Raising those limits, or reducing the lobby's startup work under software rendering, is the usual fix.",
+    "hypothesis": "The aubade lobby did not finish loading within the time limits on the CI runner (headless Chromium, likely software-rendered). The \"Unlocking the lobby\" text stayed visible past the 20s wait and the 30s test timeout, so every aubade test that waits for the lobby timed out. The 35 other tests passed.",
+    "suggested_files": ["e2e/support/lobby.ts", "playwright.config.ts", "e2e/aubade.spec.ts"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4552,
+    "cache_read_input_tokens": 16380,
+    "cost_usd": 0.028134,
+    "duration_ms": 6310,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 828
+  }
+}

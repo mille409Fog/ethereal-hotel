@@ -1,0 +1,37 @@
+{
+  "case_id": "31504957196-93824056764",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "dependency",
+    "confidence": "low",
+    "evidence": [
+      "##[error]  1) [chromium] › e2e/a11y.spec.ts:160:7 › reduced motion › the looping heartbeat and pulse animations are stopped",
+      "- Array []",
+      "+   \"heartbeat\",",
+      "+   \"pulse-glow\",",
+      "6 passed (7.7s)"
+    ],
+    "fix_rationale": "The reduced-motion override most likely lives in the global or app CSS, so adjust it to work with the upgraded Angular build. If the upgrade can't be accommodated, hold back the version in package.json and package-lock.json. The excerpt omits which selectors still animate, so this is an inference.",
+    "hypothesis": "On a Dependabot Angular upgrade PR, the reduced-motion test finds the heartbeat and pulse-glow animations still running. The upgrade probably changed how the CSS is processed or emitted, so the prefers-reduced-motion override no longer cancels the looping animations. The other 6 a11y tests pass, and the only change is the Angular bump.",
+    "suggested_files": [
+      "src/styles.css",
+      "src/app/app.css",
+      "package.json",
+      "package-lock.json",
+      "e2e/a11y.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 2650,
+    "cache_read_input_tokens": 14261,
+    "cost_usd": 0.0236441,
+    "duration_ms": 8248,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1161
+  }
+}

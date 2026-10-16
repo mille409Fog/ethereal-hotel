@@ -1,0 +1,36 @@
+{
+  "case_id": "32061522684-95483653951",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Error: expect(locator).toBeHidden() failed",
+      "Locator:  getByText('Unlocking the lobby')",
+      "Expected: hidden",
+      "Timeout:  20000ms",
+      "Test timeout of 30000ms exceeded."
+    ],
+    "fix_rationale": "The lobby wait (LOBBY_TIMEOUT) is defined in the aubade spec and the per-test timeout is in the Playwright config, so raising those limits, or reducing the work the lobby does before it is ready, is the fix. The a11y spec needs the same treatment for its axe run.",
+    "hypothesis": "The aubade lobby never finished loading within the fixed 20s lobby wait. The \"Unlocking the lobby\" text stayed visible, so every test that waits for it hit the 30s test timeout. The axe analyze run also hit the 30s limit. The probable cause is slow software-rendered WebGL on the CI runner. The first-Tab skip-link failure likely comes from the same stalled page.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "playwright.config.ts",
+      "e2e/support/lobby.ts",
+      "e2e/a11y.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5167,
+    "cache_read_input_tokens": 16567,
+    "cost_usd": 0.0355527,
+    "duration_ms": 9843,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1322
+  }
+}

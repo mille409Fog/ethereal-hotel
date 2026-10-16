@@ -1,0 +1,30 @@
+{
+  "case_id": "34155666741-101846850728",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "dependency",
+    "confidence": "high",
+    "evidence": [
+      "browserslist  <=4.28.6",
+      "fast-uri  3.0.0 - 3.1.5",
+      "2 high severity vulnerabilities",
+      "fix available via `npm audit fix`"
+    ],
+    "fix_rationale": "Both are transitive, so refreshing them in package-lock.json (npm audit fix) bumps them to patched versions. If the fix is not picked up automatically, add an overrides entry in package.json.",
+    "hypothesis": "npm audit at high level fails on two transitive packages with published advisories: browserslist (<=4.28.6) and fast-uri (3.0.0-3.1.5). The lockfile on this Dependabot Angular branch still resolves to the vulnerable versions; npm reports a fix is available.",
+    "suggested_files": ["package-lock.json", "package.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 1952,
+    "cache_read_input_tokens": 5981,
+    "cost_usd": 0.012480100000000001,
+    "duration_ms": 3129,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 407
+  }
+}

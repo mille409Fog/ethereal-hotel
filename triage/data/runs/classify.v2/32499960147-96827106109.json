@@ -1,0 +1,36 @@
+{
+  "case_id": "32499960147-96827106109",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Locator:  getByText('Unlocking the lobby')",
+      "Expected: hidden",
+      "Received: visible",
+      "Timeout:  20000ms"
+    ],
+    "fix_rationale": "The lobby-ready wait and test timeouts are set in the Playwright config and the shared lobby helper, so raising them or lightening the work done inside them is the likely fix. The spec files carry their own copies of the wait helper.",
+    "hypothesis": "The aubade lobby never finished loading within the fixed waits. \"Unlocking the lobby\" was still visible after the 20s expect timeout, and the tests then hit the 30s test timeout. The empty page title and missing focus on the first Tab suggest the lazy aubade chunk or WebGL scene was very slow to become ready on the software-rendered CI runner.",
+    "suggested_files": [
+      "playwright.config.ts",
+      "e2e/support/lobby.ts",
+      "e2e/aubade.spec.ts",
+      "e2e/a11y.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5026,
+    "cache_read_input_tokens": 16531,
+    "cost_usd": 0.0335651,
+    "duration_ms": 8611,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1180
+  }
+}

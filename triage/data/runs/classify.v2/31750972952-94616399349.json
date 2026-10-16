@@ -1,0 +1,34 @@
+{
+  "case_id": "31750972952-94616399349",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "environment",
+    "confidence": "low",
+    "evidence": [
+      "renderer version, so it genuinely is stale; regenerating is correct.",
+      "3. This script's layout or the fonts in scripts/resume-fonts/ changed.",
+      "##[error]Process completed with exit code 1."
+    ],
+    "fix_rationale": "Regenerate and commit the PDF with the render script, since the log says regenerating is correct. If the cause is a renderer difference, the script's staleness check or the pinned renderer version is the place to look.",
+    "hypothesis": "The committed résumé PDF no longer matches what scripts/render-resume.mjs produces. The visible remediation text lists a changed renderer version, changed résumé source, or changed layout/fonts as the possible causes. The deciding diff lines were cut, so the likeliest cause is a renderer (Chromium/Playwright) difference on the runner.",
+    "suggested_files": [
+      "public/jacob-miller-resume.pdf",
+      "scripts/render-resume.mjs",
+      "src/app/resume/resume.data.ts",
+      "package-lock.json"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 1184,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.014070100000000002,
+    "duration_ms": 6344,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 871
+  }
+}

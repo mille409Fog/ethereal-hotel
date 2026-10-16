@@ -1,0 +1,36 @@
+{
+  "case_id": "32061560860-95483778922",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Error: expect(locator).toBeHidden() failed",
+      "Locator:  getByText('Unlocking the lobby')",
+      "- Expect \"toBeHidden\" with timeout 20000ms",
+      "Error: page.evaluate: Test timeout of 30000ms exceeded."
+    ],
+    "fix_rationale": "The lobby wait (LOBBY_TIMEOUT) is set in the aubade spec and the per-test timeout is set in the Playwright config. Raising them, or trimming the work done before the lobby is ready, addresses the missed time limit. The a11y spec and lobby helper use the same wait.",
+    "hypothesis": "The aubade route's WebGL lobby does not finish loading within the fixed time limits on the CI runner. The \"Unlocking the lobby\" text stays visible past the 20s lobby wait and the 30s per-test timeout, so the aubade tests and the axe scan time out. The branch only bumps Python runtime dependencies, so the frontend did not change. This looks like a slow software-rendered scene hitting its timeouts.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "playwright.config.ts",
+      "e2e/support/lobby.ts",
+      "e2e/a11y.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5436,
+    "cache_read_input_tokens": 16952,
+    "cost_usd": 0.0359972,
+    "duration_ms": 8757,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1255
+  }
+}

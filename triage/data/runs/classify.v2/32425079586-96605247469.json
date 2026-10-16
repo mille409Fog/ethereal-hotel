@@ -1,0 +1,34 @@
+{
+  "case_id": "32425079586-96605247469",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "high",
+    "evidence": [
+      "▲ [WARNING] total scripts exceeded maximum budget. Budget 860.00 kB was not met by 36.14 kB with a total of 896.14 kB.",
+      "✘ [ERROR] total scripts exceeded maximum budget. Budget 870.00 kB was not met by 26.14 kB with a total of 896.14 kB.",
+      "Application bundle generation failed. [10.624 seconds] - 2026-08-20T22:37:49.945Z"
+    ],
+    "fix_rationale": "The budgets are configured in angular.json, so either raise the limit there or trim the bundle. The largest lazy chunks are the dashboard and renderer, so those are the places to cut size. Check package.json if a recent dependency bump caused the growth.",
+    "hypothesis": "The Angular production build's \"total scripts\" size budget was exceeded (896.14 kB vs 870 kB error budget, 860 kB warning budget). The build failed on the size budget before Lighthouse could run. The cause is bundle growth, with no specific upgrade visible in the log.",
+    "suggested_files": [
+      "angular.json",
+      "src/app/dashboard/dashboard.ts",
+      "src/aubade/renderer.ts",
+      "package.json"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 1670,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.0126741,
+    "duration_ms": 4033,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 537
+  }
+}

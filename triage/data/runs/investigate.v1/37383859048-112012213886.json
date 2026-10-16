@@ -1,0 +1,35 @@
+{
+  "case_id": "37383859048-112012213886",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "regression",
+    "confidence": "medium",
+    "evidence": [
+      "Locator: getByText(/written and not built/)  Expected: visible ... element(s) not found",
+      "e2e/aubade.spec.ts:400:    await expect(page.getByText(/written and not built/)).toBeVisible();",
+      "src/aubade/reader/edition.spec.ts:148: written and unbuilt; all six exist now, so what it guards is the claim that",
+      "src/aubade/aubade.spec.ts:185: the sentence is only expected `if (unbuilt > 0)`",
+      "43 passed; only this one e2e test failed, and the commit touched only docs, domain config and assets"
+    ],
+    "fix_rationale": "Update the e2e assertion at e2e/aubade.spec.ts:400 to match what the reader's edition now says, with all six floors built. If the sentence was dropped by mistake, restore it in edition.ts instead.",
+    "hypothesis": "The e2e test for the reader's edition still expects the sentence \"written and not built\". All six Aubade floors are now built, so the page no longer says it. The unit test was updated to derive the sentence from FLOORS, but the e2e assertion was not. The failing commit (domain change) did not touch this area, so the test went stale earlier.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "src/aubade/reader/edition.ts",
+      "src/aubade/reader/edition.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 7061,
+    "cache_read_input_tokens": 40362,
+    "cost_usd": 0.0457042,
+    "duration_ms": 15453,
+    "input_tokens": 12,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 10,
+    "output_tokens": 1340
+  }
+}

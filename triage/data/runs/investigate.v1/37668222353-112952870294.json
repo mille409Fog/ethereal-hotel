@@ -1,0 +1,31 @@
+{
+  "case_id": "37668222353-112952870294",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "dependency",
+    "confidence": "high",
+    "evidence": [
+      "17 vulnerabilities (5 moderate, 9 high, 3 critical)",
+      "piscina  5.0.0 - 5.3.1 Severity: critical",
+      "proxy-addr  1.1.0 - 2.0.7 Severity: critical",
+      "2026-10-05T22:54:12Z c05308b6bf (push): job failure, run failure — failed: npm audit (fails at high and above)",
+      "fix available via `npm audit fix`"
+    ],
+    "fix_rationale": "Running `npm audit fix` updates the lockfile to patched versions. Anything it can't fix, such as @angular/router or @angular/cli, needs a bump in package.json.",
+    "hypothesis": "npm audit reports 17 vulnerabilities (3 critical, 9 high) in locked transitive and direct dependencies, including piscina, proxy-addr, @angular/router, undici and brace-expansion. The job was already failing the same way on development-alpha in the two runs before this one. This commit, which changed package.json and the lockfile, did not introduce the failure.",
+    "suggested_files": ["package-lock.json", "package.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4840,
+    "cache_read_input_tokens": 10548,
+    "cost_usd": 0.0272428,
+    "duration_ms": 5876,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 4,
+    "output_tokens": 682
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "case_id": "32768574510-97563539053",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Error: expect(locator).toBeHidden() failed",
+      "- unexpected value \"visible\"",
+      "Locator:  getByText('Unlocking the lobby')"
+    ],
+    "fix_rationale": "The lobby readiness wait (20s) and the per-test timeout (30s) are the limits that tripped. They live in the shared lobby helper and the Playwright config, so raising them or trimming the lobby's startup work is the fix.",
+    "hypothesis": "The aubade lobby never finished \"Unlocking the lobby…\" within the 20s readiness wait, so each aubade test hit its 30s timeout. The branch only bumps GitHub Actions versions, so the app code is unchanged. The likely cause is slow software-rendered WebGL on the runner, which makes the lobby miss the fixed wait.",
+    "suggested_files": [
+      "e2e/support/lobby.ts",
+      "playwright.config.ts",
+      "e2e/aubade.spec.ts",
+      "e2e/a11y.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4559,
+    "cache_read_input_tokens": 16069,
+    "cost_usd": 0.0319509,
+    "duration_ms": 9100,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1210
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "case_id": "31962469280-95202434805",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Expected: hidden",
+      "Received: visible",
+      "Timeout:  5000ms",
+      "31 passed (4.2m)"
+    ],
+    "fix_rationale": "The ready-wait and its timeouts live in the shared lobby helper and Playwright config, so raising the limit or lightening the work done inside it is fixed there. The spec files hold local copies of the wait.",
+    "hypothesis": "The aubade lobby never finished \"Unlocking the lobby\" (renderer chunk/scene ready) within the 5s expect and 30s test limits on the CI runner. Every aubade-dependent test then hit its time limit, while the 31 tests that don't need the lobby passed. The 19 kB script-budget overshoot is only a warning and probably isn't the cause.",
+    "suggested_files": [
+      "e2e/support/lobby.ts",
+      "playwright.config.ts",
+      "e2e/aubade.spec.ts",
+      "e2e/a11y.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5037,
+    "cache_read_input_tokens": 16531,
+    "cost_usd": 0.0334991,
+    "duration_ms": 8828,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1169
+  }
+}

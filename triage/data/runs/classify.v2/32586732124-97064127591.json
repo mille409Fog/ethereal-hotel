@@ -1,0 +1,35 @@
+{
+  "case_id": "32586732124-97064127591",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "await expect(page.getByText('Unlocking the lobby')).toBeHidden({ timeout: 20_000 });",
+      "Expected: hidden",
+      "Received: undefined"
+    ],
+    "fix_rationale": "The lobby wait constants and per-test timeout live in the e2e specs and the Playwright config. Raising them, or cutting the work done at lobby startup, is the usual fix.",
+    "hypothesis": "The aubade lobby never finished loading (\"Unlocking the lobby\" never hid) within the 20s wait and the 30s test timeout. The lazy chunk, shader compile and CPU-rasterised raymarch on the GPU-less CI runner are too slow, so every aubade test timed out.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "playwright.config.ts",
+      "e2e/a11y.spec.ts",
+      "e2e/support/lobby.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5142,
+    "cache_read_input_tokens": 16964,
+    "cost_usd": 0.0306424,
+    "duration_ms": 6538,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 837
+  }
+}

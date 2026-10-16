@@ -1,0 +1,35 @@
+{
+  "case_id": "37385355841-112017165099",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "environment",
+    "confidence": "medium",
+    "evidence": [
+      "Protocol error (Runtime.callFunctionOn): Internal server error, session closed.",
+      "Test timeout of 30000ms exceeded.",
+      "Locator:  getByText('no WebGL2')",
+      "35 passed (4.4m)",
+      "npx playwright install --with-deps --only-shell chromium"
+    ],
+    "fix_rationale": "The Chromium launch flags (software GL such as SwiftShader) and browser install are set in the Playwright config and the workflow. Stabilizing the WebGL stack there should stop the browser crashes. The spec only needs a change if it should tolerate the missing GL.",
+    "hypothesis": "The aubade route tests (WebGL-heavy) failed on the headless-shell Chromium on the CI runner. The browser session died (\"Protocol error ... Internal server error, session closed\"), so tests timed out and later assertions found nothing. The cause is the runner's GL stack or browser crash, not the project's code. Only aubade.spec.ts failed, and 35 other tests passed.",
+    "suggested_files": [
+      "playwright.config.ts",
+      ".github/workflows/code-quality.yml",
+      "e2e/aubade.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4291,
+    "cache_read_input_tokens": 5981,
+    "cost_usd": 0.023026099999999997,
+    "duration_ms": 4450,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 526
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "branch": "dependabot/npm_and_yarn/other-npm-09b4c31aa7",
+  "created_at": "2026-09-14T19:26:53Z",
+  "earlier": [
+    {
+      "branch": "dependabot/npm_and_yarn/angular-c32c05d08e",
+      "case_id": "34155666741-101846850728",
+      "created_at": "2026-09-07T19:27:40Z",
+      "error_lines": ["Process completed with exit code 1."],
+      "failed_steps": ["npm audit (fails at high and above)"],
+      "sha": "55e1cc59d21e8f4b7555b784eda8162c560906e1"
+    }
+  ],
+  "history": {
+    "dependabot/npm_and_yarn/other-npm-09b4c31aa7": [],
+    "development-alpha": [
+      {
+        "created_at": "2026-09-14T13:48:35Z",
+        "event": "schedule",
+        "failed_steps": [],
+        "job_conclusion": "skipped",
+        "run_conclusion": "success",
+        "sha": "e59443b0bd1e9d3feb8b902af923a3f995e6517d"
+      },
+      {
+        "created_at": "2026-09-07T13:25:10Z",
+        "event": "schedule",
+        "failed_steps": [],
+        "job_conclusion": "skipped",
+        "run_conclusion": "success",
+        "sha": "e59443b0bd1e9d3feb8b902af923a3f995e6517d"
+      },
+      {
+        "created_at": "2026-08-31T14:58:13Z",
+        "event": "schedule",
+        "failed_steps": [],
+        "job_conclusion": "skipped",
+        "run_conclusion": "success",
+        "sha": "e59443b0bd1e9d3feb8b902af923a3f995e6517d"
+      },
+      {
+        "created_at": "2026-08-24T08:00:10Z",
+        "event": "schedule",
+        "failed_steps": [],
+        "job_conclusion": "skipped",
+        "run_conclusion": "success",
+        "sha": "e59443b0bd1e9d3feb8b902af923a3f995e6517d"
+      },
+      {
+        "created_at": "2026-08-22T17:06:30Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "success",
+        "sha": "e59443b0bd1e9d3feb8b902af923a3f995e6517d"
+      },
+      {
+        "created_at": "2026-08-21T17:06:51Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "success",
+        "sha": "0707c81d5ad406f489238fa99685fd9d697a1852"
+      },
+      {
+        "created_at": "2026-08-21T15:52:32Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "success",
+        "sha": "f4df850ba6dd237dc24424774b806c3d87966662"
+      },
+      {
+        "created_at": "2026-08-20T22:37:18Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "success",
+        "sha": "a3721a6095eb8148a951439b31fbf201273851b5"
+      },
+      {
+        "created_at": "2026-08-19T16:42:06Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "success",
+        "sha": "53c8be409bd4752c0b6538a0a844e510d6f4fe3d"
+      },
+      {
+        "created_at": "2026-08-17T16:40:34Z",
+        "event": "push",
+        "failed_steps": [],
+        "job_conclusion": "success",
+        "run_conclusion": "success",
+        "sha": "63e708b222247c914dc4eab4f2004a699efc84f0"
+      }
+    ],
+    "main": []
+  },
+  "job": "Advisories (npm audit, pip-audit)",
+  "sha": "ce314f58299d2402d379283ca287fe43b852a4b1",
+  "workflow": "Supply chain"
+}

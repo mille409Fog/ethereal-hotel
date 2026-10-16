@@ -1,0 +1,35 @@
+{
+  "case_id": "32768330789-97562775380",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Error: expect(locator).toBeHidden() failed",
+      "Locator:  getByText('Unlocking the lobby')",
+      "- Expect \"toBeHidden\" with timeout 20000ms"
+    ],
+    "fix_rationale": "The limits are the lobby-wait timeout constants in the specs and the Playwright global test timeout. Raising them, or sharing one longer lobby wait, fixes it.",
+    "hypothesis": "The aubade lobby did not finish loading within the fixed wait (20s lobby timeout inside a 30s test timeout) on the CPU-rasterised runner, so every test waiting for \"Unlocking the lobby\" to disappear timed out. The branch only bumps Python dev dependencies, so the frontend did not change; the lazy chunk, shader compile and software raymarch are slower than the time budget.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "e2e/a11y.spec.ts",
+      "playwright.config.ts",
+      "e2e/support/lobby.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4715,
+    "cache_read_input_tokens": 16233,
+    "cost_usd": 0.0322113,
+    "duration_ms": 9029,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1172
+  }
+}

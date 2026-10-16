@@ -1,0 +1,36 @@
+{
+  "case_id": "38077356702-114287016590",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "flaky",
+    "confidence": "low",
+    "evidence": [
+      "Error: expect(locator).toBeHidden() failed",
+      "2 × locator resolved to <p _ngcontent-ng-c1258585031=\"\" class=\"lobby__state lobby__state--quiet\">Unlocking the lobby…</p>",
+      "at waitForTheLobby (/home/runner/work/ethereal-hotel/ethereal-hotel/e2e/aubade.spec.ts:43:55)",
+      "Test timeout of 30000ms exceeded.",
+      "39 passed (4.1m)"
+    ],
+    "fix_rationale": "Re-run first. If it recurs, harden the shared lobby-wait helper and the Playwright timeouts or workers config, and check the headroom logic that decides when the lobby unlocks. The log excerpt omits the deciding lines, so this is a strong inference rather than a certainty.",
+    "hypothesis": "Five aubade e2e tests fail because the lobby never leaves its \"Unlocking the lobby…\" state within 20s. The lobby unlock is probably gated on render or frame headroom, which is timing-sensitive on a slow software-rendered CI runner. Most of the suite (39 of 44) passes and the failures are scattered, so this looks like intermittent load-dependent behaviour rather than a code break.",
+    "suggested_files": [
+      "e2e/support/lobby.ts",
+      "e2e/aubade.spec.ts",
+      "playwright.config.ts",
+      "scripts/lobby-headroom.mjs"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 3293,
+    "cache_read_input_tokens": 5981,
+    "cost_usd": 0.0244741,
+    "duration_ms": 7950,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 1070
+  }
+}

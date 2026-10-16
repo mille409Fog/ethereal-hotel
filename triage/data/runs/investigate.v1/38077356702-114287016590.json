@@ -1,0 +1,31 @@
+{
+  "case_id": "38077356702-114287016590",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: visible\n    Timeout:  20000ms",
+      "Test timeout of 30000ms exceeded.",
+      "Test timeout of 90000ms exceeded.",
+      "2026-10-09T16:03:56Z 33b01b833c (push): job failure, run failure — failed: Run end-to-end suite",
+      "CLAUDE.md, README.md, angular.json, public/Jacob_Miller_Resume_Scribe.pdf changed in commit 4ddcd61d75"
+    ],
+    "fix_rationale": "The tests wait on fixed time limits (20s lobby unlock, 30s and 90s test timeouts) for a heavy WebGL scene on a software-rendered runner. Raise those timeouts or make the lobby readiness wait cheaper in the spec and the Playwright config.",
+    "hypothesis": "The aubade 3D scene never finishes loading on the CI runner: \"Unlocking the lobby\" stays visible past the 20s wait and other tests hit their 30s/90s timeouts. The same aubade.spec.ts tests have failed on development-alpha since at least 2026-08-21, so this commit (PDF and docs only) didn't cause it.",
+    "suggested_files": ["e2e/aubade.spec.ts", "playwright.config.ts"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5459,
+    "cache_read_input_tokens": 17103,
+    "cost_usd": 0.031418299999999996,
+    "duration_ms": 7948,
+    "input_tokens": 6,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 5,
+    "output_tokens": 786
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "case_id": "32425079586-96605247772",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "high",
+    "evidence": [
+      "✘ [ERROR] total scripts exceeded maximum budget. Budget 870.00 kB was not met by 26.14 kB with a total of 896.14 kB.",
+      "▲ [WARNING] total scripts exceeded maximum budget. Budget 860.00 kB was not met by 36.14 kB with a total of 896.14 kB.",
+      "Application bundle generation failed. [9.304 seconds] - 2026-08-20T22:38:02.672Z"
+    ],
+    "fix_rationale": "Bundle budgets are configured in angular.json, so raise the budget there or trim the bundle. If a recent dependency upgrade inflated it, package.json and the lockfile are where to look.",
+    "hypothesis": "The Angular production build used by the e2e job failed because the total scripts size (896.14 kB) exceeded the configured bundle budget (error at 870 kB, warning at 860 kB). The code may work, but the bundle no longer fits the budget.",
+    "suggested_files": ["angular.json", "package.json", "package-lock.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 1276,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.0105981,
+    "duration_ms": 3719,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 487
+  }
+}

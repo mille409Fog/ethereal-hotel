@@ -1,0 +1,31 @@
+{
+  "case_id": "37668691757-112954507072",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "dependency",
+    "confidence": "high",
+    "evidence": [
+      "npm audit --audit-level=high",
+      "brace-expansion  4.0.0 - 5.0.11",
+      "Severity: high",
+      "undici  7.0.0 - 7.29.0",
+      "10 vulnerabilities (4 moderate, 6 high)"
+    ],
+    "fix_rationale": "The vulnerable packages are transitive, so refreshing the lockfile with `npm audit fix` resolves them. package.json would only change if a direct dependency or an override needs a bump, for example vitest and its coverage package.",
+    "hypothesis": "npm audit at --audit-level=high found 6 high-severity advisories in transitive packages (brace-expansion, browserslist, fast-uri, js-yaml, source-map-js, undici) that are locked at vulnerable versions in package-lock.json. All of them report a fix available via `npm audit fix`.",
+    "suggested_files": ["package-lock.json", "package.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 3438,
+    "cache_read_input_tokens": 5981,
+    "cost_usd": 0.0187641,
+    "duration_ms": 3513,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 441
+  }
+}

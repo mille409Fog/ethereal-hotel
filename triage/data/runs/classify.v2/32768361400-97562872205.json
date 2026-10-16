@@ -1,0 +1,30 @@
+{
+  "case_id": "32768361400-97562872205",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "dependency",
+    "confidence": "medium",
+    "evidence": [
+      "▲ [WARNING] bundle initial exceeded maximum budget. Budget 13.00 kB was not met by 253.16 kB with a total of 266.16 kB.",
+      "✘ [ERROR] bundle initial exceeded maximum budget. Budget 15.00 kB was not met by 251.16 kB with a total of 266.16 kB.",
+      "Application bundle generation failed. [8.785 seconds] - 2026-08-24T19:29:51.677Z",
+      "##[error]Process completed with exit code 1."
+    ],
+    "fix_rationale": "The branch is an Angular dependency bump, so the first fix is to check the pinned Angular versions in package.json and package-lock.json, or hold the bump back. If the new version legitimately changes the initial size, the budgets in angular.json need recalibrating. A 15 kB limit against a 266 kB bundle also looks suspiciously small.",
+    "hypothesis": "The Dependabot Angular group bump changed the production build's initial bundle to 266.16 kB. That is far over the configured initial budget (warning at 13 kB, error at 15 kB), so the build failed before Playwright ran. The upgrade is the likely cause, either by adding framework code to the initial chunk or by changing how the initial size is measured.",
+    "suggested_files": ["package.json", "package-lock.json", "angular.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 2098,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.0196861,
+    "duration_ms": 8075,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 1067
+  }
+}

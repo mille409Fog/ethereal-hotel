@@ -1,0 +1,36 @@
+{
+  "case_id": "32768243722-97562498597",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Error: expect(locator).toBeHidden() failed",
+      "Locator:  getByText('Unlocking the lobby')",
+      "Timeout:  20000ms",
+      "Protocol error (Runtime.callFunctionOn): Internal server error, session closed."
+    ],
+    "fix_rationale": "The lobby-ready wait and the Playwright timeouts are where the limit is set, so raising them or lightening the work done before the lobby is ready fixes the timeouts. The corridor label assertion in e2e/aubade.spec.ts may need updating separately.",
+    "hypothesis": "The aubade lobby never finished its lazy load and WebGL setup within the 20s wait and 30s test timeout, so \"Unlocking the lobby\" stayed visible and most aubade tests timed out. Software rendering on the CI runner is the likely reason it is slow. One failure, the corridor aria-label missing \"drawn in real time\", looks like a separate stale-assertion problem.",
+    "suggested_files": [
+      "e2e/support/lobby.ts",
+      "playwright.config.ts",
+      "e2e/aubade.spec.ts",
+      "e2e/a11y.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4508,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.0262661,
+    "duration_ms": 6523,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 761
+  }
+}

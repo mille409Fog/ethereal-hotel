@@ -1,0 +1,31 @@
+{
+  "case_id": "37668691654-112954506356",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Error: expect(locator).toBeHidden() failed\n\n    Locator:  getByText('Unlocking the lobby')\n    Expected: hidden",
+      "Test timeout of 30000ms exceeded.",
+      "development-alpha: 2026-10-07T18:37:14Z b989d24aa7 (push): job failure, run failure — failed: Run end-to-end suite",
+      "development-alpha: 2026-10-05T22:54:12Z c05308b6bf (push): job failure, run failure — failed: Run end-to-end suite",
+      "32 passed (5.4m)"
+    ],
+    "fix_rationale": "The lobby wait timeout (LOBBY_TIMEOUT) and the per-test timeout live in the specs and the Playwright config. Raising them, or making the lobby cheaper to render in CI, addresses the missed time limit. I did not read these files, so the paths are inferred from the stack traces and the usual Playwright layout.",
+    "hypothesis": "The aubade e2e tests time out waiting for 'Unlocking the lobby' to disappear (20s, then the 30s test timeout). The lobby loads a lazy chunk, compiles a shader and does a CPU-rasterised raymarch, which is too slow on the CI runner. The job was already failing on development-alpha for many runs before this Angular bump, so the upgrade did not cause it.",
+    "suggested_files": ["e2e/aubade.spec.ts", "e2e/a11y.spec.ts", "playwright.config.ts"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5320,
+    "cache_read_input_tokens": 10344,
+    "cost_usd": 0.030312400000000003,
+    "duration_ms": 6114,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 4,
+    "output_tokens": 799
+  }
+}

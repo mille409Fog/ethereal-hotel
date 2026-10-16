@@ -1,0 +1,31 @@
+{
+  "case_id": "34155666741-101846850728",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "dependency",
+    "confidence": "medium",
+    "evidence": [
+      "browserslist  <=4.28.6\nSeverity: high",
+      "fast-uri  3.0.0 - 3.1.5\nSeverity: high",
+      "2 high severity vulnerabilities",
+      "2026-08-22T17:06:30Z e59443b0bd (push): job success, run success",
+      "chore(deps): bump the angular group across 1 directory with 13 updates"
+    ],
+    "fix_rationale": "Both advisories say a fix is available through `npm audit fix`. Running it on the PR branch raises the transitive browserslist and fast-uri versions in package-lock.json. If the ranges block that, add overrides in package.json.",
+    "hypothesis": "The Angular group bump rewrote package-lock.json (about 4000 lines) and left browserslist <=4.28.6 and fast-uri 3.0.0–3.1.5 in the tree. npm audit reports both as high severity. The job passed on development-alpha, so the lockfile change introduced the failure.",
+    "suggested_files": ["package-lock.json", "package.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 3170,
+    "cache_read_input_tokens": 8374,
+    "cost_usd": 0.0196854,
+    "duration_ms": 5250,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 4,
+    "output_tokens": 616
+  }
+}

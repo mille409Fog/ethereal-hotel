@@ -1,0 +1,31 @@
+{
+  "case_id": "37668222352-112952870426",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Protocol error (Runtime.callFunctionOn): Internal server error, session closed.",
+      "job_history development-alpha: the job failed with 'Run end-to-end suite' on every one of the 10 earlier runs shown, apart from one cancelled run",
+      "earlier_failures at c05308b6bf: the same aubade.spec.ts:54, :80, :89, :102, :282 and :296 tests failed",
+      "commit b989d24aa7 'fix: increased maximum build size' touched only README.md, angular.json, package.json and package-lock.json"
+    ],
+    "fix_rationale": "The failures are time-limit misses in the aubade spec and its Playwright config. A fix would raise the timeouts, or make the scene lighter or software-rendered under CI. I did not open either file, so I haven't confirmed the config path or the current timeout values.",
+    "hypothesis": "The aubade (WebGL) e2e tests were already failing on development-alpha before this commit. On the CI runner's headless Chromium the heavy scene exceeds the 30s test timeout and the browser session then closes. The commit only changed the build size budget and dependencies, so it did not cause this.",
+    "suggested_files": ["e2e/aubade.spec.ts", "playwright.config.ts"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 7174,
+    "cache_read_input_tokens": 28100,
+    "cost_usd": 0.046002,
+    "duration_ms": 12463,
+    "input_tokens": 8,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 7,
+    "output_tokens": 1448
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "case_id": "32061548169-95483734076",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Error: expect(locator).toBeHidden() failed",
+      "Received: visible",
+      "Expect \"toBeHidden\" with timeout 20000ms",
+      "Expected substring: \"drawn in real time\""
+    ],
+    "fix_rationale": "The lobby wait (LOBBY_TIMEOUT) and the per-test timeout live in the aubade spec and the Playwright config, so raising them or trimming the work done during lobby load is the usual fix. The workflow file is listed because the Actions bump may have changed the runner or browser setup.",
+    "hypothesis": "Eight of the nine aubade e2e failures are the lobby not becoming ready in time. \"Unlocking the lobby\" stays visible past the 20s LOBBY_TIMEOUT, and the 30s test timeout is then exceeded. The Dependabot branch only bumps GitHub Actions, so the project code is unchanged. The likely cause is slow software-rendered WebGL on the runner. The corridor aria-label assertion (test 5) looks like a related symptom of a lower-quality or fallback render path.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "playwright.config.ts",
+      "e2e/support/lobby.ts",
+      ".github/workflows/code-quality.yml"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 5371,
+    "cache_read_input_tokens": 16713,
+    "cost_usd": 0.0374033,
+    "duration_ms": 10516,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1424
+  }
+}

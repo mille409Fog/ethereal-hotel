@@ -1,0 +1,31 @@
+{
+  "case_id": "37803711443-113402338025",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Error: expect(locator).toBeHidden() failed\n    Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: visible\n    Timeout:  20000ms",
+      "Test timeout of 30000ms exceeded.",
+      "2026-10-07T18:37:14Z b989d24aa7 (push): job failure, run failure — failed: Run end-to-end suite",
+      "2026-10-05T22:54:12Z on `development-alpha` at c05308b6bf — failed: Run end-to-end suite (same aubade.spec.ts:54/80/89/102 failures)",
+      "commit 640ea2567d13f20a26e605fd8eabcf45ef71d36c fix: package lock update (only package-lock.json and package.json)"
+    ],
+    "fix_rationale": "The waitForTheLobby helper (aubade.spec.ts) and waitForSettledAubade (a11y.spec.ts) hold the 20s readiness wait, and the Playwright config holds the 30s test timeout. Raising those or speeding up lobby unlock on software-rendered CI is the fix.",
+    "hypothesis": "The aubade lobby never leaves its \"Unlocking the lobby…\" state within the 20s wait (30s test timeout) on the CI runner. The job has failed the same way on development-alpha since at least August, so this lock-file-only commit did not cause it. It is a missed readiness time limit.",
+    "suggested_files": ["e2e/aubade.spec.ts", "e2e/a11y.spec.ts", "playwright.config.ts"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 6405,
+    "cache_read_input_tokens": 18661,
+    "cost_usd": 0.0372281,
+    "duration_ms": 9485,
+    "input_tokens": 6,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 5,
+    "output_tokens": 973
+  }
+}

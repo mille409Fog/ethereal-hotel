@@ -26,10 +26,10 @@ from ci_triage.github import (
     Gh,
     GhError,
     Job,
-    base_job_name,
     changed_files,
     jobs_of,
     runs_on,
+    same_job,
 )
 from ci_triage.models import (
     Category,
@@ -58,15 +58,6 @@ def cached_jobs(gh: Gh) -> JobsLookup:
     return lookup
 
 
-def _same_job(jobs: list[Job], name: str) -> Job | None:
-    exact = [job for job in jobs if job.name == name]
-    if exact:
-        return exact[0]
-    base = base_job_name(name)
-    renamed = [job for job in jobs if base_job_name(job.name) == base]
-    return renamed[0] if renamed else None
-
-
 NO_FIX: Final = FixEvidence(
     fix_run_id=None, fix_sha=None, fix_files=(), same_sha_rerun=False
 )
@@ -93,7 +84,7 @@ def find_fix(gh: Gh, case: FailedJob, jobs: JobsLookup) -> FixEvidence:
 
     last_failing_sha = case.head_sha
     for run in sorted(later, key=lambda r: r.created_at):
-        job = _same_job(jobs(run.run_id), case.job)
+        job = same_job(jobs(run.run_id), case.job)
         if job is None:
             continue
         if job.conclusion != "success":

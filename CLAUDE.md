@@ -27,37 +27,6 @@ product; it is a hiring artifact. That distinction decides most arguments:
 - The owner writes and thinks in long form. `ROADMAP.md` and `AUBADE.md` are the actual planning
   documents — they carry reasoning, not just tasks. Read the relevant one before proposing work.
 
-## Jacob writes one piece of every commit
-
-He is keeping his hands in the code without giving up the throughput of delegating: **every commit
-contains one unit written by him, by hand.** Not by you. Skipping it silently is the one
-unrecoverable mistake in this section.
-
-**The unit is currently level 1.** It widens as his fluency returns — only he moves it, so never
-promote him unasked, and never shrink it because a task looks hard.
-
-| Level | What he writes                                       |
-| ----- | ---------------------------------------------------- |
-| 1     | One function or method, to a signature you hand him. |
-| 2     | One class, component, or test case.                  |
-| 3     | The whole file carrying the commit's idea.           |
-
-The loop is the same at every level:
-
-1. **Pick the unit first, and pick for signal** — the rule, the validation, the state transition —
-   not the barrel export or a getter. Say which you picked and why; he may swap it.
-2. **Build everything around it**, including the tests that will judge it, so his piece drops into a
-   slot already shaped for it. Leave the body a `TODO`, never a guess he has to overwrite.
-3. **Brief him on contract, not source**: signature and types, what goes in and comes back, the edge
-   cases that matter, the nearest thing in the repo to model on (as `path:line`), the traps. Then
-   **stop and wait.** Do not paste a working version "for reference" — that is writing it with extra
-   steps.
-4. **Review what he writes** as you would a PR, then run the gates.
-
-**Abort is always available and costs nothing.** If he hands it back, write it — no re-offering, no
-remarks on the choice. He can also call the ritual off for a whole session. Skip it unasked only for
-wholly mechanical commits (formatting, dependency bumps, generated files). When unsure, ask.
-
 ## Where to look — don't read them all
 
 | File                | Size | Read it when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |

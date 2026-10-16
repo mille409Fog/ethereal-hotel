@@ -1,0 +1,36 @@
+{
+  "case_id": "32768362122-97562874201",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Locator:  getByText('Unlocking the lobby')",
+      "Expected: hidden",
+      "Received: visible",
+      "30 passed (5.8m)"
+    ],
+    "fix_rationale": "The lobby wait (LOBBY_TIMEOUT) and the per-test timeout live in the e2e specs and the Playwright config, so raising them, or reducing the work done before the lobby is ready, fixes a missed time limit. The skip-link test should also wait for the app to be ready before pressing Tab.",
+    "hypothesis": "The aubade lobby never finished loading within the fixed waits: \"Unlocking the lobby\" stayed visible past the 20s LOBBY_TIMEOUT and the 30s per-test timeout. Every aubade-route test failed the same way, and the skip-link test probably failed because the page wasn't ready when Tab was pressed. The lobby (lazy chunk plus WebGL scene) is slow to become ready on the CI runner, so the time budgets are too tight. The pip runtime bump on this branch doesn't touch the frontend, so it is unlikely to be the cause.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "e2e/a11y.spec.ts",
+      "playwright.config.ts",
+      "e2e/support/lobby.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4248,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.027586100000000002,
+    "duration_ms": 7385,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 997
+  }
+}

@@ -174,3 +174,13 @@ _MATRIX_SUFFIX = re.compile(r"\s*\((?:\d+(?:\.\d+)*|\d+(?:\.\d+)*\.x)\)$")
 
 def base_job_name(name: str) -> str:
     return _MATRIX_SUFFIX.sub("", name)
+
+
+def same_job(jobs: list[Job], name: str) -> Job | None:
+    """The job called `name` in a run, matching across a matrix-suffix rename."""
+    exact = [job for job in jobs if job.name == name]
+    if exact:
+        return exact[0]
+    base = base_job_name(name)
+    renamed = [job for job in jobs if base_job_name(job.name) == base]
+    return renamed[0] if renamed else None

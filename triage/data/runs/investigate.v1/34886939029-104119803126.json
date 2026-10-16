@@ -1,0 +1,31 @@
+{
+  "case_id": "34886939029-104119803126",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "dependency",
+    "confidence": "medium",
+    "evidence": [
+      "browserslist  <=4.28.6\nSeverity: high",
+      "fast-uri  3.0.0 - 3.1.5\nSeverity: high",
+      "js-yaml  4.0.0 - 4.3.1\nSeverity: high",
+      "19 vulnerabilities (3 low, 13 moderate, 3 high)",
+      "chore(deps-dev): bump the other-npm group across 1 directory with 2 updates"
+    ],
+    "fix_rationale": "The log reports 'fix available via npm audit fix' for the high-severity packages. Refreshing the lockfile to patched browserslist, fast-uri and js-yaml should clear the gate. If that fails, add overrides in package.json.",
+    "hypothesis": "`npm audit --audit-level=high` found newly published advisories in transitive packages (browserslist, fast-uri, js-yaml). The commit only bumped @axe-core/playwright and @playwright/test, so it did not cause them. The vulnerable versions were already locked in package-lock.json. The only recent success on development-alpha was 2026-08-22, and the later scheduled runs skipped the job, so nothing there shows the advisories were absent before.",
+    "suggested_files": ["package-lock.json", "package.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 3867,
+    "cache_read_input_tokens": 9292,
+    "cost_usd": 0.024025200000000003,
+    "duration_ms": 8100,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 4,
+    "output_tokens": 762
+  }
+}

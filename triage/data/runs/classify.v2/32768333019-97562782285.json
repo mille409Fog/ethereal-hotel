@@ -1,0 +1,37 @@
+{
+  "case_id": "32768333019-97562782285",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: visible\n    Timeout:  20000ms",
+      "Expected: \"Hôtel Aubade - Floor 0, The Desk\"\n    Received: \"\"",
+      "waiting for locator(':focus')",
+      "30 passed (5.7m)"
+    ],
+    "fix_rationale": "The test timeout and the lobby-ready wait are set in the Playwright config and the shared lobby helpers. Raising them, or reducing the work done before the lobby is ready, addresses the missed limit. If the lobby still never loads with generous limits, check the bumped dependencies in package.json.",
+    "hypothesis": "Every failing test is on the aubade route. They time out waiting for the lazy-loaded lobby to finish (\"Unlocking the lobby\" never goes hidden within 20s, and the 30s test limit is exceeded). The runner's slow software rendering is the likely reason the lobby isn't ready in time, and the Dependabot bump doesn't clearly cause it. The 30 tests that don't touch aubade passed.",
+    "suggested_files": [
+      "playwright.config.ts",
+      "e2e/aubade.spec.ts",
+      "e2e/a11y.spec.ts",
+      "e2e/support/lobby.ts",
+      "package.json"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4204,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.026490100000000003,
+    "duration_ms": 6806,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 905
+  }
+}

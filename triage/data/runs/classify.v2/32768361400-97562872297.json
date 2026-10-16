@@ -1,0 +1,29 @@
+{
+  "case_id": "32768361400-97562872297",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "ERROR: Coverage for branches (91.95%) does not meet global threshold (92%)",
+      "##[error]Process completed with exit code 1.",
+      "Lines        : 97.21% ( 1887/1941 )"
+    ],
+    "fix_rationale": "The coverage floor is most likely configured in angular.json (the test target's coverageThresholds). Adjusting it, or adding specs for the uncovered branches, clears the 0.05-point gap. package.json is the fallback if the threshold is set in the test script.",
+    "hypothesis": "The unit tests ran, but branch coverage came out at 91.95%, just under the 92% global floor. The failing branch is a Dependabot Angular bump. It probably changed the compiled or instrumented branch count, or left a few new branches uncovered.",
+    "suggested_files": ["angular.json", "package.json", "src/test-setup.ts"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4810,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.0260341,
+    "duration_ms": 4874,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 617
+  }
+}

@@ -207,3 +207,50 @@ def test_doctor_exits_one_and_names_the_risk_when_refused(
 @pytest.mark.parametrize("argv", [[], ["doctr"], ["doctor", "extra"]])
 def test_doctor_rejects_anything_else(argv: list[str]) -> None:
     assert cli.main(argv) == 2
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["eval", "--llm", "--split"],
+        ["eval", "--llm", "--split", "everything"],
+        ["eval", "--llm", "holdout"],
+        ["eval", "--split", "tune"],
+        ["eval", "--agents"],
+        ["eval", "--agent", "--llm"],
+        ["trace"],
+        ["trace", "1-2", "3-4"],
+    ],
+)
+def test_eval_rejects_malformed_model_arguments(argv: list[str]) -> None:
+    assert cli.main(argv) == 2
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    [
+        (["eval", "--llm"], ("llm", "holdout")),
+        (["eval", "--llm", "--split", "tune"], ("llm", "tune")),
+        (["eval", "--agent"], ("agent", "holdout")),
+        (["eval", "--agent", "--split", "all"], ("agent", "all")),
+    ],
+)
+def test_model_evals_default_to_the_holdout(
+    monkeypatch: pytest.MonkeyPatch, argv: list[str], expected: tuple[str, str]
+) -> None:
+    chosen: list[tuple[str, str]] = []
+
+    def record(strategy: str, split: str) -> int:
+        chosen.append((strategy, split))
+        return 0
+
+    monkeypatch.setattr(cli, "eval_model_cmd", record)
+    assert cli.main(argv) == 0
+    assert chosen == [expected]
+
+
+def test_trace_names_the_traced_cases_when_one_is_missing(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert cli.main(["trace", "no-such-case"]) == 1
+    assert "No trace for no-such-case" in capsys.readouterr().err

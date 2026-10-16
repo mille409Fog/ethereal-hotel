@@ -1,6 +1,6 @@
 """The typed objects that pass between pipeline steps, and their JSON form.
 
-    fetch → FailedJob (carrying an Excerpt) → classify → Category
+    fetch → FailedJob (carrying an Excerpt) → classify → TriageRecord (a Triage + Usage)
                       ↘ labels: FixEvidence + Judgment → GoldenCase
 
 One case is one failed *job*, not one failed run. A run where the end-to-end and the
@@ -14,7 +14,7 @@ because these files are read back from disk and a hand-edited label is still inp
 
 from dataclasses import asdict, dataclass
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, TypeVar
 
 JsonObject = dict[str, object]
 
@@ -160,7 +160,163 @@ class GoldenCase:
         )
 
 
+class Confidence(StrEnum):
+    """How sure the triage is. Words, not a number: a model's 0.83 is not calibrated,
+    and three levels are all Stage 6 needs to decide what to escalate."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+@dataclass(frozen=True)
+class Triage:
+    """The answer to one case: the brief's triage record, minus where it came from."""
+
+    category: Category
+    hypothesis: str
+    # The log lines (or other facts) the hypothesis rests on, quoted.
+    evidence: tuple[str, ...]
+    # Repository paths the fix probably touches, most likely first.
+    suggested_files: tuple[str, ...]
+    fix_rationale: str
+    confidence: Confidence
+
+    def to_json(self) -> JsonObject:
+        return {
+            "category": self.category.value,
+            "hypothesis": self.hypothesis,
+            "evidence": list(self.evidence),
+            "suggested_files": list(self.suggested_files),
+            "fix_rationale": self.fix_rationale,
+            "confidence": self.confidence.value,
+        }
+
+    @classmethod
+    def from_json(cls, data: JsonObject) -> "Triage":
+        """Validate a model's answer. The CLI already checked it against the schema;
+        this is the second check, against our types, and it raises ValueError on
+        anything the first one let through."""
+        return cls(
+            category=_enum(Category, data, "category"),
+            hypothesis=_str(data, "hypothesis"),
+            evidence=_str_tuple(data, "evidence"),
+            suggested_files=_str_tuple(data, "suggested_files"),
+            fix_rationale=_str(data, "fix_rationale"),
+            confidence=_enum(Confidence, data, "confidence"),
+        )
+
+
+@dataclass(frozen=True)
+class Usage:
+    """What one model call spent, as `claude -p --output-format json` reports it.
+
+    `cost_usd` is Claude Code's client-side estimate at API list prices. On the
+    subscription nothing is billed, so it is notional: a proxy for quota, not money.
+    """
+
+    model: str
+    input_tokens: int
+    cache_creation_input_tokens: int
+    cache_read_input_tokens: int
+    output_tokens: int
+    cost_usd: float
+    duration_ms: int
+    num_turns: int
+    # How many `claude` processes it took, retries included.
+    attempts: int
+
+    def to_json(self) -> JsonObject:
+        return asdict(self)
+
+    @classmethod
+    def from_json(cls, data: JsonObject) -> "Usage":
+        cost = data.get("cost_usd")
+        if not isinstance(cost, int | float) or isinstance(cost, bool):
+            raise ValueError(f"cost_usd: expected a number, got {cost!r}")
+        return cls(
+            model=_str(data, "model"),
+            input_tokens=_int(data, "input_tokens"),
+            cache_creation_input_tokens=_int(data, "cache_creation_input_tokens"),
+            cache_read_input_tokens=_int(data, "cache_read_input_tokens"),
+            output_tokens=_int(data, "output_tokens"),
+            cost_usd=float(cost),
+            duration_ms=_int(data, "duration_ms"),
+            num_turns=_int(data, "num_turns"),
+            attempts=_int(data, "attempts"),
+        )
+
+
+# model: one call (Stage 3). agent: an investigation with tools (Stage 4). rules: the
+# Stage 2 baseline, standing in because neither gave a usable answer.
+Source = Literal["model", "agent", "rules"]
+SOURCES: tuple[Source, ...] = ("model", "agent", "rules")
+_SOURCE_BY_NAME: dict[str, Source] = {source: source for source in SOURCES}
+
+
+@dataclass(frozen=True)
+class TriageRecord:
+    """One case triaged: the answer, who gave it, and what it cost.
+
+    `source` is "rules" when the model's answer could not be used and the Stage 2
+    baseline stood in; `fallback_reason` then says why. A fallback still spent
+    whatever the failed calls cost, so `usage` is kept when there was any.
+    """
+
+    case_id: str
+    prompt_version: str
+    source: Source
+    triage: Triage
+    usage: Usage | None
+    fallback_reason: str | None
+
+    def to_json(self) -> JsonObject:
+        return {
+            "case_id": self.case_id,
+            "prompt_version": self.prompt_version,
+            "source": self.source,
+            "triage": self.triage.to_json(),
+            "usage": None if self.usage is None else self.usage.to_json(),
+            "fallback_reason": self.fallback_reason,
+        }
+
+    @classmethod
+    def from_json(cls, data: JsonObject) -> "TriageRecord":
+        triage = data.get("triage")
+        usage = data.get("usage")
+        if not isinstance(triage, dict):
+            raise ValueError("triage: expected an object")
+        if usage is not None and not isinstance(usage, dict):
+            raise ValueError("usage: expected an object or null")
+        raw = _str(data, "source")
+        source = _SOURCE_BY_NAME.get(raw)
+        if source is None:
+            raise ValueError(
+                f"source: expected one of {', '.join(SOURCES)}, got {raw!r}"
+            )
+        return cls(
+            case_id=_str(data, "case_id"),
+            prompt_version=_str(data, "prompt_version"),
+            source=source,
+            triage=Triage.from_json(triage),
+            usage=None if usage is None else Usage.from_json(usage),
+            fallback_reason=_optional_str(data, "fallback_reason"),
+        )
+
+
 # --- field readers: every one raises ValueError naming the field ------------------
+
+
+E = TypeVar("E", bound=StrEnum)
+
+
+def _enum(kind: type[E], data: JsonObject, key: str) -> E:
+    value = _str(data, key)
+    try:
+        return kind(value)
+    except ValueError:
+        allowed = ", ".join(member.value for member in kind)
+        raise ValueError(f"{key}: expected one of {allowed}, got {value!r}") from None
 
 
 def _str(data: JsonObject, key: str) -> str:

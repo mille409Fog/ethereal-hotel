@@ -1,0 +1,36 @@
+{
+  "case_id": "37383859048-112012213886",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "regression",
+    "confidence": "medium",
+    "evidence": [
+      "Locator: getByText(/written and not built/)",
+      "Expected: visible",
+      "Error: element(s) not found",
+      "> 400 |     await expect(page.getByText(/written and not built/)).toBeVisible();",
+      "43 passed (3.5m)"
+    ],
+    "fix_rationale": "The reader edition template or content must contain the sentence, or the spec's expected text must be updated if the wording changed on purpose. The edition data and template are the most likely places for the copy change.",
+    "hypothesis": "The reader edition no longer renders text matching /written and not built/ (copy changed or the sentence was removed or reworded), so the e2e assertion fails deterministically. The first assertion, 'The Mirror Corridor', passed, so the page loaded. Only that sentence is missing.",
+    "suggested_files": [
+      "src/aubade/reader/reader.html",
+      "src/aubade/reader/edition.ts",
+      "e2e/aubade.spec.ts",
+      "src/aubade/reader/reader.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 1928,
+    "cache_read_input_tokens": 5981,
+    "cost_usd": 0.0129541,
+    "duration_ms": 4934,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 464
+  }
+}

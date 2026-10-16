@@ -1,0 +1,29 @@
+{
+  "case_id": "31725292781-94532050604",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "dependency",
+    "confidence": "medium",
+    "evidence": ["renderer version, so it genuinely is stale; regenerating is correct."],
+    "fix_rationale": "Regenerate and commit the résumé PDF with the new renderer. If the output differs only because of the action or runner version, adjust the render script or the workflow's pinned versions instead.",
+    "hypothesis": "The Dependabot GitHub Actions bump changed the toolchain or renderer version used to build the résumé PDF. The committed PDF no longer matches the regenerated output, so the \"is current\" check fails. The script's own message says the PDF is genuinely stale and regenerating is correct.",
+    "suggested_files": [
+      "public/jacob-miller-resume.pdf",
+      "scripts/render-resume.mjs",
+      ".github/workflows/code-quality.yml"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 1969,
+    "cache_read_input_tokens": 13482,
+    "cost_usd": 0.0198722,
+    "duration_ms": 8116,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 3,
+    "output_tokens": 1064
+  }
+}

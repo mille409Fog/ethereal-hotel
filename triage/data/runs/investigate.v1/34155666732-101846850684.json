@@ -1,0 +1,31 @@
+{
+  "case_id": "34155666732-101846850684",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "✘ [ERROR] bundle initial exceeded maximum budget. Budget 15.00 kB was not met by 251.86 kB with a total of 266.86 kB.",
+      "angular.json:35:                  \"maximumWarning\": \"13kB\",",
+      "angular.json:36:                  \"maximumError\": \"15kB\"",
+      "2026-08-24T19:28:30Z on `dependabot/npm_and_yarn/angular-341a2ec7ce` at a772afcc9d — failed: Run end-to-end suite  Process completed with exit code 1.",
+      "development-alpha: 2026-08-22T17:06:30Z e59443b0bd (push): job failure, run failure — failed: Run end-to-end suite"
+    ],
+    "fix_rationale": "Raise the \"initial\" budget in angular.json to fit the real initial bundle of about 267 kB, for example a warning at 300kB and an error at 350kB. The commit only changed package.json and package-lock.json, so the limit is what needs fixing.",
+    "hypothesis": "The production build trips the \"initial\" bundle budget in angular.json (error at 15kB, warning at 13kB) against a 266.86 kB initial bundle. The budget is about 18x too small, so it is a pre-existing misconfigured limit, not growth from the Angular 22.0.5→22.1.5 bump. The earlier angular dependabot branch (a772afcc9d) failed the same job with only the exit-code error, which is consistent with the same budget failure.",
+    "suggested_files": ["angular.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4437,
+    "cache_read_input_tokens": 13804,
+    "cost_usd": 0.0308804,
+    "duration_ms": 9543,
+    "input_tokens": 6,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 7,
+    "output_tokens": 1174
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "case_id": "34886939096-104119803759",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Error: expect(locator).toBeHidden() failed — Locator: getByText('Unlocking the lobby') ... Timeout: 20000ms",
+      "Test timeout of 30000ms exceeded.",
+      "development-alpha: 2026-08-22T17:06:30Z e59443b0bd (push): job failure, run failure — failed: Run end-to-end suite",
+      "2026-08-31 dependabot/npm_and_yarn/lint-and-test-5208d5ac82: same a11y.spec.ts:96 and aubade.spec.ts:54/80/89/102 failures",
+      "e2e/aubade.spec.ts:40: const LOBBY_TIMEOUT = 20_000;"
+    ],
+    "fix_rationale": "The lobby wait (LOBBY_TIMEOUT 20s, duplicated in a11y.spec.ts) and the per-test timeout in playwright.config.ts are the limits being missed. Raise them, or fix why the lobby is slow to load under the headless shell, on development-alpha rather than in the dependency bump.",
+    "hypothesis": "The aubade route never finishes loading (\"Unlocking the lobby\" stays visible) within the fixed 20s wait and 30s test timeout. The same e2e job was already failing on development-alpha and on other dependabot branches before this Playwright/axe bump, so the upgrade did not cause it. The lazy chunk or renderer is too slow on the CI runner.",
+    "suggested_files": ["e2e/aubade.spec.ts", "e2e/a11y.spec.ts", "playwright.config.ts"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 7311,
+    "cache_read_input_tokens": 29382,
+    "cost_usd": 0.0436982,
+    "duration_ms": 11502,
+    "input_tokens": 8,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 7,
+    "output_tokens": 1150
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "case_id": "37385355866-112017164502",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "dependency",
+    "confidence": "high",
+    "evidence": [
+      "23 vulnerabilities (2 low, 13 moderate, 6 high, 2 critical)",
+      "piscina  5.0.0 - 5.3.1\nSeverity: critical",
+      "Commit c05308b6bf changed only CLAUDE.md and ROADMAP.md",
+      "2026-10-05T22:39:29Z cf6642a105 (push): job failure, run failure — failed: npm audit (fails at high and above)"
+    ],
+    "fix_rationale": "Every report says a fix is available via npm audit fix, so refreshing the lockfile to patched versions should clear the gate. Re-run the audit afterward to check for any remaining advisories.",
+    "hypothesis": "npm audit reports newly published advisories (high/critical) against transitive packages in the lockfile (piscina, undici, js-yaml, fast-uri, brace-expansion, browserslist). The commit only touched docs, and the job already failed the same way on the previous push to development-alpha.",
+    "suggested_files": ["package-lock.json", "package.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4464,
+    "cache_read_input_tokens": 10239,
+    "cost_usd": 0.0248279,
+    "duration_ms": 5591,
+    "input_tokens": 4,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 4,
+    "output_tokens": 594
+  }
+}

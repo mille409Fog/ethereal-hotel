@@ -1,0 +1,31 @@
+{
+  "case_id": "37383859005-112012213109",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "dependency",
+    "confidence": "high",
+    "evidence": [
+      "piscina  5.0.0 - 5.3.1",
+      "Severity: critical",
+      "undici  7.0.0 - 7.29.0",
+      "23 vulnerabilities (2 low, 13 moderate, 6 high, 2 critical)",
+      "fix available via `npm audit fix`"
+    ],
+    "fix_rationale": "Running npm audit fix updates the vulnerable resolved versions in package-lock.json. package.json may also need bumps, or overrides, for any direct dependency ranges that block the patched versions.",
+    "hypothesis": "npm audit at --audit-level=high found newly published advisories in transitive and direct dependencies (piscina critical, undici, brace-expansion, browserslist, fast-uri, js-yaml high). The lockfile pins vulnerable versions, though a fix is available for each.",
+    "suggested_files": ["package-lock.json", "package.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 3813,
+    "cache_read_input_tokens": 5981,
+    "cost_usd": 0.0201041,
+    "duration_ms": 3299,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 425
+  }
+}

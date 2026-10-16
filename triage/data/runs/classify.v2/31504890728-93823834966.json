@@ -1,0 +1,37 @@
+{
+  "case_id": "31504890728-93823834966",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "dependency",
+    "confidence": "low",
+    "evidence": [
+      "##[error]  1) [chromium] › e2e/a11y.spec.ts:160:7 › reduced motion › the looping heartbeat and pulse animations are stopped",
+      "- Array []",
+      "+   \"heartbeat\",",
+      "+   \"pulse-glow\",",
+      "  6 passed (6.8s)"
+    ],
+    "fix_rationale": "The failure only appears on the Dependabot branch, so the bumped versions in package.json and package-lock.json are the likely cause. If the new version is correct, the test in e2e/a11y.spec.ts or the reduced-motion CSS needs adjusting.",
+    "hypothesis": "On a Dependabot dependency-bump branch, the reduced-motion test finds the heartbeat and pulse-glow CSS animations still running. The upgrade, probably of Angular, Playwright or the Chromium build, likely changed how animations are reported or how the prefers-reduced-motion override applies. The \"unnamed\" entry suggests a changed getAnimations() result.",
+    "suggested_files": [
+      "package.json",
+      "package-lock.json",
+      "e2e/a11y.spec.ts",
+      "src/app/dashboard/dashboard.css",
+      "src/styles.css"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 8071,
+    "cache_read_input_tokens": 0,
+    "cost_usd": 0.037638,
+    "duration_ms": 4267,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 535
+  }
+}

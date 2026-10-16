@@ -1,0 +1,36 @@
+{
+  "case_id": "37668691654-112954506356",
+  "fallback_reason": null,
+  "prompt_version": "classify.v1",
+  "source": "model",
+  "triage": {
+    "category": "dependency",
+    "confidence": "medium",
+    "evidence": [
+      "Expected: \"Hôtel Aubade - Floor 0, The Desk\"\n    Received: \"\"",
+      "Locator:  getByText('Unlocking the lobby')\n    Expected: hidden\n    Received: undefined",
+      "await expect(page.getByText('Unlocking the lobby')).toBeHidden({ timeout: 20_000 });",
+      "32 passed (5.4m)"
+    ],
+    "fix_rationale": "The failure is tied to the Angular version bump, so the fix is probably in the pinned versions in package.json and package-lock.json, or in the aubade route and component setup that the new version no longer supports. Reproducing locally with the upgraded packages should show the real error.",
+    "hypothesis": "The Dependabot Angular group bump appears to have broken the lazy-loaded /aubade route. The page title stays empty and the \"Unlocking the lobby\" loader never clears, so every test that opens the lobby times out. The non-aubade e2e tests still pass, which points to this one route rather than a general runner slowdown.",
+    "suggested_files": [
+      "package.json",
+      "package-lock.json",
+      "src/aubade/aubade.ts",
+      "src/app/app.routes.ts",
+      "src/aubade/renderer.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 3922,
+    "cache_read_input_tokens": 5981,
+    "cost_usd": 0.0252801,
+    "duration_ms": 7105,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 899
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "case_id": "32046692134-95436136436",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Error: expect(locator).toBeHidden() failed",
+      "Locator:  getByText('Unlocking the lobby')",
+      "Expected: hidden",
+      "Received: visible"
+    ],
+    "fix_rationale": "The wait budgets (LOBBY_TIMEOUT in aubade.spec.ts, the twin helper in a11y.spec.ts, the shared lobby helper, and the per-test timeout in the Playwright config) are where the limit is set. Raising them, or cutting the work done before the lobby is ready, is the fix.",
+    "hypothesis": "The Aubade lobby never finished loading within the fixed wait. The \"Unlocking the lobby\" overlay was still visible after the 20s LOBBY_TIMEOUT, and the 30s per-test timeout then expired. The lobby is a lazy chunk plus WebGL scene on a slow, GPU-less headless runner, so the time limit is too tight for that condition.",
+    "suggested_files": [
+      "e2e/aubade.spec.ts",
+      "e2e/support/lobby.ts",
+      "playwright.config.ts",
+      "e2e/a11y.spec.ts"
+    ]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4507,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.0254421,
+    "duration_ms": 5682,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 679
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "case_id": "37956366869-113907787789",
+  "fallback_reason": null,
+  "prompt_version": "investigate.v1",
+  "source": "agent",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "Test timeout of 30000ms exceeded.",
+      "Expected: hidden / Received: visible / Timeout: 20000ms — getByText('Unlocking the lobby')",
+      "Test timeout of 90000ms exceeded. (the camera › breathes when motion is allowed)",
+      "job_history development-alpha: 2026-10-08 640ea2567d job failure — failed: Run end-to-end suite (and every earlier run listed)",
+      "38 passed (4.2m)"
+    ],
+    "fix_rationale": "The readiness waits (waitForTheLobby/openStill) and the per-test timeouts live in the spec and Playwright config. Raising them, or making the lobby unlock faster in CI, would address the missed time limit. I did not read these files, because the file-reading tool wasn't available.",
+    "hypothesis": "The aubade e2e tests time out (30s test timeout, 20s wait for 'Unlocking the lobby' to hide, 90s on the camera test) because the lobby/scene doesn't become ready in time on the runner. The job has failed on development-alpha in every earlier run back to August, so this commit ('fix: pixel comparison') did not introduce it.",
+    "suggested_files": ["e2e/aubade.spec.ts", "playwright.config.ts"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4810,
+    "cache_read_input_tokens": 17695,
+    "cost_usd": 0.0298315,
+    "duration_ms": 8442,
+    "input_tokens": 6,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 5,
+    "output_tokens": 881
+  }
+}

@@ -4,8 +4,19 @@ from collections.abc import Collection
 
 from fakes import make_case
 
-from ci_triage.evaluate import evaluate, render
-from ci_triage.models import Category, FailedJob, FixEvidence, GoldenCase, Split
+from ci_triage.evaluate import evaluate, render, render_spend
+from ci_triage.models import (
+    Category,
+    Confidence,
+    FailedJob,
+    FixEvidence,
+    GoldenCase,
+    Source,
+    Split,
+    Triage,
+    TriageRecord,
+    Usage,
+)
 
 
 def golden(
@@ -54,3 +65,42 @@ def test_an_empty_split_reports_n_a_rather_than_dividing_by_zero() -> None:
     card = evaluate([], lambda c: Category.FLAKY, lambda c, r: (), set())
     assert card.splits["holdout"].accuracy is None
     assert "n/a" in render(card)
+
+
+def test_spend_counts_fallbacks_and_sums_every_call() -> None:
+    def record(case_id: str, source: Source, usage: Usage | None) -> TriageRecord:
+        return TriageRecord(
+            case_id=case_id,
+            prompt_version="v",
+            source=source,
+            triage=Triage(
+                category=Category.THRESHOLD,
+                hypothesis="h",
+                evidence=(),
+                suggested_files=(),
+                fix_rationale="r",
+                confidence=Confidence.LOW,
+            ),
+            usage=usage,
+            fallback_reason=None if source == "model" else "invalid: schema",
+        )
+
+    def spent(cost: float, ms: int, attempts: int = 1) -> Usage:
+        return Usage("claude-sonnet-5-5", 10, 0, 1000, 100, cost, ms, 2, attempts)
+
+    text = render_spend(
+        [
+            record("1-1", "model", spent(0.01, 4000)),
+            record("2-2", "model", spent(0.03, 8000, attempts=2)),
+            record("3-3", "rules", None),
+        ]
+    )
+    assert "Cases: 3 (2 answered by the model, 1 fell back to rules)" in text
+    assert "3-3: invalid: schema" in text
+    assert "Calls: 3 process(es)" in text
+    assert "$0.0400 total, $0.0200 per case" in text
+    assert "max 8.0s" in text
+
+
+def test_spend_with_no_usage_still_reports_the_cases() -> None:
+    assert render_spend([]).startswith("Cases: 0")

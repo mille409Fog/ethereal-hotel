@@ -1,0 +1,29 @@
+{
+  "case_id": "32061547283-95483732066",
+  "fallback_reason": null,
+  "prompt_version": "classify.v2",
+  "source": "model",
+  "triage": {
+    "category": "threshold",
+    "confidence": "medium",
+    "evidence": [
+      "✘ [ERROR] bundle initial exceeded maximum budget. Budget 15.00 kB was not met by 250.62 kB with a total of 265.62 kB.",
+      "▲ [WARNING] bundle initial exceeded maximum budget. Budget 13.00 kB was not met by 252.62 kB with a total of 265.62 kB.",
+      "Application bundle generation failed. [8.383 seconds] - 2026-08-17T19:41:25.060Z"
+    ],
+    "fix_rationale": "The initial-bundle budgets are set in the build configuration in angular.json, so check and correct them there. If the Angular upgrade did inflate the bundle, package.json and package-lock.json are where the version change lives.",
+    "hypothesis": "The Angular production build failed on the initial-bundle size budget. The initial bundle is 265.62 kB against an error budget of 15 kB (warning at 13 kB). That budget is far below what an Angular app can reach, so it is probably misconfigured or stale. The Dependabot Angular bump may have pushed the size up, but the log doesn't show the previous size.",
+    "suggested_files": ["angular.json", "package.json", "package-lock.json"]
+  },
+  "usage": {
+    "attempts": 1,
+    "cache_creation_input_tokens": 4883,
+    "cache_read_input_tokens": 6201,
+    "cost_usd": 0.0293161,
+    "duration_ms": 7445,
+    "input_tokens": 2,
+    "model": "claude-sonnet-5-5",
+    "num_turns": 2,
+    "output_tokens": 916
+  }
+}
