@@ -13,9 +13,16 @@
              writes a trace to data/traces/ (gh, read-only, for job history)
     trace <case_id>
              print an investigation's trace as a turn-by-turn walkthrough
+    run <run_id> | run --event <path>   [--state <dir>]
+             triage every failed job of one run: classify, then investigate, each
+             step checkpointed under state/ so a killed run resumes (Stage 5).
+             `--event` reads the payload GitHub Actions wrote for the trigger.
+             Exits 0 when done or when there is nothing to triage, 1 when something
+             is left to resume, 2 when the input itself was malformed
 
-Only `eval --llm` and `eval --agent` call a model. Nothing here runs unless someone
-types it: the project is off by default (ADR 0005).
+`eval --llm`, `eval --agent` and `run` call a model. Nothing here runs unless someone
+types it, or the CI Triage workflow starts `run` while TRIAGE_ENABLED is `true`: the
+project is off by default (ADR 0005).
 
 Run as a file rather than with `python -m` so that triage/ lands on sys.path without
 the npm script setting PYTHONPATH, which has no portable spelling across shells.
@@ -23,10 +30,13 @@ Named `cli` rather than `main` because mypy checks this tree together with backe
 and backend/main.py already owns that module name.
 """
 
+import functools
 import os
 import subprocess
 import sys
+import threading
 from collections.abc import Callable, Collection, Mapping
+from dataclasses import replace
 from pathlib import Path
 
 from ci_triage.agent import AGENT_VERSION, Investigator, ensure_commit
@@ -53,8 +63,14 @@ from ci_triage.claude_cli import (
 from ci_triage.corpus import Corpus
 from ci_triage.evaluate import evaluate, render, render_spend
 from ci_triage.fetch import fetch
-from ci_triage.github import run_gh
+from ci_triage.github import GhError, retrying, run_gh
 from ci_triage.history import GitHubHistory, case_context
+from ci_triage.intake import (
+    MalformedInputError,
+    NothingToTriage,
+    parse_run_id,
+    read_event,
+)
 from ci_triage.labels import AlreadyFrozenError, cached_jobs, freeze, load_golden
 from ci_triage.labels import update_labels as add_labels
 from ci_triage.models import (
@@ -64,7 +80,8 @@ from ci_triage.models import (
     JsonObject,
     TriageRecord,
 )
-from ci_triage.tools import real_git
+from ci_triage.pipeline import Deps, render_summary, triage_run
+from ci_triage.tools import CaseContext, Git, real_git
 from ci_triage.trace import read_trace, render_trace
 
 TRIAGE_ROOT = Path(__file__).resolve().parent
@@ -77,11 +94,15 @@ RUNS = DATA / "runs"
 REPO = TRIAGE_ROOT.parent
 HISTORY = DATA / "history"
 TRACES = DATA / "traces"
+# Checkpoints of `run`, not evaluation data: gitignored, and carried between attempts
+# of the CI job by actions/cache instead (ADR 0008).
+STATE = TRIAGE_ROOT / "state"
 
 USAGE = (
     "usage: cli.py {doctor|fetch|label|freeze|eval}\n"
     "       cli.py eval {--llm|--agent} [--split holdout|tune|all]\n"
-    "       cli.py trace <case_id>"
+    "       cli.py trace <case_id>\n"
+    "       cli.py run {<run_id>|--event <path>} [--state <dir>]"
 )
 SPLITS = ("holdout", "tune", "all")
 
@@ -159,9 +180,9 @@ def _progress(record: TriageRecord, cached: bool) -> None:
 
 
 def _single_call(
-    env: Mapping[str, str], tracked: Collection[str]
+    env: Mapping[str, str], tracked: Collection[str], git: Git | None = None
 ) -> Callable[[FailedJob], TriageRecord]:
-    git = real_git(str(REPO))
+    git = git or real_git(str(REPO))
 
     def call(system: str, user: str, schema: JsonObject) -> Answer:
         return ask(system, user, schema, env=env, model=MODEL)
@@ -256,6 +277,95 @@ def eval_model_cmd(strategy: str, split: str) -> int:
     return 0
 
 
+def _serialised(git: Git) -> Git:
+    """One `git` at a time. Cases run side by side, and two `git fetch`es into one
+    repository can collide on its ref locks."""
+    lock = threading.Lock()
+
+    def run(args: list[str]) -> tuple[int, str, str]:
+        with lock:
+            return git(args)
+
+    return run
+
+
+def _no_context(case: FailedJob) -> CaseContext:
+    raise AssertionError("the pipeline passes each case's context in explicitly")
+
+
+def _pipeline_deps(env: Mapping[str, str], state: Path) -> Deps:
+    tracked = tracked_files()
+    git = _serialised(real_git(str(REPO)))
+    investigator = Investigator(
+        env=env,
+        model=MODEL,
+        repo=REPO,
+        tracked=tracked,
+        traces=state / "traces",
+        git=git,
+        context_for=_no_context,
+    )
+
+    def investigate(case: FailedJob, ctx: CaseContext) -> TriageRecord:
+        return replace(investigator, context_for=lambda _: ctx)(case)
+
+    return Deps(
+        gh=retrying(run_gh),
+        corpus=functools.cache(Corpus(CORPUS).load),
+        classify=_single_call(env, tracked, git),
+        investigate=investigate,
+    )
+
+
+def _publish(text: str) -> None:
+    """Print, and in Actions also append to the run's job summary."""
+    print(text)
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with Path(summary).open("a", encoding="utf-8") as handle:
+            handle.write(text + "\n")
+
+
+def run_cmd(args: list[str]) -> int:
+    state = STATE
+    if len(args) >= 2 and args[-2] == "--state":
+        state, args = Path(args[-1]), args[:-2]
+    try:
+        if len(args) == 2 and args[0] == "--event":
+            run_id = read_event(
+                Path(args[1]),
+                os.environ.get("GITHUB_EVENT_NAME", ""),
+                os.environ.get("GITHUB_REPOSITORY", ""),
+            )
+        elif len(args) == 1:
+            run_id = parse_run_id(args[0])
+        else:
+            print(USAGE, file=sys.stderr)
+            return 2
+    except MalformedInputError as malformed:
+        print(f"Rejected: {malformed}", file=sys.stderr)
+        return 2
+    except NothingToTriage as reason:
+        _publish(f"Nothing to triage: {reason}")
+        return 0
+
+    try:
+        env = preflight(os.environ)
+    except BillingRiskError as refusal:
+        print(refusal, file=sys.stderr)
+        return 1
+    try:
+        report = triage_run(run_id, _pipeline_deps(env, state), state)
+    except NothingToTriage as reason:
+        _publish(f"Nothing to triage: {reason}")
+        return 0
+    except GhError as error:
+        print(f"Could not read run {run_id} from GitHub: {error}", file=sys.stderr)
+        return 1
+    _publish(render_summary(report))
+    return 1 if report.resumable else 0
+
+
 def trace_cmd(case_id: str) -> int:
     path = TRACES / AGENT_VERSION / f"{case_id}.jsonl"
     if not path.exists():
@@ -289,6 +399,8 @@ def main(argv: list[str]) -> int:
             return eval_model_cmd(strategy, rest[1])
     elif len(argv) == 2 and argv[0] == "trace":
         return trace_cmd(argv[1])
+    elif argv[:1] == ["run"]:
+        return run_cmd(argv[1:])
     elif len(argv) == 1 and argv[0] in COMMANDS:
         return COMMANDS[argv[0]]()
     print(USAGE, file=sys.stderr)

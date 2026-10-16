@@ -24,6 +24,8 @@ product; it is a hiring artifact. That distinction decides most arguments:
   hard rule is **$0 beyond the owner's Claude Pro subscription**: the model is reached only
   through `claude -p`, `ANTHROPIC_API_KEY` must never exist, and every `claude` process passes
   `ci_triage/billing_guard.py` first. Do not route around it, and never pass `--bare`.
+  Its workflow, `.github/workflows/triage.yml`, runs only while the repository variable
+  `TRIAGE_ENABLED` is exactly `'true'`; that literal is how it fails closed.
 - The owner writes and thinks in long form. `ROADMAP.md` and `AUBADE.md` are the actual planning
   documents — they carry reasoning, not just tasks. Read the relevant one before proposing work.
 

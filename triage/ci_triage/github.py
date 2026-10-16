@@ -12,6 +12,7 @@ that ever will.
 import json
 import re
 import subprocess
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Final
@@ -24,9 +25,41 @@ Gh = Callable[[list[str]], str]
 LIST_LIMIT: Final = 200
 GH_TIMEOUT_SECONDS: Final = 120
 
+# The waits before each retry of a transient `gh` failure. GitHub asks clients that hit
+# its secondary rate limit, and get no Retry-After, to wait at least a minute. `gh`
+# does not pass response headers through `run view`, so the last wait is that minute.
+GH_BACKOFF_SECONDS: Final = (5.0, 30.0, 60.0)
+# What `gh` prints for the failures worth waiting out: throttling, GitHub's own server
+# errors, and our timeout in `run_gh`. Anything else (a 404, a bad flag, no login)
+# fails the same way however long we wait.
+_TRANSIENT = re.compile(
+    r"HTTP (?:429|5\d\d)|rate limit|timed out|connection reset|unexpected EOF",
+    re.IGNORECASE,
+)
+
 
 class GhError(RuntimeError):
     pass
+
+
+def is_transient(error: GhError) -> bool:
+    return _TRANSIENT.search(str(error)) is not None
+
+
+def retrying(gh: Gh, sleep: Callable[[float], None] = time.sleep) -> Gh:
+    """`gh`, retried with backoff when it fails transiently. Anything else raises."""
+
+    def call(args: list[str]) -> str:
+        for wait in GH_BACKOFF_SECONDS:
+            try:
+                return gh(args)
+            except GhError as error:
+                if not is_transient(error):
+                    raise
+            sleep(wait)
+        return gh(args)
+
+    return call
 
 
 def run_gh(args: list[str]) -> str:
@@ -70,19 +103,27 @@ class Job:
 _RUN_FIELDS = "databaseId,workflowName,headBranch,event,headSha,createdAt,conclusion"
 
 
+def _parse_run(item: dict[str, object]) -> Run:
+    return Run(
+        run_id=int(str(item["databaseId"])),
+        workflow=str(item["workflowName"]),
+        branch=str(item["headBranch"]),
+        event=str(item["event"]),
+        head_sha=str(item["headSha"]),
+        created_at=str(item["createdAt"]),
+        conclusion=str(item.get("conclusion") or ""),
+    )
+
+
 def _parse_runs(stdout: str) -> list[Run]:
-    return [
-        Run(
-            run_id=int(item["databaseId"]),
-            workflow=str(item["workflowName"]),
-            branch=str(item["headBranch"]),
-            event=str(item["event"]),
-            head_sha=str(item["headSha"]),
-            created_at=str(item["createdAt"]),
-            conclusion=str(item.get("conclusion") or ""),
-        )
-        for item in json.loads(stdout)
-    ]
+    return [_parse_run(item) for item in json.loads(stdout)]
+
+
+def run_info(gh: Gh, run_id: int) -> Run:
+    """One run. Its conclusion is "" while it is still in progress."""
+    return _parse_run(
+        json.loads(gh(["run", "view", str(run_id), "--json", _RUN_FIELDS]))
+    )
 
 
 def failed_runs(gh: Gh, limit: int = LIST_LIMIT) -> list[Run]:

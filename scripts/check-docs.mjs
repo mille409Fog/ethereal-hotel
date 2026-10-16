@@ -58,6 +58,7 @@ check('files CLAUDE.md points at still exist', () => {
     '.gitattributes',
     '.github/workflows/code-quality.yml',
     '.github/workflows/supply-chain.yml',
+    '.github/workflows/triage.yml',
     'backend/requirements.txt',
     'backend/requirements-dev.txt',
     'backend/tests/test_dependency_pins.py',
@@ -1419,6 +1420,22 @@ check('quoted config values still match the files they came from', () => {
       read('backend/requirements-dev.txt').includes('pip-audit=='),
     'CLAUDE.md documents pip-audit as a gate run from a pin. It is no longer both ' +
       'pinned in backend/requirements-dev.txt and invoked by supply-chain.yml.'
+  );
+
+  // The only workflow here that can spend the owner's subscription. It must fail
+  // closed (ADR 0005): a looser test such as `vars.TRIAGE_ENABLED != ''` would switch
+  // it on for 'false' too. And without `queue: max` a burst of failures silently
+  // cancels every waiting triage but the newest (ADR 0009).
+  const triage = read('.github/workflows/triage.yml');
+  expect(
+    triage.includes("vars.TRIAGE_ENABLED == 'true' &&"),
+    "CLAUDE.md says CI Triage runs only while TRIAGE_ENABLED is exactly 'true'; " +
+      "triage.yml no longer opens its job's `if:` with that comparison."
+  );
+  expect(
+    /concurrency:\s*\n\s+group: ci-triage\s*\n\s+queue: max/.test(triage),
+    'triage.yml must keep `concurrency: { group: ci-triage, queue: max }`: one ' +
+      'triage at a time, and none dropped while waiting (triage ADR 0009).'
   );
 
   const scripts = JSON.parse(read('package.json')).scripts;

@@ -64,6 +64,10 @@ __screenshots__/
 # are not — they are per-machine and differ on every run.
 /.lighthouseci
 
+# CI Triage's checkpoints (`npm run triage:run`). Working state, not evaluation data:
+# in CI it is carried between attempts by actions/cache (triage/docs/decisions/0008).
+/triage/state
+
 # System files
 .DS_Store
 Thumbs.db

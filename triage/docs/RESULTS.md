@@ -3,6 +3,42 @@
 Scores against the frozen golden set, newest stage first. Every number here comes from
 `npm run triage:eval`, and every one carries the caveats that limit what it means.
 
+## Stage 5 — one live run, killed and resumed (2026-10-16)
+
+Stage 5 is about durability, not accuracy, so it adds no golden-set score. It was
+proven by the tests (`test_pipeline.py`, `test_kill_resume.py`, `test_intake.py`, all
+with fakes) and by **one** run on the real model, agreed in advance as the only one.
+
+**The case.** Run `38496991680`, a Code Quality failure on a Dependabot branch from
+2026-10-14. It is newer than the corpus, so neither model had seen it, and it has no
+label. One failed job: `End-to-end (smoke, axe, keyboard, reduced motion)`.
+
+**What happened.**
+
+1. `triage:run` fetched, gathered history and classified, saving each step.
+2. The process tree was killed (`taskkill /T /F`) about 3s after classify's checkpoint
+   appeared. That was during the investigation: Python, the `claude` process and our
+   MCP server all died together. On disk: `fetch`, `context`, `classify`, and nothing
+   half-written.
+3. The same command again: `fetch`, `context` and `classify` were reused, and only the
+   investigation ran. Exit 0 in 15.2s, and the summary said what was resumed.
+
+| Step                      | Answer                  | Time  | Turns | Notional cost |
+| ------------------------- | ----------------------- | ----- | ----- | ------------- |
+| Classify (once)           | `threshold`, low        | 9.3s  | 2     | $0.041        |
+| Investigation (completed) | **`dependency`, medium** | 11.3s | 4     | $0.033        |
+
+The killed attempt's investigation spent an unknown amount on top. It never reported
+usage, because it never finished. That is the cost ADR 0008 accepts.
+
+**The two answers disagree, and the reason is the Stage 4 argument again.** The single
+call saw a Playwright `:focus` timeout and read it as a budget. The investigation looked
+up the job's history, found it passing on `development-alpha` in the three runs before,
+and blamed the upgrade (`@playwright/test` 1.62.1 → 1.64.0), quoting both the history
+line and the bump. It answered `dependency`, and the fallback chain kept the
+investigation's answer. Whether it is _right_ is unknown until the branch is fixed or
+closed. The case is a candidate for the Stage 7 golden set.
+
 ## Stage 4 — the investigation agent (2026-10-15)
 
 `npm run triage:eval -- --agent`: Sonnet in Claude Code's loop, prompt

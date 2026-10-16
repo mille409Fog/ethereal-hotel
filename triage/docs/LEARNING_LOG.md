@@ -333,3 +333,93 @@ history line as evidence. The single call had blamed the upgrade.
 That the biggest bug was in the evaluation, not the agent. The single call had been
 given today's file list, so it "inferred" a fix file that the fix itself had created.
 The agent, which can only see the repository as it was, exposed it.
+
+## Stage 5 — Orchestration, state and durability
+
+### Concepts
+
+**Triggers.** A trigger is whatever starts a workflow without a person typing. A
+_schedule_ polls ("anything new?") and adds latency. An _event or webhook_ pushes the
+news the moment it happens, but whatever arrives has to be validated, because it is
+input. A _queue message_ separates "something happened" from "someone is free to handle
+it". A _manual_ trigger is how a person re-drives a case, and every system needs one.
+Here there are three ways in: GitHub's `workflow_run` event, which is durable and
+retried like a queue; `workflow_dispatch` with a run id; and `npm run triage:run`.
+
+**Durable execution and checkpoints.** If a process dies partway through a chain of
+steps, it can restart (do everything again) or resume (continue at the first step not
+finished). Resuming needs a checkpoint: each step's output saved the moment it ends.
+Two properties make that safe. _Atomic writes_ (temp file, then rename) mean a
+checkpoint is whole or absent, never half. _Idempotent steps_ mean that doing one twice
+does no harm, which matters because events are delivered _at least once_. This is
+what Temporal and Step Functions sell. Here it is a file per step.
+
+**Never treat a bad checkpoint as a missing one.** If a checkpoint can't be read, the
+tempting fix is to redo the step. That silently hides a bug or a tampered file, and
+here it spends quota. The case fails and names the file instead, and deleting it is
+the deliberate way to redo the step. "Malformed input is rejected, not processed"
+applies to your own state as much as to requests.
+
+**Rejected vs. nothing to do.** `MalformedInputError` (no run id, a non-numeric one, a
+payload that isn't JSON) means something upstream is broken, and the command exits 2.
+`NothingToTriage` (the run passed, it came from a fork, the log has expired) is a valid
+request with no work in it, and exits 0, so a green CI run never turns the triage job
+red. Both stop before any `gh` call or model call.
+
+**Short-term vs. long-term memory.** Short-term is one run: the investigation's
+context and the case's checkpoints. Long-term is what's carried across runs: the
+corpus of past failures, the history cache and `CLAUDE.md` §Traps. No new store was
+added, because 50 cases filtered by job name don't need an embedding index. Past
+answers are deliberately not memory (ADR 0007), so the agent investigates instead of
+copying.
+
+**Concurrency vs. rate limits.** Concurrency is several cases in progress at once.
+A rate limit is a cap the provider enforces. A _semaphore_ (a counter of permits)
+caps how many model calls run at once. A _shared stop_ turns one case's "quota
+exhausted" into everyone's "start nothing new". The stop is recorded _before_ the
+failing call gives up its slot, or another case could slip a call into the gap. A
+token bucket would be the tool if the provider published a rate. The subscription
+publishes a quota, so the right responses are "don't stampede" and "stop when told".
+
+**Retries, again, for a second provider.** `gh` failures are classified like model
+failures in Stage 3. A 429, a 5xx, "rate limit" or a timeout is retried (5s, 30s,
+60s: GitHub asks for at least a minute when it gives no `Retry-After`). A 404 is
+not. A log fetch that is still failing after the retries fails the case. It is never
+read as "no log", which would quietly turn an outage into "nothing to triage".
+
+**Read the docs of your durable infrastructure.** An Actions `concurrency` group looks
+like a queue but by default keeps _one_ pending run and cancels the rest, so a burst
+of three failures would triage only the first and the last. `queue: max` keeps them
+all. A `check:docs` assertion stops it being "tidied" away.
+
+### Interview questions
+
+**Q: How do you make a multi-step LLM workflow survive a crash?**
+Checkpoint each step's output atomically as it finishes, keyed so that a restart can
+find it. On start, skip every step whose checkpoint is present and valid. The proof was
+a test that kills a real process from outside during a model call, starts a second one
+on the same state directory, and checks from a journal that the log was fetched once
+and only the killed step ran again. The same thing on the real model: killed during
+the investigation, resumed in 15s, with no second classify call.
+
+**Q: What can't you resume?**
+The agent loop. It belongs to Claude Code, and its session dies with the process. So
+the investigation is all or nothing, and the step before it is saved, so the
+expensive single call isn't repeated. In CI, a runner that dies outright never reaches
+the step that saves the cache, so that re-run starts over. That is acceptable because
+the steps are idempotent: it costs time and at most two calls, never a wrong answer.
+
+**Q: How do you respect a rate limit you can't see?**
+Bound the concurrency (two model slots), serialise whole runs (one triage workflow at
+a time), and treat the limit as a signal to stop rather than retry. The first case
+that hits it stops the gate, no call starts after that, and everything finished is
+already saved, so the same command resumes after the reset. The test proves both
+halves: five cases peak at exactly two calls in flight, and after a limit, zero
+calls start.
+
+**Q: How did you test failure modes without spending quota?**
+With fakes at the two boundaries, `gh` and the model, so every failure could be
+scripted: 502s and rate limits that recover, a 404 that doesn't, an outage that
+outlasts the retries, a usage limit on the second call, a fatal auth error, truncated
+and wrong-version checkpoints, and a dozen malformed run ids and event payloads. One
+real run was spent, by agreement, to show the same resume against the real model.

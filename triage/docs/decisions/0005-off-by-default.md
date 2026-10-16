@@ -1,7 +1,8 @@
 # 0005 — Off by default; switched on from the command line
 
-**Status:** accepted, 2026-10-13. Stages 2–4 satisfy it by construction; the switch
-itself lands with the trigger in Stage 5.
+**Status:** accepted, 2026-10-13. Stages 2–4 satisfy it by construction. The switch
+landed with the trigger in Stage 5 (2026-10-16), and the variable is still unset:
+Stage 6 hardens the job before anyone sets it.
 
 ## Context
 

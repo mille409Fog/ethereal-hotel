@@ -28,8 +28,10 @@ For storage:
 
 ## Consequences
 
-- Durability comes from Actions itself. Resuming a half-finished triage (Stage 5) still
-  needs our own per-step state, because a re-run job starts from scratch.
+- Durability comes from Actions itself. Resuming a half-finished triage still needs our
+  own per-step state, because a re-run job starts from scratch. That is ADR 0008.
+- A `concurrency` group is not quite a queue by default: it keeps one pending run and
+  cancels the rest. The workflow sets `queue: max` (ADR 0009).
 - The trigger job will run with repository secrets, including the subscription token.
   A `workflow_run` job can be started by a run from a fork's pull request, and failure
   logs are untrusted text. Stage 6 has to treat both as hostile before this trigger

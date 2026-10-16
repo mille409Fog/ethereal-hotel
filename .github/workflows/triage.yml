@@ -1,0 +1,129 @@
+# CI Triage (triage/docs/). When Code Quality or Supply chain fails, triage each failed
+# job and write the record to this run's job summary. Nothing leaves the run.
+#
+# OFF unless the repository variable TRIAGE_ENABLED is exactly 'true' (ADR 0005):
+# `npm run triage:enable` / `npm run triage:disable`. Unset, empty, 'True' or a typo
+# all mean off, so a fresh fork or a deleted variable is off. scripts/check-docs.mjs
+# fails if the comparison below stops being against that literal.
+#
+# Stage 6 must harden this before it is switched on: failure logs are untrusted text,
+# and this job holds the subscription token.
+name: CI Triage
+
+on:
+  workflow_run:
+    workflows: [Code Quality, Supply chain]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Id of a failed Code Quality or Supply chain run'
+        required: true
+        type: string
+
+# Read the repository and the runs' logs; write nothing.
+permissions:
+  contents: read
+  actions: read
+
+# One triage at a time across the repository, so the model slots in
+# triage/ci_triage/pipeline.py are the whole of the load on the subscription (ADR 0009).
+# `queue: max` keeps every waiting triage: the default (`single`) cancels a pending
+# run when another arrives, which would drop failures that land in a burst.
+concurrency:
+  group: ci-triage
+  queue: max
+
+jobs:
+  triage:
+    name: Triage
+    # A failed run of this repository, never of a fork, or a run id typed by hand.
+    # triage/ci_triage/intake.py checks all of this again; this line saves a runner.
+    if: >-
+      vars.TRIAGE_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (contains(fromJSON('["failure", "timed_out"]'), github.event.workflow_run.conclusion) &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    # Two model steps per case, each capped at 120s, two cases at a time.
+    timeout-minutes: 20
+    env:
+      # The run being triaged, for cache keys only. Never interpolated into a shell:
+      # a dispatch input is typed text, and intake.py is what validates it.
+      TARGET_RUN: ${{ github.event.workflow_run.id || inputs.run_id }}
+
+    steps:
+      # Full history: the investigation reads the repository at the failing commit.
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The standard library only (ADR 0002), so no install step.
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      # Pinned to the version every Stage 4 trace was recorded with.
+      - name: Install Claude Code
+        run: npm install --global @anthropic-ai/claude-code@2.1.300
+
+      # A token that is missing means nothing can run, not that something broke. It
+      # is absent until the maintainer adds it, and it may be withheld from runs that
+      # Dependabot started. Skip with the reason instead of turning the job red.
+      - name: Check for the subscription token
+        id: token
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Not triaged: no CLAUDE_CODE_OAUTH_TOKEN secret is available to this run." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Checkpoints from any earlier attempt at this target: a re-run of this job,
+      # or a later triage of the same run, resumes instead of restarting (ADR 0008).
+      # Cache entries are immutable, so each attempt saves under its own key and
+      # restores the newest by prefix.
+      - name: Restore checkpoints
+        if: steps.token.outputs.present == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: triage/state
+          key: ci-triage-state-${{ env.TARGET_RUN }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ci-triage-state-${{ env.TARGET_RUN }}-
+
+      # Exit 1 means something is left to resume; 2, a malformed event.
+      - name: Triage
+        if: steps.token.outputs.present == 'true'
+        run: python triage/cli.py run --event "$GITHUB_EVENT_PATH" --state triage/state
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+
+      # always(), not !cancelled(): a cancelled or timed-out triage is exactly the one
+      # whose checkpoints are worth keeping. A runner that dies outright never gets
+      # here, and its re-run starts over (ADR 0008).
+      - name: Save checkpoints
+        if: always() && steps.token.outputs.present == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: triage/state
+          key: ci-triage-state-${{ env.TARGET_RUN }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Upload records and traces
+        if: always() && steps.token.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-triage-${{ env.TARGET_RUN }}
+          path: triage/state
+          if-no-files-found: ignore
+          retention-days: 14

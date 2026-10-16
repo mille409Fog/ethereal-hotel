@@ -49,10 +49,10 @@ flowchart TD
 
 ## What exists today
 
-The billing guard, the data pipeline, the single classify call and the investigation
-agent are built. Everything else in the diagram is the plan, and each item lands in the
-stage named here. Today the two model strategies are run side by side for evaluation;
-chaining classify into the investigation happens with the trigger in Stage 5.
+Everything up to the job summary is built. The approval gate and publishing are the
+plan, and each lands in the stage named here. Evaluation still scores the two model
+strategies separately; `triage:run` and the workflow chain them, keeping the
+investigation's answer, else the single call's, else the rules'.
 
 | Piece                               | Where                                                           | Status                                        |
 | ----------------------------------- | --------------------------------------------------------------- | --------------------------------------------- |
@@ -62,7 +62,7 @@ chaining classify into the investigation happens with the trigger in Stage 5.
 | Rule baseline + scorecard           | `ci_triage/baseline.py`, `ci_triage/evaluate.py`                | **Built.** Scores in [RESULTS.md](RESULTS.md) |
 | Classify (single LLM call)          | `ci_triage/classify.py`, `claude_cli.ask`, `prompts/`           | **Built.** Records in `triage/data/runs/`     |
 | Agent loop + MCP tools              | `ci_triage/agent.py`, `tools.py`, `history.py`, `mcp_server.py` | **Built.** Traces in `triage/data/traces/`    |
-| Trigger in Actions, resumable state | —                                                               | Stage 5                                       |
+| Trigger, checkpoints, concurrency   | `ci_triage/intake.py`, `pipeline.py`, `workflows/triage.yml`    | **Built**, off until Stage 6 (ADR 0005)       |
 | Approval gate, injection defences   | —                                                               | Stage 6                                       |
 | Larger golden set, LLM-as-judge     | —                                                               | Stage 7                                       |
 | Traces dashboard                    | —                                                               | Stage 8                                       |
@@ -81,19 +81,40 @@ chaining classify into the investigation happens with the trigger in Stage 5.
   accepts outside tools. They read the repository at the failing commit and history
   from before the failure, so the fix is never visible
   ([ADR 0007](decisions/0007-the-investigation-is-the-agent.md)).
-- **State** for one triage is the run id plus the evidence gathered so far, persisted
-  after each step from Stage 5 so a killed run resumes rather than restarts.
+- **State** for one triage is a checkpoint per step, in
+  `triage/state/<run>/<job>/<step>.json`. A killed run resumes at the first step it had
+  not saved, and an unreadable checkpoint fails the case instead of being redone
+  ([ADR 0008](decisions/0008-checkpoint-every-step.md)).
 - **Orchestration** is our code for the workflow half and Claude Code's loop for the
   agent half.
-- **Memory**: short-term is the context of one run. Long-term is the corpus of past
-  failures and `CLAUDE.md` §Traps, which is a hand-written record of past root causes.
+- **Memory**: short-term is one run, meaning the context of an investigation plus that
+  case's checkpoints. Long-term memory is three stores, all committed or cached, and
+  none of them new in Stage 5:
+  - the **corpus**: the last 50 failures' error lines, which `earlier_failures` reads
+    so a recurrence can be recognised;
+  - the **history cache**: earlier runs of the job, which tell an inherited failure
+    from one the commit introduced;
+  - `CLAUDE.md` §Traps: past root causes, written by hand.
 
-## Running now vs. queuing
+  Past _answers_ are deliberately not stored for the agent to read
+  ([ADR 0007](decisions/0007-the-investigation-is-the-agent.md), rule 2). A retrieval
+  index would be the next step at a larger scale. At 50 cases, a filter on job name
+  finds them all.
 
-A triage is short (target ≤ 2 minutes), but it must not be lost if a runner dies. We
-don't build a queue: a `workflow_run` event in GitHub Actions is already durable, retried
-and free on a public repository
-([ADR 0003](decisions/0003-actions-as-the-queue-files-as-storage.md)).
+## Trigger, queue and concurrency
+
+Three ways in, all checked by `ci_triage/intake.py` before any work is done: the
+`workflow_run` event when Code Quality or Supply chain finishes, `workflow_dispatch`
+with a run id, and `npm run triage:run -- <run_id>`. A malformed request exits 2 and
+names the field. A valid one with nothing to do (the run passed, it came from a fork)
+exits 0.
+
+We don't build a queue: a `workflow_run` event in GitHub Actions is already durable,
+retried and free on a public repository
+([ADR 0003](decisions/0003-actions-as-the-queue-files-as-storage.md)). One triage runs
+at a time (`queue: max`, so waiting ones are kept, not cancelled). Inside it, cases run
+side by side with at most two `claude` processes at once, and a usage limit stops every
+case ([ADR 0009](decisions/0009-two-model-slots-one-triage-at-a-time.md)).
 
 ## Money
 
@@ -115,6 +136,8 @@ make that true, and the brief's §Cost ceiling explains why it matters.
 | `npm run triage:eval -- --llm [--split holdout\|tune\|all]`   | Scores the model call; calls Sonnet once per case not already in `data/runs/`                      |
 | `npm run triage:eval -- --agent [--split holdout\|tune\|all]` | Scores the investigation; one agent run per case not already in `data/runs/`, each writing a trace |
 | `npm run triage:trace -- <case_id>`                           | Prints an investigation's trace turn by turn                                                       |
+| `npm run triage:run -- <run_id>`                              | Triages every failed job of one run, checkpointed in `triage/state/`; run it again to resume       |
+| `npm run triage:enable` / `triage:disable`                    | Sets or deletes the `TRIAGE_ENABLED` repository variable that switches the workflow on             |
 
-None of these runs on its own: the project is off by default
-([ADR 0005](decisions/0005-off-by-default.md)).
+None of these runs on its own, and the workflow does nothing until `TRIAGE_ENABLED` is
+`true`: the project is off by default ([ADR 0005](decisions/0005-off-by-default.md)).
