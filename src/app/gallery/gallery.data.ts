@@ -13,7 +13,9 @@
  * for the two Metropolitan Museum objects, the Met's own collection API. Each
  * entry carries that source as `source`, and the page links it, so a reader can
  * check the label the way a reviewer can check the dashboard's numbers. The
- * colour groupings and the readings are interpretation and the page says so.
+ * facts inside the readings were checked too, and `readingSources` says where.
+ * The colour groupings and the readings themselves are interpretation, and the
+ * page says so.
  *
  * Every image is a public-domain reproduction (PD-Art, or the Met's CC0
  * release) of a work whose painter died more than seventy years ago. They are
@@ -70,6 +72,15 @@ export interface IPainting {
   readonly city: string;
   /** Where the facts above were checked. */
   readonly source: string;
+  /**
+   * Where the facts inside the readings below were checked: every quote, date,
+   * attribution and "Munch wrote" in `whyThisColour`, `techniques` and
+   * `lenses`. What the readings say about the picture's look was checked
+   * against the committed reproduction; the rest is interpretation, and the
+   * page says so. A painting cannot be added without at least one of these,
+   * because the readings were once written from memory and several were wrong.
+   */
+  readonly readingSources: readonly string[];
   /** Why this work is in this colour's group rather than another. */
   readonly whyThisColour: string;
   readonly techniques: readonly ITechnique[];
@@ -155,6 +166,7 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Yale University Art Gallery',
         city: 'New Haven',
         source: 'https://en.wikipedia.org/wiki/The_Night_Caf%C3%A9',
+        readingSources: ['https://en.wikipedia.org/wiki/The_Night_Caf%C3%A9'],
         whyThisColour:
           'Van Gogh wrote to his brother that he had tried to express "the terrible passions of humanity by means of red and green." The blood-red walls under a green ceiling are meant to clash, not to settle.',
         techniques: [
@@ -166,7 +178,7 @@ export const COLOURS: readonly IColour[] = [
           {
             name: 'Haloed gaslight',
             detail:
-              'The lamps are rings of yellow and orange strokes, so the light reads as glare rather than as something that helps you see.',
+              'He described the lamps as lemon-yellow with a glow of orange and green, and painted them as rings of strokes, so the light reads as glare rather than as something that helps you see.',
           },
         ],
         lenses: {
@@ -175,7 +187,7 @@ export const COLOURS: readonly IColour[] = [
           close:
             'The drinkers slumped at the tables are a few strokes each. The room has more personality than anyone in it.',
           context:
-            'Painted in Arles in September 1888, in a café that stayed open all night. He described it as a place "where one can ruin oneself, go mad, or commit a crime."',
+            'Painted in Arles in September 1888, in a café that stayed open all night. He described it as a place "where one can ruin oneself, go mad or commit a crime."',
         },
         image: {
           file: 'night-cafe.webp',
@@ -196,6 +208,10 @@ export const COLOURS: readonly IColour[] = [
         museum: 'National Museum',
         city: 'Oslo',
         source: 'https://en.wikipedia.org/wiki/The_Scream',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/The_Scream',
+          'https://apollo-magazine.com/munch-secret-message-scream/',
+        ],
         whyThisColour:
           'Munch remembered the clouds at sunset turning "a blood red" and sensing "an infinite scream passing through nature." The red here is the sky, not a wound.',
         techniques: [
@@ -214,9 +230,9 @@ export const COLOURS: readonly IColour[] = [
           distance:
             'The railing is the one hard straight line, a diagonal; everything else undulates. The two walkers behind the figure look entirely untroubled.',
           close:
-            'The figure is not screaming so much as hearing one: the hands are over the ears. Munch put the sound in nature, not in the mouth.',
+            'The figure is not screaming so much as hearing one, hands pressed to its head. Munch wrote that he "sensed a scream passing through nature": the sound is in the landscape, not the mouth.',
           context:
-            'Munch returned to the image for years, in paint, pastel and lithograph. A faint pencilled line on this version, "can only have been painted by a madman," was confirmed in 2021 to be in his own hand.',
+            'Munch returned to the image for years, in paint, pastel and lithograph. A faint pencilled line on this version, "could only have been painted by a madman," was confirmed by the museum in 2021 to be in his own hand.',
         },
         image: {
           file: 'the-scream.webp',
@@ -238,6 +254,10 @@ export const COLOURS: readonly IColour[] = [
         museum: "Galleria Nazionale d'Arte Antica, Palazzo Barberini",
         city: 'Rome',
         source: 'https://en.wikipedia.org/wiki/Judith_Beheading_Holofernes_(Caravaggio)',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/Judith_Beheading_Holofernes_(Caravaggio)',
+          'https://en.wikipedia.org/wiki/Caravaggio',
+        ],
         whyThisColour:
           'A red curtain hangs over the scene like a stage drape, and the same red, darker, comes from the wound beneath it.',
         techniques: [
@@ -249,16 +269,16 @@ export const COLOURS: readonly IColour[] = [
           {
             name: 'Painting from the model',
             detail:
-              'Caravaggio worked from posed models with little preparatory drawing, which is why the faces read as particular people rather than types.',
+              'Caravaggio worked fast from live models, preferring to go straight to the canvas rather than through drawings, which is why the faces read as particular people rather than types.',
           },
         ],
         lenses: {
           distance:
-            "Three faces in a row, three reactions: Holofernes's shock, Judith's frown of effort, the old servant's eager concentration.",
+            "Three faces in a row, three reactions: Holofernes's shock, Judith's frown of effort, the eager concentration of her old maid, Abra.",
           close:
             "Judith holds herself at arm's length, elbows locked and body leaning away, as if doing something repellent and necessary.",
           context:
-            "Painted in Rome at the height of Caravaggio's notoriety, it dropped out of sight for centuries and was rediscovered only in 1950.",
+            'Painted in Rome around 1600, when his Contarelli Chapel canvases had just made him a sensation. It was lost from view until its rediscovery in 1950.',
         },
         image: {
           file: 'judith-holofernes.webp',
@@ -299,6 +319,7 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Belvedere',
         city: 'Vienna',
         source: 'https://en.wikipedia.org/wiki/The_Kiss_(Klimt)',
+        readingSources: ['https://en.wikipedia.org/wiki/The_Kiss_(Klimt)'],
         whyThisColour:
           'The gold is gold. Beaten leaf is laid on the canvas, so the surface glows with reflected light the way a Byzantine mosaic does.',
         techniques: [
@@ -317,7 +338,7 @@ export const COLOURS: readonly IColour[] = [
           distance:
             'The couple form a single golden column on a speckled ground. You see a shape before you see two people.',
           close:
-            'Only the faces, hands and her feet are painted naturalistically. Her toes curl over the edge of the flowered bank, which ends in a drop.',
+            'Only the faces, hands and her feet are painted naturalistically. Her toes curl at the edge of the flowered meadow, which ends just beneath her bare feet.',
           context:
             'Painted at the height of what is called Klimt\'s Golden Period and first shown in 1908 under the title "The Lovers."',
         },
@@ -340,6 +361,10 @@ export const COLOURS: readonly IColour[] = [
         museum: 'National Gallery',
         city: 'London',
         source: 'https://en.wikipedia.org/wiki/Sunflowers_(Van_Gogh_series)',
+        readingSources: [
+          'https://www.nationalgallery.org.uk/paintings/vincent-van-gogh-sunflowers',
+          'https://en.wikipedia.org/wiki/Sunflowers_(Van_Gogh_series)',
+        ],
         whyThisColour:
           'Yellow on yellow on yellow: flowers, vase and wall are all close in hue, which is the challenge Van Gogh set himself.',
         techniques: [
@@ -356,11 +381,11 @@ export const COLOURS: readonly IColour[] = [
         ],
         lenses: {
           distance:
-            'Fifteen sunflowers at every stage from fresh to dead, in one vase. It is a still life about time passing.',
+            'Fifteen sunflowers in one vase, from a bud to full bloom to heads that have lost their petals. It is a still life about time passing.',
           close:
             'His first name, "Vincent", is painted on the vase in blue, as though it were part of the pottery\'s decoration.',
           context:
-            "One of a set made in Arles in August 1888 to decorate the room he was preparing for Paul Gauguin's visit.",
+            "One of four painted in Arles in August 1888 to decorate his house before Paul Gauguin's visit. This one he hung in the room Gauguin was to sleep in.",
         },
         image: {
           file: 'sunflowers.webp',
@@ -381,27 +406,31 @@ export const COLOURS: readonly IColour[] = [
         museum: 'National Gallery',
         city: 'London',
         source: 'https://en.wikipedia.org/wiki/The_Fighting_Temeraire',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/The_Fighting_Temeraire',
+          'https://www.nationalgallery.org.uk/paintings/joseph-mallord-william-turner-the-fighting-temeraire',
+        ],
         whyThisColour:
           'The sunset fills half the sky in molten orange and gold. The ship it mourns is a pale ghost against it.',
         techniques: [
           {
-            name: 'Thick light, thin ship',
+            name: 'Thick light, ghostly ship',
             detail:
-              'The sun and its reflection are heavy impasto; the old warship is thin, smooth paint, so the light has more body than the subject.',
+              'Around the sun the paint is so thick it stands proud of the canvas, while the old warship is pale and insubstantial, so the light has more body than the subject.',
           },
           {
-            name: 'Temperature as story',
+            name: 'Colour as story',
             detail:
-              'Cool silver for the old sailing ship, hot black and red for the steam tug pulling her. The colour does the narrating.',
+              'The real ship was black and yellow; Turner repainted her white and gold, beside a squat, dark reddish-brown tug. The colour does the narrating.',
           },
         ],
         lenses: {
           distance:
             'The picture splits into a cool half and a blazing half, and the old ship sits in the cool one like a memory.',
           close:
-            'The tug is squat and dark, its funnel spilling flame-coloured smoke, and it is the one doing the work.',
+            "The tug's black funnel spews orange-brown smoke back through the old ship's masts, and the tug is the one doing the work.",
           context:
-            "HMS Temeraire fought at Trafalgar and was towed up the Thames to be broken up in 1838. Turner left the painting to the nation, and a 2005 BBC Radio 4 poll voted it Britain's greatest painting.",
+            "HMS Temeraire fought at Trafalgar and was towed up the Thames to be broken up in 1838. Turner kept the painting until he died and left it to the nation, and a 2005 BBC Radio 4 poll voted it Britain's greatest painting.",
         },
         image: {
           file: 'fighting-temeraire.webp',
@@ -423,27 +452,31 @@ export const COLOURS: readonly IColour[] = [
         city: 'London',
         source:
           'https://en.wikipedia.org/wiki/Rain,_Steam_and_Speed_%E2%80%93_The_Great_Western_Railway',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/Rain,_Steam_and_Speed_%E2%80%93_The_Great_Western_Railway',
+          'https://www.nationalgallery.org.uk/paintings/joseph-mallord-william-turner-rain-steam-and-speed-the-great-western-railway',
+        ],
         whyThisColour:
           'The canvas is a haze of gold and grey light, and the railway is less painted than dissolved into the weather.',
         techniques: [
           {
-            name: 'Scumbling',
+            name: 'Edges dissolved',
             detail:
-              'Thin veils of opaque paint dragged over darker layers, so rain, steam and light merge without edges.',
+              'Rain, steam and light are laid over one another with almost no hard edge between them, so the weather and the machine are made of the same stuff.',
           },
           {
             name: 'The rushing diagonal',
             detail:
-              'The bridge runs straight out of the haze towards the viewer, so the train arrives at you rather than crossing in front of you.',
+              'The bridge runs out of the haze in steep perspective, so the train bursts towards you rather than crossing in front of you.',
           },
         ],
         lenses: {
           distance:
             'The black funnel of the locomotive is the hardest object in the painting. Everything else is atmosphere.',
           close:
-            'A hare runs ahead of the train along the track. It is easy to miss and hard to forget once seen.',
+            'Turner brushed a hare onto the track late, running ahead of the train. The paint has turned transparent with age, and the hare can now barely be seen, if at all.',
           context:
-            "The bridge is the Great Western Railway's crossing of the Thames at Maidenhead. Railways were new; Turner painted one as a force of nature.",
+            "The bridge is Brunel's crossing of the Thames at Maidenhead, completed in 1838. Railways were new; Turner painted one as a force of nature.",
         },
         image: {
           file: 'rain-steam-speed.webp',
@@ -483,6 +516,7 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Museum of Modern Art',
         city: 'New York',
         source: 'https://en.wikipedia.org/wiki/The_Starry_Night',
+        readingSources: ['https://en.wikipedia.org/wiki/The_Starry_Night'],
         whyThisColour:
           'Night painted not as black but as layered blues, with the stars as coils of yellow and white.',
         techniques: [
@@ -494,7 +528,7 @@ export const COLOURS: readonly IColour[] = [
           {
             name: 'An invented village',
             detail:
-              'The view is from his window, but the village was added from imagination. It is a landscape assembled, not observed.',
+              'The view is from his window, but the village could not be seen from it and was added from sketches. It is a landscape assembled, not observed.',
           },
         ],
         lenses: {
@@ -524,18 +558,19 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Metropolitan Museum of Art (one of many impressions)',
         city: 'New York',
         source: 'https://www.metmuseum.org/art/collection/search/45434',
+        readingSources: ['https://en.wikipedia.org/wiki/The_Great_Wave_off_Kanagawa'],
         whyThisColour:
           'The deep blue is Prussian blue, a synthetic pigment newly available in Japan. Its use in this series transformed Japanese prints.',
         techniques: [
           {
             name: 'Woodblock printing',
             detail:
-              'A carved block for each colour, printed by hand in register. Thousands of impressions were pulled; this is one.',
+              'Carved blocks for the colours, printed by hand in register. About a thousand impressions were pulled at first and perhaps eight thousand in all; this is one.',
           },
           {
             name: 'Prussian blue',
             detail:
-              'A European pigment, more stable and deeper than the plant blues it replaced, which let the sea be dark without going muddy.',
+              'Imported from Europe, it resisted fading where the indigo of earlier prints faded quickly, so the sea could be dark and stay dark.',
           },
         ],
         lenses: {
@@ -544,7 +579,7 @@ export const COLOURS: readonly IColour[] = [
           close:
             'Rowers crouch low in three long boats, and the crest of the wave breaks into claw-like fingers of foam.',
           context:
-            'The first of Thirty-six Views of Mount Fuji. Prints like it reached Europe in quantity later in the century and changed how its painters composed.',
+            'The first of Thirty-six Views of Mount Fuji. Prints like it reached the West later in the century and inspired painters there, Monet and Van Gogh among them.',
         },
         image: {
           file: 'great-wave.webp',
@@ -566,27 +601,30 @@ export const COLOURS: readonly IColour[] = [
         city: 'London',
         source:
           'https://en.wikipedia.org/wiki/Nocturne:_Blue_and_Gold_%E2%80%93_Old_Battersea_Bridge',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/Nocturne:_Blue_and_Gold_%E2%80%93_Old_Battersea_Bridge',
+        ],
         whyThisColour:
           'A night river in thinned blue-green, almost a single colour, with a few flecks of gold for fireworks.',
         techniques: [
           {
-            name: 'Thin washes',
+            name: 'Runny paint',
             detail:
-              'Paint diluted until it behaves like watercolour and laid in broad veils, so the river and sky are one breath of tone.',
+              'Whistler thinned his paint so far that he often had to lay the canvas flat to stop it running, and laid it in broad veils, so the river and sky are one breath of tone.',
           },
           {
-            name: 'A Japanese bridge',
+            name: 'A bridge made taller',
             detail:
-              "The tall, cropped pier and high span owe more to Hiroshige's prints than to the actual wooden bridge.",
+              'Whistler exaggerated the height of the bridge. Accuracy has been traded for a single strong shape.',
           },
         ],
         lenses: {
           distance:
-            'The pier rises like a T across the picture, absurdly tall. Accuracy has been traded for a single strong shape.',
+            'The pier rises like a T across the picture and splits it in two. Everything else is mist.',
           close:
             'The gold specks at the top are fireworks. A barge at the foot of the pier is barely more than a smudge with a figure in it.',
           context:
-            "Shown in court in Whistler's 1878 libel suit against the critic John Ruskin. Whistler won, and was awarded one farthing.",
+            "Discussed in Whistler's 1878 libel suit against the critic John Ruskin. Whistler won, and was awarded one farthing.",
         },
         image: {
           file: 'nocturne-battersea.webp',
@@ -607,18 +645,19 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Alte Nationalgalerie',
         city: 'Berlin',
         source: 'https://en.wikipedia.org/wiki/The_Monk_by_the_Sea',
+        readingSources: ['https://en.wikipedia.org/wiki/The_Monk_by_the_Sea'],
         whyThisColour:
           'Three bands, pale dune, near-black sea and an enormous sky shading from deep blue to mist, with one small figure.',
         techniques: [
           {
             name: 'Painting out',
             detail:
-              'Friedrich originally included ships on the sea and painted them out, leaving nothing between the figure and the horizon.',
+              'Friedrich first painted two small sailing ships on the horizon and later removed them, leaving nothing between the figure and the edge of the world.',
           },
           {
             name: 'A low horizon',
             detail:
-              'The sky takes most of the canvas, and there are no trees or rocks at the edges to lead you in.',
+              'The sky takes about three quarters of the canvas, and there are no trees or rocks at the edges to lead you in.',
           },
         ],
         lenses: {
@@ -627,7 +666,7 @@ export const COLOURS: readonly IColour[] = [
           close:
             'The monk is a few strokes of dark paint against the pale strip of dune. He is the only vertical in the picture.',
           context:
-            'Shown at the Berlin Academy in 1810 alongside The Abbey in the Oakwood. The king bought both, and they still hang side by side.',
+            'Shown at the Berlin Academy in 1810 alongside The Abbey in the Oakwood. King Frederick William III bought both, and they still hang side by side.',
         },
         image: {
           file: 'monk-by-the-sea.webp',
@@ -668,13 +707,17 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Metropolitan Museum of Art',
         city: 'New York',
         source: 'https://www.metmuseum.org/art/collection/search/437127',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/Claude_Monet',
+          'https://en.wikipedia.org/wiki/Water_Lilies_(Monet_series)',
+        ],
         whyThisColour:
           'Almost every inch is a green: willow, bridge, lily pads and their reflections, with no sky at all.',
         techniques: [
           {
-            name: 'Painting a garden he built',
+            name: 'Painting a garden he made',
             detail:
-              'Monet designed the pond and its Japanese-style footbridge at Giverny, then spent decades painting them.',
+              'Monet bought a water meadow at Giverny, made a water garden of it, and kept enlarging the pond, in 1901 and again in 1910. Then he painted it for decades.',
           },
           {
             name: 'Stroke direction',
@@ -688,7 +731,7 @@ export const COLOURS: readonly IColour[] = [
           close:
             'The lilies are touches of pink and white floating on the green. Look for where Monet let the water show between them.',
           context:
-            'One of a series of views of the footbridge from 1899, before the lily pond itself became the subject of his final decades.',
+            'One of several views of the footbridge from 1899. The water lilies were the main subject of the last thirty-one years of his life.',
         },
         image: {
           file: 'water-lily-bridge.webp',
@@ -709,6 +752,10 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Museum of Modern Art',
         city: 'New York',
         source: 'https://en.wikipedia.org/wiki/The_Dream_(Rousseau)',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/The_Dream_(Rousseau)',
+          'https://en.wikipedia.org/wiki/Henri_Rousseau',
+        ],
         whyThisColour:
           'A jungle in a crowd of distinct greens, each leaf its own flat shape, as dense as a tapestry.',
         techniques: [
@@ -720,16 +767,16 @@ export const COLOURS: readonly IColour[] = [
           {
             name: 'Jungles from Paris',
             detail:
-              'He never went to the tropics. The plants come from the hothouses of the Jardin des Plantes and from illustrated books.',
+              "He never left France or saw a jungle. The plants come from the Jardin des Plantes in Paris and from the illustrations in children's books.",
           },
         ],
         lenses: {
           distance:
-            'A nude woman reclines on a red velvet sofa in the middle of a jungle. Rousseau said she is asleep at home, dreaming she is in the forest.',
+            'A nude woman reclines on a red sofa in the middle of a jungle. One reading, from a letter, is that she is asleep, dreaming she is listening to the flute player in the forest.',
           close:
-            'Eyes look out of the leaves: two lions, an elephant, birds and a snake, and a dark figure playing a flute.',
+            'Eyes look out of the leaves: a lion and lioness, an elephant, monkeys, birds and a snake, and a dark figure playing a flute.',
           context:
-            'His last completed work, shown in 1910 a few months before he died. Apollinaire wrote: "I believe nobody will laugh this year."',
+            'His last completed work, shown at the Salon des Indépendants in 1910 a few months before he died. Apollinaire wrote: "I believe nobody will laugh this year."',
         },
         image: {
           file: 'the-dream.webp',
@@ -750,18 +797,22 @@ export const COLOURS: readonly IColour[] = [
         museum: 'National Gallery',
         city: 'London',
         source: 'https://en.wikipedia.org/wiki/The_Hay_Wain',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/The_Hay_Wain',
+          'https://www.nationalgallery.org.uk/about-us/press-and-media/press-releases/discover-constable-and-the-hay-wain-2024',
+        ],
         whyThisColour:
           'The full summer green of the Stour valley, under a sky that is about to change its mind.',
         techniques: [
           {
             name: 'Full-size sketches',
             detail:
-              "Constable worked out his big pictures in full-size oil sketches first, so the finished canvas keeps some of the sketch's speed.",
+              "Constable worked this picture out first in a full-scale oil sketch, now in the Victoria and Albert Museum, so the finished canvas keeps some of the sketch's speed.",
           },
           {
             name: 'Flecks of white',
             detail:
-              'Small touches of pure white on leaves and water make the light glitter. Critics at the time called them "Constable\'s snow."',
+              'Small touches of pure white on leaves and water make the sunlight glitter. They were often dismissed as "Constable\'s snow."',
           },
         ],
         lenses: {
@@ -770,7 +821,7 @@ export const COLOURS: readonly IColour[] = [
           close:
             'Look into the clouds. Constable studied skies obsessively, and these are particular, weather that could happen on one afternoon.',
           context:
-            'First shown as "Landscape: Noon" in 1821, it found no buyer in London. It won a gold medal at the Paris Salon of 1824 and moved French painters more than English ones.',
+            'First shown at the Royal Academy as "Landscape: Noon" in 1821, it found no buyer. At the Paris Salon of 1824 it earned a gold medal from Charles X, and it went on to inspire French painters, Delacroix among them.',
         },
         image: {
           file: 'hay-wain.webp',
@@ -791,6 +842,9 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Art Institute of Chicago',
         city: 'Chicago',
         source: 'https://en.wikipedia.org/wiki/A_Sunday_Afternoon_on_the_Island_of_La_Grande_Jatte',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/A_Sunday_Afternoon_on_the_Island_of_La_Grande_Jatte',
+        ],
         whyThisColour:
           "The lawn's afternoon greens are not mixed on the palette. They are mixed in your eye, from dots of separate colour.",
         techniques: [
@@ -802,7 +856,7 @@ export const COLOURS: readonly IColour[] = [
           {
             name: 'A painted border',
             detail:
-              'Seurat later added a border of dots around the edge, so the transition into the frame is part of the picture.',
+              'In 1889 Seurat painted a border of dots around the edge, so the transition into the frame is part of the picture.',
           },
         ],
         lenses: {
@@ -811,7 +865,7 @@ export const COLOURS: readonly IColour[] = [
           close:
             'Walk up until the grass falls apart into dots, then step back until it becomes grass again. The painting happens in between.',
           context:
-            'Two years in the making, it was shown at the eighth and last Impressionist exhibition in 1886 and founded Neo-Impressionism.',
+            'Painted in two campaigns between 1884 and 1886, it was shown at the eighth and last Impressionist exhibition in 1886. It is a founding work of Neo-Impressionism.',
         },
         image: {
           file: 'grande-jatte.webp',
@@ -852,6 +906,7 @@ export const COLOURS: readonly IColour[] = [
         museum: "Musée d'Orsay",
         city: 'Paris',
         source: 'https://en.wikipedia.org/wiki/Bal_du_moulin_de_la_Galette',
+        readingSources: ['https://en.wikipedia.org/wiki/Bal_du_moulin_de_la_Galette'],
         whyThisColour:
           'Flushed faces, pink and blue dresses, warm sunlight: a whole crowd painted in the colours of a good afternoon.',
         techniques: [
@@ -869,9 +924,10 @@ export const COLOURS: readonly IColour[] = [
         lenses: {
           distance:
             "There is no single centre. Your eye drifts from table to dancers to the trees, the way a guest's would.",
-          close: "Look at the faces in the foreground. Renoir's friends posed for many of them.",
+          close:
+            "Look at the faces in the foreground. Renoir's friends, painters and a critic among them, posed for several.",
           context:
-            'A Sunday dance in Montmartre, where working Parisians dressed up to dance and eat galettes. It came to the French state with the bequest of the painter Gustave Caillebotte.',
+            'A Sunday dance in Montmartre, where working Parisians dressed up to dance and eat galettes. The painter Gustave Caillebotte owned it, and at his death it passed to the French state in payment of death duties.',
         },
         image: {
           file: 'moulin-galette.webp',
@@ -892,6 +948,10 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Wallace Collection',
         city: 'London',
         source: 'https://en.wikipedia.org/wiki/The_Swing_(Fragonard)',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/The_Swing_(Fragonard)',
+          'https://www.wallacecollection.org/explore/explore-in-depth/fragonards-the-swing/origins-of-the-swing/the-painting',
+        ],
         whyThisColour:
           'A froth of pink silk at the centre of a green and gold garden, the brightest thing in the picture.',
         techniques: [
@@ -908,11 +968,11 @@ export const COLOURS: readonly IColour[] = [
         ],
         lenses: {
           distance:
-            'A young woman swings high, pushed from the shadows by an older man, while a younger one hides in the bushes below, looking up.',
+            'A young woman swings high, pushed from the shadows by an older man, while a younger one hides in the bushes below.',
           close:
-            'Her slipper flies off towards a statue of Cupid, who holds a finger to his lips. Everyone in the garden is keeping a secret.',
+            "Her slipper flies off her outstretched foot. At the left, a statue of Cupid, after Falconet's Menacing Cupid, holds a finger to his lips. Everyone in the garden is keeping a secret.",
           context:
-            'Its original title was "The Happy Accidents of the Swing." It is one of the masterpieces of the Rococo, the style of pleasure the French Revolution swept away.',
+            'Its original title was "The Happy Accidents of the Swing." It is one of the masterpieces of the Rococo, the style of pleasure that Enlightenment critics wanted painting to give up.',
         },
         image: {
           file: 'the-swing.webp',
@@ -933,13 +993,17 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Art Institute of Chicago',
         city: 'Chicago',
         source: 'https://en.wikipedia.org/wiki/The_Child%27s_Bath',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/The_Child%27s_Bath',
+          'https://en.wikipedia.org/wiki/Mary_Cassatt',
+        ],
         whyThisColour:
           'Warm skin tones, a striped dress and soft light: tenderness painted without a trace of sweetness.',
         techniques: [
           {
             name: 'The view from above',
             detail:
-              'A high, tilted viewpoint and tight cropping, learned from Japanese woodblock prints and from Degas.',
+              'A high viewpoint looking down on foreshortened figures, an idea she took from Japanese woodblock prints and from Degas.',
           },
           {
             name: 'Pattern against flesh',
@@ -951,9 +1015,9 @@ export const COLOURS: readonly IColour[] = [
           distance:
             'Both heads meet at the centre and both look down into the basin. The composition is a circle of attention.',
           close:
-            "Watch the hands. The woman's holds the child steady and washes a foot; the child's rests on her knee.",
+            "Watch the hands. One of the woman's holds the child steady, the other washes a foot in the basin; the child's rests on her knee.",
           context:
-            'Cassatt was the only American to show with the Impressionists. The Art Institute bought this painting in 1910.',
+            'Cassatt was the only American officially associated with the Impressionists. The Art Institute bought this painting in 1910.',
         },
         image: {
           file: 'childs-bath.webp',
@@ -994,6 +1058,7 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Museo del Prado',
         city: 'Madrid',
         source: 'https://en.wikipedia.org/wiki/Saturn_Devouring_His_Son',
+        readingSources: ['https://en.wikipedia.org/wiki/Saturn_Devouring_His_Son'],
         whyThisColour:
           'A figure lurching out of black, painted in a handful of earths with one red, the darkest picture in the collection.',
         techniques: [
@@ -1005,15 +1070,15 @@ export const COLOURS: readonly IColour[] = [
           {
             name: 'A narrow palette',
             detail:
-              'Black, ochres, white and a touch of red, applied fast and rough. The violence is in the handling as much as the subject.',
+              'Black, earth browns and dirty whites, with red kept for the blood, applied fast and rough. The violence is in the handling as much as the subject.',
           },
         ],
         lenses: {
           distance:
             'The god is cramped by the frame, knees bent and arms clenched, as if the canvas were too small to hold him.',
-          close: 'Look at his eyes. They are wide and fixed, closer to terror than to hunger.',
+          close: 'Look at his eyes. They bulge, wide and fixed, closer to madness than to hunger.',
           context:
-            'The myth is Saturn eating his children for fear one would overthrow him. Goya never meant this for anyone else to see.',
+            'The myth is Saturn eating his children because it was foretold that one would overthrow him. Goya never intended the picture for public exhibition.',
         },
         image: {
           file: 'saturn.webp',
@@ -1034,12 +1099,16 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Kenwood House',
         city: 'London',
         source: 'https://en.wikipedia.org/wiki/Self-Portrait_with_Two_Circles',
+        readingSources: [
+          'https://en.wikipedia.org/wiki/Self-Portrait_with_Two_Circles',
+          'https://en.wikipedia.org/wiki/Rembrandt',
+        ],
         whyThisColour: 'Browns and blacks throughout, out of which a face is built from light.',
         techniques: [
           {
             name: 'Uneven finish',
             detail:
-              'The face is modelled in heavy, worked layers; the hands, palette and brushes are a few rough strokes. Rembrandt finished only what mattered.',
+              'The head is built from many colours, thickly painted; the hands, palette and brushes were put down at great speed. Rembrandt finished only what mattered.',
           },
           {
             name: 'Impasto for light',
@@ -1049,11 +1118,11 @@ export const COLOURS: readonly IColour[] = [
         ],
         lenses: {
           distance:
-            'Two arcs of circles hang on the wall behind him and nobody knows why. Map hemispheres and a symbol of artistic perfection are both proposed.',
+            "Two arcs of circles hang on the wall behind him and nobody knows why. The hemispheres of a world map and Giotto's perfect freehand circle have both been proposed.",
           close:
             'The face is old, steady and unflattered. He is holding the tools of his trade, not a symbol of status.',
           context:
-            'Painted in his last years, after bankruptcy. It is one of more than forty painted self-portraits, a lifelong record of one face.',
+            'Painted in his last years, long after he declared himself insolvent in 1656. It is one of more than forty painted self-portraits, a lifelong record of one face.',
         },
         image: {
           file: 'rembrandt-two-circles.webp',
@@ -1074,6 +1143,7 @@ export const COLOURS: readonly IColour[] = [
         museum: "Musée d'Orsay",
         city: 'Paris',
         source: 'https://en.wikipedia.org/wiki/A_Burial_at_Ornans',
+        readingSources: ['https://en.wikipedia.org/wiki/A_Burial_at_Ornans'],
         whyThisColour:
           'A band of black mourning clothes stretches across a canvas more than six metres wide, under a low grey sky.',
         techniques: [
@@ -1093,7 +1163,7 @@ export const COLOURS: readonly IColour[] = [
           close:
             'Find the dog, the kneeling gravedigger, and the skull at the edge of the open grave.',
           context:
-            'Shown at the Paris Salon of 1850, it caused an uproar and made Courbet famous. It is a founding work of Realism.',
+            'Shown at the Paris Salon of 1850, it caused an uproar, brought Courbet instant fame, and brought Realism to public attention.',
         },
         image: {
           file: 'burial-at-ornans.webp',
@@ -1136,6 +1206,7 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Rijksmuseum',
         city: 'Amsterdam',
         source: 'https://en.wikipedia.org/wiki/The_Milkmaid_(Vermeer)',
+        readingSources: ['https://en.wikipedia.org/wiki/The_Milkmaid_(Vermeer)'],
         whyThisColour:
           'Daylight across a whitewashed wall is half the picture, and the stillest light in the collection.',
         techniques: [
@@ -1147,16 +1218,16 @@ export const COLOURS: readonly IColour[] = [
           {
             name: 'Ultramarine',
             detail:
-              "The apron is ultramarine, ground from lapis lazuli and the most expensive pigment a painter could buy, spent on a servant's apron.",
+              "The blue of her cuff and apron is ultramarine, ground from lapis lazuli and one of the most expensive pigments a painter could buy, spent on a servant's working clothes.",
           },
         ],
         lenses: {
           distance:
             'The only movement is the thin stream of milk. Everything else in the room has stopped to watch it.',
           close:
-            'Look at the wall. Vermeer painted nail holes and a nail, and a small foot warmer sits on the floor.',
+            'Look at the wall. Vermeer painted a nail and a nail hole, and a foot warmer sits on the floor behind her.',
           context:
-            'It is smaller than most people expect, under half a metre on each side. The Rijksmuseum counts it among its finest works.',
+            'It is smaller than most people expect, under half a metre on each side. The Rijksmuseum counts it among its finest attractions.',
         },
         image: {
           file: 'milkmaid.webp',
@@ -1177,6 +1248,7 @@ export const COLOURS: readonly IColour[] = [
         museum: 'National Gallery of Art',
         city: 'Washington, D.C.',
         source: 'https://en.wikipedia.org/wiki/Symphony_in_White,_No._1:_The_White_Girl',
+        readingSources: ['https://en.wikipedia.org/wiki/Symphony_in_White,_No._1:_The_White_Girl'],
         whyThisColour:
           'A white dress against a white curtain. The whole picture is a study in how many whites there are.',
         techniques: [
@@ -1188,7 +1260,7 @@ export const COLOURS: readonly IColour[] = [
           {
             name: 'A musical title',
             detail:
-              'Renamed later as a "symphony," to insist the picture is an arrangement of colour, not a story. Art for art\'s sake.',
+              'About ten years later Whistler began calling it a "symphony," to insist the picture is an arrangement of colour, not a story. Art for art\'s sake.',
           },
         ],
         lenses: {
@@ -1197,7 +1269,7 @@ export const COLOURS: readonly IColour[] = [
           close:
             'At her feet is a wolf skin with a snarling head, the one dark and violent note in the room.',
           context:
-            'The model is Joanna Hiffernan. Rejected by the Royal Academy and the Paris Salon, it caused a stir at the Salon des Refusés of 1863.',
+            "The model is Joanna Hiffernan. Rejected by the Royal Academy and the Paris Salon, it was shown at the Salon des Refusés of 1863, where it drew even more attention than Manet's Déjeuner sur l'herbe.",
         },
         image: {
           file: 'white-girl.webp',
@@ -1218,6 +1290,7 @@ export const COLOURS: readonly IColour[] = [
         museum: 'Hamburger Kunsthalle',
         city: 'Hamburg',
         source: 'https://en.wikipedia.org/wiki/Wanderer_above_the_Sea_of_Fog',
+        readingSources: ['https://en.wikipedia.org/wiki/Wanderer_above_the_Sea_of_Fog'],
         whyThisColour:
           'Fog in pale greys and lilac fills the valley. The man is dark, and the world beyond him is almost white.',
         techniques: [
@@ -1229,7 +1302,7 @@ export const COLOURS: readonly IColour[] = [
           {
             name: 'A composed landscape',
             detail:
-              'The view is assembled in the studio from separate sketches of real mountains. No single place looks like this.',
+              'The view is assembled in the studio from sketches made in the Elbe Sandstone Mountains. No single place looks like this.',
           },
         ],
         lenses: {
@@ -1238,7 +1311,7 @@ export const COLOURS: readonly IColour[] = [
           close:
             'Each ridge is a step paler than the one before. Distance is painted as a fading of tone.',
           context:
-            'A defining image of German Romanticism, usually read as self-reflection or as the sublime: nature too large to take in.',
+            'One of the most representative works of Romanticism, read as self-reflection or as the sublime: nature too large to take in.',
         },
         image: {
           file: 'wanderer.webp',

@@ -3,11 +3,13 @@ import { COLOURS, IPainting, ORBS_SHOWN } from './gallery.data';
 /**
  * The collection's invariants.
  *
- * The page promises three things it cannot show: that the colour groups never
- * overlap, that every image is free to publish, and that every label can be
- * checked. Each erodes quietly under editing — a painting pasted into a second
- * group because it "also fits", a modern work added because it is perfect for
- * a colour, a source left blank for later — so each is a test.
+ * The page promises four things it cannot show: that the colour groups never
+ * overlap, that every image is free to publish, that every label can be
+ * checked, and that the facts inside the readings were. Each erodes quietly
+ * under editing — a painting pasted into a second group because it "also
+ * fits", a modern work added because it is perfect for a colour, a source left
+ * blank for later, an anecdote remembered rather than looked up — so each is a
+ * test.
  */
 
 const paintings: readonly IPainting[] = COLOURS.flatMap((colour) => colour.paintings);
@@ -122,6 +124,24 @@ describe('gallery collection', () => {
   it('cites a source for every label', () => {
     for (const painting of paintings) {
       expect(painting.source).toMatch(/^https:\/\/(en\.wikipedia\.org|www\.metmuseum\.org)\//);
+    }
+  });
+
+  it('cites where the facts in every reading were checked', () => {
+    // The readings were first written from memory, and a check against sources
+    // found Caillebotte's "bequest", a hare nobody can see any more and a
+    // Hiroshige source that no museum asserts. This makes the check a condition
+    // of entry. The hosts are deliberately few: an encyclopedia, the holding
+    // museums and one art journal. A new host is a decision, not a paste.
+    const trusted =
+      /^https:\/\/(en\.wikipedia\.org|www\.metmuseum\.org|www\.nationalgallery\.org\.uk|www\.wallacecollection\.org|apollo-magazine\.com)\//;
+    for (const painting of paintings) {
+      const sources = painting.readingSources;
+      expect(sources.length, `${painting.slug} has unchecked readings`).toBeGreaterThan(0);
+      expect(new Set(sources).size, `${painting.slug} cites a source twice`).toBe(sources.length);
+      for (const source of sources) {
+        expect(source, painting.slug).toMatch(trusted);
+      }
     }
   });
 

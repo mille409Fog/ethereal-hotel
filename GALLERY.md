@@ -54,6 +54,7 @@ Wiring outside the folder: the route in `src/app/app.routes.ts`, its card in
 | `image.width`/`height` match the committed file      | `scripts/gallery.test.mjs`, using `readStillWebp` from `webp-anim.mjs`                 |
 | `public/gallery/` holds nothing unreferenced         | `scripts/gallery.test.mjs`                                                             |
 | Each label cites Wikipedia or the Met                | `gallery.data.spec.ts`                                                                 |
+| Each painting's readings cite a trusted host         | `gallery.data.spec.ts`, which holds the host list; adding a host is a decision         |
 | Alt text is substantive and doesn't repeat the title | `gallery.data.spec.ts`                                                                 |
 | "Another" never shows the same painting again        | `recommend.spec.ts`, `gallery.spec.ts`                                                 |
 | The method paragraph's counts match the data         | `gallery.spec.ts`; the template reads them from `COLOURS`                              |
@@ -68,7 +69,8 @@ Wiring outside the folder: the route in `src/app/app.routes.ts`, its card in
    work's Wikipedia infobox, or from `collectionapi.metmuseum.org` for a Met object, and put that
    URL in `source`. The infobox's wikitext (`action=parse&prop=wikitext`) gives the fields cleanly.
 3. **Write the entry inside one colour**, with `image.file` set to `<slug>.webp` and `width`/`height`
-   set to 0 for now.
+   set to 0 for now. Check every fact in the readings before writing it, not after, and list
+   the pages in `readingSources`. If no source states something, leave it out.
 4. **Run `npm run gallery:fetch -- --only <slug>`.** It prints the real pixel size; copy it into
    the data. Without `--only` it refetches all 24 files, which takes about a minute.
 5. **Delete any WebP the change orphaned**, then run `npm test` and `npm run test:scripts`.
@@ -109,26 +111,35 @@ locally.
   warnings sit just above today's build, and the move keeps that true. If the collection grows
   much more, load the prose as JSON from `public/` instead of compiling it into the chunk.
 
-## What was verified, and what was not
+## How the readings were checked
 
-The label fields (date, medium, size, museum, city) were checked against the cited source. So
-were these prose claims, which appear in the Wikipedia intros: Munch's "blood red" and "infinite
-scream", Apollinaire's line on _The Dream_, the 2005 Radio 4 poll for _The Fighting Temeraire_,
-the 1950 rediscovery of _Judith_, Hokusai's Prussian blue, and Cassatt's debt to Japanese prints.
+The label fields are checked against `source`. The readings (`whyThisColour`, `techniques`,
+`lenses`) were first written from memory, then checked claim by claim in October 2026. Each
+painting's `readingSources` lists the pages they were checked against. Three kinds of sentence
+were treated differently:
 
-**The rest of the readings and quotes were written from memory and have not been checked.**
-They should be checked before anyone quotes them. In particular:
+- **Facts** (a date, a quote, an attribution, who owned what) must be stated by one of the
+  `readingSources`. Where the source said something narrower, the sentence was narrowed to match.
+- **What the picture shows** (a dog on the bank, bare cardboard in the corners) was checked
+  against the committed reproduction in `public/gallery/`.
+- **Interpretation** ("the room has more personality than anyone in it") is not checked. The
+  method paragraph on the page says the readings are one person's interpretation.
 
-- Van Gogh's "terrible passions of humanity" and "ruin oneself, go mad, or commit a crime"
-  (his letters of September 1888);
-- the 2021 confirmation that the pencilled line on _The Scream_ is in Munch's hand;
-- Kleist's "eyelids cut away", and Friedrich painting out ships on _The Monk by the Sea_;
-- Rousseau's explanation that the woman is dreaming, and his studies at the Jardin des Plantes;
-- "Constable's snow", the full-size sketch, and the 1824 Salon gold medal;
-- Seurat's later painted border;
-- Whistler's farthing in damages, and the Hiroshige source for the bridge;
-- the Cupid statue in _The Swing_, and Caillebotte's bequest of the Renoir;
-- the foot warmer and nail holes in _The Milkmaid_.
+The check corrected these, which are worth knowing as the kinds of error memory makes:
+
+- _Bal du moulin de la Galette_ did not reach the state by Caillebotte's bequest. It was taken in
+  payment of death duties.
+- The hare in _Rain, Steam and Speed_ is now barely visible, if at all: the paint has turned
+  transparent. The old text called it "hard to forget once seen".
+- The Hiroshige source for Whistler's bridge is a museum's "might have", not a fact. It was cut.
+  So was the claim that the canvas was shown in court; the source says only that it was discussed.
+- _A Burial at Ornans_ "brought Realism to public attention"; "founding work" was an upgrade.
+- The Munch inscription reads "could only have been painted by a madman", not "can".
+
+The Met's catalogue pages rate-limited every request during the check, so the Monet reading is
+sourced from Wikipedia instead. A search result quoted the Met's essay as saying the 1899
+footbridge series was eighteen views. Nobody has read that on the Met's page, so the reading says
+only "several". Check the essay before adding the number.
 
 Correct an entry in `gallery.data.ts` and the page follows. Nothing else holds a copy.
 
