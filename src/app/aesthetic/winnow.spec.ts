@@ -4,6 +4,8 @@ import {
   aestheticFor,
   AREA_WEIGHTS,
   contrastBetween,
+  CVD_CHECKED,
+  cvdDistanceBetween,
   distanceBetween,
   FIGURE_WEIGHT,
   IAesthetic,
@@ -41,6 +43,35 @@ describe('winnow', () => {
       expect(contrastBetween(a.text.ink, a.text.paper)).toBeCloseTo(a.text.ratio, 12);
       expect(a.text.ink.colour.l).toBeLessThan(a.text.paper.colour.l);
     }
+  });
+
+  it('keeps every accent distinct from its ground and panel for every deficiency', () => {
+    for (const a of all) {
+      for (const deficiency of CVD_CHECKED) {
+        expect(cvdDistanceBetween(a.primary, a.tertiary, deficiency)).toBeGreaterThanOrEqual(
+          MIN_DISTINCT
+        );
+        expect(cvdDistanceBetween(a.secondary, a.tertiary, deficiency)).toBeGreaterThanOrEqual(
+          MIN_DISTINCT
+        );
+      }
+    }
+    expect(CVD_CHECKED).toEqual(['protanopia', 'deuteranopia', 'tritanopia']);
+  });
+
+  // The charcoal ring only: it is where the unchecked accents vanished (pale
+  // cyan on chalk), and the whole wheel through the uncached path is slow.
+  it('needs that filter: without it, an accent vanishes for deuteranopia', () => {
+    const charcoal = CELLS.filter((cell) => cell.toneIndex === 0);
+    const unchecked = charcoal.map((cell) => aestheticFor(cell, { deficiencies: [] }));
+    const lost = unchecked.filter(
+      (a) =>
+        Math.min(
+          cvdDistanceBetween(a.primary, a.tertiary, 'deuteranopia'),
+          cvdDistanceBetween(a.secondary, a.tertiary, 'deuteranopia')
+        ) < MIN_DISTINCT
+    );
+    expect(lost.length).toBeGreaterThan(0);
   });
 
   it('never adds an olive, though a visitor may choose one', () => {

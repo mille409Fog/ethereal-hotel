@@ -28,7 +28,7 @@ export interface IOklch {
 }
 
 /** Linear-light sRGB. In gamut when every channel is in [0, 1]. */
-type LinearRgb = readonly [number, number, number];
+export type LinearRgb = readonly [number, number, number];
 
 /** How far outside [0, 1] a channel may sit and still count as in gamut. */
 const GAMUT_EPSILON = 1e-6;
@@ -54,6 +54,22 @@ export function oklchToLinear({ l, c, h }: IOklch): LinearRgb {
     4.0767416621 * lmsL - 3.3077115913 * lmsM + 0.2309699292 * lmsS,
     -1.2684380046 * lmsL + 2.6097574011 * lmsM - 0.3413193965 * lmsS,
     -0.0041960863 * lmsL - 0.7034186147 * lmsM + 1.707614701 * lmsS,
+  ];
+}
+
+/**
+ * Linear-light sRGB back to OKLab, as `[L, a, b]`: the inverse of
+ * `oklchToLinear`, before its polar step. The CVD simulation needs it, since
+ * a simulated colour exists only as RGB.
+ */
+export function linearToOklab([r, g, b]: LinearRgb): [number, number, number] {
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
   ];
 }
 

@@ -1,4 +1,5 @@
 import { oklchToLinear } from './colour';
+import { Deficiency, DEFICIENCIES, simulate } from './cvd';
 import { hueEffect, ILab, pairHarmony, toLab, yellowEffect } from './harmony';
 import { angularDistance, CELLS, ICell, isNeutral } from './wheel';
 
@@ -19,6 +20,12 @@ import { angularDistance, CELLS, ICell, isNeutral } from './wheel';
  * - It can set its own text: some pair reaches WCAG's 4.5:1.
  * - The accent stands off the ground: `ACCENT_DISTANCE`, twice the above.
  * - No olive companion (`OLIVE`).
+ * - The accent stays a different colour, from the ground and the secondary,
+ *   for someone missing any one cone type (`CVD_CHECKED`, `cvd.ts`). Before
+ *   this filter, 28 aesthetics failed it for deuteranopia, most of them a
+ *   pale cyan accent on a chalk panel: different to typical eyes only by a
+ *   hue that red-green deficiency removes. Enforcing all three deficiencies
+ *   changed 40 of the 480 and moved mean harmony from 0.170 to 0.165.
  *
  * **The score** ranks the survivors, and has two terms because the research
  * found two different things:
@@ -103,6 +110,14 @@ export function isOlive(cell: ICell): boolean {
 }
 
 /**
+ * The deficiencies the accent must stay distinct under, from both the ground
+ * and the secondary, by `MIN_DISTINCT`: the same distance the wheel asks of
+ * any two colours that are meant to read as two. The accent sits on both (a
+ * mark on the ground, a rule on the panel), so it must survive both.
+ */
+export const CVD_CHECKED: readonly Deficiency[] = DEFICIENCIES;
+
+/**
  * How much the accent's figural term counts against harmony. Chosen by eye,
  * and not delicately: weights of 0.5 and 0.8 give the same aesthetic as 0.6
  * for about four primaries in five (383 and 381 of 480), and the spec holds
@@ -155,6 +170,8 @@ interface IProfile {
   readonly groundHueWeight: number;
   /** The part of Ou & Luo's CH that belongs to this colour and ranking omits. */
   readonly unranked: number;
+  /** OKLab as each of `DEFICIENCIES` sees it, in that order. */
+  readonly cvd: ReadonlyArray<readonly [number, number, number]>;
 }
 
 /**
@@ -178,7 +195,23 @@ function profile(cell: ICell): IProfile {
     hueWeight,
     groundHueWeight: isNeutral(cell) ? 1 : hueWeight,
     unranked: hueEffect(lab) - Math.min(0, yellowEffect(lab)),
+    cvd: DEFICIENCIES.map((deficiency) => simulate(cell.colour, deficiency)),
   };
+}
+
+/**
+ * The smallest OKLab distance between two cells under any of `deficiencies`:
+ * how close they come to being one colour for someone, among the people the
+ * filter is protecting.
+ */
+function cvdDistance(t: Tables, i: number, j: number, deficiencies: readonly number[]): number {
+  const a = t.profiles[i].cvd;
+  const b = t.profiles[j].cvd;
+  let least = Infinity;
+  for (const k of deficiencies) {
+    least = Math.min(least, Math.hypot(a[k][0] - b[k][0], a[k][1] - b[k][1], a[k][2] - b[k][2]));
+  }
+  return least;
 }
 
 /** WCAG contrast ratio between two luminances, always ≥ 1. */
@@ -236,8 +269,14 @@ class Tables {
   public readonly distance = new Float64Array(this.n * this.n);
   /** Cell j as the accent on ground i, at `i * n + j`. */
   public readonly figure = new Float64Array(this.n * this.n);
+  /**
+   * `cvdDistance` under every one of `CVD_CHECKED`, precomputed because
+   * computing it per candidate took a search from about 1ms to 11ms.
+   */
+  public readonly cvdLeast = new Float64Array(this.n * this.n);
 
   constructor() {
+    const checked = CVD_CHECKED.map((x) => DEFICIENCIES.indexOf(x));
     const { n, profiles } = this;
     for (let i = 0; i < n; i++) {
       for (let j = i; j < n; j++) {
@@ -253,6 +292,7 @@ class Tables {
         // entries so an asymmetric term would not need a new layout.
         this.figure[i * n + j] = figural(CELLS[j], CELLS[i], profiles);
         this.figure[j * n + i] = figural(CELLS[i], CELLS[j], profiles);
+        this.cvdLeast[i * n + j] = this.cvdLeast[j * n + i] = cvdDistance(this, i, j, checked);
       }
     }
   }
@@ -303,6 +343,13 @@ export interface IAesthetic {
 /** Knobs a spec may turn to show the result does not hang on them. */
 export interface IWinnowOptions {
   readonly figureWeight?: number;
+  /** Which deficiencies the accent must survive; all of `CVD_CHECKED` by default. */
+  readonly deficiencies?: readonly Deficiency[];
+}
+
+/** OKLab distance between two cells as the person with `deficiency` sees them. */
+export function cvdDistanceBetween(a: ICell, b: ICell, deficiency: Deficiency): number {
+  return cvdDistance(getTables(), a.index, b.index, [DEFICIENCIES.indexOf(deficiency)]);
 }
 
 function scoreOf(t: Tables, p: number, s: number, a: number, figureWeight: number): number {
@@ -343,15 +390,32 @@ function admitsSecondary(t: Tables, p: number, s: number): boolean {
   return t.distance[p * t.n + s] >= MIN_DISTINCT && !t.olive[s];
 }
 
-/** Whether the filters admit accent `a` with primary `p` and secondary `s`. */
-function admitsAccent(t: Tables, p: number, s: number, a: number): boolean {
+/**
+ * Whether the filters admit accent `a` with primary `p` and secondary `s`.
+ * The colour-vision check runs last, being the dearest, and so only on
+ * candidates that have passed everything else.
+ */
+function admitsAccent(
+  t: Tables,
+  p: number,
+  s: number,
+  a: number,
+  deficiencies: readonly number[] | null
+): boolean {
   const { contrast: k, distance: d, n } = t;
-  return (
-    d[p * n + a] >= ACCENT_DISTANCE &&
-    d[s * n + a] >= MIN_DISTINCT &&
-    !t.olive[a] &&
-    Math.max(k[p * n + s], k[p * n + a], k[s * n + a]) >= TEXT_CONTRAST
-  );
+  if (
+    d[p * n + a] < ACCENT_DISTANCE ||
+    d[s * n + a] < MIN_DISTINCT ||
+    t.olive[a] ||
+    Math.max(k[p * n + s], k[p * n + a], k[s * n + a]) < TEXT_CONTRAST
+  ) {
+    return false;
+  }
+  // `null` is the default set, read from the table; anything else is a
+  // spec asking what a different set would have done, computed on the spot.
+  const least = (i: number): number =>
+    deficiencies === null ? t.cvdLeast[i * n + a] : cvdDistance(t, i, a, deficiencies);
+  return least(p) >= MIN_DISTINCT && least(s) >= MIN_DISTINCT;
 }
 
 interface ICandidate {
@@ -381,6 +445,9 @@ function keep(best: ICandidate[], candidate: ICandidate, count: number): void {
 export function rank(primary: ICell, count = 1, options: IWinnowOptions = {}): IAesthetic[] {
   const t = getTables();
   const figureWeight = options.figureWeight ?? FIGURE_WEIGHT;
+  const deficiencies = options.deficiencies
+    ? options.deficiencies.map((x) => DEFICIENCIES.indexOf(x))
+    : null;
   const p = primary.index;
   const best: ICandidate[] = [];
 
@@ -389,7 +456,7 @@ export function rank(primary: ICell, count = 1, options: IWinnowOptions = {}): I
       continue;
     }
     for (let a = 0; a < t.n; a++) {
-      if (admitsAccent(t, p, s, a)) {
+      if (admitsAccent(t, p, s, a, deficiencies)) {
         keep(best, { s, a, score: scoreOf(t, p, s, a, figureWeight) }, count);
       }
     }
