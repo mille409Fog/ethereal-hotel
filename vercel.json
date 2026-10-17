@@ -14,6 +14,7 @@
     { "source": "/booking", "destination": "/booking/index.html" },
     { "source": "/work", "destination": "/work/index.html" },
     { "source": "/gallery", "destination": "/gallery/index.html" },
+    { "source": "/aesthetic", "destination": "/aesthetic/index.html" },
     { "source": "/aubade/reader", "destination": "/aubade/reader/index.html" },
     { "source": "/aubade", "destination": "/aubade/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }

@@ -6,14 +6,15 @@ import { stubBookingApi } from './support/backend';
 import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
 
 /**
- * The seven routes the app actually has. `/` is the portfolio page;
+ * The eight routes the app actually has. `/` is the portfolio page;
  * `/dashboard` and `/booking` are the live demos, `/work` is the case
- * studies and `/gallery` the colour-to-painting guide. The last two are the
- * separate WebGL work.
+ * studies, `/gallery` the colour-to-painting guide and `/aesthetic` the
+ * aesthetic generator's colour wheel. The last two are the separate WebGL work.
  *
  * `/gallery` is scanned with a painting hung, not at rest: the label is most
  * of what there is to audit on that page, and it does not exist until an orb
- * is pressed.
+ * is pressed. `/aesthetic` is scanned with a primary chosen, for the same
+ * reason.
  *
  * `/aubade` is scanned for a reason the first four are not: a canvas is opaque
  * to assistive technology, so the whole a11y surface of that route is the prose
@@ -25,7 +26,7 @@ import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
  * the text version AUBADE requires — and a text version with a serious
  * violation in it is not serving the people it exists for.
  *
- * All six are reached through the SPA fallback in `scripts/serve-dist.mjs`.
+ * All eight are reached through the SPA fallback in `scripts/serve-dist.mjs`.
  */
 const ROUTES = [
   { path: '/', name: 'landing page' },
@@ -33,6 +34,7 @@ const ROUTES = [
   { path: '/booking', name: 'booking' },
   { path: '/work', name: 'case studies' },
   { path: '/gallery', name: 'gallery' },
+  { path: '/aesthetic', name: 'aesthetic' },
   { path: '/aubade', name: 'aubade' },
   { path: '/aubade/reader', name: 'aubade reader' },
 ] as const;
@@ -91,6 +93,19 @@ async function hangAPainting(page: Page): Promise<void> {
 }
 
 /**
+ * The wheel's cards are placeholders until a primary is chosen. Choosing one
+ * from the keyboard, the way the page says to, fills the primary card and
+ * draws its marker, and moving focus proves the radio group's tab stop works.
+ */
+async function chooseAPrimary(page: Page): Promise<void> {
+  const entry = page.locator('.cell[tabindex="0"]');
+  await entry.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('radio', { checked: true })).toBeFocused();
+  await expect(page.locator('.triad-primary .triad-name')).toBeVisible();
+}
+
+/**
  * Aubade fetches its renderer chunk before it knows what it can show, so the
  * plate says "Unlocking the lobby…" for a moment. Scanning then would audit a
  * state no visitor sees for long, and — worse — would miss whichever of the
@@ -135,6 +150,9 @@ test.describe('accessibility', () => {
       }
       if (route.path === '/gallery') {
         await hangAPainting(page);
+      }
+      if (route.path === '/aesthetic') {
+        await chooseAPrimary(page);
       }
       if (route.path === '/aubade') {
         // The lobby's budget alone outlasts the default test timeout.

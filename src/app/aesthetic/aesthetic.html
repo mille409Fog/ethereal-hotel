@@ -1,0 +1,297 @@
+<!-- ===== THE AESTHETIC GENERATOR =====
+     `main`, matching `/gallery`: this route renders nothing else. The page's
+     glow takes the primary's colour through `--glow`. -->
+<main class="aesthetic-page" [style.--glow]="primary()?.hex ?? null">
+  <div class="aesthetic-inner">
+    <header class="aesthetic-header">
+      <h1 class="aesthetic-title">The Aesthetic Generator</h1>
+      <p class="aesthetic-subtitle">
+        An aesthetic is three colours. Begin with the first: choose a primary from the wheel.
+      </p>
+    </header>
+
+    <section class="wheel-section" aria-labelledby="wheel-heading">
+      <h2 id="wheel-heading" class="visually-hidden">Choose a primary colour</h2>
+
+      <!-- Layers, back to front: the aura, the continuum (both CSS), the SVG,
+           and the medallion (CSS again, because it shows a conic gradient
+           until something is chosen). Only the cells take input; everything
+           else is `pointer-events: none` and hidden from assistive tech. -->
+      <div class="wheel" [class.chosen]="primary() !== null">
+        <div class="aura" aria-hidden="true" [style.background]="continuum"></div>
+        <div class="continuum" aria-hidden="true" [style.background]="continuum"></div>
+
+        <svg #wheel class="wheel-svg" [attr.viewBox]="viewBox">
+          <defs>
+            <!-- Metals for the three roles, with gilt also dressing the
+                 bezel. Several stops, so a ring of one metal catches light
+                 at more than one point as it goes round. -->
+            <linearGradient
+              id="aw-gilt"
+              gradientUnits="userSpaceOnUse"
+              x1="-310"
+              y1="-310"
+              x2="310"
+              y2="310"
+            >
+              <stop offset="0" stop-color="#f4e2b0" />
+              <stop offset="0.22" stop-color="#a47a3c" />
+              <stop offset="0.45" stop-color="#ead08e" />
+              <stop offset="0.7" stop-color="#8a6530" />
+              <stop offset="1" stop-color="#f0d9a0" />
+            </linearGradient>
+            <linearGradient
+              id="aw-silver"
+              gradientUnits="userSpaceOnUse"
+              x1="-310"
+              y1="310"
+              x2="310"
+              y2="-310"
+            >
+              <stop offset="0" stop-color="#f2f0f4" />
+              <stop offset="0.4" stop-color="#8e8a96" />
+              <stop offset="0.65" stop-color="#e2e0e8" />
+              <stop offset="1" stop-color="#7c7884" />
+            </linearGradient>
+            <linearGradient
+              id="aw-bronze"
+              gradientUnits="userSpaceOnUse"
+              x1="310"
+              y1="-310"
+              x2="-310"
+              y2="310"
+            >
+              <stop offset="0" stop-color="#f1c2a4" />
+              <stop offset="0.4" stop-color="#94573a" />
+              <stop offset="0.7" stop-color="#e3a582" />
+              <stop offset="1" stop-color="#7a4430" />
+            </linearGradient>
+            <!-- The enamel glaze: shadow where the cells meet the filigree,
+                 a breath of light toward the rim, and a darker lip at it. -->
+            <radialGradient id="aw-glaze" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="222">
+              <stop offset="0.414" stop-color="#000" stop-opacity="0.22" />
+              <stop offset="0.56" stop-color="#000" stop-opacity="0" />
+              <stop offset="0.9" stop-color="#fff" stop-opacity="0.05" />
+              <stop offset="1" stop-color="#000" stop-opacity="0.3" />
+            </radialGradient>
+            <!-- The sheen: one window of light across the glass, upper left. -->
+            <linearGradient
+              id="aw-sheen"
+              gradientUnits="userSpaceOnUse"
+              x1="-222"
+              y1="-222"
+              x2="60"
+              y2="60"
+            >
+              <stop offset="0" stop-color="#fff" stop-opacity="0.22" />
+              <stop offset="0.5" stop-color="#fff" stop-opacity="0.04" />
+              <stop offset="1" stop-color="#fff" stop-opacity="0" />
+            </linearGradient>
+            <path
+              id="aw-star"
+              d="M0 -7 C1 -1.5 1.5 -1 7 0 C1.5 1 1 1.5 0 7 C-1 1.5 -1.5 1 -7 0 C-1.5 -1 -1 -1.5 0 -7Z"
+            />
+          </defs>
+
+          <!-- The rim: a dotted ring and eight stars, turning once in four
+               minutes. Decoration only. -->
+          <g class="rete" aria-hidden="true">
+            <circle class="rete-ring" [attr.r]="radii.rete" />
+            @for (star of stars; track star) {
+              <use href="#aw-star" class="rete-star" [attr.transform]="star" />
+            }
+          </g>
+
+          <!-- The bezel: two gilt rules, a tick per cell, a longer one per
+               sector with its angle, and the sector's name between. -->
+          <g class="bezel" aria-hidden="true">
+            <circle class="bezel-rule" [attr.r]="radii.bezel" />
+            <circle class="bezel-rule bezel-rule-fine" [attr.r]="radii.bezel + 3" />
+            @for (t of minuteTicks; track $index) {
+              <line
+                class="tick"
+                [attr.x1]="t.x1"
+                [attr.y1]="t.y1"
+                [attr.x2]="t.x2"
+                [attr.y2]="t.y2"
+              />
+            }
+            @for (t of hourTicks; track t.angle) {
+              <line
+                class="tick tick-hour"
+                [attr.x1]="t.x1"
+                [attr.y1]="t.y1"
+                [attr.x2]="t.x2"
+                [attr.y2]="t.y2"
+              />
+              <text class="numeral" [attr.transform]="t.numeral">{{ t.angle }}°</text>
+            }
+            @for (label of labels; track label.angle) {
+              <text class="sector-label" [attr.transform]="label.transform">{{ label.name }}</text>
+            }
+          </g>
+
+          <!-- The filigree: two fine rings with lozenges and beads between,
+               turning the other way from the rim, and more slowly. -->
+          <g class="filigree" aria-hidden="true">
+            <circle class="filigree-rule" [attr.r]="radii.filigreeInner" />
+            <circle class="filigree-rule" [attr.r]="radii.filigreeOuter" />
+            @for (lozenge of lozenges; track lozenge) {
+              <path class="lozenge" d="M0 -5 L2.4 0 L0 5 L-2.4 0Z" [attr.transform]="lozenge" />
+            }
+            @for (b of beads; track $index) {
+              <circle class="bead" r="1.1" [attr.cx]="b.x" [attr.cy]="b.y" />
+            }
+          </g>
+
+          <!-- The cells. One radio per cell and one tab stop for the group;
+               the leading between them is each cell's own stroke. The group
+               takes the pointer as well as the keys, so the two paths into a
+               choice live on one element; the unnamed ring at its back is the
+               continuum's hit area, since the continuum itself is CSS. -->
+          <g
+            class="cells"
+            role="radiogroup"
+            aria-label="Colour wheel, sixty hues in six tones"
+            (keydown)="onKeydown($event)"
+            (focusin)="onFocusIn($event)"
+            (focusout)="onFocusOut()"
+            (click)="onClick($event)"
+            (pointermove)="onPointerMove($event)"
+            (pointerleave)="onPointerLeave()"
+          >
+            <path class="continuum-hit" aria-hidden="true" [attr.d]="continuumHit" />
+            @for (cell of cells; track cell.index) {
+              <path
+                class="cell"
+                role="radio"
+                [attr.d]="paths[cell.index]"
+                [attr.fill]="cell.hex"
+                [attr.data-cell]="cell.index"
+                [attr.aria-label]="label(cell)"
+                [attr.aria-checked]="primary()?.index === cell.index"
+                [attr.tabindex]="cell.index === tabStop() ? 0 : -1"
+              />
+            }
+          </g>
+
+          <!-- Glass over the enamel, and the leading between tones. -->
+          <g class="glass" aria-hidden="true">
+            @for (r of toneBoundaries; track r) {
+              <circle class="tone-rule" [attr.r]="r" />
+            }
+            <circle
+              class="glaze"
+              [attr.r]="(radii.cellsInner + radii.cellsOuter) / 2"
+              [attr.stroke-width]="radii.cellsOuter - radii.cellsInner"
+              stroke="url(#aw-glaze)"
+            />
+            <circle
+              class="glaze"
+              [attr.r]="(radii.cellsInner + radii.cellsOuter) / 2"
+              [attr.stroke-width]="radii.cellsOuter - radii.cellsInner"
+              stroke="url(#aw-sheen)"
+            />
+          </g>
+
+          <!-- The figure joining the chosen colours. Drawn once two exist,
+               which the mechanism that picks the other two will bring. -->
+          @if (figure(); as points) {
+            <polygon class="figure" aria-hidden="true" [attr.points]="points" />
+          }
+
+          <!-- One hand per chosen colour, drawn at twelve o'clock and turned
+               to its hue, so a new choice is a rotation the browser eases. -->
+          @for (marker of markers(); track marker.role) {
+            <g
+              aria-hidden="true"
+              [class]="'marker marker-' + marker.role"
+              [style.transform]="'rotate(' + marker.angle + 'deg)'"
+            >
+              <line class="hand-shadow" x1="0" y1="0" x2="0" [attr.y2]="-marker.reach" />
+              <line class="hand" x1="0" y1="0" x2="0" [attr.y2]="-marker.reach" />
+              <path class="marker-shadow" [attr.d]="markerPaths[marker.cell.toneIndex]" />
+              <path class="marker-outline" [attr.d]="markerPaths[marker.cell.toneIndex]" />
+              <!-- The pointer, set into the bezel and aimed at the cell. -->
+              <path class="marker-jewel" [attr.d]="jewel" />
+            </g>
+          }
+
+          <!-- The cell under the pointer, or holding focus. -->
+          @if (hovered() ?? ringed(); as lit) {
+            <g class="lit" aria-hidden="true" [class.lit-focus]="ringed() === lit">
+              <path class="lit-shadow" [attr.d]="paths[lit.index]" />
+              <path class="lit-outline" [attr.d]="paths[lit.index]" />
+            </g>
+          }
+        </svg>
+
+        <div class="medallion" aria-hidden="true">
+          <div class="medallion-void" [style.background]="continuum"></div>
+          <div class="medallion-colour" [style.background]="primary()?.hex ?? 'transparent'"></div>
+        </div>
+      </div>
+
+      <p class="wheel-caption" aria-hidden="true">
+        @if (shown(); as s) {
+          <span class="caption-verb">{{ s.verb }}</span>
+          <span class="caption-name">{{ s.cell.name }}</span>
+          <span class="caption-hex">{{ s.cell.hex }}</span>
+        } @else {
+          <span class="caption-verb">Nothing chosen yet</span>
+        }
+      </p>
+      <p class="wheel-keys">
+        With a keyboard, Tab into the wheel. Left and right turn through the hues, up and down move
+        between tones, and Page Up and Page Down jump a sector.
+      </p>
+    </section>
+
+    <section class="triad" aria-labelledby="triad-heading">
+      <h2 id="triad-heading" class="triad-heading">The aesthetic</h2>
+      <ol class="triad-list">
+        @for (card of cards(); track card.role) {
+          <li [class]="'triad-card triad-' + card.role">
+            <h3 class="triad-role">
+              <span class="role-gem" aria-hidden="true"></span>
+              {{ card.role }}
+            </h3>
+            @if (card.cell; as cell) {
+              <div class="swatch" [style.background]="cell.hex" aria-hidden="true"></div>
+              <p class="triad-name">{{ cell.name }}</p>
+              <dl class="triad-values">
+                <dt>Hex</dt>
+                <dd>{{ cell.hex }}</dd>
+                <dt>OKLCH</dt>
+                <dd>{{ card.oklch }}</dd>
+              </dl>
+            } @else if (card.role === 'primary') {
+              <div class="swatch swatch-empty" aria-hidden="true"></div>
+              <p class="triad-empty">Choose a cell on the wheel.</p>
+            } @else {
+              <div class="swatch swatch-empty" aria-hidden="true"></div>
+              <p class="triad-empty">
+                Not chosen yet. The {{ card.role }} will be derived from the primary, and that
+                mechanism has not been built.
+              </p>
+            }
+          </li>
+        }
+      </ol>
+    </section>
+
+    <section class="method" aria-labelledby="method-heading">
+      <h2 id="method-heading" class="method-heading">How the wheel is built</h2>
+      <p>
+        The wheel is drawn in OKLCH, a colour space built so that equal lightness looks equally
+        light, and its angle is the hue angle: a cell at 42° is hue 42°. There are
+        {{ cells.length }} cells, {{ hueCount }} hues {{ hueStep }}° apart in
+        {{ tones.length }} tones, from lightness {{ darkest }} at the centre to {{ lightest }} at
+        the rim. Each cell is a single sRGB colour, as saturated as a screen can show at its
+        lightness and hue, which is why a light yellow is vivid and a light blue is soft. The band
+        outside the cells is the same colour function sampled every {{ continuumStep }}°, so the
+        cells are visibly a choice of stops along it. Nothing you choose here is stored or sent.
+      </p>
+    </section>
+  </div>
+</main>

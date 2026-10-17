@@ -63,6 +63,15 @@ export class Projects {
       link: '/gallery',
       linkLabel: 'Open the Gallery',
     },
+    {
+      name: 'The Aesthetic Generator',
+      description:
+        'A colour wheel of 360 cells computed in OKLCH and gamut-mapped to sRGB, where an aesthetic begins with its primary',
+      category: 'Interactive',
+      tech: ['Angular 22', 'SVG', 'OKLCH', 'Signals'],
+      link: '/aesthetic',
+      linkLabel: 'Open the Wheel',
+    },
     // The three below are the NDA engagements. Their descriptions are
     // deliberately thin — the argument they make is in the case study, not on
     // the card, and a card that tried to carry it would be the vague-paragraph

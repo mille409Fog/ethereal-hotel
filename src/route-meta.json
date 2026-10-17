@@ -28,6 +28,11 @@
       "title": "The Gallery - Jacob Miller",
       "description": "Choose a colour and a painting is hung for it: twenty-four public-domain works in seven colour groups, each with where to see it, how it was made and three ways of looking at it."
     },
+    "aesthetic": {
+      "path": "aesthetic",
+      "title": "The Aesthetic Generator - Jacob Miller",
+      "description": "A colour wheel of 360 enamelled cells, sixty hues in six tones, each one real sRGB colour computed in OKLCH. Choose a primary; the secondary and tertiary come next."
+    },
     "aubade": {
       "path": "aubade",
       "title": "Hôtel Aubade - Floor 0, The Desk",

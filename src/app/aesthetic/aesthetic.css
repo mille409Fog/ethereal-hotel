@@ -1,0 +1,550 @@
+/* ===== The Aesthetic Generator =====
+   Component-scoped, with the page chrome mirroring `gallery.css` rather than
+   sharing a class with it. Every radius below that is written as `n / 310`
+   is a radius from `RADII` in `wheel.ts` over `VIEW_RADIUS`: the CSS layers
+   and the SVG must agree to the unit, and these are the only copies. */
+
+/* Registered so the page's glow can ease from one colour to the next; an
+   unregistered custom property can only jump. */
+@property --glow {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3a3236;
+}
+
+.aesthetic-page {
+  min-height: 100vh;
+  padding: 4rem 2rem;
+  background:
+    radial-gradient(
+      ellipse 70% 46rem at 50% 30rem,
+      color-mix(in oklab, var(--glow) 18%, transparent),
+      transparent 75%
+    ),
+    var(--color-bg);
+  transition: --glow 1.2s ease;
+}
+
+.aesthetic-inner {
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.aesthetic-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.aesthetic-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3rem);
+  color: var(--color-text);
+  margin: 0 0 0.75rem;
+}
+
+.aesthetic-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 1.05rem;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+/* ----- The wheel's layers ----- */
+
+.wheel {
+  position: relative;
+  width: min(100%, 42rem);
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+
+.aura,
+.continuum,
+.medallion {
+  position: absolute;
+  pointer-events: none;
+}
+
+.aura,
+.continuum {
+  inset: 0;
+  border-radius: 50%;
+}
+
+/* The continuum's own colours, blurred by a soft mask rather than a `filter`,
+   which would repaint the whole square on every frame of the page glow. */
+.aura {
+  opacity: 0.4;
+  mask-image: radial-gradient(
+    circle closest-side,
+    transparent calc(170 / 310 * 100%),
+    #000 calc(232 / 310 * 100%),
+    #000 calc(240 / 310 * 100%),
+    transparent 100%
+  );
+}
+
+.continuum {
+  mask-image: radial-gradient(
+    circle closest-side,
+    transparent calc(228 / 310 * 100%),
+    #000 calc(228.5 / 310 * 100%),
+    #000 calc(241.5 / 310 * 100%),
+    transparent calc(242 / 310 * 100%)
+  );
+}
+
+.wheel-svg {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  touch-action: manipulation;
+}
+
+/* Everything drawn on top of the cells lets the pointer through to them. */
+.rete,
+.bezel,
+.filigree,
+.glass,
+.figure,
+.marker,
+.lit {
+  pointer-events: none;
+}
+
+/* SVG children rotate about the view box's origin, which is the wheel's
+   centre; said explicitly because the default differs between engines. */
+.rete,
+.filigree,
+.marker {
+  transform-box: view-box;
+  transform-origin: 0 0;
+}
+
+/* ----- Ornament ----- */
+
+.rete {
+  animation: wheel-turn 240s linear infinite;
+}
+
+.rete-ring {
+  fill: none;
+  stroke: #c9a866;
+  stroke-width: 1;
+  stroke-dasharray: 1 6;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.rete-star {
+  fill: url(#aw-gilt);
+}
+
+.bezel-rule,
+.filigree-rule {
+  fill: none;
+  stroke: url(#aw-gilt);
+  stroke-width: 1.6;
+}
+
+.bezel-rule-fine,
+.filigree-rule {
+  stroke-width: 0.7;
+}
+
+.tick {
+  stroke: url(#aw-gilt);
+  stroke-width: 0.8;
+  opacity: 0.7;
+}
+
+.tick-hour {
+  stroke-width: 1.6;
+  opacity: 1;
+}
+
+.numeral,
+.sector-label {
+  font-family: var(--font-serif);
+  text-anchor: middle;
+  dominant-baseline: central;
+  text-transform: uppercase;
+}
+
+.numeral {
+  font-size: 7.5px;
+  letter-spacing: 0.06em;
+  fill: #b8995c;
+}
+
+.sector-label {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  fill: #dcc48e;
+}
+
+.filigree {
+  animation: wheel-turn 360s linear infinite reverse;
+}
+
+.lozenge {
+  fill: url(#aw-gilt);
+}
+
+.bead {
+  fill: #c9a866;
+}
+
+@keyframes wheel-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ----- The cells, and the glass over them ----- */
+
+/* The leading. Dark enough to separate any two neighbours, thin enough that
+   the wheel still reads as one surface rather than a grid. */
+.cell {
+  stroke: #120e10;
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+  cursor: pointer;
+  outline: none;
+}
+
+.tone-rule {
+  fill: none;
+  stroke: #120e10;
+  stroke-width: 1.4;
+}
+
+.glaze {
+  fill: none;
+}
+
+/* Transparent but painted, so it takes the pointer for the CSS continuum. */
+.continuum-hit {
+  fill: transparent;
+  fill-rule: evenodd;
+  cursor: pointer;
+}
+
+/* ----- Markers ----- */
+
+.figure {
+  fill: color-mix(in srgb, var(--glow) 10%, transparent);
+  stroke: #f0d9a0;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* A long ease-out, like a needle settling. Turning is all that animates: a
+   change of tone swaps the outline's path, which no browser interpolates. */
+.marker {
+  --metal: url(#aw-gilt);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.marker-secondary {
+  --metal: url(#aw-silver);
+}
+
+.marker-tertiary {
+  --metal: url(#aw-bronze);
+}
+
+.hand,
+.hand-shadow {
+  stroke-linecap: round;
+}
+
+.hand {
+  stroke: var(--metal);
+  stroke-width: 1.6;
+}
+
+/* Under the hand, so it reads across pale cells as well as deep ones. */
+.hand-shadow {
+  stroke: rgb(0 0 0 / 0.6);
+  stroke-width: 3.6;
+}
+
+.marker-shadow,
+.marker-outline,
+.lit-shadow,
+.lit-outline {
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.marker-shadow,
+.lit-shadow {
+  stroke: rgb(0 0 0 / 0.7);
+  stroke-width: 4.5;
+}
+
+.marker-outline {
+  stroke: var(--metal);
+  stroke-width: 2.2;
+}
+
+.marker-jewel {
+  fill: var(--metal);
+  stroke: #120e10;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+.lit-outline {
+  stroke: #fff;
+  stroke-width: 1.6;
+}
+
+/* Focus is dashed as well as white, so it reads as focus and not as hover. */
+.lit-focus .lit-outline {
+  stroke-dasharray: 4 2;
+}
+
+/* ----- The medallion ----- */
+
+/* `62 / 310` of the wheel's radius, so 20% of its width. */
+.medallion {
+  top: 40%;
+  left: 40%;
+  width: 20%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 2px #c9a866,
+    0 0 0 4px #1a1618,
+    0 0 0 5px #8a6530,
+    0 10px 30px rgb(0 0 0 / 0.6);
+}
+
+.medallion-void,
+.medallion-colour {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+/* Before a choice: the whole continuum, dimmed and turning slowly, a colour
+   waiting to be chosen. It fades out once one is. */
+.medallion-void {
+  filter: saturate(0.75) brightness(0.55);
+  animation: wheel-turn 60s linear infinite;
+  transition: opacity 0.8s ease;
+}
+
+.chosen .medallion-void {
+  opacity: 0;
+}
+
+.medallion-colour {
+  transition: background-color 0.6s ease;
+}
+
+/* The glass dome: a highlight upper left and a shadow under the lower lip. */
+.medallion::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 26%, rgb(255 255 255 / 0.55), transparent 32%),
+    radial-gradient(circle at 50% 120%, rgb(0 0 0 / 0.45), transparent 60%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+
+/* ----- Below the wheel ----- */
+
+.wheel-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  min-height: 2rem;
+  margin: 1.5rem 0 0.25rem;
+  text-align: center;
+}
+
+.caption-verb {
+  font-family: var(--font-serif);
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.caption-name {
+  font-size: 1.25rem;
+  color: var(--color-text);
+}
+
+.caption-hex,
+.triad-values dd {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.wheel-keys {
+  max-width: 34rem;
+  margin: 0 auto 3.5rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+/* ----- The three colours ----- */
+
+.triad-heading,
+.method-heading {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  text-align: center;
+  color: var(--color-text);
+}
+
+.triad-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 3.5rem;
+}
+
+.triad-card {
+  --metal: linear-gradient(135deg, #f4e2b0, #a47a3c 30%, #ead08e 55%, #8a6530);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.9rem;
+}
+
+.triad-secondary {
+  --metal: linear-gradient(135deg, #f2f0f4, #8e8a96 40%, #e2e0e8 65%, #7c7884);
+}
+
+.triad-tertiary {
+  --metal: linear-gradient(135deg, #f1c2a4, #94573a 40%, #e3a582 70%, #7a4430);
+}
+
+.triad-role {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  text-shadow: none;
+}
+
+.role-gem {
+  width: 0.55rem;
+  height: 0.55rem;
+  rotate: 45deg;
+  background: var(--metal);
+}
+
+.swatch {
+  position: relative;
+  width: 5.5rem;
+  aspect-ratio: 1;
+  margin-bottom: 1rem;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px #1a1618,
+    0 0 0 3px #8a6530,
+    0 8px 22px rgb(0 0 0 / 0.5);
+  transition: background-color 0.6s ease;
+}
+
+.swatch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 26%, rgb(255 255 255 / 0.45), transparent 34%);
+}
+
+.swatch-empty {
+  background: transparent;
+  box-shadow: none;
+  border: 1px dashed var(--color-border);
+}
+
+.swatch-empty::after {
+  display: none;
+}
+
+.triad-name {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.triad-values {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 0.15rem 0.75rem;
+  text-align: left;
+}
+
+.triad-values dt {
+  font-family: var(--font-serif);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  align-self: center;
+}
+
+.triad-empty {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.method {
+  max-width: 40rem;
+  margin: 0 auto;
+  color: var(--color-text-secondary);
+}
+
+/* ----- Narrow screens ----- */
+
+@media (max-width: 720px) {
+  .aesthetic-page {
+    padding: 3rem 1rem;
+  }
+
+  .triad-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Below this the numerals would render at four pixels; the names alone carry
+   the bezel, a little larger. */
+@media (max-width: 480px) {
+  .numeral {
+    display: none;
+  }
+
+  .sector-label {
+    font-size: 14px;
+    letter-spacing: 0.12em;
+  }
+}
