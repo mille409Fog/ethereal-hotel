@@ -94,8 +94,10 @@ async function hangAPainting(page: Page): Promise<void> {
 
 /**
  * The wheel's cards are placeholders until a primary is chosen. Choosing one
- * from the keyboard, the way the page says to, fills the primary card and
- * draws its marker, and moving focus proves the radio group's tab stop works.
+ * from the keyboard, the way the page says to, builds the whole aesthetic:
+ * three cards, three markers and the specimen, whose one line of type is the
+ * contrast claim most worth a real browser's check. Moving focus also proves
+ * the radio group's tab stop works.
  */
 async function chooseAPrimary(page: Page): Promise<void> {
   const entry = page.locator('.cell[tabindex="0"]');

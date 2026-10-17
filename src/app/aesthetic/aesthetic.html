@@ -256,6 +256,7 @@
               <span class="role-gem" aria-hidden="true"></span>
               {{ card.role }}
             </h3>
+            <p class="triad-duty">{{ card.duty }} · {{ card.share }}%</p>
             @if (card.cell; as cell) {
               <div class="swatch" [style.background]="cell.hex" aria-hidden="true"></div>
               <p class="triad-name">{{ cell.name }}</p>
@@ -265,22 +266,99 @@
                 <dt>OKLCH</dt>
                 <dd>{{ card.oklch }}</dd>
               </dl>
-            } @else if (card.role === 'primary') {
-              <div class="swatch swatch-empty" aria-hidden="true"></div>
-              <p class="triad-empty">Choose a cell on the wheel.</p>
             } @else {
               <div class="swatch swatch-empty" aria-hidden="true"></div>
               <p class="triad-empty">
-                Not chosen yet. The {{ card.role }} will be derived from the primary, and that
-                mechanism has not been built.
+                {{
+                  card.role === 'primary'
+                    ? 'Choose a cell on the wheel.'
+                    : 'Chosen from the primary.'
+                }}
               </p>
             }
           </li>
         }
       </ol>
+
+      <!-- The aesthetic in use, at its own proportions: the ground, a panel
+           of the secondary, and the accent as a rule and a mark. The one line
+           of type is set in the pair that passed the text filter, so it is
+           the only text here and it is legible by construction. -->
+      @if (aesthetic(); as a) {
+        <figure class="specimen" aria-labelledby="specimen-caption">
+          <div
+            class="specimen-ground"
+            [style.--p]="a.primary.hex"
+            [style.--s]="a.secondary.hex"
+            [style.--t]="a.tertiary.hex"
+            aria-hidden="true"
+          >
+            <div class="specimen-panel">
+              <span class="specimen-rule"></span>
+              <span class="specimen-bar"></span>
+              <span class="specimen-bar specimen-bar-short"></span>
+            </div>
+            <span class="specimen-mark"></span>
+            <p
+              class="specimen-type"
+              [style.color]="a.text.ink.hex"
+              [style.background]="a.text.paper.hex"
+            >
+              Aa
+            </p>
+          </div>
+          <figcaption id="specimen-caption" class="specimen-caption">
+            <dl class="specimen-facts">
+              <dt>Harmony</dt>
+              <dd>
+                {{ a.harmony.toFixed(2) }} on Ou &amp; Luo's scale, where higher is more harmonious
+              </dd>
+              <dt>Text</dt>
+              <dd>
+                {{ a.text.ink.name }} on {{ a.text.paper.name }}, {{ a.text.ratio.toFixed(1) }}:1
+              </dd>
+              <dt>Accent</dt>
+              <dd>{{ accentTurn() }}° round the wheel from the ground</dd>
+            </dl>
+          </figcaption>
+        </figure>
+      }
     </section>
 
-    <section class="method" aria-labelledby="method-heading">
+    <section class="method" aria-labelledby="winnow-heading">
+      <h2 id="winnow-heading" class="method-heading">How the other two are chosen</h2>
+      <p>
+        Every other pair of cells is tried, {{ candidates.toLocaleString('en-GB') }} candidates for
+        each primary, as a secondary and a tertiary. The primary is the ground, the secondary
+        partners it, and the tertiary is an accent laid on top, in roughly {{ split }} proportions.
+        A candidate is dropped if any two of its colours sit closer than {{ minDistinct }} in OKLab,
+        if the accent sits closer than {{ accentDistance }} to the ground, if no pair of its colours
+        reaches {{ textContrast }}:1 contrast for text, or if it adds an olive. The survivors are
+        ranked, and the best is shown.
+      </p>
+      <p>
+        The ranking adds two things which pull against each other. The first is harmony, from
+        <a href="https://doi.org/10.1002/col.20208">Ou and Luo's model of two-colour harmony</a>,
+        combined over the three pairs as in
+        <a href="https://doi.org/10.1002/col.20624">Ou, Chong, Luo and Minchew</a>. It favours
+        colours that share a hue and differ in lightness. The second is how well the accent stands
+        out, since <a href="https://doi.org/10.3758/s13414-010-0027-0">Schloss and Palmer</a> found
+        that while pairs are liked more the closer their hues, a figure on a ground is liked more
+        the further its hue and lightness are from the ground's. It counts {{ figureWeight }} as
+        much as harmony.
+      </p>
+      <p>
+        Three choices are this page's rather than the papers'. Pairs are weighted by how much of
+        each colour there is, not equally. Ou and Luo's hue effect, which rates some hues as more
+        harmonious than others whatever they are paired with, is left out of the ranking, except for
+        its penalty on dark yellows; kept whole, it hands the same few pale yellows and blues to a
+        large share of the wheel. And the weight above was set by looking at the aesthetic of every
+        primary. The harmony figure shown is Ou and Luo's own, unmodified. Their observers were all
+        Chinese students studying in the UK, and harmony is not the same for everyone.
+      </p>
+    </section>
+
+    <section class="method method-wheel" aria-labelledby="method-heading">
       <h2 id="method-heading" class="method-heading">How the wheel is built</h2>
       <p>
         The wheel is drawn in OKLCH, a colour space built so that equal lightness looks equally

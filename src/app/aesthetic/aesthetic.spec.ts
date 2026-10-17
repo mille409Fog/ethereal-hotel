@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Aesthetic } from './aesthetic';
 import { CELLS, cellIndex, HUE_COUNT, TONES } from './wheel';
+import { aestheticFor, FIGURE_WEIGHT, TEXT_CONTRAST } from './winnow';
 
 /**
  * The route as a visitor meets it: a radio group of every cell with one tab
@@ -46,10 +47,11 @@ describe('Aesthetic', () => {
     expect(el().querySelector('.wheel-caption')?.textContent).toContain('Nothing chosen yet');
   });
 
-  it('says the secondary and tertiary are not built, rather than inventing them', () => {
+  it('waits for a primary before showing an aesthetic', () => {
     const text = el().querySelector('.triad')?.textContent ?? '';
     expect(text).toContain('Choose a cell on the wheel.');
-    expect(text.match(/mechanism has not been built/g)?.length).toBe(2);
+    expect(text.match(/Chosen from the primary\./g)?.length).toBe(2);
+    expect(el().querySelector('.specimen')).toBeNull();
   });
 
   it('chooses a primary on click and shows it everywhere it appears', async () => {
@@ -59,7 +61,7 @@ describe('Aesthetic', () => {
 
     expect(checked()).toEqual([cell(target.index)]);
     expect(cell(target.index).getAttribute('tabindex')).toBe('0');
-    expect(el().querySelectorAll('.marker').length).toBe(1);
+    expect(el().querySelectorAll('.marker').length).toBe(3);
     expect(el().querySelector('.marker-primary')?.getAttribute('style')).toContain(
       `rotate(${target.h}deg)`
     );
@@ -104,20 +106,42 @@ describe('Aesthetic', () => {
     );
   });
 
-  it('draws a marker for every role set and joins them once there are two', async () => {
-    const component = fixture.componentInstance;
-    component.triad.set({
-      primary: CELLS[cellIndex(0, 2)],
-      secondary: CELLS[cellIndex(20, 3)],
-      tertiary: null,
-    });
+  it('builds the aesthetic around the primary and shows all three roles', async () => {
+    const primary = CELLS[cellIndex(0, 2)];
+    const expected = aestheticFor(primary);
+    fixture.componentInstance.choosePrimary(primary);
     await fixture.whenStable();
+
     expect(el().querySelector('.marker-secondary')).toBeTruthy();
-    expect(el().querySelector('.marker-tertiary')).toBeNull();
-    expect(el().querySelector('polygon.figure')?.getAttribute('points')?.split(' ').length).toBe(2);
+    expect(el().querySelector('.marker-tertiary')).toBeTruthy();
+    expect(el().querySelector('polygon.figure')?.getAttribute('points')?.split(' ').length).toBe(3);
     expect(el().querySelector('.triad-secondary .triad-name')?.textContent).toContain(
-      CELLS[cellIndex(20, 3)].name
+      expected.secondary.name
     );
+    expect(el().querySelector('.triad-tertiary .triad-name')?.textContent).toContain(
+      expected.tertiary.name
+    );
+  });
+
+  it('shows a specimen whose type is set in the pair that passed the text filter', async () => {
+    const expected = aestheticFor(CELLS[cellIndex(30, 1)]);
+    fixture.componentInstance.choosePrimary(expected.primary);
+    await fixture.whenStable();
+
+    const type = el().querySelector<HTMLElement>('.specimen-type');
+    expect(type?.style.color).toBeTruthy();
+    const facts = el().querySelector('.specimen-facts')?.textContent ?? '';
+    expect(facts).toContain(`${expected.text.ratio.toFixed(1)}:1`);
+    expect(facts).toContain(expected.harmony.toFixed(2));
+    expect(facts).toContain(expected.text.ink.name);
+  });
+
+  it('states the method with the numbers the code uses', () => {
+    const text = el().querySelector('[aria-labelledby="winnow-heading"]')?.textContent ?? '';
+    expect(text).toContain('128,522');
+    expect(text).toContain(`${TEXT_CONTRAST}:1`);
+    expect(text).toContain('60/30/10');
+    expect(text).toContain(String(FIGURE_WEIGHT));
   });
 
   it('lights the hovered cell and previews it in the caption', async () => {

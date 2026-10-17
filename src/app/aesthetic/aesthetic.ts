@@ -1,4 +1,5 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -8,6 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import {
+  angularDistance,
   CELLS,
   cellAt,
   cellCentre,
@@ -30,11 +32,28 @@ import {
   unwrap,
   VIEW_RADIUS,
 } from './wheel';
+import {
+  ACCENT_DISTANCE,
+  aestheticFor,
+  AREA_SPLIT,
+  FIGURE_WEIGHT,
+  IAesthetic,
+  MIN_DISTINCT,
+  TEXT_CONTRAST,
+  warm,
+} from './winnow';
 
 /** The three colours an aesthetic is made of, in the order they are chosen. */
 export const ROLES = ['primary', 'secondary', 'tertiary'] as const;
 export type Role = (typeof ROLES)[number];
 export type Triad = Readonly<Record<Role, ICell | null>>;
+
+/** What each role does in an aesthetic; `winnow.ts` scores them by these. */
+const ROLE_DUTIES: Readonly<Record<Role, string>> = {
+  primary: 'The ground',
+  secondary: 'Partners the ground',
+  tertiary: 'The accent',
+};
 
 /** Where keyboard focus enters the wheel before anything is chosen: rich red. */
 const ENTRY_CELL = CELLS[cellIndex(4, 2)];
@@ -84,12 +103,11 @@ function annulus(r0: number, r1: number): string {
 /**
  * `/aesthetic`: the colour wheel of an aesthetic generator.
  *
- * An aesthetic is three colours, primary, secondary and tertiary. This page
- * chooses the first: a visitor picks one of the wheel's 360 cells. The
- * mechanism that derives the other two from the primary does not exist yet,
- * and the page says so where their swatches would be rather than filling them
- * with something plausible. The wheel already draws a marker for every role
- * that is set, so that mechanism only has to set `triad`.
+ * An aesthetic is three colours, primary, secondary and tertiary. The visitor
+ * chooses the primary from the wheel's 360 cells, and `winnow.ts` chooses the
+ * other two for it; this component only draws what that returns: a hand per
+ * role on the wheel, the figure joining them, the three cards and a specimen
+ * of the aesthetic in use.
  *
  * The wheel is SVG over two CSS layers. SVG for everything a pointer or a key
  * can land on, because each cell is a real element with a role and a name. CSS
@@ -155,8 +173,20 @@ export class Aesthetic {
 
   // ----- State -----
 
-  /** The aesthetic. Only `primary` is set by this page today. */
-  public readonly triad = signal<Triad>({ primary: null, secondary: null, tertiary: null });
+  /** The visitor's choice. Everything else on the page follows from it. */
+  public readonly primary = signal<ICell | null>(null);
+
+  /** The aesthetic `winnow.ts` builds around the primary. */
+  public readonly aesthetic = computed((): IAesthetic | null => {
+    const primary = this.primary();
+    return primary ? aestheticFor(primary) : null;
+  });
+
+  public readonly triad = computed((): Triad => ({
+    primary: this.primary(),
+    secondary: this.aesthetic()?.secondary ?? null,
+    tertiary: this.aesthetic()?.tertiary ?? null,
+  }));
 
   /** The cell under the pointer, if any. */
   public readonly hovered = signal<ICell | null>(null);
@@ -173,8 +203,6 @@ export class Aesthetic {
 
   /** The cell drawn with a focus ring: focused, and from the keyboard. */
   public readonly ringed = computed(() => (this.focusVisible() ? this.focused() : null));
-
-  public readonly primary = computed(() => this.triad().primary);
 
   /** The one cell with `tabindex="0"`: where Tab enters the wheel. */
   public readonly tabStop = computed(() => (this.focused() ?? this.primary() ?? ENTRY_CELL).index);
@@ -241,11 +269,30 @@ export class Aesthetic {
   public readonly cards = computed(() =>
     ROLES.map((role) => {
       const cell = this.triad()[role];
-      return { role, cell, oklch: cell ? oklchText(cell.colour) : '' };
+      return {
+        role,
+        cell,
+        oklch: cell ? oklchText(cell.colour) : '',
+        duty: ROLE_DUTIES[role],
+        share: Math.round(AREA_SPLIT[role] * 100),
+      };
     })
   );
 
-  // ----- Counts the method paragraph reads, so it cannot disagree -----
+  /** How far round the wheel the accent sits from the ground, in degrees. */
+  public readonly accentTurn = computed(() => {
+    const a = this.aesthetic();
+    return a ? Math.round(angularDistance(a.tertiary.h, a.primary.h)) : 0;
+  });
+
+  // ----- Numbers the method text reads, so it cannot disagree -----
+
+  public readonly candidates = (CELLS.length - 1) * (CELLS.length - 2);
+  public readonly minDistinct = MIN_DISTINCT;
+  public readonly accentDistance = ACCENT_DISTANCE;
+  public readonly textContrast = TEXT_CONTRAST;
+  public readonly figureWeight = FIGURE_WEIGHT;
+  public readonly split = ROLES.map((role) => Math.round(AREA_SPLIT[role] * 100)).join('/');
 
   public readonly hueCount = HUE_COUNT;
   public readonly hueStep = HUE_STEP;
@@ -259,8 +306,15 @@ export class Aesthetic {
     return `${cell.name}, hue ${cell.h}°`;
   }
 
+  constructor() {
+    // The winnowing's tables are built once, on first use. Build them after
+    // the wheel has painted rather than inside the first click's frame; the
+    // timeout is what lets the paint happen first.
+    afterNextRender(() => setTimeout(warm));
+  }
+
   public choosePrimary(cell: ICell): void {
-    this.triad.update((triad) => ({ ...triad, primary: cell }));
+    this.primary.set(cell);
   }
 
   public onClick(event: MouseEvent): void {
