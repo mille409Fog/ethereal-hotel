@@ -74,6 +74,16 @@ describe('winnow', () => {
     expect(lost.length).toBeGreaterThan(0);
   });
 
+  it('makes every accent a colour, and a colourful one', () => {
+    for (const a of all) {
+      expect(isNeutral(a.tertiary), a.primary.name).toBe(false);
+    }
+    // Before the accent's hue weight kept rising past 0.08, 201 of 480
+    // accents were pastels under chroma 0.1.
+    const pastel = all.filter((a) => a.tertiary.colour.c < 0.1).length;
+    expect(pastel).toBeLessThan(0.05 * all.length);
+  });
+
   it('never adds an olive, though a visitor may choose one', () => {
     const olivePrimary = CELLS.find(isOlive) as ICell;
     expect(olivePrimary).toBeTruthy();

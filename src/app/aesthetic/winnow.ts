@@ -20,12 +20,19 @@ import { angularDistance, CELLS, ICell, isNeutral } from './wheel';
  * - It can set its own text: some pair reaches WCAG's 4.5:1.
  * - The accent stands off the ground: `ACCENT_DISTANCE`, twice the above.
  * - No olive companion (`OLIVE`).
+ * - The accent is a colour, not one of the tinted neutrals: charcoal and
+ *   chalk may be the ground or partner it, never the accent. A charcoal dot
+ *   on pale rose is a fine pairing, but it is a second neutral rather than an
+ *   accent, and it began winning on harmony once pastel accents stopped
+ *   counting as vivid (`FULL_ACCENT_CHROMA`).
  * - The accent stays a different colour, from the ground and the secondary,
  *   for someone missing any one cone type (`CVD_CHECKED`, `cvd.ts`). Before
  *   this filter, 28 aesthetics failed it for deuteranopia, most of them a
  *   pale cyan accent on a chalk panel: different to typical eyes only by a
- *   hue that red-green deficiency removes. Enforcing all three deficiencies
- *   changed 40 of the 480 and moved mean harmony from 0.170 to 0.165.
+ *   hue that red-green deficiency removes. When it was added, enforcing all
+ *   three deficiencies changed 40 of the 480 and moved mean harmony from
+ *   0.170 to 0.165; its replacements were more vivid and looked better, which
+ *   is what led to `FULL_ACCENT_CHROMA`. Under that, it changes 28.
  *
  * **The score** ranks the survivors, and has two terms because the research
  * found two different things:
@@ -148,8 +155,30 @@ export const AREA_WEIGHTS = ((): { ps: number; pt: number; st: number } => {
   return { ps: (p * s) / total, pt: (p * t) / total, st: (s * t) / total };
 })();
 
-/** OKLCH chroma at which a colour is treated as fully showing its hue. */
+/** OKLCH chroma at which a ground is treated as fully showing its hue. */
 const FULL_HUE_CHROMA = 0.08;
+
+/**
+ * The same for an accent, set higher: an accent is the one colour in an
+ * aesthetic whose job is to be colourful.
+ *
+ * At 0.08, a pastel accent already counted as showing its hue in full, so the
+ * figural term could not tell it from a vivid one (0.979 against 0.984, over
+ * the cases measured) and harmony, which favours paler partners, decided:
+ * 201 of 480 accents came out under chroma 0.1. The CVD filter exposed this
+ * when its replacements, more vivid, looked better than what they replaced.
+ * Palmer & Schloss (2010) found saturated colours preferred to light and
+ * muted ones, and the accent is where that finding belongs.
+ *
+ * 0.12 was measured against 0.15 and 0.20, judged by the same tests as every
+ * other choice here. It recovers 26 of the 39 vivid replacements without the
+ * filter's help, leaves 15 pastel accents rather than 201, and lowers the most
+ * any one accent is reused from 24 to 19. Higher caps recover all 39, but give
+ * one accent to 41 and 55 primaries. Adding Helson & Lansford's saturation
+ * contrast to `figural` instead was tried, and failed: it rewarded muted
+ * accents on vivid grounds and put the black dots back.
+ */
+const FULL_ACCENT_CHROMA = 0.12;
 
 /** OKLab lightness difference at which an accent fully stands off its ground. */
 const FULL_LIGHTNESS_CONTRAST = 0.3;
@@ -161,7 +190,7 @@ interface IProfile {
   readonly y: number;
   /** OKLab coordinates, for distance. */
   readonly ok: readonly [number, number, number];
-  /** How much hue this colour shows as an accent: 0 at grey, 1 from `FULL_HUE_CHROMA`. */
+  /** How much hue this colour shows as an accent: 0 at grey, 1 from `FULL_ACCENT_CHROMA`. */
   readonly hueWeight: number;
   /**
    * How much hue it lends as a ground. The same, except that a tinted
@@ -187,13 +216,12 @@ function profile(cell: ICell): IProfile {
   const [r, g, b] = oklchToLinear(cell.colour).map((v) => Math.min(1, Math.max(0, v)));
   const { l, c, h } = cell.colour;
   const lab = toLab(cell.colour);
-  const hueWeight = Math.min(1, c / FULL_HUE_CHROMA);
   return {
     lab,
     y: 0.2126 * r + 0.7152 * g + 0.0722 * b,
     ok: [l, c * Math.cos(h * (Math.PI / 180)), c * Math.sin(h * (Math.PI / 180))],
-    hueWeight,
-    groundHueWeight: isNeutral(cell) ? 1 : hueWeight,
+    hueWeight: Math.min(1, c / FULL_ACCENT_CHROMA),
+    groundHueWeight: isNeutral(cell) ? 1 : Math.min(1, c / FULL_HUE_CHROMA),
     unranked: hueEffect(lab) - Math.min(0, yellowEffect(lab)),
     cvd: DEFICIENCIES.map((deficiency) => simulate(cell.colour, deficiency)),
   };
@@ -233,8 +261,8 @@ export function contrastRatio(y1: number, y2: number): number {
  * picked the least colourful accent going: every charcoal got a pale cyan.
  * But a visitor who chose Charcoal rose over Charcoal cobalt chose a tint,
  * and the tint is the only hue such a cell has, so as a ground it counts in
- * full. As an accent a neutral keeps its small weight: a charcoal dot is not
- * an accent, whatever hue it leans toward. Measuring the term as OKLab a/b
+ * full. A neutral is never an accent at all; see the filters in the header.
+ * Measuring the term as OKLab a/b
  * distance instead was tried, and it was worse both ways: vivid grounds were
  * given black dots, and every charcoal the same vivid green.
  */
@@ -260,6 +288,7 @@ class Tables {
   public readonly n = CELLS.length;
   public readonly profiles = CELLS.map(profile);
   public readonly olive = CELLS.map(isOlive);
+  public readonly neutral = CELLS.map(isNeutral);
   /** Ou & Luo's CH, unmodified: what the page reports. */
   public readonly faithful = new Float64Array(this.n * this.n);
   /** CH as ranking uses it; see `profile`. */
@@ -407,6 +436,7 @@ function admitsAccent(
     d[p * n + a] < ACCENT_DISTANCE ||
     d[s * n + a] < MIN_DISTINCT ||
     t.olive[a] ||
+    t.neutral[a] ||
     Math.max(k[p * n + s], k[p * n + a], k[s * n + a]) < TEXT_CONTRAST
   ) {
     return false;
