@@ -257,7 +257,10 @@
       <h2 id="triad-heading" class="triad-heading">The aesthetic</h2>
       <ol class="triad-list">
         @for (card of cards(); track card.role) {
-          <li [class]="'triad-card triad-' + card.role">
+          <li
+            [class]="'triad-card triad-' + card.role"
+            [style.--card-colour]="card.cell?.hex ?? null"
+          >
             <h3 class="triad-role">
               <span class="role-gem" aria-hidden="true"></span>
               {{ card.role }}

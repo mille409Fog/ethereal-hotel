@@ -427,8 +427,24 @@
   padding: 1.5rem 1.25rem;
   text-align: center;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  /* The card's own colour once it has one, from `--card-colour` on the
+     element; the page's hairline until then. 2px, because at 1px a colour
+     reads as an outline and the colour barely registers. */
+  border: 2px solid var(--card-colour, var(--color-border));
   border-radius: 0.9rem;
+  /* A soft glow in the card's hue, which is what keeps a dark colour's card
+     visible: a charcoal border on this page is near-black on near-black, and
+     so would be a charcoal glow. The glow keeps the colour's hue and chroma
+     but never falls below lightness 0.62, so a dark colour glows as a lifted
+     version of itself rather than as more darkness. Until a colour is chosen,
+     `--card-colour` is unset, the declaration is invalid at computed time,
+     and there is no glow at all, which is the intent. Browsers without
+     relative colour syntax (older than Chrome 119, Safari 16.4, Firefox 128)
+     also show none, and keep the border. */
+  box-shadow: 0 0 1.75rem 0 oklch(from var(--card-colour) max(l, 0.62) c h / 0.6);
+  transition:
+    border-color 0.6s ease,
+    box-shadow 0.6s ease;
 }
 
 .triad-secondary {

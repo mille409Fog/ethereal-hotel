@@ -129,6 +129,20 @@ describe('Aesthetic', () => {
     );
   });
 
+  it('borders each card in its own colour once there is one', async () => {
+    const card = (role: string): HTMLElement | null =>
+      el().querySelector<HTMLElement>(`.triad-${role}`);
+    expect(card('primary')?.style.getPropertyValue('--card-colour')).toBe('');
+
+    const expected = aestheticFor(CELLS[cellIndex(10, 3)]);
+    fixture.componentInstance.choosePrimary(expected.primary);
+    await fixture.whenStable();
+
+    expect(card('primary')?.style.getPropertyValue('--card-colour')).toBe(expected.primary.hex);
+    expect(card('secondary')?.style.getPropertyValue('--card-colour')).toBe(expected.secondary.hex);
+    expect(card('tertiary')?.style.getPropertyValue('--card-colour')).toBe(expected.tertiary.hex);
+  });
+
   it('shows a specimen whose type is set in the pair that passed the text filter', async () => {
     const expected = aestheticFor(CELLS[cellIndex(30, 1)]);
     fixture.componentInstance.choosePrimary(expected.primary);
