@@ -99,8 +99,14 @@ export const ACCENT_DISTANCE = 0.2;
  *
  * Browns are not excluded, though the same sentence names them: in the sheet
  * they were the accents that looked most deliberate, chocolate on sky blue.
+ *
+ * The band ends at 145°, just short of the green anchor at 146°, so that the
+ * dark cell at 141° is inside it and the one at 147° is not: the first is an
+ * olive-green and the second a forest green. It ended at 140° until the
+ * magenta corner showed what a band edge invites: the accent there was the
+ * dark cell at 141°, one degree outside, an olive in all but the number.
  */
-export const OLIVE = { hueFrom: 90, hueTo: 140, maxLightness: 0.5, minChroma: 0.04 } as const;
+export const OLIVE = { hueFrom: 90, hueTo: 145, maxLightness: 0.5, minChroma: 0.04 } as const;
 
 /**
  * The chroma floor keeps the charcoal ring out: a near-black with a trace of
@@ -155,6 +161,27 @@ export const AREA_WEIGHTS = ((): { ps: number; pt: number; st: number } => {
   return { ps: (p * s) / total, pt: (p * t) / total, st: (s * t) / total };
 })();
 
+/**
+ * The CIELAB chroma beyond which ranking stops trusting Ou & Luo's model, and
+ * treats a colour as if it were no more chromatic than this.
+ *
+ * Their 54 colours, as Figure 3 of the 2008 account plots them, lie within
+ * CIELAB axes running to a* 75 and b* 80: the model was fitted below about
+ * chroma 80, and 49 cells of this wheel are beyond it, up to about 100 at the
+ * magenta where sRGB's own gamut peaks. Out there its chromatic term goes on
+ * penalising chroma difference with nothing in the data to say it should.
+ * That was the magenta corner: Bright magenta, at the gamut's peak, sat 26
+ * to 30 units of chroma from its own darker tint, where its neighbours sat 12
+ * to 18, so the model rated the tonal pair at nearly nothing and chalk won the
+ * secondary. Held to 80, the corner takes the same plum-and-pale-green
+ * pattern as the row around it, 48 aesthetics change across the wheel, and
+ * mean harmony is unmoved. The page still reports the model unclamped.
+ *
+ * 80 is read off a figure's axes, not a stated range, so it is approximate;
+ * what it rests on is that the model's data stop somewhere near it.
+ */
+const SAMPLED_CHROMA = 80;
+
 /** OKLCH chroma at which a ground is treated as fully showing its hue. */
 const FULL_HUE_CHROMA = 0.08;
 
@@ -186,6 +213,8 @@ const FULL_LIGHTNESS_CONTRAST = 0.3;
 /** One cell's figures, computed once: what every filter and term reads. */
 interface IProfile {
   readonly lab: ILab;
+  /** `lab` with its chroma held to `SAMPLED_CHROMA`, for ranking. */
+  readonly sampledLab: ILab;
   /** WCAG relative luminance. */
   readonly y: number;
   /** OKLab coordinates, for distance. */
@@ -216,8 +245,10 @@ function profile(cell: ICell): IProfile {
   const [r, g, b] = oklchToLinear(cell.colour).map((v) => Math.min(1, Math.max(0, v)));
   const { l, c, h } = cell.colour;
   const lab = toLab(cell.colour);
+  const keep = Math.min(1, SAMPLED_CHROMA / lab.c);
   return {
     lab,
+    sampledLab: { ...lab, a: lab.a * keep, b: lab.b * keep, c: lab.c * keep },
     y: 0.2126 * r + 0.7152 * g + 0.0722 * b,
     ok: [l, c * Math.cos(h * (Math.PI / 180)), c * Math.sin(h * (Math.PI / 180))],
     hueWeight: Math.min(1, c / FULL_ACCENT_CHROMA),
@@ -312,9 +343,10 @@ class Tables {
         const a = profiles[i];
         const b = profiles[j];
         const ch = pairHarmony(a.lab, b.lab);
+        const chRanked = pairHarmony(a.sampledLab, b.sampledLab);
         const d = Math.hypot(a.ok[0] - b.ok[0], a.ok[1] - b.ok[1], a.ok[2] - b.ok[2]);
         this.faithful[i * n + j] = this.faithful[j * n + i] = ch;
-        this.ranked[i * n + j] = this.ranked[j * n + i] = ch - a.unranked - b.unranked;
+        this.ranked[i * n + j] = this.ranked[j * n + i] = chRanked - a.unranked - b.unranked;
         this.contrast[i * n + j] = this.contrast[j * n + i] = contrastRatio(a.y, b.y);
         this.distance[i * n + j] = this.distance[j * n + i] = d;
         // Symmetric only because hue and lightness distance are; kept as two
@@ -492,6 +524,144 @@ export function rank(primary: ICell, count = 1, options: IWinnowOptions = {}): I
     }
   }
   return best.map(({ s, a, score }) => build(primary, CELLS[s], CELLS[a], score));
+}
+
+// ----- The varied set -----
+//
+// The best few candidates for a primary are near-copies: the same structure,
+// one cell over. A set worth choosing from at random has to be built for
+// variety, so it holds the best aesthetic of each structure instead: one per
+// relation between the accent and the ground, and one with a neutral partner,
+// each kept only if it is good enough to stand beside the best.
+
+/** How far round the wheel the accent sits from the ground. */
+export type Relation = 'tonal' | 'analogous' | 'split' | 'complementary';
+
+/**
+ * Upper bounds, in degrees of hue, of each relation but the last. Tonal ends
+ * where the secondary's "own hue family" ends elsewhere in this file and its
+ * spec, 45°; complementary is the last 30° before the exact opposite.
+ */
+const RELATION_BOUNDS: ReadonlyArray<readonly [Relation, number]> = [
+  ['tonal', 45],
+  ['analogous', 100],
+  ['split', 150],
+];
+
+export function relationOf(ground: ICell, accent: ICell): Relation {
+  const turn = angularDistance(accent.h, ground.h);
+  return RELATION_BOUNDS.find(([, below]) => turn < below)?.[0] ?? 'complementary';
+}
+
+/** A member's structure: its accent's relation, or that it has a neutral partner. */
+export type Structure = Relation | 'neutral partner';
+
+export interface IVariation {
+  readonly aesthetic: IAesthetic;
+  readonly structure: Structure;
+}
+
+/**
+ * How far below the best a member may score and still be offered. Read off a
+ * sheet of every structure for twelve primaries, each tile labelled with its
+ * gap: down to about 0.23 every structure still looked like a considered
+ * aesthetic, and past 0.25 some did and some did not (a charcoal panel on pale
+ * ultramarine, -0.35, was among the best on the sheet; chalk and forest green
+ * on rich amethyst, -0.31, among the weakest). Measured over all 480
+ * primaries, the median gap is 0 for complementary, 0.03 for split, 0.12 for
+ * analogous and tonal, and 0.22 for a neutral partner.
+ */
+export const VARIATION_FLOOR = 0.25;
+
+/**
+ * How different a member must be from every member before it: the OKLab
+ * distance between their secondaries plus that between their accents. Without
+ * it the best split was often the best complementary one cell over (pale
+ * cyan against pale mint, on the same dark red), because the best split sits
+ * just inside the 150° boundary.
+ */
+export const VARIATION_DIFFERENCE = 0.15;
+
+/** Runners-up kept per structure, so a near-copy can be passed over. */
+const RUNNERS_UP = 24;
+
+const STRUCTURES: readonly Structure[] = [
+  'tonal',
+  'analogous',
+  'split',
+  'complementary',
+  'neutral partner',
+];
+
+/** `VARIATION_DIFFERENCE`'s measure between two candidates. */
+function difference(t: Tables, x: ICandidate, y: ICandidate): number {
+  return t.distance[x.s * t.n + y.s] + t.distance[x.a * t.n + y.a];
+}
+
+/**
+ * The varied set for a primary, best first. One pass over every candidate
+ * keeps the best `RUNNERS_UP` of each structure (a candidate with a neutral
+ * partner competes in that structure and in its relation's). Then, taking the
+ * structures in order of their best score, each contributes its best
+ * candidate that scores within `VARIATION_FLOOR` of the best overall and
+ * differs by `VARIATION_DIFFERENCE` from every member already in. The best
+ * overall always comes first and is `aestheticFor(primary)`; a structure with
+ * nothing good enough and different enough is left out.
+ */
+export function variations(primary: ICell, options: IWinnowOptions = {}): IVariation[] {
+  const t = getTables();
+  const kept = runnersUp(t, primary, options.figureWeight ?? FIGURE_WEIGHT);
+  return assemble(t, kept).map(({ candidate: c, structure }) => ({
+    aesthetic: build(primary, CELLS[c.s], CELLS[c.a], c.score),
+    structure,
+  }));
+}
+
+/** The pass over every candidate, keeping the best `RUNNERS_UP` per structure. */
+function runnersUp(t: Tables, primary: ICell, figureWeight: number): Map<Structure, ICandidate[]> {
+  const p = primary.index;
+  const kept = new Map<Structure, ICandidate[]>(STRUCTURES.map((s) => [s, []]));
+  for (let s = 0; s < t.n; s++) {
+    if (!admitsSecondary(t, p, s)) {
+      continue;
+    }
+    for (let a = 0; a < t.n; a++) {
+      if (!admitsAccent(t, p, s, a, null)) {
+        continue;
+      }
+      const candidate = { s, a, score: scoreOf(t, p, s, a, figureWeight) };
+      keep(kept.get(relationOf(primary, CELLS[a])) ?? [], candidate, RUNNERS_UP);
+      if (t.neutral[s]) {
+        keep(kept.get('neutral partner') ?? [], candidate, RUNNERS_UP);
+      }
+    }
+  }
+  return kept;
+}
+
+/** The greedy choice of members from each structure's runners-up. */
+function assemble(
+  t: Tables,
+  kept: Map<Structure, ICandidate[]>
+): Array<{ candidate: ICandidate; structure: Structure }> {
+  const leaders = STRUCTURES.filter((s) => kept.get(s)?.length).sort(
+    (x, y) => (kept.get(y)?.[0].score ?? 0) - (kept.get(x)?.[0].score ?? 0)
+  );
+  const top = kept.get(leaders[0])?.[0].score ?? 0;
+  const chosen: Array<{ candidate: ICandidate; structure: Structure }> = [];
+  for (const structure of leaders) {
+    const pick = kept
+      .get(structure)
+      ?.find(
+        (c) =>
+          top - c.score <= VARIATION_FLOOR &&
+          chosen.every((m) => difference(t, m.candidate, c) >= VARIATION_DIFFERENCE)
+      );
+    if (pick) {
+      chosen.push({ candidate: pick, structure });
+    }
+  }
+  return chosen;
 }
 
 /** The one aesthetic for a primary: the best that survives the filters. */

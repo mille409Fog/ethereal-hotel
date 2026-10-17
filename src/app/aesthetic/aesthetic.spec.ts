@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Aesthetic } from './aesthetic';
+import { Aesthetic, AESTHETIC_RANDOM } from './aesthetic';
 import { CELLS, cellIndex, HUE_COUNT, TONES } from './wheel';
-import { aestheticFor } from './winnow';
+import { aestheticFor, variations } from './winnow';
 
 /**
  * The route as a visitor meets it: a radio group of every cell with one tab
@@ -25,7 +25,12 @@ describe('Aesthetic', () => {
   }
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [Aesthetic] }).compileComponents();
+    // Chance pinned to 0, so "another" is always the first member that is
+    // not the one showing.
+    await TestBed.configureTestingModule({
+      imports: [Aesthetic],
+      providers: [{ provide: AESTHETIC_RANDOM, useValue: () => 0 }],
+    }).compileComponents();
     fixture = TestBed.createComponent(Aesthetic);
     await fixture.whenStable();
   });
@@ -141,6 +146,42 @@ describe('Aesthetic', () => {
     expect(card('primary')?.style.getPropertyValue('--card-colour')).toBe(expected.primary.hex);
     expect(card('secondary')?.style.getPropertyValue('--card-colour')).toBe(expected.secondary.hex);
     expect(card('tertiary')?.style.getPropertyValue('--card-colour')).toBe(expected.tertiary.hex);
+  });
+
+  it('shows the best of the set first, and another member on request', async () => {
+    const primary = CELLS[cellIndex(4, 4)];
+    const set = variations(primary);
+    expect(set.length).toBeGreaterThan(2);
+    fixture.componentInstance.choosePrimary(primary);
+    await fixture.whenStable();
+
+    const label = (): string => el().querySelector('.variation-label')?.textContent ?? '';
+    const tertiary = (): string =>
+      el().querySelector('.triad-tertiary .triad-name')?.textContent ?? '';
+    expect(label()).toContain(`option 1 of ${set.length}`);
+    expect(tertiary()).toContain(set[0].aesthetic.tertiary.name);
+
+    // Chance is pinned to 0: the first member that is not the one showing.
+    el().querySelector<HTMLButtonElement>('.variation-button')?.click();
+    await fixture.whenStable();
+    expect(label()).toContain(`option 2 of ${set.length}`);
+    expect(tertiary()).toContain(set[1].aesthetic.tertiary.name);
+
+    // A new primary starts again from its best.
+    fixture.componentInstance.choosePrimary(CELLS[cellIndex(30, 3)]);
+    await fixture.whenStable();
+    expect(label()).toContain('option 1 of');
+  });
+
+  it('never answers "another" with the aesthetic already showing', async () => {
+    fixture.componentInstance.choosePrimary(CELLS[cellIndex(20, 3)]);
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+    for (let i = 0; i < 6; i++) {
+      const before = component.aesthetic();
+      component.another();
+      expect(component.aesthetic()).not.toBe(before);
+    }
   });
 
   it('shows a specimen whose type is set in the pair that passed the text filter', async () => {

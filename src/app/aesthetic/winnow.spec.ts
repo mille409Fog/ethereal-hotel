@@ -12,7 +12,11 @@ import {
   isOlive,
   MIN_DISTINCT,
   rank,
+  relationOf,
   TEXT_CONTRAST,
+  VARIATION_DIFFERENCE,
+  VARIATION_FLOOR,
+  variations,
 } from './winnow';
 
 /**
@@ -160,6 +164,61 @@ describe('winnow', () => {
       expect(same, `weight ${figureWeight} against ${FIGURE_WEIGHT}`).toBeGreaterThanOrEqual(
         0.75 * CELLS.length
       );
+    }
+  });
+
+  describe('the varied set', () => {
+    const sets = CELLS.map((cell) => variations(cell));
+
+    it('starts every set with the aesthetic itself', () => {
+      sets.forEach((set, i) => {
+        expect(set[0].aesthetic.secondary).toBe(all[i].secondary);
+        expect(set[0].aesthetic.tertiary).toBe(all[i].tertiary);
+      });
+    });
+
+    it('keeps every member good enough and different enough, and labels it truly', () => {
+      for (const set of sets) {
+        const top = set[0].aesthetic.score;
+        expect(new Set(set.map((v) => v.structure)).size).toBe(set.length);
+        set.forEach((v, i) => {
+          const a = v.aesthetic;
+          expect(top - a.score).toBeLessThanOrEqual(VARIATION_FLOOR + 1e-12);
+          expect(v.structure).toBe(
+            v.structure === 'neutral partner'
+              ? 'neutral partner'
+              : relationOf(a.primary, a.tertiary)
+          );
+          if (v.structure === 'neutral partner') {
+            expect(isNeutral(a.secondary)).toBe(true);
+          }
+          for (const earlier of set.slice(0, i)) {
+            const d =
+              distanceBetween(a.secondary, earlier.aesthetic.secondary) +
+              distanceBetween(a.tertiary, earlier.aesthetic.tertiary);
+            expect(d).toBeGreaterThanOrEqual(VARIATION_DIFFERENCE);
+          }
+        });
+      }
+    });
+
+    // The point of the set: not the best five, which are one cell apart.
+    it('offers most primaries at least three structures to choose among', () => {
+      const three = sets.filter((s) => s.length >= 3).length;
+      expect(three).toBeGreaterThan(0.85 * sets.length);
+      expect(sets.every((s) => s.length >= 2)).toBe(true);
+    });
+  });
+
+  // The magenta corner: at sRGB's gamut peak, the tonal partner sat outside
+  // the chroma range Ou & Luo's data covers and lost to chalk, and the accent
+  // was the olive one degree outside the old band.
+  it('gives the magenta corner a tint of its own, like the rest of its row', () => {
+    const bright = TONES.findIndex((t) => t.name === 'Bright');
+    for (const hue of [54, 55, 56]) {
+      const a = all[cellIndex(hue, bright)];
+      expect(isNeutral(a.secondary), a.primary.name).toBe(false);
+      expect(angularDistance(a.secondary.h, a.primary.h)).toBeLessThanOrEqual(30);
     }
   });
 

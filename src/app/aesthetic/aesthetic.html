@@ -255,6 +255,22 @@
 
     <section class="triad" aria-labelledby="triad-heading">
       <h2 id="triad-heading" class="triad-heading">The aesthetic</h2>
+
+      <!-- Each primary has a small set, one aesthetic per structure that is
+           good enough and different enough (`variations` in winnow.ts). The
+           label is a polite live region, so pressing the button announces
+           which option arrived, not only that the cards changed. -->
+      @if (variations().length > 0) {
+        <div class="variation">
+          <p class="variation-label" aria-live="polite">{{ variationLabel() }}</p>
+          @if (variations().length > 1) {
+            <button type="button" class="variation-button" (click)="another()">
+              Show another aesthetic
+            </button>
+          }
+        </div>
+      }
+
       <ol class="triad-list">
         @for (card of cards(); track card.role) {
           <li

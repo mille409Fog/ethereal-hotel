@@ -4,6 +4,8 @@ import {
   Component,
   computed,
   ElementRef,
+  inject,
+  InjectionToken,
   linkedSignal,
   signal,
   viewChild,
@@ -31,7 +33,28 @@ import {
   unwrap,
   VIEW_RADIUS,
 } from './wheel';
-import { aestheticFor, AREA_SPLIT, IAesthetic, warm } from './winnow';
+import { AREA_SPLIT, IAesthetic, IVariation, Structure, variations, warm } from './winnow';
+
+/** A source of chance in [0, 1), like `Math.random`. */
+export type Random = () => number;
+
+/**
+ * Where "Show another aesthetic" gets its chance. `Math.random` in the app;
+ * tests provide a fixed value, so "another" is a statement about a known
+ * member of the set. Mirrors `GALLERY_RANDOM`.
+ */
+export const AESTHETIC_RANDOM = new InjectionToken<Random>('AESTHETIC_RANDOM', {
+  factory: () => Math.random,
+});
+
+/** How each structure is named on the page. */
+const STRUCTURE_NAMES: Readonly<Record<Structure, string>> = {
+  complementary: 'Complementary accent',
+  split: 'Split accent',
+  analogous: 'Analogous accent',
+  tonal: 'Tonal accent',
+  'neutral partner': 'Neutral partner',
+};
 
 /** The three colours an aesthetic is made of, in the order they are chosen. */
 export const ROLES = ['primary', 'secondary', 'tertiary'] as const;
@@ -124,6 +147,7 @@ function annulus(r0: number, r1: number): string {
 })
 export class Aesthetic {
   private readonly svg = viewChild.required<ElementRef<SVGSVGElement>>('wheel');
+  private readonly random = inject(AESTHETIC_RANDOM);
 
   // ----- The wheel's fixed drawing, computed once -----
 
@@ -175,10 +199,38 @@ export class Aesthetic {
   /** The visitor's choice. Everything else on the page follows from it. */
   public readonly primary = signal<ICell | null>(null);
 
-  /** The aesthetic `winnow.ts` builds around the primary. */
-  public readonly aesthetic = computed((): IAesthetic | null => {
+  /** The varied set `winnow.ts` builds around the primary, best first. */
+  public readonly variations = computed((): IVariation[] => {
     const primary = this.primary();
-    return primary ? aestheticFor(primary) : null;
+    return primary ? variations(primary) : [];
+  });
+
+  /**
+   * Which member is showing. Every new primary starts on the best, so the
+   * first thing a visitor sees for a colour is always the same aesthetic.
+   */
+  private readonly shownIndex = linkedSignal<ICell | null, number>({
+    source: this.primary,
+    computation: () => 0,
+  });
+
+  /** The member of the set on show. */
+  public readonly variation = computed(
+    (): IVariation | null => this.variations()[this.shownIndex()] ?? null
+  );
+
+  /** The aesthetic on show: the best, until the visitor asks for another. */
+  public readonly aesthetic = computed(
+    (): IAesthetic | null => this.variation()?.aesthetic ?? null
+  );
+
+  /** "Split accent · option 2 of 4", for the line above the cards. */
+  public readonly variationLabel = computed((): string => {
+    const variation = this.variation();
+    const count = this.variations().length;
+    return variation
+      ? `${STRUCTURE_NAMES[variation.structure]} · option ${this.shownIndex() + 1} of ${count}`
+      : '';
   });
 
   public readonly triad = computed((): Triad => ({
@@ -299,6 +351,20 @@ export class Aesthetic {
 
   public choosePrimary(cell: ICell): void {
     this.primary.set(cell);
+  }
+
+  /**
+   * Another member of the set, at random, never the one already showing: a
+   * press that changed nothing would read as a broken button.
+   */
+  public another(): void {
+    const count = this.variations().length;
+    if (count < 2) {
+      return;
+    }
+    const current = this.shownIndex();
+    const pick = Math.floor(this.random() * (count - 1));
+    this.shownIndex.set(pick >= current ? pick + 1 : pick);
   }
 
   public onClick(event: MouseEvent): void {
