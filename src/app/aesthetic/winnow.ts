@@ -1,6 +1,6 @@
 import { oklchToLinear } from './colour';
 import { hueEffect, ILab, pairHarmony, toLab, yellowEffect } from './harmony';
-import { angularDistance, CELLS, ICell } from './wheel';
+import { angularDistance, CELLS, ICell, isNeutral } from './wheel';
 
 /**
  * Winnowing: from one primary, the secondary and tertiary that make the best
@@ -9,7 +9,7 @@ import { angularDistance, CELLS, ICell } from './wheel';
  * "Best" is answerable because an aesthetic has roles. The primary is the
  * ground, most of what is seen. The secondary partners it over large areas.
  * The tertiary is the accent: small, and laid on the ground as a figure. Every
- * ordered pair of other cells is a candidate, 359 × 358 = 128,522 for each
+ * ordered pair of other cells is a candidate, 479 × 478 = 228,962 for each
  * primary, and all of them are searched.
  *
  * **Filters** say what an aesthetic must be able to do, and a candidate
@@ -39,14 +39,16 @@ import { angularDistance, CELLS, ICell } from './wheel';
  * returns the loudest complement. `FIGURE_WEIGHT` sets the trade.
  *
  * Every decision below that is not taken from a paper was taken by rendering
- * the aesthetic of all 360 primaries as a small layout and looking at the
- * sheet, and each says what it fixed. The first version averaged Ou's pairs
- * plainly and kept the whole model: 68 primaries were given the same pale
- * blue secondary, and reds were given cyan, because the model's per-colour
- * hue effect rewards blue and penalises red whatever they are paired with,
- * and a search over 128,522 candidates finds that every time. With every
- * other decision below in place, keeping it whole still gives Pale amber to
- * 46 primaries and Pale gold to 40, its other favourite being light yellow.
+ * the aesthetic of every primary as a small layout and looking at the sheet,
+ * and each says what it fixed. Most were taken on the first wheel, of six
+ * colour rings and 360 cells, before the neutral rings; the counts quoted
+ * from then are from that wheel. The first version averaged Ou's pairs
+ * plainly and kept the whole model: 68 of the 360 primaries were given the
+ * same pale blue secondary, and reds were given cyan, because the model's
+ * per-colour hue effect rewards blue and penalises red whatever they are
+ * paired with, and a search over every candidate finds that every time. With
+ * every other decision below in place, keeping it whole still gave Pale amber
+ * to 46 primaries and Pale gold to 40, its other favourite being light yellow.
  *
  * Ties go to the candidate met first, in cell order, so the mapping is a
  * function: one primary, one aesthetic, every time.
@@ -84,17 +86,28 @@ export const ACCENT_DISTANCE = 0.2;
  * Browns are not excluded, though the same sentence names them: in the sheet
  * they were the accents that looked most deliberate, chocolate on sky blue.
  */
-export const OLIVE = { hueFrom: 90, hueTo: 140, maxLightness: 0.5 } as const;
+export const OLIVE = { hueFrom: 90, hueTo: 140, maxLightness: 0.5, minChroma: 0.04 } as const;
 
+/**
+ * The chroma floor keeps the charcoal ring out: a near-black with a trace of
+ * warmth sits in the band's hues and under its lightness, but it is not khaki.
+ */
 export function isOlive(cell: ICell): boolean {
-  return cell.h >= OLIVE.hueFrom && cell.h <= OLIVE.hueTo && cell.colour.l <= OLIVE.maxLightness;
+  const { l, c } = cell.colour;
+  return (
+    cell.h >= OLIVE.hueFrom &&
+    cell.h <= OLIVE.hueTo &&
+    l <= OLIVE.maxLightness &&
+    c >= OLIVE.minChroma
+  );
 }
 
 /**
  * How much the accent's figural term counts against harmony. Chosen by eye,
- * and not delicately: weights from 0.5 to 0.8 give the same aesthetic for at
- * least 300 of the 360 primaries, which the spec holds. Below 0.5 accents
- * begin to collapse onto the ground's own hue.
+ * and not delicately: weights of 0.5 and 0.8 give the same aesthetic as 0.6
+ * for about four primaries in five (383 and 381 of 480), and the spec holds
+ * at least three in four. Below 0.5 accents begin to collapse onto the
+ * ground's own hue.
  */
 export const FIGURE_WEIGHT = 0.6;
 
@@ -133,8 +146,13 @@ interface IProfile {
   readonly y: number;
   /** OKLab coordinates, for distance. */
   readonly ok: readonly [number, number, number];
-  /** 0 for a grey, 1 at or above `FULL_HUE_CHROMA`. */
+  /** How much hue this colour shows as an accent: 0 at grey, 1 from `FULL_HUE_CHROMA`. */
   readonly hueWeight: number;
+  /**
+   * How much hue it lends as a ground. The same, except that a tinted
+   * neutral's tint counts in full: see `figural`.
+   */
+  readonly groundHueWeight: number;
   /** The part of Ou & Luo's CH that belongs to this colour and ranking omits. */
   readonly unranked: number;
 }
@@ -152,11 +170,13 @@ function profile(cell: ICell): IProfile {
   const [r, g, b] = oklchToLinear(cell.colour).map((v) => Math.min(1, Math.max(0, v)));
   const { l, c, h } = cell.colour;
   const lab = toLab(cell.colour);
+  const hueWeight = Math.min(1, c / FULL_HUE_CHROMA);
   return {
     lab,
     y: 0.2126 * r + 0.7152 * g + 0.0722 * b,
     ok: [l, c * Math.cos(h * (Math.PI / 180)), c * Math.sin(h * (Math.PI / 180))],
-    hueWeight: Math.min(1, c / FULL_HUE_CHROMA),
+    hueWeight,
+    groundHueWeight: isNeutral(cell) ? 1 : hueWeight,
     unranked: hueEffect(lab) - Math.min(0, yellowEffect(lab)),
   };
 }
@@ -173,12 +193,23 @@ export function contrastRatio(y1: number, y2: number): number {
  * near-grey contrasts with nothing. Lightness contrast: OKLab ΔL, full at
  * `FULL_LIGHTNESS_CONTRAST`. Without the second, bright reds were given a
  * pale cyan of their own lightness, the pairing that vibrates at its edge.
+ *
+ * A tinted neutral ground is the exception to "a near-grey contrasts with
+ * nothing". Scaled by its own chroma, its hue counted for almost nothing,
+ * and with no hue to work against the accent fell to harmony alone, which
+ * picked the least colourful accent going: every charcoal got a pale cyan.
+ * But a visitor who chose Charcoal rose over Charcoal cobalt chose a tint,
+ * and the tint is the only hue such a cell has, so as a ground it counts in
+ * full. As an accent a neutral keeps its small weight: a charcoal dot is not
+ * an accent, whatever hue it leans toward. Measuring the term as OKLab a/b
+ * distance instead was tried, and it was worse both ways: vivid grounds were
+ * given black dots, and every charcoal the same vivid green.
  */
 function figural(accent: ICell, ground: ICell, profiles: readonly IProfile[]): number {
   const hue =
     ((1 - Math.cos(angularDistance(accent.h, ground.h) * (Math.PI / 180))) / 2) *
     profiles[accent.index].hueWeight *
-    profiles[ground.index].hueWeight;
+    profiles[ground.index].groundHueWeight;
   const lightness = Math.min(
     1,
     Math.abs(accent.colour.l - ground.colour.l) / FULL_LIGHTNESS_CONTRAST

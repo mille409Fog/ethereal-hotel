@@ -1,4 +1,4 @@
-import { angularDistance, CELLS, cellIndex, ICell } from './wheel';
+import { angularDistance, CELLS, cellIndex, hueName, ICell, isNeutral, TONES } from './wheel';
 import {
   ACCENT_DISTANCE,
   aestheticFor,
@@ -17,7 +17,7 @@ import {
  * The winnowing's promises, held for every primary on the wheel: each has an
  * aesthetic, each aesthetic passes every filter the page lists, and the
  * mapping is a function. The page's prose claims each of these, so each is
- * asserted over all 360 rather than sampled.
+ * asserted over every cell rather than sampled.
  */
 describe('winnow', () => {
   const all: IAesthetic[] = CELLS.map((cell) => aestheticFor(cell));
@@ -75,9 +75,9 @@ describe('winnow', () => {
     expect(AREA_WEIGHTS.pt).toBeGreaterThan(AREA_WEIGHTS.st);
   });
 
-  // The shape the sheet of all 360 settled into, stated loosely enough to
-  // survive a retuning and tightly enough to catch a collapse back into the
-  // failures the header of `winnow.ts` describes.
+  // The shape the sheet of the whole wheel settled into, stated loosely
+  // enough to survive a retuning and tightly enough to catch a collapse back
+  // into the failures the header of `winnow.ts` describes.
   it('pairs the ground with its own hue family and sets the accent against it', () => {
     const family = all.filter((a) => angularDistance(a.secondary.h, a.primary.h) <= 45).length;
     const contrasting = all.filter((a) => angularDistance(a.tertiary.h, a.primary.h) >= 90).length;
@@ -85,28 +85,51 @@ describe('winnow', () => {
     expect(contrasting).toBeGreaterThan(0.85 * all.length);
   });
 
-  it('does not hand one colour to a large share of the wheel', () => {
+  // Over the colour primaries only. The sixty chalks are near enough the same
+  // white that their partners converge, and that is not the collapse this
+  // guards against: one colour taking over aesthetics built on colours.
+  it('does not hand one colour to a large share of the colour primaries', () => {
     const counts = new Map<ICell, number>();
-    for (const a of all) {
+    for (const a of all.filter((x) => !isNeutral(x.primary))) {
       counts.set(a.secondary, (counts.get(a.secondary) ?? 0) + 1);
     }
-    // Under the first version one pale blue was the secondary of 68.
-    expect(Math.max(...counts.values())).toBeLessThan(30);
+    // Under the first version one pale blue was the secondary of 68 of 360.
+    expect(Math.max(...counts.values())).toBeLessThan(20);
     expect(counts.size).toBeGreaterThan(120);
   });
 
-  it('does not hang on the exact figure weight', () => {
+  it('turns a neutral ground’s accent with its tint', () => {
+    const charcoal = all.filter((a) => a.primary.toneIndex === 0);
+    for (const a of charcoal) {
+      expect(isNeutral(a.tertiary)).toBe(false);
+      expect(angularDistance(a.tertiary.h, a.primary.h)).toBeGreaterThanOrEqual(90);
+    }
+    // Before the tint counted, every charcoal had a pale cyan or periwinkle.
+    expect(new Set(charcoal.map((a) => hueName(a.tertiary.h))).size).toBeGreaterThanOrEqual(6);
+  });
+
+  // Two more full passes over the wheel, each about a second uninstrumented;
+  // coverage slows them several times over, past the default 5s.
+  it('does not hang on the exact figure weight', { timeout: 30_000 }, () => {
     for (const figureWeight of [0.5, 0.8]) {
       const same = CELLS.filter((cell, i) => {
         const other = aestheticFor(cell, { figureWeight });
         return other.secondary === all[i].secondary && other.tertiary === all[i].tertiary;
       }).length;
-      expect(same, `weight ${figureWeight} against ${FIGURE_WEIGHT}`).toBeGreaterThanOrEqual(300);
+      expect(same, `weight ${figureWeight} against ${FIGURE_WEIGHT}`).toBeGreaterThanOrEqual(
+        0.75 * CELLS.length
+      );
     }
   });
 
   it('gives a red ground a tint of its own and a cool accent', () => {
-    const red = all[cellIndex(4, 3)]; // Bright red
+    const red =
+      all[
+        cellIndex(
+          4,
+          TONES.findIndex((t) => t.name === 'Bright')
+        )
+      ];
     expect(angularDistance(red.secondary.h, red.primary.h)).toBeLessThanOrEqual(30);
     expect(angularDistance(red.tertiary.h, red.primary.h)).toBeGreaterThan(120);
   });

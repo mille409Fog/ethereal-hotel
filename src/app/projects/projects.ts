@@ -66,7 +66,7 @@ export class Projects {
     {
       name: 'The Aesthetic Generator',
       description:
-        'A colour wheel of 360 cells computed in OKLCH and gamut-mapped to sRGB, where an aesthetic begins with its primary',
+        'Choose one colour from a wheel of 480; the other two are chosen by a published model of colour harmony',
       category: 'Interactive',
       tech: ['Angular 22', 'SVG', 'OKLCH', 'Signals'],
       link: '/aesthetic',

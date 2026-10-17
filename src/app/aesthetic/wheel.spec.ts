@@ -13,6 +13,7 @@ import {
   HUE_NAMES,
   HUE_STEP,
   hueName,
+  isNeutral,
   polar,
   RADII,
   SECTOR_LABELS,
@@ -74,8 +75,36 @@ describe('wheel', () => {
     }
   });
 
+  it('closes both ends with a tinted neutral: charcoal inside, chalk at the rim', () => {
+    const charcoal = CELLS.filter((c) => c.toneIndex === 0);
+    const chalk = CELLS.filter((c) => c.toneIndex === TONES.length - 1);
+    expect(TONES[0].name).toBe('Charcoal');
+    expect(TONES[TONES.length - 1].name).toBe('Chalk');
+    for (const cell of [...charcoal, ...chalk]) {
+      expect(isNeutral(cell)).toBe(true);
+      // A tint, not a colour: at most the ring's fixed chroma, and the share
+      // rule's lemon at L 0.96 nowhere to be seen.
+      expect(cell.colour.c).toBeLessThanOrEqual(TONES[cell.toneIndex].chromaShare + 1e-12);
+      expect(cell.colour.c).toBeGreaterThan(0);
+    }
+    expect(CELLS.filter(isNeutral).length).toBe(2 * HUE_COUNT);
+  });
+
+  it('keeps the tint warm at the reds and cool at the blues', () => {
+    const chalk = TONES.length - 1;
+    const [r, , b] = [0, 1, 2].map((i) =>
+      parseInt(CELLS[cellIndex(4, chalk)].hex.slice(1 + 2 * i, 3 + 2 * i), 16)
+    );
+    const [r2, , b2] = [0, 1, 2].map((i) =>
+      parseInt(CELLS[cellIndex(43, chalk)].hex.slice(1 + 2 * i, 3 + 2 * i), 16)
+    );
+    expect(r).toBeGreaterThan(b);
+    expect(b2).toBeGreaterThan(r2);
+  });
+
   it('names each cell after the nearest anchor, prefixed by its tone', () => {
-    const cell = CELLS[cellIndex(6, 2)]; // 39°: nearest anchor is Vermilion at 41°
+    const rich = TONES.findIndex((t) => t.name === 'Rich');
+    const cell = CELLS[cellIndex(6, rich)]; // 39°: nearest anchor is Vermilion at 41°
     expect(cell.name).toBe('Rich vermilion');
     expect(hueName(359)).toBe('Rose');
   });

@@ -31,7 +31,7 @@
     "aesthetic": {
       "path": "aesthetic",
       "title": "The Aesthetic Generator - Jacob Miller",
-      "description": "A colour wheel of 360 enamelled cells, sixty hues in six tones, each one real sRGB colour computed in OKLCH. Choose a primary; the secondary and tertiary come next."
+      "description": "Choose one colour from a wheel of 480, computed in OKLCH, and the other two of an aesthetic are chosen for it by published research on colour harmony, with its reasoning shown."
     },
     "aubade": {
       "path": "aubade",

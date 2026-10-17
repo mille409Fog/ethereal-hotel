@@ -16,7 +16,6 @@ import {
   cellIndex,
   cellPath,
   CONTINUUM_GRADIENT,
-  CONTINUUM_STEP,
   HUE_COUNT,
   HUE_STEP,
   ICell,
@@ -32,16 +31,7 @@ import {
   unwrap,
   VIEW_RADIUS,
 } from './wheel';
-import {
-  ACCENT_DISTANCE,
-  aestheticFor,
-  AREA_SPLIT,
-  FIGURE_WEIGHT,
-  IAesthetic,
-  MIN_DISTINCT,
-  TEXT_CONTRAST,
-  warm,
-} from './winnow';
+import { aestheticFor, AREA_SPLIT, IAesthetic, warm } from './winnow';
 
 /** The three colours an aesthetic is made of, in the order they are chosen. */
 export const ROLES = ['primary', 'secondary', 'tertiary'] as const;
@@ -56,7 +46,13 @@ const ROLE_DUTIES: Readonly<Record<Role, string>> = {
 };
 
 /** Where keyboard focus enters the wheel before anything is chosen: rich red. */
-const ENTRY_CELL = CELLS[cellIndex(4, 2)];
+const ENTRY_CELL =
+  CELLS[
+    cellIndex(
+      4,
+      TONES.findIndex((t) => t.name === 'Rich')
+    )
+  ];
 
 /** A straight segment in user units, for the bezel's ticks. */
 interface ISegment {
@@ -104,7 +100,7 @@ function annulus(r0: number, r1: number): string {
  * `/aesthetic`: the colour wheel of an aesthetic generator.
  *
  * An aesthetic is three colours, primary, secondary and tertiary. The visitor
- * chooses the primary from the wheel's 360 cells, and `winnow.ts` chooses the
+ * chooses the primary from the wheel's 480 cells, and `winnow.ts` chooses the
  * other two for it; this component only draws what that returns: a hand per
  * role on the wheel, the figure joining them, the three cards and a specimen
  * of the aesthetic in use.
@@ -137,6 +133,9 @@ export class Aesthetic {
   public readonly radii = RADII;
   public readonly viewBox = `${-VIEW_RADIUS} ${-VIEW_RADIUS} ${2 * VIEW_RADIUS} ${2 * VIEW_RADIUS}`;
   public readonly continuum = CONTINUUM_GRADIENT;
+  public readonly wheelLabel = `Colour wheel, ${HUE_COUNT} hues in ${TONES.length} tones`;
+  /** Where the glaze's shadow starts: the cells' inner edge, on its gradient's radius. */
+  public readonly glazeStart = RADII.cellsInner / RADII.cellsOuter;
   public readonly labels = SECTOR_LABELS.map((label) => ({
     ...label,
     transform: upright(label.angle, RADII.labels),
@@ -284,21 +283,6 @@ export class Aesthetic {
     const a = this.aesthetic();
     return a ? Math.round(angularDistance(a.tertiary.h, a.primary.h)) : 0;
   });
-
-  // ----- Numbers the method text reads, so it cannot disagree -----
-
-  public readonly candidates = (CELLS.length - 1) * (CELLS.length - 2);
-  public readonly minDistinct = MIN_DISTINCT;
-  public readonly accentDistance = ACCENT_DISTANCE;
-  public readonly textContrast = TEXT_CONTRAST;
-  public readonly figureWeight = FIGURE_WEIGHT;
-  public readonly split = ROLES.map((role) => Math.round(AREA_SPLIT[role] * 100)).join('/');
-
-  public readonly hueCount = HUE_COUNT;
-  public readonly hueStep = HUE_STEP;
-  public readonly continuumStep = CONTINUUM_STEP;
-  public readonly lightest = TONES[TONES.length - 1].l;
-  public readonly darkest = TONES[0].l;
 
   // ----- Behaviour -----
 

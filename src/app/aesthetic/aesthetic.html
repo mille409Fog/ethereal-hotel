@@ -68,8 +68,14 @@
             </linearGradient>
             <!-- The enamel glaze: shadow where the cells meet the filigree,
                  a breath of light toward the rim, and a darker lip at it. -->
-            <radialGradient id="aw-glaze" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="222">
-              <stop offset="0.414" stop-color="#000" stop-opacity="0.22" />
+            <radialGradient
+              id="aw-glaze"
+              gradientUnits="userSpaceOnUse"
+              cx="0"
+              cy="0"
+              [attr.r]="radii.cellsOuter"
+            >
+              <stop [attr.offset]="glazeStart" stop-color="#000" stop-opacity="0.22" />
               <stop offset="0.56" stop-color="#000" stop-opacity="0" />
               <stop offset="0.9" stop-color="#fff" stop-opacity="0.05" />
               <stop offset="1" stop-color="#000" stop-opacity="0.3" />
@@ -152,7 +158,7 @@
           <g
             class="cells"
             role="radiogroup"
-            aria-label="Colour wheel, sixty hues in six tones"
+            [attr.aria-label]="wheelLabel"
             (keydown)="onKeydown($event)"
             (focusin)="onFocusIn($event)"
             (focusout)="onFocusOut()"

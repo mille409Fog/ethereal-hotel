@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Aesthetic } from './aesthetic';
 import { CELLS, cellIndex, HUE_COUNT, TONES } from './wheel';
-import { aestheticFor, FIGURE_WEIGHT, TEXT_CONTRAST } from './winnow';
+import { aestheticFor } from './winnow';
 
 /**
  * The route as a visitor meets it: a radio group of every cell with one tab
@@ -106,6 +106,12 @@ describe('Aesthetic', () => {
     );
   });
 
+  it('names the wheel by its real dimensions', () => {
+    expect(el().querySelector('[role="radiogroup"]')?.getAttribute('aria-label')).toBe(
+      `Colour wheel, ${HUE_COUNT} hues in ${TONES.length} tones`
+    );
+  });
+
   it('builds the aesthetic around the primary and shows all three roles', async () => {
     const primary = CELLS[cellIndex(0, 2)];
     const expected = aestheticFor(primary);
@@ -134,14 +140,6 @@ describe('Aesthetic', () => {
     expect(facts).toContain(`${expected.text.ratio.toFixed(1)}:1`);
     expect(facts).toContain(expected.harmony.toFixed(2));
     expect(facts).toContain(expected.text.ink.name);
-  });
-
-  it('states the method with the numbers the code uses', () => {
-    const text = el().querySelector('[aria-labelledby="winnow-heading"]')?.textContent ?? '';
-    expect(text).toContain('128,522');
-    expect(text).toContain(`${TEXT_CONTRAST}:1`);
-    expect(text).toContain('60/30/10');
-    expect(text).toContain(String(FIGURE_WEIGHT));
   });
 
   it('lights the hovered cell and previews it in the caption', async () => {

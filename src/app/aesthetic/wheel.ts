@@ -12,15 +12,17 @@ import { IOklch, maxChroma, toHex } from './colour';
  *   the wheel can be read as a protractor, and the mechanism that later
  *   chooses a secondary and a tertiary can reason in degrees without a lookup.
  *   It puts rose rather than red at the top, which is what OKLCH's zero is.
- * - **Sixty hues, like the minutes of a clock face**, in six tones: 360 cells,
- *   each 6° wide. Finer than that and neighbours stop being distinguishable on
- *   a phone; coarser and the wheel stops reading as a continuum.
- * - **A ring is one OKLCH lightness.** Chroma is a share of the most that sRGB
- *   can show at that lightness and hue (`maxChroma`), so every cell is as vivid
- *   as the screen allows for its tone, softened toward the deepest and palest
- *   rings. That makes chroma vary around a ring, sometimes a lot (a light
- *   yellow can be far more saturated than a light blue), and that variation is
- *   the gamut's true shape, not a bug to flatten.
+ * - **Sixty hues, like the minutes of a clock face**, in eight tones: 480
+ *   cells, each 6° wide. Finer than that and neighbours stop being
+ *   distinguishable on a phone; coarser and the wheel stops reading as a
+ *   continuum.
+ * - **A ring is one OKLCH lightness.** In the six colour rings, chroma is a
+ *   share of the most that sRGB can show at that lightness and hue
+ *   (`maxChroma`), so every cell is as vivid as the screen allows for its
+ *   tone, softened toward the deepest and palest rings. That makes chroma vary
+ *   around a ring, sometimes a lot (a light yellow can be far more saturated
+ *   than a light blue), and that variation is the gamut's true shape, not a
+ *   bug to flatten. The two end rings are tinted neutrals; see `TONES`.
  *
  * The continuum ring outside the cells is the same function, `tone()` at the
  * `CONTINUUM_TONE`, sampled every `CONTINUUM_STEP` degrees instead of six. The
@@ -33,24 +35,51 @@ export interface ITone {
   readonly name: string;
   /** OKLCH lightness, shared by every cell in the ring. */
   readonly l: number;
-  /** The fraction of `maxChroma(l, h)` each cell takes. */
+  /**
+   * How much chroma each cell takes: a fraction of `maxChroma(l, h)` for the
+   * colour rings, or a fixed amount for the neutral rings (`neutral`).
+   */
   readonly chromaShare: number;
+  /** A tinted neutral: `chromaShare` is a fixed OKLCH chroma, not a fraction. */
+  readonly neutral?: true;
 }
 
 /**
  * Innermost to outermost: the wheel darkens toward its centre and pales toward
- * its rim. The shares fall off at both ends so the deep ring reads as shadow
- * rather than as neon on black, and the pale ring as a tint rather than a
- * highlighter.
+ * its rim. The shares fall off toward both ends so the deep ring reads as
+ * shadow rather than as neon on black, and the pale ring as a tint rather
+ * than a highlighter.
+ *
+ * The two end rings are tinted neutrals, charcoal and chalk: the near-black
+ * and the off-white that almost every real palette carries and that a wheel
+ * of saturated colour cannot offer. Before they existed, the winnowing used
+ * pale cyans as stand-ins, because they were the least chromatic cells on the
+ * wheel. They take a fixed chroma rather than a share of the maximum because
+ * the share rule fails at the ends: at L 0.96 sRGB can still show a vivid
+ * yellow, so a chalk ring built by the share would have had lemon in it. The
+ * amount is the least that tints, warm at the reds and cool at the blues,
+ * and still gives every cell its own hex: at 0.014 and 0.020, four pairs of
+ * neighbours rounded to the same colour, which would have made two regions
+ * of the wheel one. `maxChroma` still caps it where the gamut is narrower. They extend the
+ * radius's one rule, lightness, rather than breaking it, and they sit where
+ * sRGB itself runs out of chroma, near black and near white. A mid-grey
+ * "stone" would have had to interrupt that rule, so there is none.
  */
 export const TONES: readonly ITone[] = [
+  { name: 'Charcoal', l: 0.27, chromaShare: 0.024, neutral: true },
   { name: 'Deep', l: 0.38, chromaShare: 0.88 },
   { name: 'Dark', l: 0.49, chromaShare: 0.95 },
   { name: 'Rich', l: 0.6, chromaShare: 1 },
   { name: 'Bright', l: 0.71, chromaShare: 1 },
   { name: 'Light', l: 0.81, chromaShare: 0.88 },
   { name: 'Pale', l: 0.9, chromaShare: 0.72 },
+  { name: 'Chalk', l: 0.96, chromaShare: 0.018, neutral: true },
 ];
+
+/** Whether a cell's tone is one of the tinted neutrals. */
+export function isNeutral(cell: ICell): boolean {
+  return TONES[cell.toneIndex].neutral === true;
+}
 
 export const HUE_COUNT = 60;
 export const HUE_STEP = 360 / HUE_COUNT;
@@ -59,7 +88,7 @@ export const HUE_STEP = 360 / HUE_COUNT;
 export const SECTOR_SIZE = 5;
 
 /** The ring the continuum is drawn at. Bright, the most saturated overall. */
-export const CONTINUUM_TONE = 3;
+export const CONTINUUM_TONE = TONES.findIndex((t) => t.name === 'Bright');
 
 /** Degrees between the continuum's gradient stops. */
 export const CONTINUUM_STEP = 2;
@@ -117,8 +146,9 @@ export function hueName(h: number): string {
 
 /** The colour of a tone at any hue: the function the cells sample. */
 export function tone(toneIndex: number, h: number): IOklch {
-  const { l, chromaShare } = TONES[toneIndex];
-  return { l, c: maxChroma(l, h) * chromaShare, h };
+  const { l, chromaShare, neutral } = TONES[toneIndex];
+  const most = maxChroma(l, h);
+  return { l, c: neutral ? Math.min(chromaShare, most) : most * chromaShare, h };
 }
 
 /** One region of the wheel, and the single colour it stands for. */
@@ -170,13 +200,17 @@ export const VIEW_RADIUS = 310;
 
 export const RADII = {
   /** The glass medallion at the centre, which holds the primary. */
-  medallion: 62,
+  medallion: 56,
   /** The filigree ring between the medallion and the cells. */
-  filigreeInner: 70,
-  filigreeOuter: 84,
-  /** The cell field, divided evenly among the tones. */
-  cellsInner: 92,
-  cellsOuter: 222,
+  filigreeInner: 62,
+  filigreeOuter: 74,
+  /**
+   * The cell field, divided evenly among the tones. Widened inward when the
+   * neutral rings arrived, at the medallion's expense, so eight rings are 18
+   * units deep rather than the 16 they would have been in the old field.
+   */
+  cellsInner: 82,
+  cellsOuter: 226,
   /** The continuum, drawn in CSS behind the SVG. */
   continuumInner: 228,
   continuumOuter: 242,

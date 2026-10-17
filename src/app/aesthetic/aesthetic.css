@@ -310,11 +310,12 @@
 
 /* ----- The medallion ----- */
 
-/* `62 / 310` of the wheel's radius, so 20% of its width. */
+/* `RADII.medallion` (56) over `VIEW_RADIUS` (310): its diameter as a share of
+   the wheel's width, and centred. */
 .medallion {
-  top: 40%;
-  left: 40%;
-  width: 20%;
+  top: calc(50% - 56 / 620 * 100%);
+  left: calc(50% - 56 / 620 * 100%);
+  width: calc(112 / 620 * 100%);
   aspect-ratio: 1;
   border-radius: 50%;
   overflow: hidden;
@@ -403,8 +404,7 @@
 
 /* ----- The three colours ----- */
 
-.triad-heading,
-.method-heading {
+.triad-heading {
   font-family: var(--font-serif);
   font-size: 1.5rem;
   text-align: center;
@@ -516,16 +516,6 @@
   margin: 0;
   font-size: 0.95rem;
   color: var(--color-text-muted);
-}
-
-.method {
-  max-width: 40rem;
-  margin: 0 auto 3rem;
-  color: var(--color-text-secondary);
-}
-
-.method a {
-  color: var(--color-blood-text);
 }
 
 .triad-duty {
