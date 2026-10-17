@@ -55,6 +55,7 @@ Wiring outside the folder: the route in `src/app/app.routes.ts`, its card in
 | Each smaller copy exists at the size `filesOf` gives | `scripts/gallery.test.mjs`; `gallery.data.spec.ts` checks no painting skips a copy     |
 | `PHONE_FRAME_INSET` matches each frame in the CSS    | `scripts/gallery.test.mjs`, which reads the `clamp()` minimums out of `gallery.css`    |
 | A phone downloads one file, and not a needless one   | `e2e/gallery.spec.ts`, at 3× and 2× phones and a 1× desktop                            |
+| All seven rooms scan clean with axe in a browser     | `e2e/a11y.spec.ts`, which presses every colour through the page's own controls          |
 | `public/gallery/` holds nothing unreferenced         | `scripts/gallery.test.mjs`                                                             |
 | Each label cites Wikipedia or the Met                | `gallery.data.spec.ts`                                                                 |
 | Each painting's readings cite a trusted host         | `gallery.data.spec.ts`, which holds the host list; adding a host is a decision         |
@@ -110,9 +111,13 @@ second generation of lossy encoding.
   `--room-*` custom properties. `palette.frame` picks one of seven frame treatments in
   `gallery.css`, keyed on `data-frame`: lacquer, gilt, nocturne, oak, blush, ebony and float. The
   palettes live in data, not CSS, so `gallery.data.spec.ts` can hold every text colour to 4.5:1
-  on its own surface. axe only sees whichever colour the e2e run presses, which leaves the other
-  six unchecked in the browser. Pearl is the one light room, so it switches off the global
-  heading shadow from `styles.css`, which smudges type on a pale ground.
+  on its own surface. That checks the numbers but not the CSS that uses them, so
+  `e2e/a11y.spec.ts` also presses every colour in a browser, the way a visitor would (pressing
+  "Show me different colours" until all seven have been offered), and runs axe in each room.
+  A colour can't be forced through the URL, and that is deliberate. A rule planted to fail only
+  in Pearl was caught by the every-room scan and missed by the single-room one. Pearl is the one
+  light room, so it switches off the global heading shadow from `styles.css`, which smudges type
+  on a pale ground.
 - **Every painting ships three times.** `SMALLER_EDGES` in `gallery.data.ts` adds a 700 px and a
   1050 px copy beside the 1400 px file, and the template offers all three through `srcset`. The
   phone layout draws a painting about 290 CSS px wide, so a 2× phone needs about 580 device px

@@ -73,8 +73,9 @@ describe('gallery collection', () => {
   });
 
   it('keeps every palette readable: AA contrast for each text colour on its surface', () => {
-    // axe enforces this in the browser, but only for the one colour the e2e
-    // run happens to press. Six palettes would otherwise go unaudited.
+    // The numbers, checked here in milliseconds. `e2e/a11y.spec.ts` scans every
+    // room in a browser too, which catches CSS overriding a palette, but it
+    // takes a build and a minute to say so.
     for (const colour of COLOURS) {
       const { surface, text, muted, accentText } = colour.palette;
       for (const [role, ink] of Object.entries({ text, muted, accentText })) {

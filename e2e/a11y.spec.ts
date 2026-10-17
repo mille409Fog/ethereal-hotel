@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import type { Result } from 'axe-core';
+import { COLOURS } from '../src/app/gallery/gallery.data';
 import { stubBookingApi } from './support/backend';
 import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
 
@@ -196,6 +197,63 @@ test.describe('accessibility', () => {
     );
 
     expect(blocking, `\n${formatViolations(blocking)}\n`).toEqual([]);
+  });
+
+  /**
+   * Every gallery room, not just the one the draw happens to offer first.
+   *
+   * Each colour re-dresses the card: its own surface, type, links and frame,
+   * and Pearl alone switches off the global heading shadow. The data spec holds
+   * each palette's numbers to 4.5:1, but only a browser sees what the CSS does
+   * with them, and the route scan above sees one room per run. So this presses
+   * every colour and scans each room as it hangs.
+   *
+   * It gets there the way a visitor would: press each offered colour not yet
+   * seen, then "Show me different colours" for a fresh five of seven. Forcing
+   * a colour through a URL or a test hook would be quicker, and would add a
+   * way into the page that visitors do not have. A given colour is left out
+   * of a draw with probability 2/7, so the cap of 30 draws fails on bad luck
+   * about once in 10^16 runs; hitting it means the reshuffle is broken.
+   */
+  test('every gallery room has no critical or serious violations', async ({ page }, testInfo) => {
+    // Seven full-page scans, each a second or two, plus the redraws between.
+    testInfo.setTimeout(120_000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/gallery');
+
+    const unseen = new Set(COLOURS.map((colour) => colour.name));
+    const found: string[] = [];
+
+    for (let draw = 0; draw < 30 && unseen.size > 0; draw += 1) {
+      if (draw > 0) {
+        await page.getByRole('button', { name: 'Show me different colours' }).click();
+        // A redraw clears the wall in the same render that replaces the orbs,
+        // so the empty wall means the names below are this draw's, not the last.
+        await expect(page.getByText('Nothing is hanging yet')).toBeVisible();
+      }
+      const offered = await page.locator('button.orb .orb-name').allTextContents();
+      for (const name of offered.map((text) => text.trim()).filter((n) => unseen.has(n))) {
+        await page.locator('button.orb', { hasText: name }).click();
+        await expect(page.locator('#painting-title')).toBeFocused();
+        await expect(page.locator('.hung-kicker')).toContainText(name);
+        unseen.delete(name);
+
+        const results = await new AxeBuilder({ page }).analyze();
+        const blocking = results.violations.filter((violation) =>
+          violation.impact ? BLOCKING_IMPACTS.has(violation.impact) : false
+        );
+        if (blocking.length > 0) {
+          found.push(`${name} room:\n${formatViolations(blocking)}`);
+        }
+      }
+    }
+
+    await testInfo.attach('axe-gallery-rooms.txt', {
+      body: found.join('\n\n') || 'No blocking violations in any room.',
+      contentType: 'text/plain',
+    });
+    expect([...unseen], 'colours never offered in 30 draws').toEqual([]);
+    expect(found, `\n${found.join('\n\n')}\n`).toEqual([]);
   });
 });
 

@@ -152,7 +152,8 @@ export const PHONE_FRAME_INSET: Readonly<Record<FrameStyle, number>> = {
  *
  * Data rather than CSS so `gallery.data.spec.ts` can hold every text colour to
  * WCAG AA against its own surface. Seven palettes are seven chances to ship
- * unreadable labels, and axe only scans whichever colour the e2e run presses.
+ * unreadable labels. The spec checks the numbers; `e2e/a11y.spec.ts` presses
+ * every colour and scans each room, which checks what the CSS does with them.
  */
 export interface IPalette {
   /** The card's background. */
