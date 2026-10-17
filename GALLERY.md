@@ -132,6 +132,12 @@ second generation of lossy encoding.
   binding `src` first would start a full-size download, but the browser chooses only once the
   element is settled. With `src` bound first, the e2e test still counted exactly one download per
   painting.
+- **Lighthouse audits `/gallery` with nothing hanging.** That is how a visitor first meets the
+  page, so the audit measures the orbs and the text, and no painting is downloaded. Its largest
+  contentful paint is text, about 0.6 s on a local run. The paintings' weight is held by the
+  `srcset` copies and the e2e test above, not by this audit. Local runs scored performance 100,
+  accessibility 100 and best practices 96. The 4 points are the same as on `/`: the local server
+  has no `/_vercel/insights/script.js`, and the 404 lands in the console.
 - **The all-scripts size warning moved from 950 kB to 975 kB** when the gallery chunk (about
   53 kB raw) took the build to 951 kB. Only the 1200 kB error limit is gated. The README says
   warnings sit just above today's build, and the move keeps that true. If the collection grows
@@ -174,7 +180,5 @@ Correct an entry in `gallery.data.ts` and the page follows. Nothing else holds a
 - **The home-page card sits in a section headed "enterprise applications".** It goes after the
   two live demos so the "last three are under NDA" note stays true. The owner may want to move it
   or reword the heading.
-- **Lighthouse does not audit `/gallery`.** `lighthouserc.json` covers `/` and `/dashboard` only.
-  A painting shown at full size would dominate the largest-contentful-paint metric if it did.
 - **The collection is Western-heavy, with one Japanese print.** Widening it is a content
   decision, not a code one. The 70-year rule is the only hard constraint.

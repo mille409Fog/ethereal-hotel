@@ -92,8 +92,9 @@ Another job runs `npm run check:docs`, which fails when this file's claims stop 
 See §Keeping this file honest — if you change something documented here, that check is how you find
 out.
 
-A further job runs `npm run lighthouse`: it builds, serves `dist/` on 4173 and audits `/` and
-`/dashboard`, failing below performance 90, accessibility 100 and best-practices 95 — the
+A further job runs `npm run lighthouse`: it builds, serves `dist/` on 4173 and audits `/`,
+`/dashboard` and `/gallery`, failing below performance 90, accessibility 100 and best-practices
+95 — the
 thresholds live in `lighthouserc.json` and the README states them. It fetches `@lhci/cli` at a
 version pinned in `package.json` instead of declaring it, because `lighthouse` → `puppeteer-core` →
 `extract-zip` carries an unfixable high advisory that would otherwise force `npm run audit` down to

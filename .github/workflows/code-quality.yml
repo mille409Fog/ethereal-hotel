@@ -203,8 +203,8 @@ jobs:
       - name: Show the Chrome the audit will drive
         run: google-chrome --version
 
-      # Builds, serves dist/ on 4173 and audits `/` and `/dashboard` — the same
-      # server and the same production build the Playwright suite uses, for the
+      # Builds, serves dist/ on 4173 and audits `/`, `/dashboard` and `/gallery` —
+      # the same server and the same production build the Playwright suite uses, for the
       # same reason: a dev build ships different CSS and skips the production
       # fileReplacements. Three runs per URL, asserted against the median.
       - name: Run Lighthouse CI (fails below the thresholds in lighthouserc.json)

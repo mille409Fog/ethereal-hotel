@@ -1880,6 +1880,56 @@ check('the performance numbers the README states are the ones enforced', () => {
   return unenforcedBudgetClaims(read('README.md'), assertions, budgets);
 });
 
+// The thresholds are only half of the claim; the other half is which pages
+// they hold. Four files say which routes Lighthouse audits, and when /gallery
+// joined the list all four had to be found by grep. A doc still saying "`/`
+// and `/dashboard`" would tell a reader a page goes unaudited when it does
+// not, or, the other way round, promise a gate on a page that has left it. So
+// each sentence of the form "audits `/a`, `/b` and `/c`" must name exactly the
+// paths in lighthouserc.json's `collect.url`.
+
+/** Files that state the audited routes, and must keep stating them. */
+const LIGHTHOUSE_ROUTE_DOCS = [
+  'README.md',
+  'CONTRIBUTING.md',
+  'CLAUDE.md',
+  '.github/workflows/code-quality.yml',
+];
+
+/** "audits `/`, `/dashboard` and `/gallery`", optionally "audits the production build on …". */
+const AUDITED_ROUTES_CLAIM =
+  /audits\s+(?:the\s+production\s+build\s+on\s+)?((?:`\/[\w-]*`(?:,\s*|\s+and\s+)?)+)/g;
+
+check('the docs name exactly the routes Lighthouse audits', () => {
+  const audited = JSON.parse(read('lighthouserc.json'))
+    .ci.collect.url.map((url) => new URL(url).pathname)
+    .sort();
+  const problems = [];
+
+  for (const file of LIGHTHOUSE_ROUTE_DOCS) {
+    // A YAML comment wraps onto lines that start with `#`; join them back up.
+    const text = read(file).replace(/\n\s*#\s*/g, ' ');
+    const claims = [...text.matchAll(AUDITED_ROUTES_CLAIM)];
+    if (claims.length === 0) {
+      problems.push(
+        `${file} no longer says which routes Lighthouse audits ("audits \`/\`, …"). ` +
+          `Restore the sentence, or drop the file from LIGHTHOUSE_ROUTE_DOCS in check-docs.mjs.`
+      );
+    }
+    for (const [, list] of claims) {
+      const named = [...list.matchAll(/`(\/[\w-]*)`/g)].map(([, route]) => route).sort();
+      if (named.join(' ') !== audited.join(' ')) {
+        problems.push(
+          `${file} says Lighthouse audits ${named.join(', ')}; lighthouserc.json audits ` +
+            `${audited.join(', ')}. Update whichever is stale.`
+        );
+      }
+    }
+  }
+
+  return problems;
+});
+
 // `npm audit --audit-level=high` and pip-audit's `--ignore-vuln` are both ways
 // of saying "this advisory is open and we are shipping anyway". That is a
 // defensible thing to say, exactly once you have said why — the supply-chain

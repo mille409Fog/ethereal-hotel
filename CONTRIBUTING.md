@@ -72,8 +72,8 @@ render time into every PDF it writes. `resume:check` — not `git diff` — is w
 anything really changed. If it passes, `git checkout -- public/jacob-miller-resume.pdf` and keep
 the diff clean.
 
-`npm run lighthouse` builds, serves `dist/` on :4173 and audits `/` and `/dashboard`, failing
-below the thresholds in `lighthouserc.json`. It drives whatever Chrome you already have and
+`npm run lighthouse` builds, serves `dist/` on :4173 and audits `/`, `/dashboard` and `/gallery`,
+failing below the thresholds in `lighthouserc.json`. It drives whatever Chrome you already have and
 fetches the Lighthouse CLI at a pinned version rather than installing it — `lighthouse` depends
 on `puppeteer-core`, which carries an open high-severity advisory with no fix, and a measurement
 tool that never ships is not worth suppressing the dependency audit for.

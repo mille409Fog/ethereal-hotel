@@ -3,7 +3,11 @@
     "collect": {
       "startServerCommand": "node scripts/serve-dist.mjs --port 4173",
       "startServerReadyPattern": "Serving .* on http://localhost:4173",
-      "url": ["http://localhost:4173/", "http://localhost:4173/dashboard"],
+      "url": [
+        "http://localhost:4173/",
+        "http://localhost:4173/dashboard",
+        "http://localhost:4173/gallery"
+      ],
       "numberOfRuns": 3,
       "settings": {
         "preset": "desktop"
