@@ -1,4 +1,4 @@
-import { COLOURS, IPainting, ORBS_SHOWN } from './gallery.data';
+import { COLOURS, filesOf, IPainting, ORBS_SHOWN, SMALLER_EDGES } from './gallery.data';
 
 /**
  * The collection's invariants.
@@ -107,6 +107,20 @@ describe('gallery collection', () => {
       expect(painting.image.commons.trim().length).toBeGreaterThan(0);
       expect(painting.image.width).toBeGreaterThan(0);
       expect(painting.image.height).toBeGreaterThan(0);
+    }
+  });
+
+  it('offers every painting at every smaller size, narrowest first', () => {
+    // filesOf skips a copy that would be no smaller than the full-size file. No
+    // painting here is that small, so a skipped copy would mean a full-size
+    // image had shrunk and phones were quietly back to downloading all of it.
+    for (const painting of paintings) {
+      const files = filesOf(painting.image);
+      expect(files.length, painting.slug).toBe(SMALLER_EDGES.length + 1);
+      expect(files.at(-1)?.file).toBe(painting.image.file);
+      const widths = files.map((file) => file.width);
+      expect(widths, painting.slug).toEqual([...widths].sort((a, b) => a - b));
+      expect(new Set(widths).size, painting.slug).toBe(widths.length);
     }
   });
 

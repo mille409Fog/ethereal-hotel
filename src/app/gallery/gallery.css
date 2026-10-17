@@ -229,7 +229,11 @@
 }
 
 /* Crimson: red lacquer, lit from the top left, so the frame itself has a
-   bevel; the dark mat keeps the red off the painting's own edge. */
+   bevel; the dark mat keeps the red off the painting's own edge.
+
+   Every frame's padding and border widths are mirrored in PHONE_FRAME_INSET
+   in gallery.data.ts, which `sizes` uses to tell the browser how wide the
+   painting is drawn on a phone. scripts/gallery.test.mjs fails if they drift. */
 [data-frame='lacquer'] .hung-mount {
   padding: clamp(8px, 1.4vw, 14px);
   border: clamp(7px, 1.2vw, 12px) solid #8e1124;

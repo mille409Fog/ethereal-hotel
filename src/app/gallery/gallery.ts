@@ -10,7 +10,14 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { COLOURS, IColour, IPainting, ORBS_SHOWN } from './gallery.data';
+import {
+  COLOURS,
+  filesOf,
+  IColour,
+  IPainting,
+  ORBS_SHOWN,
+  PHONE_FRAME_INSET,
+} from './gallery.data';
 import { offerColours, Random, recommend } from './recommend';
 
 /**
@@ -83,6 +90,42 @@ export class Gallery {
       '--room-mat': palette.mat,
     };
   });
+
+  /** Every committed size of a painting, for the browser to choose from. */
+  public srcset(painting: IPainting): string {
+    return filesOf(painting.image)
+      .map((image) => `/gallery/${image.file} ${image.width}w`)
+      .join(', ');
+  }
+
+  /**
+   * How wide the painting will be drawn, which is what the browser multiplies
+   * by the screen's density to choose from `srcset`. It mirrors `gallery.css`:
+   * on a phone the card's width less its padding and frame, on a desktop the
+   * picture column, and in both the height cap (60vh, 70vh) times the
+   * painting's shape, because a tall portrait is held to the height and drawn
+   * far narrower than its column. Each figure errs wide, never narrow: wide
+   * costs a few bytes, narrow costs a blurred painting.
+   *
+   * On a phone the width taken off is exact rather than generous: 74px of
+   * page padding (32), card padding (40) and card border (2), plus both sides
+   * of this room's frame. Rounding it up "for safety" is what failed: 10px of
+   * slack on a 3× phone is 30 device pixels, enough to step past the 1050 copy
+   * and download the full-size file, which the e2e profiles caught twice.
+   * Larger screens widen the frames' `clamp()`s, which keeps the estimate on
+   * the wide side there.
+   */
+  public sizes(painting: IPainting): string {
+    const shape = (painting.image.width / painting.image.height).toFixed(4);
+    // With no room chosen, assume the thinnest frame: it overstates the width,
+    // which costs bytes, where a thicker guess would understate it and blur.
+    const frame = this.colour()?.palette.frame ?? 'lacquer';
+    const phoneChrome = 74 + 2 * PHONE_FRAME_INSET[frame];
+    return (
+      `(max-width: 860px) min(calc(100vw - ${phoneChrome}px), calc(60vh * ${shape})), ` +
+      `min(36rem, 50vw, calc(70vh * ${shape}))`
+    );
+  }
 
   /** How many other paintings the chosen colour could still show. */
   public readonly others = computed(() => (this.colour()?.paintings.length ?? 1) - 1);

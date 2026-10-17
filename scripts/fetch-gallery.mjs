@@ -18,12 +18,19 @@
  * the build has verified rather than one the data asserts.
  *
  * Encoding goes through the Playwright Chromium the e2e job already installs,
- * resizing to LONG_EDGE on a canvas, so it adds no image dependency. It needs
- * the network and runs by hand; CI only checks the committed result
+ * resizing on a canvas, so it adds no image dependency. It needs the network
+ * and runs by hand; CI only checks the committed result
  * (`scripts/gallery.test.mjs`).
  *
- * At the end it prints each file's pixel size. Copy any that changed into
- * `image.width`/`image.height`; the test fails until they agree.
+ * Each painting is written several times: full size at LONG_EDGE, and a copy
+ * at each of `SMALLER_EDGES` for `srcset`. The copies' names and sizes come
+ * from `filesOf` in the data module, the same function the template and the
+ * test read, and each copy is scaled from the downloaded original rather than
+ * from the full-size WebP, so it is not a second generation of lossy encoding.
+ *
+ * At the end it prints each full-size file's pixel size. Copy any that changed
+ * into `image.width`/`image.height`; the test fails until they agree. The
+ * copies need no such step, since their sizes are derived.
  *
  * Usage: npm run gallery:fetch [-- --only <slug>]
  */
@@ -31,7 +38,7 @@ import { chromium } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { COLOURS } from '../src/app/gallery/gallery.data.ts';
+import { COLOURS, filesOf } from '../src/app/gallery/gallery.data.ts';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = path.join(repoRoot, 'public', 'gallery');
@@ -106,43 +113,53 @@ try {
     const download = await fetch(source, { headers: HEADERS });
     if (!download.ok) throw new Error(`${painting.slug}: download failed (${download.status}).`);
     const bytes = Buffer.from(await download.arrayBuffer());
-    const type = download.headers.get('content-type') ?? 'image/jpeg';
+    const dataUrl = `data:${download.headers.get('content-type') ?? 'image/jpeg'};base64,${bytes.toString('base64')}`;
+
+    const natural = await page.evaluate(async (url) => {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      return { width: image.naturalWidth, height: image.naturalHeight };
+    }, dataUrl);
+    const scale = Math.min(1, LONG_EDGE / Math.max(natural.width, natural.height));
+    const full = {
+      file: painting.image.file,
+      width: Math.round(natural.width * scale),
+      height: Math.round(natural.height * scale),
+    };
+    const targets = filesOf(full);
 
     const encoded = await page.evaluate(
-      async ({ dataUrl, longEdge, quality }) => {
+      async ({ url, targets, quality }) => {
         const image = new Image();
-        image.src = dataUrl;
+        image.src = url;
         await image.decode();
-        const scale = Math.min(1, longEdge / Math.max(image.naturalWidth, image.naturalHeight));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(image.naturalWidth * scale);
-        canvas.height = Math.round(image.naturalHeight * scale);
-        const context = canvas.getContext('2d');
-        context.imageSmoothingQuality = 'high';
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        return {
-          webp: canvas.toDataURL('image/webp', quality),
-          width: canvas.width,
-          height: canvas.height,
-        };
+        return targets.map(({ width, height }) => {
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d');
+          context.imageSmoothingQuality = 'high';
+          context.drawImage(image, 0, 0, width, height);
+          return canvas.toDataURL('image/webp', quality);
+        });
       },
-      {
-        dataUrl: `data:${type};base64,${bytes.toString('base64')}`,
-        longEdge: LONG_EDGE,
-        quality: QUALITY,
-      }
+      { url: dataUrl, targets, quality: QUALITY }
     );
 
-    if (!encoded.webp.startsWith('data:image/webp')) {
-      throw new Error(`${painting.slug}: this Chromium cannot encode WebP.`);
+    let kb = 0;
+    for (const [index, target] of targets.entries()) {
+      if (!encoded[index].startsWith('data:image/webp')) {
+        throw new Error(`${painting.slug}: this Chromium cannot encode WebP.`);
+      }
+      const webp = Buffer.from(encoded[index].split(',')[1], 'base64');
+      await writeFile(path.join(outDir, target.file), webp);
+      kb += Math.round(webp.length / 1024);
     }
-    const webp = Buffer.from(encoded.webp.split(',')[1], 'base64');
-    await writeFile(path.join(outDir, painting.image.file), webp);
 
-    const stale =
-      encoded.width !== painting.image.width || encoded.height !== painting.image.height;
-    results.push({ ...encoded, slug: painting.slug, kb: Math.round(webp.length / 1024), stale });
-    process.stdout.write(`${painting.slug}: ${licence}, ${Math.round(webp.length / 1024)}KB\n`);
+    const stale = full.width !== painting.image.width || full.height !== painting.image.height;
+    results.push({ ...full, slug: painting.slug, kb, stale });
+    process.stdout.write(`${painting.slug}: ${licence}, ${targets.length} files, ${kb}KB\n`);
   }
 } finally {
   await browser.close();

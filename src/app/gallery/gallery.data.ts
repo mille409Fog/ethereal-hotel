@@ -48,9 +48,42 @@ export interface ILenses {
   readonly context: string;
 }
 
+/** One file a reproduction is committed as, and its pixel size. */
+export interface IImageFile {
+  readonly file: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * The long edges of the smaller copies committed beside every full-size
+ * reproduction, so a phone does not download pixels it cannot show. The phone
+ * layout gives a painting about 290 CSS px; 700 covers that at 2× density and
+ * a desktop column at 1×, and 1050 covers it at 3×, which most phones are.
+ */
+export const SMALLER_EDGES = [700, 1050] as const;
+
+/**
+ * Every file one reproduction is committed as, narrowest first: a copy at
+ * each of `SMALLER_EDGES`, then the full-size file. The copies' names and
+ * sizes are derived from the full-size one rather than written into the data,
+ * so they cannot disagree with it. `fetch-gallery.mjs` encodes at exactly these
+ * sizes, `gallery.test.mjs` checks the committed files against them, and the
+ * template builds `srcset` from them.
+ */
+export function filesOf(image: IImageFile): readonly IImageFile[] {
+  const longEdge = Math.max(image.width, image.height);
+  const copies = SMALLER_EDGES.filter((edge) => edge < longEdge).map((edge) => ({
+    file: image.file.replace(/\.webp$/, `-${edge}.webp`),
+    width: Math.round((image.width * edge) / longEdge),
+    height: Math.round((image.height * edge) / longEdge),
+  }));
+  return [...copies, { file: image.file, width: image.width, height: image.height }];
+}
+
 /** A committed reproduction under `public/gallery/`. */
 export interface IReproduction {
-  /** File name under `public/gallery/`. */
+  /** The full-size file under `public/gallery/`; `filesOf` names the smaller copies. */
   readonly file: string;
   /** The Wikimedia Commons file it was made from, without the `File:` prefix. */
   readonly commons: string;
@@ -94,6 +127,25 @@ export interface IPainting {
  * object, so the stylesheet reads like a framer's order rather than a theme.
  */
 export type FrameStyle = 'lacquer' | 'gilt' | 'nocturne' | 'oak' | 'blush' | 'ebony' | 'float';
+
+/**
+ * How much each frame takes off one side of the picture on a phone, in px: the
+ * smaller end of its `clamp()` padding plus its border, which is what applies
+ * at phone widths. The template's `sizes` subtracts it so the browser chooses
+ * a file for the width the painting is actually drawn at. A guess shared by all
+ * seven frames was tried and overshot by up to 14px, enough on a 3× phone to
+ * miss the 1050 copy and fetch the full-size file. `gallery.test.mjs` reads
+ * these back out of `gallery.css` and fails when they disagree.
+ */
+export const PHONE_FRAME_INSET: Readonly<Record<FrameStyle, number>> = {
+  lacquer: 15,
+  gilt: 20,
+  nocturne: 17,
+  oak: 22,
+  blush: 17,
+  ebony: 17,
+  float: 17,
+};
 
 /**
  * The room a colour's painting is hung in: the card, its type, and the mount.

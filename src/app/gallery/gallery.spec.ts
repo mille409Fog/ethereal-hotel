@@ -64,6 +64,17 @@ describe('Gallery', () => {
     expect(img.getAttribute('width')).toBe(String(painting.image.width));
     expect(img.getAttribute('height')).toBe(String(painting.image.height));
     expect(img.alt).toBe(painting.image.alt);
+    // Written out rather than rebuilt with filesOf, so this also pins what
+    // filesOf derives: The Kiss is 1395×1400, so its copies are 698 and 1046 wide.
+    expect(img.getAttribute('srcset')).toBe(
+      '/gallery/the-kiss-700.webp 698w, /gallery/the-kiss-1050.webp 1046w, ' +
+        '/gallery/the-kiss.webp 1395w'
+    );
+    // Gold hangs in the gilt frame, 20px a side on a phone: 74 + 40 = 114.
+    expect(img.getAttribute('sizes')).toBe(
+      '(max-width: 860px) min(calc(100vw - 114px), calc(60vh * 0.9964)), ' +
+        'min(36rem, 50vw, calc(70vh * 0.9964))'
+    );
 
     const text = el().querySelector('article')?.textContent ?? '';
     for (const fact of [painting.artist, painting.museum, painting.medium, painting.size]) {
@@ -88,6 +99,12 @@ describe('Gallery', () => {
     expect(article().style.getPropertyValue('--room-accent-text')).toBe(
       COLOURS[1].palette.accentText
     );
+  });
+
+  it('sizes for the thinnest frame when no room is chosen, erring wide', () => {
+    // 74 + 2 × 15 (lacquer). A wider guess costs bytes; a narrower one blurs.
+    const painting = COLOURS[1].paintings[0];
+    expect(fixture.componentInstance.sizes(painting)).toContain('calc(100vw - 104px)');
   });
 
   it('moves focus to the painting, which may be out of view below the orbs', async () => {

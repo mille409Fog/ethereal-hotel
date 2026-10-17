@@ -34,9 +34,9 @@ wall.
 | `src/app/gallery/gallery.ts`/`.html`/`.css` | The route. `GALLERY_RANDOM` is the injection token tests override.                                         |
 | `src/app/gallery/*.spec.ts`                 | Data invariants, draw fairness, and the rendered page.                                                     |
 | `scripts/fetch-gallery.mjs`                 | `npm run gallery:fetch`: downloads, licence-checks and encodes the images. Needs the network; run by hand. |
-| `scripts/gallery.test.mjs`                  | Part of `npm run test:scripts`: each image exists at its declared size, and no unused files exist.         |
-| `public/gallery/*.webp`                     | The 24 committed reproductions, about 6.3 MB in all.                                                       |
-| `e2e/gallery.spec.ts`                       | A real browser presses an orb and checks that the image decodes.                                           |
+| `scripts/gallery.test.mjs`                  | Part of `npm run test:scripts`: every file at its size, no unused files, frame insets match the CSS.       |
+| `public/gallery/*.webp`                     | 72 files, about 11.4 MB: each painting at full size (6.3 MB) and as `-700` and `-1050` copies.             |
+| `e2e/gallery.spec.ts`                       | A real browser decodes the image, and on three devices downloads one file, no wider than needed.           |
 
 Wiring outside the folder: the route in `src/app/app.routes.ts`, its card in
 `src/route-meta.json`, its rewrite in `vercel.json`, an entry in `ROUTES` in `e2e/a11y.spec.ts`
@@ -52,6 +52,9 @@ Wiring outside the folder: the route in `src/app/app.routes.ts`, its card in
 | Every painter died more than 70 years ago            | `gallery.data.spec.ts`, from the last year in `artistLife`; it moves with the calendar |
 | Every image is public domain or CC0 on Commons       | `fetch-gallery.mjs` refuses any other licence before downloading                       |
 | `image.width`/`height` match the committed file      | `scripts/gallery.test.mjs`, using `readStillWebp` from `webp-anim.mjs`                 |
+| Each smaller copy exists at the size `filesOf` gives | `scripts/gallery.test.mjs`; `gallery.data.spec.ts` checks no painting skips a copy     |
+| `PHONE_FRAME_INSET` matches each frame in the CSS    | `scripts/gallery.test.mjs`, which reads the `clamp()` minimums out of `gallery.css`    |
+| A phone downloads one file, and not a needless one   | `e2e/gallery.spec.ts`, at 3× and 2× phones and a 1× desktop                            |
 | `public/gallery/` holds nothing unreferenced         | `scripts/gallery.test.mjs`                                                             |
 | Each label cites Wikipedia or the Met                | `gallery.data.spec.ts`                                                                 |
 | Each painting's readings cite a trusted host         | `gallery.data.spec.ts`, which holds the host list; adding a host is a decision         |
@@ -71,14 +74,18 @@ Wiring outside the folder: the route in `src/app/app.routes.ts`, its card in
 3. **Write the entry inside one colour**, with `image.file` set to `<slug>.webp` and `width`/`height`
    set to 0 for now. Check every fact in the readings before writing it, not after, and list
    the pages in `readingSources`. If no source states something, leave it out.
-4. **Run `npm run gallery:fetch -- --only <slug>`.** It prints the real pixel size; copy it into
-   the data. Without `--only` it refetches all 24 files, which takes about a minute.
-5. **Delete any WebP the change orphaned**, then run `npm test` and `npm run test:scripts`.
+4. **Run `npm run gallery:fetch -- --only <slug>`.** It writes three files (full size and two
+   copies) and prints the full-size pixel size; copy that into the data. The copies' sizes are
+   derived, so they need no entry. Without `--only` it refetches all 24 paintings, which takes
+   about a minute.
+5. **Delete any WebP the change orphaned**, all three sizes of it, then run `npm test` and
+   `npm run test:scripts`.
 
-Images are 1400 px on the long edge at WebP quality 0.82. That is large enough to show the
-detail the "Up close" reading points at, and small enough to keep the folder near 6 MB. Commons
-serves thumbnails only at standard widths, so the script downloads at 2000 px and scales down
-locally.
+The full-size images are 1400 px on the long edge at WebP quality 0.82. That is large enough to
+show the detail the "Up close" reading points at on a high-density laptop. Commons serves
+thumbnails only at standard widths, so the script downloads at 2000 px and scales down locally.
+The copies are scaled from that same download, not from the 1400 px WebP, so they are not a
+second generation of lossy encoding.
 
 ## Decisions that look like mistakes
 
@@ -106,6 +113,25 @@ locally.
   on its own surface. axe only sees whichever colour the e2e run presses, which leaves the other
   six unchecked in the browser. Pearl is the one light room, so it switches off the global
   heading shadow from `styles.css`, which smudges type on a pale ground.
+- **Every painting ships three times.** `SMALLER_EDGES` in `gallery.data.ts` adds a 700 px and a
+  1050 px copy beside the 1400 px file, and the template offers all three through `srcset`. The
+  phone layout draws a painting about 290 CSS px wide, so a 2× phone needs about 580 device px
+  and a 3× phone about 870. One 700 px copy would have left 3× phones, most of them, on the
+  full-size file. The cost is 5.1 MB more in the repository. Visitors pay nothing extra, since
+  each downloads one size.
+- **`sizes` is computed per painting, and its phone width is exact rather than generous.** The
+  height caps (`max-height: 60vh` on a phone) draw a tall portrait much narrower than its column,
+  so `sizes` takes the smaller of the width and the height cap times the painting's shape, using
+  CSS `min()`. On a phone it subtracts the page and card padding (74 px) and this room's own
+  frame (`PHONE_FRAME_INSET`). A single generous figure was tried twice; each time the e2e test
+  caught a 3× phone stepping past the 1050 copy to the full-size file. Chromium handles `min()`
+  in `sizes`. Safari and Firefox have not been tested here. A browser that rejects it falls back
+  to the full viewport width and fetches a larger file, which is never worse than before the
+  copies existed.
+- **The order of `sizes`, `srcset` and `src` in the template does not matter.** It looks as if
+  binding `src` first would start a full-size download, but the browser chooses only once the
+  element is settled. With `src` bound first, the e2e test still counted exactly one download per
+  painting.
 - **The all-scripts size warning moved from 950 kB to 975 kB** when the gallery chunk (about
   53 kB raw) took the build to 951 kB. Only the 1200 kB error limit is gated. The README says
   warnings sit just above today's build, and the move keeps that true. If the collection grows

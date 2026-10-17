@@ -51,8 +51,14 @@
           <!-- The mount is the frame and the mat around the picture; each
                colour builds it differently from `data-frame` on the card. -->
           <div class="hung-mount">
+            <!-- `src` is the fallback for a browser without `srcset`. The
+                 order of the three does not matter: the browser chooses a
+                 file only once the element is settled, and the e2e test checks
+                 that each painting costs exactly one download. -->
             <img
               class="hung-image"
+              [sizes]="sizes(work)"
+              [srcset]="srcset(work)"
               [src]="'/gallery/' + work.image.file"
               [width]="work.image.width"
               [height]="work.image.height"
