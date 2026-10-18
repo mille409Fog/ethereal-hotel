@@ -30,7 +30,6 @@ const fontDir = path.join(scriptsDir, 'resume-fonts');
 // than the thing it parses.
 const COLOR = {
   bg: '#1a2a25',
-  surface: '#24342f',
   border: '#3a4c46',
   text: '#e7f6f0',
   textSecondary: '#b8c9c2',
@@ -40,20 +39,24 @@ const COLOR = {
 };
 
 /**
- * The mark: a diamond on a tile of the accent.
+ * The mark: one disc of the accent on a tile of the ground. A moon over still
+ * water, the page's own two colours and nothing else.
  *
- * The tile is the load-bearing part of the DoD's "survives a dark browser
- * chrome". A mark drawn in the page's own near-black would dissolve into a dark
- * tab strip at 16px; carrying its own background means the mark looks the same
- * in either chrome. The pale accent tile does the same job in a light one. The
- * facet is a two-tone split, ground and surface, that reads as depth at 180px
- * and as a solid diamond at 16px, which is the size that actually has to work.
+ * It replaced a faceted diamond, the ornament the old gothic dividers were
+ * built from, which kept the vampire's hotel in the tab after the page had
+ * left it. A circle has no corners and no direction, and at 16px it is the
+ * one shape that cannot turn into a smudge.
+ *
+ * The two colours split the DoD's "survives a dark browser chrome" between
+ * them. In a dark tab strip the tile all but vanishes and the pale disc carries
+ * the mark on its own; in a light one the dark tile does. The disc is 0.6 of
+ * the tile across, large enough to be a shape at 16px rather than a dot, and
+ * small enough to leave a margin of ground round it at 180px.
  */
 function iconSvg(radius) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="${radius}" fill="${COLOR.accent}"/>
-  <path d="M32 8 L51 32 L32 56 Z" fill="${COLOR.bg}"/>
-  <path d="M32 8 L13 32 L32 56 Z" fill="${COLOR.surface}"/>
+  <rect width="64" height="64" rx="${radius}" fill="${COLOR.bg}"/>
+  <circle cx="32" cy="32" r="19.2" fill="${COLOR.accent}"/>
 </svg>`;
 }
 
