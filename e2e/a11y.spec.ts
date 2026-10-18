@@ -6,9 +6,10 @@ import { stubBookingApi } from './support/backend';
 import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
 
 /**
- * The eight routes the app actually has. `/` is the portfolio page;
+ * The nine routes the app actually has. `/` is the portfolio page;
  * `/dashboard` and `/booking` are the live demos, `/work` is the case
- * studies, `/gallery` the colour-to-painting guide and `/aesthetic` the
+ * studies, `/writing` the MURMURATION_LOG, `/gallery` the colour-to-painting
+ * guide and `/aesthetic` the
  * aesthetic generator's colour wheel. The last two are the separate WebGL work.
  *
  * `/gallery` is scanned with a painting hung, not at rest: the label is most
@@ -26,13 +27,14 @@ import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
  * the text version AUBADE requires — and a text version with a serious
  * violation in it is not serving the people it exists for.
  *
- * All eight are reached through the SPA fallback in `scripts/serve-dist.mjs`.
+ * All nine are reached through the SPA fallback in `scripts/serve-dist.mjs`.
  */
 const ROUTES = [
   { path: '/', name: 'landing page' },
   { path: '/dashboard', name: 'dashboard' },
   { path: '/booking', name: 'booking' },
   { path: '/work', name: 'case studies' },
+  { path: '/writing', name: 'writing' },
   { path: '/gallery', name: 'gallery' },
   { path: '/aesthetic', name: 'aesthetic' },
   { path: '/aubade', name: 'aubade' },

@@ -49,7 +49,7 @@ passes the billing guard first (ADR 0004 in `triage/docs/decisions/`).
 
 Effort: weeks, in stages.
 
-Items 2–3 came from comparing the home page with the portfolios engineers themselves cite
+Item 2 came from comparing the home page with the portfolios engineers themselves cite
 (Brittany Chiang, Lee Robinson, Emil Kowalski, Rauno Freiberg, Sam Rose, Julia Evans, Josh
 Comeau, Bruno Simon). What they share: one specific claim on the first screen, evidence over
 assertion, writing as the proof of judgment, the most distinctive work first, restraint, and one
@@ -72,24 +72,6 @@ something it says so) is a better first sentence than any adjective. Same family
 - No other section description on `/` makes a claim the page cannot back.
 
 Effort: an hour of writing, minutes of code.
-
-## 3. A writing section
-
-Six of the eight portfolios above have one, usually ranked above projects. The owner writes long
-form, and the repo already holds finished essays in its comments and docs: comparing the résumé
-PDF by text rather than bytes, a docs file that fails the build when it lies, a 1.5s frame as a
-canary for a shader regression. The case studies are writing too, and sit one click away.
-
-**DoD:**
-
-- A `/writing` route with at least two posts, each about a decision made in this repository, each
-  linking to the code it describes.
-- The route is registered everywhere a route has to be (router, `vercel.json`,
-  `emit-route-meta.mjs`) so a shared post gets its own card.
-- The home page lists the posts, and the case studies, in one writing block.
-- No post explains what a tool _is_ — same rule as the docs.
-
-Effort: days, nearly all of it writing.
 
 ## Deliberately not doing
 

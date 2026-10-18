@@ -1,0 +1,45 @@
+<!-- ===== WRITING =====
+     `main` rather than `section`, matching `/work`: this route renders nothing
+     else, so without it the page is content outside any landmark. -->
+<main class="writing-page">
+  <div class="writing-inner">
+    <header class="writing-header">
+      <h1 class="writing-title">Writing</h1>
+    </header>
+
+    <!-- The one section. Named by its heading so a screen reader's landmark
+         list reads "MURMURATION_LOG, region" rather than an unlabelled one. -->
+    <section class="log" id="murmuration-log" aria-labelledby="murmuration-log-title">
+      <h2 class="log-title" id="murmuration-log-title">MURMURATION_LOG</h2>
+
+      @if (isEmpty()) {
+        <p class="log-empty">No entries yet.</p>
+      } @else {
+        <!-- One `article` per entry, named by its date heading, so the rotor
+             lists entries by date. id + tabindex="-1" on the article, as on
+             `/work`: a fragment target that cannot hold focus scrolls the page
+             and leaves the keyboard behind. Text before the first date has
+             no heading and no anchor. -->
+        @for (entry of entries(); track $index) {
+          <article
+            class="entry"
+            [attr.id]="entry.date"
+            tabindex="-1"
+            [attr.aria-labelledby]="entry.date ? 'entry-' + entry.date : null"
+          >
+            @if (entry.date) {
+              <h3 class="entry-heading" [id]="'entry-' + entry.date">
+                <time class="entry-date" [attr.datetime]="entry.date">{{ entry.date }}</time>
+              </h3>
+            }
+            @for (paragraph of entry.paragraphs; track $index) {
+              <p>{{ paragraph }}</p>
+            }
+          </article>
+        }
+      }
+    </section>
+
+    <a class="writing-back" href="/">← Back to the rest of the site</a>
+  </div>
+</main>

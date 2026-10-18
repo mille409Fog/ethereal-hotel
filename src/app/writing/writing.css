@@ -1,0 +1,88 @@
+/* ===== Writing =====
+   Component-scoped, and the page chrome mirrors `work.css` rather than sharing
+   a class with it — the reasoning recorded there applies here. The column is
+   the same 48rem measure for the same reason: this is prose, and past ~75
+   characters a reader loses their place returning to the left margin. */
+
+.writing-page {
+  min-height: 100vh;
+  background: var(--color-bg);
+  padding: 4rem 2rem;
+}
+
+.writing-inner {
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.writing-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.writing-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3rem);
+  color: var(--color-text);
+  margin: 0;
+}
+
+/* ----- The log ----- */
+
+.log-title {
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--color-accent-text);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.75rem;
+  margin: 0 0 2rem;
+}
+
+.log-empty {
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.entry + .entry {
+  border-top: 1px solid var(--color-border);
+  margin-top: 2rem;
+  padding-top: 2rem;
+}
+
+.entry-heading {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  margin: 0 0 1rem;
+}
+
+.entry-date {
+  display: block;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+}
+
+.entry p {
+  color: var(--color-text);
+  margin: 0;
+}
+
+.entry p + p {
+  margin-top: 0.9rem;
+}
+
+.writing-back {
+  display: block;
+  text-align: center;
+  color: var(--color-accent-text);
+  margin-top: 3rem;
+}
+
+@media (max-width: 640px) {
+  .writing-page {
+    padding: 2.5rem 1rem;
+  }
+}

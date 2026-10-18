@@ -26,6 +26,11 @@ export const routes: Routes = [
     title: meta.work.title,
   },
   {
+    path: meta.writing.path,
+    loadComponent: () => import('./writing/writing').then((m) => m.Writing),
+    title: meta.writing.title,
+  },
+  {
     path: meta.gallery.path,
     loadComponent: () => import('./gallery/gallery').then((m) => m.Gallery),
     title: meta.gallery.title,
