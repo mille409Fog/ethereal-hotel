@@ -13,6 +13,6 @@
 }
 
 /* --color-accent-text, the tint measured for text; see the note in styles.css. */
-.footer-aside a {
+.footer a {
   color: var(--color-accent-text);
 }

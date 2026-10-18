@@ -1351,6 +1351,29 @@ check('the backend test count CLAUDE.md states is correct', () => {
       ];
 });
 
+// The home page's footer tells a visitor how many gates run on every push. That
+// is the one place this count reaches a reader who is not working in the repo,
+// so it is held to the list under CLAUDE.md's heading rather than to itself.
+check('the footer counts the gates CLAUDE.md lists', () => {
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+  const section = /^## The (\w+) gates\n[\s\S]*?```bash\n([\s\S]*?)```/m.exec(CLAUDE_MD);
+  if (!section) return ['CLAUDE.md no longer has a "## The … gates" section with a bash block.'];
+
+  const listed = section[2].split('\n').filter((line) => /^npm (run|test)\b/.test(line)).length;
+  const footer = /(\w+)\s+gates\s+run\s+on\s+every\s+push/.exec(read('src/app/footer/footer.html'));
+
+  const problems = [];
+  if (words.indexOf(section[1]) !== listed) {
+    problems.push(`CLAUDE.md's heading says "${section[1]} gates" but its block lists ${listed}.`);
+  }
+  if (!footer) {
+    problems.push('footer.html no longer says how many gates run on every push. Remove this check.');
+  } else if (words.indexOf(footer[1]) !== listed) {
+    problems.push(`footer.html says "${footer[1]} gates run on every push"; CLAUDE.md lists ${listed}.`);
+  }
+  return problems;
+});
+
 // Version pins, ports and config values quoted in CLAUDE.md as load-bearing.
 check('quoted config values still match the files they came from', () => {
   const problems = [];

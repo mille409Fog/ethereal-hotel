@@ -49,7 +49,7 @@ passes the billing guard first (ADR 0004 in `triage/docs/decisions/`).
 
 Effort: weeks, in stages.
 
-Items 2–6 came from comparing the home page with the portfolios engineers themselves cite
+Items 2–5 came from comparing the home page with the portfolios engineers themselves cite
 (Brittany Chiang, Lee Robinson, Emil Kowalski, Rauno Freiberg, Sam Rose, Julia Evans, Josh
 Comeau, Bruno Simon). What they share: one specific claim on the first screen, evidence over
 assertion, writing as the proof of judgment, the most distinctive work first, restraint, and one
@@ -73,24 +73,7 @@ something it says so) is a better first sentence than any adjective. Same family
 
 Effort: an hour of writing, minutes of code.
 
-## 3. Link the code
-
-`github.com/mille409Fog` sits in `resume.data.ts` and is rendered nowhere on the site; the footer
-says "Built with Angular". Hiring managers' commonest one-minute path is homepage → one project →
-the code → the GitHub profile, and this repo's gates are the strongest exhibit it has.
-
-**DoD:**
-
-- The owner decides whether the repository is public. If it is not, this item shrinks to linking
-  the profile and stops there.
-- The GitHub profile is linked from the contact section, read from `resume.data.ts` rather than
-  typed a second time.
-- If public: the footer names the repository and one sentence on what is enforced (the six gates,
-  `check:docs`), linking to it — a colophon that makes a claim instead of a credit.
-
-Effort: an hour, after the decision.
-
-## 4. A writing section
+## 3. A writing section
 
 Six of the eight portfolios above have one, usually ranked above projects. The owner writes long
 form, and the repo already holds finished essays in its comments and docs: comparing the résumé
@@ -108,7 +91,7 @@ canary for a shader regression. The case studies are writing too, and sit one cl
 
 Effort: days, nearly all of it writing.
 
-## 5. Show Aubade, without folding it in
+## 4. Show Aubade, without folding it in
 
 The most distinctive work here is one line in the footer. The footer comment's reasoning (the
 nav answers one question; Aubade is a separate work) stays right. That argument is about filing,
@@ -125,7 +108,7 @@ not visibility.
 
 Effort: an hour or two.
 
-## 6. One human line, and availability
+## 5. One human line, and availability
 
 Every site above has a sentence that is about the person, and a way to reach them without
 hunting.
