@@ -60,13 +60,25 @@ export interface IProject {
 
 export const PROJECTS: readonly IProject[] = [
   {
+    name: 'x',
+    description: 'x',
+    category: 'Live Demo',
+    tech: ['x'],
+    link: '/murmuration',
+    linkLabel: 'View Live Demo',
+    frame: {
+      src: '/projects/dashboard.webp',
+      alt: 'temporary source used.',
+    },
+  },
+  {
     name: 'Hotel Operations Dashboard',
     description:
       'Occupancy, ADR and RevPAR streamed over a WebSocket, computed from real booking records',
     category: 'Live Demo',
     tech: ['Angular 22', 'RxJS', 'Chart.js', 'FastAPI', 'SQLAlchemy'],
     link: '/dashboard',
-    linkLabel: 'View Live Demo',
+    linkLabel: 'View Live Demo (WIP)',
     frame: {
       src: '/projects/dashboard.webp',
       alt: 'The dashboard polling the API: 85.0% occupancy, an ADR of $317, RevPAR of $270 and $16,176 of room revenue today, under a badge that says where the figures came from.',
