@@ -72,6 +72,24 @@ render time into every PDF it writes. `resume:check` — not `git diff` — is w
 anything really changed. If it passes, `git checkout -- public/jacob-miller-resume.pdf` and keep
 the diff clean.
 
+## The project frames
+
+The pictures on the home page's project cards, `public/projects/*.webp`, are frames of the four
+live routes taken from the production build by `e2e/project-frames.spec.ts`. The cards, their alt
+text and the frame size live in `src/app/projects/projects.data.ts`. After changing one of those
+routes:
+
+```bash
+npm run frames:capture    # rewrite public/projects/*.webp and e2e/project-frames.json
+npm run frames:check      # what CI runs, inside `npm run e2e` — fails if a frame is stale
+```
+
+As with the résumé, the check cannot compare bytes. It compares the words in each cropped region
+exactly, the crop's position to a few pixels, and a 32×20 colour average of the committed frame
+against a fresh render; the spec's header gives the measurements behind the threshold. It also
+fails when an alt text names a figure or a “quoted” phrase the frame no longer shows, so a
+re-capture that hangs a different painting sends you back to the alt.
+
 `npm run lighthouse` builds, serves `dist/` on :4173 and audits `/`, `/dashboard` and `/gallery`,
 failing below the thresholds in `lighthouserc.json`. It drives whatever Chrome you already have and
 fetches the Lighthouse CLI at a pinned version rather than installing it — `lighthouse` depends

@@ -115,10 +115,18 @@ export { OFFLINE_DASHBOARD };
  *   so a test asserting on that payload cannot race an update that overwrites
  *   it. The app polls once immediately on connecting, so a single entry here is
  *   enough to exercise the update path without waiting out an interval.
+ * @param dashboard What `/dashboard` answers. Default `LIVE_DASHBOARD`, whose
+ *   altered figures are what lets a test tell the wire from the fallback. The
+ *   project frames pass the committed fixture instead, because a picture on the
+ *   home page should show a real snapshot of the seeded hotel, not test values.
  */
-export async function stubBackendUp(page: Page, metricsUpdates: IMetrics[] = []): Promise<void> {
+export async function stubBackendUp(
+  page: Page,
+  metricsUpdates: IMetrics[] = [],
+  dashboard: IDashboardData = LIVE_DASHBOARD
+): Promise<void> {
   const pending = [...metricsUpdates];
-  let latest: IMetrics = LIVE_DASHBOARD.metrics;
+  let latest: IMetrics = dashboard.metrics;
 
   await stubSocket(page, (ws) => ws.close());
 
@@ -131,7 +139,7 @@ export async function stubBackendUp(page: Page, metricsUpdates: IMetrics[] = [])
     }
 
     if (pathname === DASHBOARD_PATH) {
-      await route.fulfill({ json: LIVE_DASHBOARD, headers: CORS_HEADERS });
+      await route.fulfill({ json: dashboard, headers: CORS_HEADERS });
       return;
     }
 

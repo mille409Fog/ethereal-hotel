@@ -10,6 +10,8 @@
     "capture:stream": "node scripts/capture-stream.mjs",
     "resume:pdf": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/render-resume.mjs",
     "resume:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/render-resume.mjs --check",
+    "frames:capture": "npm run build && playwright test project-frames --update-snapshots",
+    "frames:check": "npm run build && playwright test project-frames",
     "verify:shader": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-shader.mjs",
     "build:sentence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-sentence-atlas.mjs",
     "check:sentence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-sentence-atlas.mjs --check",

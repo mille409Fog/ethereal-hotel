@@ -147,22 +147,42 @@
   background: var(--color-bg);
 }
 
-.room-img-placeholder {
-  height: 140px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 30%, var(--color-border)),
-    var(--color-border)
-  );
-  transition: all 0.3s ease;
+/* The frame and the plate share one box, 16:10 to match `FRAME` in
+   `projects.data.ts`, so a row mixing the two keeps its text aligned. */
+.room-frame,
+.room-plate {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.room-card:hover .room-img-placeholder {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 50%, var(--color-border)),
-    color-mix(in srgb, var(--color-accent) 20%, var(--color-border))
-  );
+/* Type on the ground, not a picture: nothing here pretends to be a
+   screenshot of work that cannot be shown. */
+.room-plate {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1.25rem;
+  box-sizing: border-box;
+  background: var(--color-surface);
+}
+
+.room-plate-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.room-plate-line {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
 }
 
 .room-info {

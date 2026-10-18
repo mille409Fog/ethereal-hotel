@@ -260,15 +260,6 @@ main > * + * {
   background: var(--color-bg);
 }
 
-.room-img-placeholder {
-  height: 140px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 30%, var(--color-border)),
-    var(--color-border)
-  );
-}
-
 .room-info {
   padding: 1rem;
 }

@@ -1,0 +1,38 @@
+{
+  "/dashboard": {
+    "clip": {
+      "x": 8,
+      "y": 39,
+      "width": 1264,
+      "height": 790
+    },
+    "text": "Hotel Operations Dashboard Occupancy, rate and revenue, derived from live booking records Live data · polled from the API every few seconds Connected to the API. The figures are real, and refresh every few seconds rather than streaming continuously. Current hotel metrics 🛏️ 85.0% OCCUPANCY 51 of 60 sellable rooms 💵 $317 ADR Average daily rate per occupied room 📈 $270 REVPAR Revenue per available room 🧾 $16,176 ROOM REVENUE TODAY 77 guests in house 🛎️ 16 / 12 ARRIVALS / DEPARTURES Net +4 rooms filling today 🗝️ 9 ROOMS AVAILABLE 64 total · 4 out of service"
+  },
+  "/booking": {
+    "clip": {
+      "x": 50,
+      "y": 40,
+      "width": 1180,
+      "height": 738
+    },
+    "text": "Room Booking Engine A reactive form writing to the same database the dashboard reads. Submit one and the occupancy figures on the dashboard move. Live data · reads and writes are hitting the API Connected to the API. Bookings submitted here are written to a real database. New booking ROOM 101 · Standard · sleeps 3 · $100/night 103 · Deluxe · sleeps 4 · $300/night 201 · Suite · sleeps 4 · $400/night · out of service GUEST Ada Lovelace Alan Turing CHECK-IN CHECK-OUT Must be at least one night after check-in. The API owns that rule — set them equal to see it answer. check_out must be after check_in ADULTS 1 to 12. CHILDREN 0 to 12. Create booking The server rejected this booking: check_out must be after check_in"
+  },
+  "/gallery": {
+    "clip": {
+      "x": 73,
+      "y": 519,
+      "width": 1134,
+      "height": 709
+    },
+    "text": "Public-domain reproduction via Wikimedia Commons. The Night Café"
+  },
+  "/aesthetic": {
+    "clip": {
+      "x": 17,
+      "y": 204,
+      "width": 1246,
+      "height": 779
+    },
+    "text": "0° 30° 60° 90° 120° 150° 180° 210° 240° 270° 300° 330° CRIMSON VERMILION APRICOT YELLOW CHARTREUSE JADE CYAN AZURE COBALT ULTRAMARINE AMETHYST CERISE PRIMARY Rich red #e63000"
+  }
+}

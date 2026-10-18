@@ -14,7 +14,29 @@
       <div class="room-grid">
         @for (project of projects; track project.name) {
           <div class="room-card">
-            <div class="room-img-placeholder"></div>
+            <!-- A frame of the route itself, written and checked by
+                 e2e/project-frames.spec.ts. Lazy because the section sits
+                 below the fold on every viewport; the dimensions are the
+                 encoded size, so the box is reserved before the file lands. -->
+            @if (project.frame; as shot) {
+              <img
+                class="room-frame"
+                [src]="shot.src"
+                [alt]="shot.alt"
+                [width]="frame.width"
+                [height]="frame.height"
+                loading="lazy"
+                decoding="async"
+              />
+            } @else {
+              <!-- No stand-in picture for work that cannot be shown. -->
+              <div class="room-plate">
+                <span class="room-plate-label">Under NDA</span>
+                <span class="room-plate-line"
+                  >No screenshot. The case study shows the reasoning.</span
+                >
+              </div>
+            }
             <div class="room-info">
               <span class="room-tag">{{ project.category }}</span>
               <h3>{{ project.name }}</h3>

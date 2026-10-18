@@ -49,7 +49,7 @@ passes the billing guard first (ADR 0004 in `triage/docs/decisions/`).
 
 Effort: weeks, in stages.
 
-Items 2–7 came from comparing the home page with the portfolios engineers themselves cite
+Items 2–6 came from comparing the home page with the portfolios engineers themselves cite
 (Brittany Chiang, Lee Robinson, Emil Kowalski, Rauno Freiberg, Sam Rose, Julia Evans, Josh
 Comeau, Bruno Simon). What they share: one specific claim on the first screen, evidence over
 assertion, writing as the proof of judgment, the most distinctive work first, restraint, and one
@@ -73,25 +73,7 @@ something it says so) is a better first sentence than any adjective. Same family
 
 Effort: an hour of writing, minutes of code.
 
-## 3. Real images on the project cards
-
-All seven cards in `projects.html` render `room-img-placeholder`, a gradient box. It is the
-clearest tutorial signal on the page.
-
-**DoD:**
-
-- The four live routes (`/dashboard`, `/booking`, `/gallery`, `/aesthetic`) each show a real
-  frame of themselves. The images are produced by a script, not by hand, so they cannot drift
-  from the app silently — the `resume:pdf` / `resume:check` pair is the precedent.
-- The three NDA cards show no fake screenshot: either no image slot, or a typographic treatment
-  that does not pretend to be one.
-- Images are WebP with explicit `width`/`height` and lazy-loaded below the fold; the Lighthouse
-  thresholds on `/` hold without being touched.
-- Every image has alt text that says what the frame shows, not "screenshot of project".
-
-Effort: half a day.
-
-## 4. Link the code
+## 3. Link the code
 
 `github.com/mille409Fog` sits in `resume.data.ts` and is rendered nowhere on the site; the footer
 says "Built with Angular". Hiring managers' commonest one-minute path is homepage → one project →
@@ -108,7 +90,7 @@ the code → the GitHub profile, and this repo's gates are the strongest exhibit
 
 Effort: an hour, after the decision.
 
-## 5. A writing section
+## 4. A writing section
 
 Six of the eight portfolios above have one, usually ranked above projects. The owner writes long
 form, and the repo already holds finished essays in its comments and docs: comparing the résumé
@@ -126,7 +108,7 @@ canary for a shader regression. The case studies are writing too, and sit one cl
 
 Effort: days, nearly all of it writing.
 
-## 6. Show Aubade, without folding it in
+## 5. Show Aubade, without folding it in
 
 The most distinctive work here is one line in the footer. The footer comment's reasoning (the
 nav answers one question; Aubade is a separate work) stays right. That argument is about filing,
@@ -143,7 +125,7 @@ not visibility.
 
 Effort: an hour or two.
 
-## 7. One human line, and availability
+## 6. One human line, and availability
 
 Every site above has a sentence that is about the person, and a way to reach them without
 hunting.
