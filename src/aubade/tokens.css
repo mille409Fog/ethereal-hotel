@@ -16,7 +16,7 @@
    different brasses.
 
    One consequence worth knowing up front: the font stack is system faces only.
-   The portfolio loads Cinzel and Crimson Pro from Google Fonts, and using them
+   The portfolio self-hosts Source Serif 4 and Source Sans 3, and using them
    here would be both a shared dependency and a network request these routes have
    no business making. */
 

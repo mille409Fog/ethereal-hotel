@@ -12,8 +12,7 @@
   margin-top: 0.4rem;
 }
 
-/* --color-blood-text rather than --color-blood: the accent red manages about
-   2.1:1 as text on these surfaces. Same reasoning as the note in styles.css. */
+/* --color-accent-text, the tint measured for text; see the note in styles.css. */
 .footer-aside a {
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
 }

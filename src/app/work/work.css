@@ -1,6 +1,6 @@
 /* ===== Case Studies =====
-   Component-scoped. Page chrome (page padding, centred column, serif title with
-   the blood-red glow) intentionally mirrors `booking.css` rather than sharing a
+   Component-scoped. Page chrome (page padding, centred column, serif title)
+   intentionally mirrors `booking.css` rather than sharing a
    class with it: the same reasoning recorded there applies here, and a global
    for three callers is still a global. If a fourth route wants this frame,
    promote it then.
@@ -31,9 +31,6 @@
   font-size: clamp(2rem, 5vw, 3rem);
   color: var(--color-text);
   margin: 0 0 0.75rem;
-  text-shadow:
-    0 3px 12px rgba(0, 0, 0, 0.5),
-    0 6px 20px rgba(157, 34, 53, 0.2);
 }
 
 .work-subtitle {
@@ -50,7 +47,7 @@
 }
 
 .work-empty a {
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
 }
 
 /* ----- One study ----- */
@@ -75,7 +72,7 @@
   font-size: 0.75rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
   margin-bottom: 0.4rem;
 }
 
@@ -156,8 +153,8 @@
 
 .study-cost {
   padding: 0.75rem 1rem;
-  border-left: 2px solid var(--color-blood);
-  background: color-mix(in srgb, var(--color-blood) 8%, transparent);
+  border-left: 2px solid var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
 .study-outcome {
@@ -176,7 +173,7 @@
 .work-back {
   display: block;
   text-align: center;
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
 }
 
 @media (max-width: 640px) {

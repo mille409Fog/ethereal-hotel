@@ -12,23 +12,28 @@
  * That is what this gate used to do, and it could never pass in CI. Chromium's
  * PDF output is deterministic on one machine and structurally different on
  * another. The same résumé, same Playwright, same fonts, rendered on Windows and
- * on the Linux CI image:
+ * on the Linux CI image, when it was set in Cinzel and Crimson Pro:
  *
  *     Windows   210,034 bytes   364 objects   /Descent 372   /CapHeight 700
  *     Linux      96,727 bytes   163 objects   /Descent -372  /CapHeight -700
  *
- * Neither brand face survives as a real embedded font the way you would hope.
- * Skia cannot embed Crimson Pro at all here and decomposes it into Type3
- * glyph-procedure fonts — eleven of them on Windows, five on Linux, with
- * different bounding boxes. Cinzel does embed as a CIDFontType2 on both, and
- * even its descriptor metrics come out sign-flipped between the two platforms.
+ * Neither face survived as a real embedded font the way you would hope. Skia
+ * could not embed Crimson Pro and decomposed it into Type3 glyph-procedure
+ * fonts — eleven of them on Windows, five on Linux, with different bounding
+ * boxes. Cinzel did embed as a CIDFontType2 on both, with its descriptor
+ * metrics sign-flipped between the two platforms. The faces are now Source
+ * Serif 4 and Source Sans 3, both variable, and on Windows both go the way
+ * Crimson Pro went: thirteen Type3 fonts, 175,793 bytes, no other kind.
  * Embedding the faces (see `scripts/resume-fonts/`) buys a stable *layout* and a
  * gate that needs no network; it does not buy identical bytes, and the old
  * comment in `render-resume.mjs` claiming otherwise was simply wrong.
  *
- * The text layer, though, is identical: 2,095 characters, exact match, verified
- * by rendering the same source in `mcr.microsoft.com/playwright` and on the
- * author's Windows box. So that is what the gate compares.
+ * The text layer, though, is identical: an exact match, verified for the old
+ * faces by rendering the same source in `mcr.microsoft.com/playwright` and on
+ * the author's Windows box. The change of faces left it unchanged here,
+ * character for character (2,080 of them), and the CI job that runs
+ * `resume:check` on Linux is what confirms it there. So that is what the gate
+ * compares.
  *
  * ## The one rule this file obeys
  *

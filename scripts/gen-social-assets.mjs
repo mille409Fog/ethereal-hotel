@@ -9,58 +9,69 @@
  * `src/styles.css`'s token block by hand; if that block changes, change these.
  *
  * It renders through the Playwright Chromium that the a11y run already
- * installs rather than adding an image dependency, and it needs the network:
- * the card sets its wordmark in Cinzel, loaded from the same Google Fonts
- * origin `styles.css` uses, so the type on the card matches the type on the
- * page. That is a generation-time requirement only.
+ * installs rather than adding an image dependency. The card's type is the
+ * site's own: the same woff2 files `src/styles.css` serves and the résumé
+ * embeds, inlined from `scripts/resume-fonts/`, so the card cannot be set in a
+ * different cut of the face than the page, and generating it needs no network.
  *
  * Usage: node scripts/gen-social-assets.mjs
  */
 import { chromium } from '@playwright/test';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
+const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.resolve(scriptsDir, '..', 'public');
+const fontDir = path.join(scriptsDir, 'resume-fonts');
 
 // Mirrors src/styles.css :root. Kept as plain values rather than parsed out of
 // the stylesheet: this script runs by hand, and a parser would be more code
 // than the thing it parses.
 const COLOR = {
-  bg: '#1a1618',
-  border: '#3a3236',
-  text: '#e8dfe3',
-  textSecondary: '#b8a8ae',
-  textMuted: '#9a8a90',
-  blood: '#9d2235',
-  bloodDark: '#7a1827',
-  bloodText: '#d88894',
+  bg: '#1a2a25',
+  surface: '#24342f',
+  border: '#3a4c46',
+  text: '#e7f6f0',
+  textSecondary: '#b8c9c2',
+  textMuted: '#99a9a3',
+  accent: '#94c6f8',
+  accentText: '#94c6f8',
 };
 
 /**
- * The mark: the site's own ◆ ornament — the glyph the gothic dividers are built
- * from — set on a blood-red tile.
+ * The mark: a diamond on a tile of the accent.
  *
  * The tile is the load-bearing part of the DoD's "survives a dark browser
  * chrome". A mark drawn in the page's own near-black would dissolve into a dark
  * tab strip at 16px; carrying its own background means the mark looks the same
- * in either chrome. The facet is a two-tone split that reads as depth at
- * 180px and as a solid diamond at 16px, which is the size that actually has to
- * work.
+ * in either chrome. The pale accent tile does the same job in a light one. The
+ * facet is a two-tone split, ground and surface, that reads as depth at 180px
+ * and as a solid diamond at 16px, which is the size that actually has to work.
  */
 function iconSvg(radius) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="0.35" y2="1">
-      <stop offset="0" stop-color="${COLOR.blood}"/>
-      <stop offset="1" stop-color="${COLOR.bloodDark}"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="${radius}" fill="url(#tile)"/>
-  <path d="M32 8 L51 32 L32 56 Z" fill="${COLOR.text}"/>
-  <path d="M32 8 L13 32 L32 56 Z" fill="#cbbcc2"/>
+  <rect width="64" height="64" rx="${radius}" fill="${COLOR.accent}"/>
+  <path d="M32 8 L51 32 L32 56 Z" fill="${COLOR.bg}"/>
+  <path d="M32 8 L13 32 L32 56 Z" fill="${COLOR.surface}"/>
 </svg>`;
 }
+
+/** Inline a vendored woff2 as an @font-face, as `render-resume.mjs` does. */
+async function fontFace(family, file) {
+  const base64 = (await readFile(path.join(fontDir, file))).toString('base64');
+  return `@font-face {
+        font-family: '${family}';
+        src: url(data:font/woff2;base64,${base64}) format('woff2');
+        font-weight: 200 900;
+        font-display: block;
+      }`;
+}
+
+const FONTS = [
+  await fontFace('Source Serif 4', 'source-serif-4-latin-var.woff2'),
+  await fontFace('Source Sans 3', 'source-sans-3-latin-var.woff2'),
+].join('\n');
 
 // Rounded for the tab strip and the SVG. Square for apple-touch: iOS applies
 // its own mask, so a pre-rounded source is clipped twice and the alpha in the
@@ -72,24 +83,24 @@ const toDataUri = (svg) => `data:image/svg+xml;base64,${Buffer.from(svg).toStrin
 const iconDataUri = toDataUri(ICON_SVG);
 const appleDataUri = toDataUri(APPLE_SVG);
 
-/** The 1200×630 card. Quotes the hero's 160deg gradient and type scale. */
+/**
+ * The 1200×630 card. The hero's type scale on the plain ground, with the
+ * accent used once, on the role: the page's own rule of one accent, sparingly.
+ */
 const OG_HTML = `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Crimson+Pro:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
     <style>
+      ${FONTS}
+
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
         width: 1200px;
         height: 630px;
-        background: linear-gradient(160deg, ${COLOR.bg} 58%, #2e1c22);
+        background: ${COLOR.bg};
         color: ${COLOR.text};
-        font-family: 'Crimson Pro', Georgia, serif;
+        font-family: 'Source Sans 3', sans-serif;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -97,44 +108,16 @@ const OG_HTML = `<!doctype html>
         position: relative;
         overflow: hidden;
       }
-      /* The ◆ the page's dividers used to carry, drawn large and bled off the
-         right edge so the card has the page's texture without competing with
-         the wordmark for attention. */
-      .watermark {
-        position: absolute;
-        right: -120px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 620px;
-        line-height: 1;
-        color: ${COLOR.blood};
-        opacity: 0.13;
-      }
-      .rule {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        margin-bottom: 34px;
-      }
-      .rule::after {
-        content: '';
-        height: 1px;
-        width: 190px;
-        background: linear-gradient(to right, ${COLOR.blood}, transparent);
-      }
-      .rule span { color: ${COLOR.blood}; font-size: 15px; }
       h1 {
-        font-family: 'Cinzel', serif;
+        font-family: 'Source Serif 4', serif;
         font-weight: 600;
         font-size: 92px;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.01em;
         line-height: 1.05;
-        text-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
       }
       .role {
         font-size: 33px;
-        color: ${COLOR.bloodText};
-        letter-spacing: 0.02em;
+        color: ${COLOR.accentText};
         margin-top: 14px;
       }
       .claim {
@@ -156,8 +139,6 @@ const OG_HTML = `<!doctype html>
     </style>
   </head>
   <body>
-    <div class="watermark">◆</div>
-    <div class="rule"><span>◆</span></div>
     <h1>Jacob Miller</h1>
     <p class="role">Senior Software Engineer</p>
     <p class="claim">Angular and FastAPI. A live operations dashboard reading real rows, and a booking flow the server actually validates.</p>
@@ -272,9 +253,9 @@ try {
   });
 
   // --- The social card ------------------------------------------------------
-  await page.setContent(OG_HTML, { waitUntil: 'networkidle' });
-  // `networkidle` covers the stylesheet but not the faces it declares, and a
-  // card that screenshots mid-swap ships the fallback serif instead of Cinzel.
+  await page.setContent(OG_HTML, { waitUntil: 'load' });
+  // The faces are data URIs, so nothing is fetched, but they still decode
+  // asynchronously, and a card that screenshots mid-decode ships Georgia.
   await page.evaluate(() => document.fonts.ready);
   const ogPath = path.join(publicDir, 'og-image.png');
   await page.screenshot({ path: ogPath });

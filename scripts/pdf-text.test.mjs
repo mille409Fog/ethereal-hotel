@@ -63,8 +63,9 @@ function bfchar(pairs) {
  * A one-page PDF showing `content`, with one font.
  *
  * `twoByte` picks whether the font is composite (`/Type0`, two-byte codes, what
- * Cinzel becomes) or simple (one-byte codes, what Crimson Pro becomes once Skia
- * gives up on embedding it).
+ * a face Skia can embed becomes, as Cinzel did) or simple (one-byte codes, what
+ * a variable face such as Source Serif 4 becomes once Skia gives up on
+ * embedding it). The résumé uses only the second kind today; both stay covered.
  */
 function onePage({ content, cmap, twoByte = true, mediaBox = '0 0 595.92 792.96', compress = false }) {
   return Buffer.from(

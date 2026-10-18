@@ -14,25 +14,67 @@ import { OFFLINE_DASHBOARD } from '../../services/offline-dashboard.fixture';
 // Register Chart.js components
 Chart.register(...registerables);
 
-/** Palette shared by every chart, so the three read as one system. */
-const BLOOD = '#9d2235';
-/** Axis tick labels. Tracks --color-text-muted, raised to clear 4.5:1. */
-const TEXT_MUTED = '#9a8a90';
-const LABEL = '#b8a8ae';
-const SURFACE = '#211d1f';
-const AVAILABLE = '#6fa8d8';
-/** A doughnut fill rather than text, so the 3:1 non-text floor applies — which
-    the old muted grey already cleared. Left where it was. */
-const OUT_OF_SERVICE = '#7a6a70';
+/**
+ * The palette every chart draws in, read from the tokens in `src/styles.css`
+ * when the charts are built. Chart.js paints a canvas, and a canvas cannot
+ * resolve `var()`, so the values are looked up rather than copied: a copy is
+ * how this file once held a red that the stylesheet no longer did.
+ *
+ * The tokens must stay six-digit hex, because `translucent` appends an alpha
+ * byte to them. Outside a browser stylesheet (the unit tests) every lookup is
+ * empty and Chart.js falls back to its defaults, which is all a test needs.
+ */
+interface IChartPalette {
+  readonly accent: string;
+  readonly text: string;
+  readonly label: string;
+  readonly muted: string;
+  readonly surface: string;
+  readonly border: string;
+  readonly inactive: string;
+}
 
-/** Tooltip/scale styling repeated across all three configs. */
-const TOOLTIP_STYLE = {
-  backgroundColor: SURFACE,
-  titleColor: '#e8dfe3',
-  bodyColor: LABEL,
-  borderColor: BLOOD,
-  borderWidth: 1,
-};
+function readPalette(): IChartPalette {
+  const style = window.getComputedStyle(document.documentElement);
+  const token = (name: string): string => style.getPropertyValue(name).trim();
+  return {
+    accent: token('--color-accent'),
+    text: token('--color-text'),
+    label: token('--color-text-secondary'),
+    muted: token('--color-text-muted'),
+    surface: token('--color-surface'),
+    border: token('--color-border'),
+    inactive: token('--color-inactive'),
+  };
+}
+
+/** `#rrggbb` at `alpha` in [0, 1], as `#rrggbbaa`; empty stays empty. */
+function translucent(hex: string, alpha: number): string {
+  return hex
+    ? `${hex}${Math.round(alpha * 255)
+        .toString(16)
+        .padStart(2, '0')}`
+    : hex;
+}
+
+interface ITooltipStyle {
+  readonly backgroundColor: string;
+  readonly titleColor: string;
+  readonly bodyColor: string;
+  readonly borderColor: string;
+  readonly borderWidth: number;
+}
+
+/** Tooltip styling repeated across all three configs. */
+function tooltipStyle(palette: IChartPalette): ITooltipStyle {
+  return {
+    backgroundColor: palette.surface,
+    titleColor: palette.text,
+    bodyColor: palette.label,
+    borderColor: palette.border,
+    borderWidth: 1,
+  };
+}
 
 /** A chart-ready daily series: axis labels and the values plotted against them. */
 interface ISeries {
@@ -164,28 +206,29 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
     };
   }
 
-  private static gridScales(): ChartConfiguration['options'] {
+  private static gridScales(palette: IChartPalette): ChartConfiguration['options'] {
     return {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
         y: {
           beginAtZero: true,
-          grid: { color: 'rgba(58, 50, 54, 0.5)' },
-          ticks: { color: TEXT_MUTED },
+          grid: { color: translucent(palette.border, 0.5) },
+          ticks: { color: palette.muted },
         },
         x: {
-          grid: { color: 'rgba(58, 50, 54, 0.3)' },
-          ticks: { color: TEXT_MUTED, maxRotation: 0, autoSkipPadding: 12 },
+          grid: { color: translucent(palette.border, 0.3) },
+          ticks: { color: palette.muted, maxRotation: 0, autoSkipPadding: 12 },
         },
       },
     };
   }
 
   private initializeCharts(): void {
-    this.initializeGuestsChart();
-    this.initializeRevenueChart();
-    this.initializeRoomMixChart();
+    const palette = readPalette();
+    this.initializeGuestsChart(palette);
+    this.initializeRevenueChart(palette);
+    this.initializeRoomMixChart(palette);
   }
 
   private static canvasContext(id: string): CanvasRenderingContext2D | null {
@@ -194,7 +237,7 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
   }
 
   /** Guests in house per night over the trailing window. */
-  private initializeGuestsChart(): void {
+  private initializeGuestsChart(palette: IChartPalette): void {
     const ctx = ChartsSection.canvasContext('guestsChart');
     if (!ctx) {
       return;
@@ -209,13 +252,13 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
           {
             label: 'Guests in house',
             data: series.data,
-            borderColor: BLOOD,
-            backgroundColor: 'rgba(157, 34, 53, 0.1)',
+            borderColor: palette.accent,
+            backgroundColor: translucent(palette.accent, 0.1),
             borderWidth: 2,
             fill: true,
             tension: 0.4,
-            pointBackgroundColor: BLOOD,
-            pointBorderColor: '#fff',
+            pointBackgroundColor: palette.accent,
+            pointBorderColor: palette.surface,
             pointBorderWidth: 2,
             pointRadius: 3,
             pointHoverRadius: 6,
@@ -223,10 +266,10 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
         ],
       },
       options: {
-        ...ChartsSection.gridScales(),
+        ...ChartsSection.gridScales(palette),
         plugins: {
-          legend: { display: true, labels: { color: LABEL, font: { size: 12 } } },
-          tooltip: TOOLTIP_STYLE,
+          legend: { display: true, labels: { color: palette.label, font: { size: 12 } } },
+          tooltip: tooltipStyle(palette),
         },
       },
     };
@@ -235,7 +278,7 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
   }
 
   /** Room revenue recognised per night over the trailing window. */
-  private initializeRevenueChart(): void {
+  private initializeRevenueChart(palette: IChartPalette): void {
     const ctx = ChartsSection.canvasContext('revenueChart');
     if (!ctx) {
       return;
@@ -250,18 +293,18 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
           {
             label: 'Room revenue',
             data: series.data,
-            backgroundColor: 'rgba(157, 34, 53, 0.75)',
-            borderColor: BLOOD,
+            backgroundColor: translucent(palette.accent, 0.75),
+            borderColor: palette.accent,
             borderWidth: 1,
           },
         ],
       },
       options: {
-        ...ChartsSection.gridScales(),
+        ...ChartsSection.gridScales(palette),
         plugins: {
           legend: { display: false },
           tooltip: {
-            ...TOOLTIP_STYLE,
+            ...tooltipStyle(palette),
             callbacks: {
               label: (context) =>
                 `$${Number(context.parsed.y).toLocaleString('en-US', {
@@ -277,7 +320,7 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
   }
 
   /** How tonight's physical inventory splits: sold, sellable, out of service. */
-  private initializeRoomMixChart(): void {
+  private initializeRoomMixChart(palette: IChartPalette): void {
     const ctx = ChartsSection.canvasContext('roomMixChart');
     if (!ctx) {
       return;
@@ -290,8 +333,13 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
         datasets: [
           {
             data: this.roomMix(),
-            backgroundColor: [BLOOD, AVAILABLE, OUT_OF_SERVICE],
-            borderColor: SURFACE,
+            // Sold in the accent, sellable in the page's ink, out of service
+            // in the inactive fill. Chosen as a set: every pair stays at least
+            // 0.15 apart in OKLab for each deficiency `cvd.ts` simulates. A
+            // green for "available" was tried and came within 0.05 of the
+            // accent; the legend names each slice regardless.
+            backgroundColor: [palette.accent, palette.text, palette.inactive],
+            borderColor: palette.surface,
             borderWidth: 2,
           },
         ],
@@ -302,10 +350,10 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
         plugins: {
           legend: {
             position: 'bottom',
-            labels: { color: LABEL, padding: 15, font: { size: 11 } },
+            labels: { color: palette.label, padding: 15, font: { size: 11 } },
           },
           tooltip: {
-            ...TOOLTIP_STYLE,
+            ...tooltipStyle(palette),
             callbacks: {
               label: (context) => `${context.label}: ${context.parsed} rooms`,
             },

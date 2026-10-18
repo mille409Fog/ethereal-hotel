@@ -24,9 +24,6 @@
   font-size: clamp(2rem, 5vw, 3rem);
   color: var(--color-text);
   margin: 0 0 0.75rem;
-  text-shadow:
-    0 3px 12px rgba(0, 0, 0, 0.5),
-    0 6px 20px rgba(157, 34, 53, 0.2);
 }
 
 .gallery-subtitle {
@@ -73,7 +70,7 @@
 }
 
 .orb:focus-visible {
-  outline: 2px solid var(--color-blood-text);
+  outline: 2px solid var(--color-accent-text);
   outline-offset: 4px;
 }
 
@@ -141,14 +138,14 @@
   border: 0;
   padding: 0.25rem;
   font: inherit;
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
 }
 
 .gallery-link-button:focus-visible {
-  outline: 2px solid var(--color-blood-text);
+  outline: 2px solid var(--color-accent-text);
   outline-offset: 3px;
 }
 
@@ -341,7 +338,7 @@
 
 .hung-credit a,
 .hung-source a {
-  color: var(--room-accent-text, var(--color-blood-text));
+  color: var(--room-accent-text, var(--color-accent-text));
 }
 
 .hung-header {
@@ -355,7 +352,7 @@
   font-size: 0.75rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--room-accent-text, var(--color-blood-text));
+  color: var(--room-accent-text, var(--color-accent-text));
   margin: 0 0 0.4rem;
 }
 
@@ -440,7 +437,7 @@
 .gallery-button {
   padding: 0.7rem 1.4rem;
   background: transparent;
-  border: 1px solid var(--room-accent, var(--color-blood));
+  border: 1px solid var(--room-accent, var(--color-accent));
   border-radius: 2px;
   color: var(--room-text, var(--color-text));
   font-family: var(--font-serif);
@@ -451,11 +448,11 @@
 }
 
 .gallery-button:hover {
-  background: color-mix(in srgb, var(--room-accent, var(--color-blood)) 22%, transparent);
+  background: color-mix(in srgb, var(--room-accent, var(--color-accent)) 22%, transparent);
 }
 
 .gallery-button:focus-visible {
-  outline: 2px solid var(--room-accent-text, var(--color-blood-text));
+  outline: 2px solid var(--room-accent-text, var(--color-accent-text));
   outline-offset: 3px;
 }
 
@@ -482,7 +479,7 @@
 .gallery-back {
   display: block;
   text-align: center;
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
 }
 
 @media (max-width: 860px) {

@@ -19,7 +19,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
   margin-bottom: 0.5rem;
 }
 
@@ -46,16 +46,14 @@
   overflow-x: auto;
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.3),
-    0 8px 24px rgba(0, 0, 0, 0.2),
-    0 0 40px rgba(157, 34, 53, 0.05);
+    0 8px 24px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
 }
 
 .demo-card:hover {
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.35),
-    0 12px 32px rgba(0, 0, 0, 0.25),
-    0 0 50px rgba(157, 34, 53, 0.1);
+    0 12px 32px rgba(0, 0, 0, 0.25);
   transform: translateY(-2px);
 }
 
@@ -92,7 +90,7 @@
 }
 
 .experience-company {
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
   font-weight: 600;
   font-size: 0.95rem;
 }
@@ -122,19 +120,19 @@
 }
 
 .tech-badge {
-  background: color-mix(in srgb, var(--color-blood) 15%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   color: var(--color-text-secondary);
   font-size: 0.7rem;
   font-weight: 600;
   padding: 0.25rem 0.6rem;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--color-blood) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
   transition: all 0.3s ease;
 }
 
 .tech-badge:hover {
-  background: color-mix(in srgb, var(--color-blood) 25%, transparent);
-  border-color: var(--color-blood);
+  background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  border-color: var(--color-accent);
   transform: translateY(-1px);
 }
 

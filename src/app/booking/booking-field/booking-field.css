@@ -30,13 +30,13 @@ label {
   margin: 0;
 }
 
-/* --color-blood-text, not --color-blood: the deep accent reaches about 2.1:1
-   on this surface, and an error message is the last thing on a page that
-   should be hard to read. See the note in `src/styles.css`. */
+/* --color-negative, the state colour, not the accent: an error is a state,
+   and the accent is blue. It clears 4.5:1 on both grounds; see the note in
+   `src/styles.css`. */
 .field-error {
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: var(--color-blood-text);
+  color: var(--color-negative);
   margin: 0;
 }
 

@@ -2,33 +2,79 @@
    GLOBAL STYLES & DESIGN TOKENS
    =================================================== */
 
-/* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:wght@400;500;600;700&display=swap');
+/* Fonts. Self-hosted from the same files the résumé embeds, so the site and
+   the PDF cannot drift onto different cuts of a face, and no third-party host
+   is asked for anything. The builder resolves these relative URLs and emits
+   hashed copies under `media/`. Latin subset, variable weight, about 80KB for
+   both. Nothing is preloaded: `/aubade` sets system faces only, and a preload
+   in `index.html` would fetch these on its routes too. */
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('../scripts/resume-fonts/source-serif-4-latin-var.woff2') format('woff2');
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Source Sans 3';
+  src: url('../scripts/resume-fonts/source-sans-3-latin-var.woff2') format('woff2');
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
-  /* Color palette */
-  --color-bg: #1a1618;
-  --color-surface: #211d1f;
-  --color-border: #3a3236;
-  --color-text: #e8dfe3;
-  --color-text-secondary: #b8a8ae;
-  /* Was #7a6a70, which reached only 3.3:1 on the page background — under the
-     4.5:1 WCAG AA floor for body text. Lightened to clear it on both --color-bg
-     and --color-surface. */
-  --color-text-muted: #9a8a90;
-  --color-blood: #9d2235;
-  --color-blood-dark: #7a1827;
-  /* Blood red is the brand accent, but as *text* it manages only ~2.1:1 against
-     the page background: decorative at best, unreadable at worst. Borders,
-     gradients, fills and glows keep --color-blood; anything a person has to
-     actually read uses this lighter tint, which clears 4.5:1 on every surface
-     in the palette. Same value as the existing `.metric-detail.down` rose, so
-     this is one tone reused rather than a new one invented. */
-  --color-blood-text: #d88894;
+  /* Colour palette: "Fern". The ground, the text and the accent are one
+     triad from `/aesthetic`: choose Charcoal jade (hue 171°), then "Show
+     another aesthetic" to Analogous accent. The surface, border and the two
+     greys are not from the tool; they sit in the ground's own hue at fixed
+     OKLCH lightnesses (0.31, 0.40, 0.82, 0.72).
 
-  /* Typography */
-  --font-sans: 'Crimson Pro', Georgia, serif;
-  --font-serif: 'Cinzel', 'Times New Roman', serif;
+     Contrast, WCAG 2, on --color-bg / --color-surface:
+       --color-text            13.38 / 11.67
+       --color-text-secondary   8.62 /  7.52
+       --color-text-muted       6.07 /  5.30 */
+  --color-bg: #1a2a25;
+  --color-surface: #24342f;
+  --color-border: #3a4c46;
+  --color-text: #e7f6f0;
+  --color-text-secondary: #b8c9c2;
+  --color-text-muted: #99a9a3;
+
+  /* The accent, and the tint anything a person has to read is drawn in. They
+     are two tokens because they answer two questions: --color-accent is for
+     fills, borders and chart marks, which need only stand off the ground;
+     --color-accent-text is for text and the focus ring, which need 4.5:1 and
+     3:1. The previous accent, a deep red, reached about 2.1:1 and needed a
+     separate lighter tint. This one, Light cobalt, clears both bars itself,
+     8.32 on --color-bg and 7.25 on --color-surface, so the two hold one value.
+     The names stay apart so that a future accent that fails as text has
+     somewhere to go without touching every rule that reads it. */
+  --color-accent: #94c6f8;
+  --color-accent-text: #94c6f8;
+  /* Pale cobalt, one ring paler on the wheel: the hover state of a fill. */
+  --color-accent-hover: #cce1f6;
+  /* Text on an accent fill: the ground itself, 8.32:1 on --color-accent. */
+  --color-on-accent: var(--color-bg);
+
+  /* State, which is not the accent. Each clears 4.5:1 on both grounds, and on
+     a tint of itself up to 15% over either, which is the most a status pill
+     may use: at 18% the green fell to 4.41 on --color-surface. Worst cases,
+     at 15% over the surface: positive 4.67, caution 4.91, negative 4.71. */
+  --color-positive: #7fc48f;
+  --color-caution: #d9b45f;
+  --color-negative: #e8a0a8;
+
+  /* A fill for what is out of play: the dashboard's out-of-service rooms.
+     Never text. 3.33:1 on --color-surface, over the 3:1 a non-text mark
+     needs, and at least 0.21 OKLab from --color-accent and --color-text for
+     every deficiency `cvd.ts` simulates, since the three share a doughnut. */
+  --color-inactive: #75847e;
+
+  /* Typography. Sans for running text and controls, serif for headings. */
+  --font-sans: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
 }
 
 /* Reset & Base */
@@ -73,16 +119,16 @@ button {
 }
 
 /* ===================================================
-   ENHANCED TYPOGRAPHY WITH DROP SHADOWS
+   TYPOGRAPHY
    =================================================== */
 
+/* No text-shadow anywhere in the portfolio: the type carries the page. The
+   headings used to sit under a black drop and a red glow, which is how a
+   vampire's hotel looks and what the serene palette was chosen to leave. */
 h1,
 h2,
 h3 {
-  text-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.6),
-    0 4px 16px rgba(157, 34, 53, 0.15);
-  letter-spacing: 0.02em;
+  text-wrap: balance;
 }
 
 h1 {
@@ -114,19 +160,10 @@ p {
 strong {
   font-weight: 600;
   color: var(--color-text);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* Enhanced section headers */
 .section-label {
-  text-shadow: 0 1px 4px rgba(157, 34, 53, 0.4);
   margin-bottom: 0.75rem;
-}
-
-.section-header h2 {
-  text-shadow:
-    0 3px 12px rgba(0, 0, 0, 0.5),
-    0 6px 20px rgba(157, 34, 53, 0.2);
 }
 
 /* Better spacing for content blocks */
@@ -149,59 +186,35 @@ strong {
 }
 
 /* ===================================================
-   ENHANCED FOCUS STATES FOR ACCESSIBILITY
+   FOCUS
    =================================================== */
 
-/* The focus ring is drawn in --color-blood-text rather than --color-blood
-   throughout. WCAG 2.1 SC 1.4.11 asks non-text indicators to clear 3:1 against
-   what surrounds them, and the deep accent manages about 2:1 on this
-   background — a focus ring you have to hunt for is not a focus ring. The
-   lighter tint sits near 6:1. */
+/* A focus ring is an outline, and nothing else: no halo, no lift. It is drawn
+   in --color-accent-text, the tint that is measured for it. WCAG 2.1 SC 1.4.11
+   asks non-text indicators to clear 3:1 against what surrounds them; this one
+   reaches 8.32 on --color-bg and 7.25 on --color-surface. */
 *:focus {
   outline: none;
 }
 
 *:focus-visible {
-  outline: 2px solid var(--color-blood-text);
+  outline: 2px solid var(--color-accent-text);
   outline-offset: 3px;
-  box-shadow: 0 0 0 4px rgba(157, 34, 53, 0.2);
-  transition:
-    outline 0.2s ease,
-    box-shadow 0.2s ease;
 }
 
-/* Enhanced button focus */
-.btn:focus-visible {
-  outline: 2px solid var(--color-blood-text);
-  outline-offset: 3px;
-  box-shadow:
-    0 0 0 4px rgba(157, 34, 53, 0.3),
-    0 4px 20px rgba(157, 34, 53, 0.4);
-  transform: translateY(-2px);
-}
-
-/* Enhanced link focus */
 a:focus-visible {
-  outline: 2px solid var(--color-blood-text);
   outline-offset: 2px;
-  text-shadow: 0 0 12px rgba(157, 34, 53, 0.6);
 }
 
-/* Form control focus - already enhanced but adding keyboard focus */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  border-color: var(--color-blood-text);
-  box-shadow:
-    0 0 0 3px rgba(157, 34, 53, 0.15),
-    0 0 15px rgba(157, 34, 53, 0.3);
+  border-color: var(--color-accent-text);
 }
 
-/* Card focus for keyboard navigation */
 .room-card:focus-within {
-  outline: 2px solid var(--color-blood-text);
+  outline: 2px solid var(--color-accent-text);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(157, 34, 53, 0.2);
 }
 
 /* The skip link and in-page nav targets (`<main>`, each `<section id=…>`) carry
@@ -220,8 +233,8 @@ section[id]:focus {
   top: -100px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--color-blood);
-  color: #fff;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
   padding: 0.75rem 1.5rem;
   border-radius: 4px;
   z-index: 1000;

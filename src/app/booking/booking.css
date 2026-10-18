@@ -26,9 +26,6 @@
   font-size: clamp(2rem, 5vw, 3rem);
   color: var(--color-text);
   margin: 0 0 0.5rem;
-  text-shadow:
-    0 3px 12px rgba(0, 0, 0, 0.5),
-    0 6px 20px rgba(157, 34, 53, 0.2);
 }
 
 .booking-subtitle {
@@ -39,7 +36,7 @@
 }
 
 .booking-subtitle a {
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
 }
 
 /* ----- Provenance badge ----- */
@@ -59,15 +56,15 @@
 }
 
 .data-source--live {
-  color: #6fb880;
-  background: color-mix(in srgb, #6fb880 12%, transparent);
-  border-color: color-mix(in srgb, #6fb880 40%, transparent);
+  color: var(--color-positive);
+  background: color-mix(in srgb, var(--color-positive) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-positive) 40%, transparent);
 }
 
 .data-source--simulated {
-  color: #d9b45f;
-  background: color-mix(in srgb, #d9b45f 12%, transparent);
-  border-color: color-mix(in srgb, #d9b45f 40%, transparent);
+  color: var(--color-caution);
+  background: color-mix(in srgb, var(--color-caution) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-caution) 40%, transparent);
 }
 
 .data-source-dot {
@@ -101,8 +98,7 @@
   margin-bottom: 2rem;
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.3),
-    0 8px 24px rgba(0, 0, 0, 0.2),
-    0 0 40px rgba(157, 34, 53, 0.05);
+    0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .form-heading {
@@ -155,7 +151,7 @@ app-booking-field {
 }
 
 .form-control:hover:not(:focus):not(:disabled) {
-  border-color: color-mix(in srgb, var(--color-blood) 50%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
 }
 
 .form-control:disabled {
@@ -163,12 +159,13 @@ app-booking-field {
   cursor: not-allowed;
 }
 
-/* The invalid border is drawn in the readable tint, not --color-blood: WCAG
-   2.1 SC 1.4.11 wants a non-text indicator at 3:1 against its surroundings and
-   the deep accent manages about 2:1 here. Colour is also never the only
+/* The invalid border is drawn in --color-negative, the state colour rather
+   than the accent, so an error never looks like focus. WCAG 2.1 SC 1.4.11
+   wants a non-text indicator at 3:1 against its surroundings; it reaches 7.15
+   on --color-bg, where the control sits. Colour is also never the only
    signal — `aria-invalid` and the message below carry it too. */
 .form-control[aria-invalid='true'] {
-  border-color: var(--color-blood-text);
+  border-color: var(--color-negative);
 }
 
 .form-actions {
@@ -191,15 +188,14 @@ app-booking-field {
 }
 
 .btn-primary {
-  background: var(--color-blood);
-  color: #faf9f7;
-  border-color: var(--color-blood);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border-color: var(--color-accent);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--color-blood-dark);
-  border-color: var(--color-blood-dark);
-  box-shadow: 0 4px 20px rgba(157, 34, 53, 0.4);
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
   transform: translateY(-2px);
 }
 
@@ -225,7 +221,7 @@ app-booking-field {
 }
 
 .form-outcome--error {
-  color: var(--color-blood-text);
+  color: var(--color-negative);
 }
 
 /* ----- Bookings table ----- */

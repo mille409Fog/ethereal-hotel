@@ -1,7 +1,7 @@
 {
   "siteUrl": "https://jacobmiller.dev",
   "ogImage": "/og-image.png",
-  "ogImageAlt": "Jacob Miller, Senior Software Engineer — Angular and FastAPI, on the site's dark red gothic card.",
+  "ogImageAlt": "Jacob Miller, Senior Software Engineer — Angular and FastAPI, set in pale serif type on a dark green card.",
   "routes": {
     "home": {
       "path": "",

@@ -23,7 +23,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
   margin-bottom: 0.5rem;
 }
 
@@ -57,16 +57,14 @@
   overflow-x: auto;
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.3),
-    0 8px 24px rgba(0, 0, 0, 0.2),
-    0 0 40px rgba(157, 34, 53, 0.05);
+    0 8px 24px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
 }
 
 .demo-card:hover {
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.35),
-    0 12px 32px rgba(0, 0, 0, 0.25),
-    0 0 50px rgba(157, 34, 53, 0.1);
+    0 12px 32px rgba(0, 0, 0, 0.25);
   transform: translateY(-2px);
 }
 
@@ -88,15 +86,12 @@
 
 .form-control:focus {
   outline: none;
-  border-color: var(--color-blood);
-  box-shadow:
-    0 0 0 3px rgba(157, 34, 53, 0.1),
-    0 0 12px rgba(157, 34, 53, 0.2);
+  border-color: var(--color-accent-text);
   transform: translateY(-1px);
 }
 
 .form-control:hover:not(:focus) {
-  border-color: color-mix(in srgb, var(--color-blood) 50%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
 }
 
 .form-group {
@@ -144,10 +139,8 @@
 
 .room-card:hover {
   transform: translateY(-8px) scale(1.02);
-  box-shadow:
-    0 12px 30px rgba(0, 0, 0, 0.4),
-    0 0 20px rgba(157, 34, 53, 0.2);
-  border-color: var(--color-blood);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  border-color: var(--color-accent);
 }
 
 .section-alt .room-card {
@@ -158,7 +151,7 @@
   height: 140px;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--color-blood) 30%, var(--color-border)),
+    color-mix(in srgb, var(--color-accent) 30%, var(--color-border)),
     var(--color-border)
   );
   transition: all 0.3s ease;
@@ -167,8 +160,8 @@
 .room-card:hover .room-img-placeholder {
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--color-blood) 50%, var(--color-border)),
-    color-mix(in srgb, var(--color-blood) 20%, var(--color-border))
+    color-mix(in srgb, var(--color-accent) 50%, var(--color-border)),
+    color-mix(in srgb, var(--color-accent) 20%, var(--color-border))
   );
 }
 
@@ -182,8 +175,8 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-blood-text);
-  background: color-mix(in srgb, var(--color-blood) 18%, transparent);
+  color: var(--color-accent-text);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   padding: 0.2rem 0.5rem;
   border-radius: 3px;
   margin-bottom: 0.5rem;
@@ -237,29 +230,25 @@
 }
 
 .btn-primary {
-  background: var(--color-blood);
-  color: #faf9f7;
-  border-color: var(--color-blood);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border-color: var(--color-accent);
 }
 
 .btn-primary:hover {
-  background: var(--color-blood-dark);
-  border-color: var(--color-blood-dark);
-  box-shadow:
-    0 4px 20px rgba(157, 34, 53, 0.4),
-    0 0 20px rgba(157, 34, 53, 0.2);
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
   transform: translateY(-2px);
 }
 
 .btn-outline {
   background: transparent;
-  color: var(--color-blood-text);
-  border-color: var(--color-blood);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
 }
 
 .btn-outline:hover {
-  background: color-mix(in srgb, var(--color-blood) 15%, transparent);
-  box-shadow: 0 0 15px rgba(157, 34, 53, 0.3);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   transform: translateY(-2px);
 }
 
@@ -277,19 +266,19 @@
 }
 
 .tech-badge {
-  background: color-mix(in srgb, var(--color-blood) 15%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   color: var(--color-text-secondary);
   font-size: 0.65rem;
   font-weight: 600;
   padding: 0.25rem 0.5rem;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--color-blood) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
   transition: all 0.3s ease;
 }
 
 .tech-badge:hover {
-  background: color-mix(in srgb, var(--color-blood) 25%, transparent);
-  border-color: var(--color-blood);
+  background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  border-color: var(--color-accent);
   transform: translateY(-1px);
 }
 
@@ -297,7 +286,7 @@
    but that stylesheet is scoped to the App component and this markup belongs
    to Projects, so the link colour has to be set here. At the bare `a` colour
    it failed the contrast gate — small italic muted text is the least forgiving
-   place on the page for an accent that only manages 2.1:1. */
+   place on the page, so it takes the tint measured for text. */
 .demo-note a {
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
 }

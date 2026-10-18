@@ -22,7 +22,7 @@
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--color-blood);
+  color: var(--color-accent-text);
 }
 
 .nav-links {
@@ -41,7 +41,7 @@
 }
 
 .nav-links a:hover {
-  color: var(--color-blood);
+  color: var(--color-accent-text);
 }
 
 /* ----- Sections ----- */
@@ -78,7 +78,7 @@ main > * + * {
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-blood);
+  color: var(--color-accent-text);
   margin-bottom: 0.5rem;
 }
 
@@ -109,11 +109,7 @@ main > * + * {
   min-height: calc(100vh - 60px);
   display: flex;
   align-items: center;
-  background: linear-gradient(
-    160deg,
-    var(--color-bg) 60%,
-    color-mix(in srgb, var(--color-blood) 15%, var(--color-bg))
-  );
+  background: var(--color-bg);
 }
 
 .hero-title {
@@ -127,7 +123,7 @@ main > * + * {
 
 .hero-subtitle {
   font-size: 1.1rem;
-  color: var(--color-blood);
+  color: var(--color-accent-text);
   margin: 0 0 1.5rem;
   letter-spacing: 0.02em;
 }
@@ -163,24 +159,24 @@ main > * + * {
 }
 
 .btn-primary {
-  background: var(--color-blood);
-  color: #faf9f7;
-  border-color: var(--color-blood);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border-color: var(--color-accent);
 }
 
 .btn-primary:hover {
-  background: var(--color-blood-dark);
-  border-color: var(--color-blood-dark);
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
 }
 
 .btn-outline {
   background: transparent;
-  color: var(--color-blood);
-  border-color: var(--color-blood);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
 }
 
 .btn-outline:hover {
-  background: color-mix(in srgb, var(--color-blood) 10%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
 .btn-sm {
@@ -215,7 +211,7 @@ main > * + * {
 
 .form-control:focus {
   outline: none;
-  border-color: var(--color-blood);
+  border-color: var(--color-accent);
 }
 
 .form-group {
@@ -268,7 +264,7 @@ main > * + * {
   height: 140px;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--color-blood) 30%, var(--color-border)),
+    color-mix(in srgb, var(--color-accent) 30%, var(--color-border)),
     var(--color-border)
   );
 }
@@ -283,8 +279,8 @@ main > * + * {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-blood);
-  background: color-mix(in srgb, var(--color-blood) 18%, transparent);
+  color: var(--color-accent-text);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   padding: 0.2rem 0.5rem;
   border-radius: 3px;
   margin-bottom: 0.5rem;
@@ -321,7 +317,7 @@ main > * + * {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-blood);
+  color: var(--color-accent-text);
   margin: 0 0 1rem;
   padding-bottom: 0.4rem;
   border-bottom: 1px solid var(--color-border);
@@ -366,13 +362,13 @@ main > * + * {
 }
 
 .skill-tag {
-  background: color-mix(in srgb, var(--color-blood) 18%, transparent);
-  color: #d88894;
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent-text);
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.3rem 0.75rem;
   border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--color-blood) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
 .contact-list {

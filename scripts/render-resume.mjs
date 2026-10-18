@@ -28,9 +28,10 @@
  * ## Why the fonts are committed next door
  *
  * `scripts/resume-fonts/` holds the two brand faces as woff2, embedded into the
- * print HTML as data URIs rather than fetched from Google Fonts the way
- * `src/styles.css` does. Two reasons: a build gate should not need the network,
- * and text metrics decide the layout. Rendering with whatever fonts happen to be
+ * print HTML as data URIs. They are the same files `src/styles.css` serves to
+ * the site, so the PDF and the page cannot drift onto different cuts of a face.
+ * Two reasons to embed: a build gate should not need the network, and text
+ * metrics decide the layout. Rendering with whatever fonts happen to be
  * installed would wrap the lines one way on the author's Windows box and another
  * way on ubuntu CI, at which point the one-page check below would mean something
  * different on each. Embedding the faces makes the *layout* the same everywhere.
@@ -75,16 +76,20 @@ const mm = (value) => `${value}mm`;
 /** CSS pixels are 1/96in by definition, so this conversion is exact. */
 const mmToPx = (value) => (value / 25.4) * 96;
 
-// Print palette. The site is near-black on purpose; a résumé is not. These are
-// the same hues from `src/styles.css` re-grounded for white paper — the blood
-// accent unchanged, the text darkened to something that survives a cheap laser
-// printer and a grayscale photocopy.
+// Print palette. The site is dark on purpose; a résumé is not. These are the
+// hues from `src/styles.css` re-grounded for white paper: the site's ground
+// becomes the ink, the greys sit in its jade hue at OKLCH lightness 0.40 and
+// 0.50, and the accent is Dark cobalt, the same hue as the site's Light
+// cobalt two rings down the `/aesthetic` wheel, since the pale one would all
+// but vanish on paper. On white: text 14.98, secondary 9.16, muted 5.95,
+// accent 6.27, all of which survive a cheap laser printer and a grayscale
+// photocopy.
 const COLOR = {
-  text: '#1c191b',
-  secondary: '#4a4045',
-  muted: '#6b5f64',
-  blood: '#9d2235',
-  rule: '#d8ced2',
+  text: '#1a2a25',
+  secondary: '#3d4b46',
+  muted: '#586762',
+  accent: '#0f63a5',
+  rule: '#d0dad6',
 };
 
 const escapeHtml = (value) =>
@@ -128,8 +133,8 @@ function sectionHtml(title, body) {
 
 export async function buildHtml() {
   const fonts = [
-    await fontFace('Cinzel', 'cinzel-latin-var.woff2', '400 900'),
-    await fontFace('Crimson Pro', 'crimson-pro-latin-var.woff2', '200 900'),
+    await fontFace('Source Serif 4', 'source-serif-4-latin-var.woff2', '200 900'),
+    await fontFace('Source Sans 3', 'source-sans-3-latin-var.woff2', '200 900'),
   ].join('\n');
 
   const { contact, education } = RESUME;
@@ -158,7 +163,7 @@ export async function buildHtml() {
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
       body {
-        font-family: 'Crimson Pro', Georgia, serif;
+        font-family: 'Source Sans 3', sans-serif;
         font-size: 10pt;
         line-height: 1.42;
         color: ${COLOR.text};
@@ -168,15 +173,14 @@ export async function buildHtml() {
 
       /* ----- Masthead ----- */
       .name {
-        font-family: 'Cinzel', serif;
+        font-family: 'Source Serif 4', serif;
         font-weight: 600;
         font-size: 25pt;
         line-height: 1.05;
-        letter-spacing: 0.02em;
       }
       .role {
         font-size: 11.5pt;
-        color: ${COLOR.blood};
+        color: ${COLOR.accent};
         letter-spacing: 0.06em;
         text-transform: uppercase;
         margin-top: 2.5mm;
@@ -214,12 +218,11 @@ export async function buildHtml() {
       /* ----- Section frame ----- */
       .block { margin-top: 4.4mm; }
       .block h2 {
-        font-family: 'Cinzel', serif;
         font-size: 9.5pt;
         font-weight: 600;
         letter-spacing: 0.14em;
         text-transform: uppercase;
-        color: ${COLOR.blood};
+        color: ${COLOR.accent};
         padding-bottom: 1.2mm;
         border-bottom: 0.5pt solid ${COLOR.rule};
         margin-bottom: 3mm;
@@ -242,12 +245,12 @@ export async function buildHtml() {
       }
       .company {
         font-size: 9.6pt;
-        color: ${COLOR.blood};
+        color: ${COLOR.accent};
         margin-top: 0.3mm;
       }
       .bullets { margin: 1.6mm 0 0 4.6mm; }
       .bullets li { margin-bottom: 0.75mm; padding-left: 0.6mm; }
-      .bullets li::marker { color: ${COLOR.blood}; }
+      .bullets li::marker { color: ${COLOR.accent}; }
       .tech {
         margin-top: 1.4mm;
         font-size: 8.6pt;

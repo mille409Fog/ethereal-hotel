@@ -20,7 +20,7 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
   margin-bottom: 0.5rem;
 }
 
@@ -50,11 +50,10 @@
   font-family: var(--font-serif);
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
   margin: 0;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid var(--color-border);
-  text-shadow: 0 2px 6px rgba(157, 34, 53, 0.3);
 }
 
 .contact-list {
@@ -75,16 +74,15 @@
 /* Scoped to the block rather than the list: the Case Studies block links from
    a paragraph, not a list item, and at the bare `a` colour that link failed
    the contrast gate. Every link in a contact block wants the readable tint —
-   see the --color-blood-text note in styles.css. */
+   see the --color-accent-text note in styles.css. */
 .contact-block a {
-  color: var(--color-blood-text);
+  color: var(--color-accent-text);
   text-decoration: none;
   transition: all 0.3s ease;
 }
 
 .contact-block a:hover {
   color: var(--color-text);
-  text-shadow: 0 0 8px rgba(157, 34, 53, 0.4);
 }
 
 .contact-icon {

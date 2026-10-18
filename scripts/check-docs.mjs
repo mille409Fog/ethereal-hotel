@@ -167,7 +167,7 @@ check('the résumé still has a single source', () => {
       }
     }
     // OFL 1.1 requires the licence travel with the font.
-    for (const licence of ['OFL-Cinzel.txt', 'OFL-CrimsonPro.txt']) {
+    for (const licence of ['OFL-SourceSerif4.txt', 'OFL-SourceSans3.txt']) {
       if (!exists(path.join('scripts', 'resume-fonts', licence))) {
         problems.push(`scripts/resume-fonts/${licence} is missing; the OFL requires it be kept.`);
       }
@@ -2182,6 +2182,52 @@ check('every looping animation says what it shows', () => {
         );
       }
     });
+  }
+  return problems;
+});
+
+// The portfolio was dressed as a vampire's hotel — a blood-red accent written
+// out as `rgba(157, 34, 53, …)` sixty-seven times, and a glow on every heading,
+// label, link and button — and the serene palette replaced it. The red came
+// back by copying before (a hex in the chart code outlived the token it
+// copied), so this holds three things CLAUDE.md states. The old accent is gone
+// from `src/app/` and `styles.css`, by value and by name. Nothing there has a
+// text-shadow, because the type carries the page. And `/aesthetic`'s
+// registered `--glow` starts at `--color-border`, which `@property` can only
+// say by repeating the value.
+check('the portfolio stays serene', () => {
+  const files = [
+    'src/styles.css',
+    ...readdirSync(path.join(repoRoot, 'src/app'), { recursive: true })
+      .map((file) => `src/app/${String(file).replace(/\\/g, '/')}`)
+      .filter((file) => /\.(css|ts|html)$/.test(file)),
+  ];
+
+  const problems = [];
+  for (const file of files) {
+    const lines = read(file).split('\n');
+    lines.forEach((line, index) => {
+      const at = `${file}:${index + 1}`;
+      // By name as a token or an identifier only: the gallery's readings
+      // quote Van Gogh and Munch on blood, and they are content.
+      if (/157,\s*34,\s*53|#9d2235|--color-blood/i.test(line) || /\bBLOOD\b/.test(line)) {
+        problems.push(`${at} brings back the old blood-red accent. Use --color-accent.`);
+      }
+      if (/^\s*text-shadow\s*:(?!\s*none\s*;)/.test(line)) {
+        problems.push(`${at} adds a text-shadow. CLAUDE.md: the portfolio's type carries no effects.`);
+      }
+    });
+  }
+
+  const border = /--color-border:\s*(#[0-9a-f]{6})/i.exec(read('src/styles.css'))?.[1];
+  const glow = /@property --glow\s*\{[^}]*initial-value:\s*(#[0-9a-f]{6})/i.exec(
+    read('src/app/aesthetic/aesthetic.css')
+  )?.[1];
+  if (!border || !glow || border.toLowerCase() !== glow.toLowerCase()) {
+    problems.push(
+      `aesthetic.css registers --glow with initial-value ${glow ?? '(none)'}, but --color-border ` +
+        `is ${border ?? '(none)'}. @property cannot read a variable, so the copy must match.`
+    );
   }
   return problems;
 });
