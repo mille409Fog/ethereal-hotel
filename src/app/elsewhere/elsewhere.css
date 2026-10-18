@@ -1,0 +1,70 @@
+/* ----- Elsewhere: Hôtel Aubade ----- */
+.elsewhere {
+  padding: 4rem 2rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.elsewhere-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.5rem 2rem;
+  align-items: center;
+}
+
+@media (min-width: 760px) {
+  .elsewhere-inner {
+    grid-template-columns: 3fr 2fr;
+  }
+}
+
+/* 16:9 to match the frame `verify:shader` writes, so the box is reserved. */
+.elsewhere-still {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.elsewhere-label {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.elsewhere-caption h2 {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 0.75rem;
+}
+
+.elsewhere-caption p {
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+  margin: 0 0 0.75rem;
+}
+
+.elsewhere-caption .elsewhere-note {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.elsewhere-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+
+/* --color-accent-text, the tint measured for text; see the note in styles.css. */
+.elsewhere-links a {
+  color: var(--color-accent-text);
+}

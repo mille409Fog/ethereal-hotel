@@ -23,6 +23,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "aubade-lobby-aubade.webp",
+                "input": "docs/images",
+                "output": "stills"
               }
             ],
             "styles": ["src/styles.css"]

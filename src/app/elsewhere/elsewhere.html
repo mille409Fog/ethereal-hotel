@@ -1,0 +1,39 @@
+<!-- ===== ELSEWHERE =====
+     Hôtel Aubade, shown rather than filed. No `id`, no nav item and no
+     `<section>`: see elsewhere.ts. A `<figure>` rather than an `<aside>`,
+     because axe wants a complementary landmark at the top level and this one
+     belongs between the projects and the experience, inside `main`.
+
+     The caption names the hour of the still because the piece is "indexed to
+     the real world" (AUBADE.md) — a visitor will not find this picture unless
+     their sun is where this one was, and the page should not imply otherwise. -->
+<div class="elsewhere">
+  <figure class="elsewhere-inner">
+    <img
+      class="elsewhere-still"
+      [src]="still.src"
+      [alt]="still.alt"
+      [width]="still.width"
+      [height]="still.height"
+      loading="lazy"
+      decoding="async"
+    />
+    <figcaption class="elsewhere-caption">
+      <span class="elsewhere-label">A separate work, on the same deployment</span>
+      <h2>Hôtel Aubade</h2>
+      <p>
+        A hotel that is open only when it is actually night where you are. Six floors, descending,
+        built from distance functions raymarched in a fragment shader — no meshes and no 3D library.
+      </p>
+      <p class="elsewhere-note">
+        This is the lobby at civil twilight, one of five states the real sun puts it in, as the
+        build renders it to check the shader. By day the hotel is closed and says so; one click lets
+        you in anyway.
+      </p>
+      <p class="elsewhere-links">
+        <a href="/aubade">Enter the hotel <span aria-hidden="true">→</span></a>
+        <a href="/aubade/reader">Read the Reader’s Edition <span aria-hidden="true">→</span></a>
+      </p>
+    </figcaption>
+  </figure>
+</div>

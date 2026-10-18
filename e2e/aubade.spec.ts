@@ -338,36 +338,36 @@ interface IContextLog {
   __contexts: string[];
 }
 
+/**
+ * Count every `getContext` call the page makes, from before the first script
+ * on it runs.
+ *
+ * `addInitScript` lands in the page ahead of Angular, so the patched
+ * prototype method is the one every later caller finds. Recording on
+ * `window` rather than in a Playwright binding keeps it synchronous, which
+ * matters: a context can be created and released inside one microtask.
+ */
+async function countContexts(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const asked: string[] = [];
+    (window as unknown as IContextLog).__contexts = asked;
+
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      ...args: Parameters<typeof original>
+    ): ReturnType<typeof original> {
+      asked.push(String(args[0]));
+      return original.apply(this, args);
+    };
+  });
+}
+
+/** Read the log back out of the page. */
+const contexts = (page: Page): Promise<string[]> =>
+  page.evaluate(() => (window as unknown as IContextLog).__contexts);
+
 test.describe('the reader’s edition', () => {
-  /**
-   * Count every `getContext` call the page makes, from before the first script
-   * on it runs.
-   *
-   * `addInitScript` lands in the page ahead of Angular, so the patched
-   * prototype method is the one every later caller finds. Recording on
-   * `window` rather than in a Playwright binding keeps it synchronous, which
-   * matters: a context can be created and released inside one microtask.
-   */
-  async function countContexts(page: Page): Promise<void> {
-    await page.addInitScript(() => {
-      const asked: string[] = [];
-      (window as unknown as IContextLog).__contexts = asked;
-
-      const original = HTMLCanvasElement.prototype.getContext;
-      HTMLCanvasElement.prototype.getContext = function (
-        this: HTMLCanvasElement,
-        ...args: Parameters<typeof original>
-      ): ReturnType<typeof original> {
-        asked.push(String(args[0]));
-        return original.apply(this, args);
-      };
-    });
-  }
-
-  /** Read the log back out of the page. */
-  const contexts = (page: Page): Promise<string[]> =>
-    page.evaluate(() => (window as unknown as IContextLog).__contexts);
-
   test('creates no WebGL context, and no context of any other kind either', async ({ page }) => {
     await countContexts(page);
     await page.goto('/aubade/reader');
@@ -515,5 +515,47 @@ test.describe('the camera', () => {
     const second = await canvas.screenshot();
 
     expect(Buffer.compare(first, second)).toBe(0);
+  });
+});
+
+/**
+ * The home page's still of the lobby — `src/app/elsewhere/`.
+ *
+ * Shown on `/` and not filed there: outside the projects grid, and with none
+ * of the piece's code behind it. `check:docs` proves nothing in `src/app/`
+ * imports from `src/aubade/`; only a real page can prove that nothing else —
+ * a preloaded chunk, a shared shell — makes a context on the way.
+ */
+test.describe('the portfolio’s still', () => {
+  test('is served, and sits outside the projects grid', async ({ page }) => {
+    // Served from docs/images/ by an asset entry in angular.json, and a glob
+    // that matches nothing fails no build — it ships a broken image. Only the
+    // production bundle can say the file really arrived.
+    await page.goto('/');
+    const still = page.locator('img[src^="/stills/"]');
+    await still.scrollIntoViewIfNeeded();
+    await expect(still).toHaveJSProperty('complete', true);
+    expect(await still.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1280);
+
+    await expect(page.locator('#projects img[src^="/stills/"]')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Enter the hotel' })).toHaveAttribute(
+      'href',
+      '/aubade'
+    );
+    await expect(page.getByRole('link', { name: /Read the Reader’s Edition/ })).toHaveAttribute(
+      'href',
+      '/aubade/reader'
+    );
+  });
+
+  test('brings no context to the home page', async ({ page }) => {
+    await countContexts(page);
+    await page.goto('/');
+    await page.locator('img[src^="/stills/"]').scrollIntoViewIfNeeded();
+
+    // A beat, so a late chunk or a deferred init has somewhere to go wrong.
+    await page.waitForTimeout(500);
+
+    expect(await contexts(page)).toEqual([]);
   });
 });

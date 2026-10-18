@@ -49,7 +49,7 @@ passes the billing guard first (ADR 0004 in `triage/docs/decisions/`).
 
 Effort: weeks, in stages.
 
-Items 2–5 came from comparing the home page with the portfolios engineers themselves cite
+Items 2–4 came from comparing the home page with the portfolios engineers themselves cite
 (Brittany Chiang, Lee Robinson, Emil Kowalski, Rauno Freiberg, Sam Rose, Julia Evans, Josh
 Comeau, Bruno Simon). What they share: one specific claim on the first screen, evidence over
 assertion, writing as the proof of judgment, the most distinctive work first, restraint, and one
@@ -91,24 +91,7 @@ canary for a shader regression. The case studies are writing too, and sit one cl
 
 Effort: days, nearly all of it writing.
 
-## 4. Show Aubade, without folding it in
-
-The most distinctive work here is one line in the footer. The footer comment's reasoning (the
-nav answers one question; Aubade is a separate work) stays right. That argument is about filing,
-not visibility.
-
-**DoD:**
-
-- The home page carries one committed still from `docs/images/`, a caption, and a link to
-  `/aubade` and `/aubade/reader`, placed outside the projects grid so it is not filed as a
-  portfolio section.
-- Nothing under `src/app/` imports from `src/aubade/`, and no WebGL is fetched on `/` —
-  `check:docs` already gates both and must still pass untouched.
-- AUBADE.md is consulted first; if it states a position on being advertised from `/`, that wins.
-
-Effort: an hour or two.
-
-## 5. One human line, and availability
+## 4. One human line, and availability
 
 Every site above has a sentence that is about the person, and a way to reach them without
 hunting.
