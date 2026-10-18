@@ -49,6 +49,129 @@ passes the billing guard first (ADR 0004 in `triage/docs/decisions/`).
 
 Effort: weeks, in stages.
 
+Items 2–8 came from comparing the home page with the portfolios engineers themselves cite
+(Brittany Chiang, Lee Robinson, Emil Kowalski, Rauno Freiberg, Sam Rose, Julia Evans, Josh
+Comeau, Bruno Simon). What they share: one specific claim on the first screen, evidence over
+assertion, writing as the proof of judgment, the most distinctive work first, restraint, and one
+human line. The repo already does the hard part; the home page does not show it.
+
+## 2. A hero that makes one checkable claim
+
+`hero.html` says "scalable, high-performance… Let's build something exceptional together" — the
+copy every portfolio above avoids, on a site whose bar is that every claim is executable. The
+repo's actual idea (every number on screen is derived from real rows; when the app can't do
+something it says so) is a better first sentence than any adjective. Same family:
+`experience.html`'s "serve millions of users" is the one claim on the page with nothing behind it.
+
+**DoD:**
+
+- The hero's first sentence is specific enough to disagree with, and nothing in it is an
+  adjective the reader has to take on trust.
+- "Let's build something exceptional together" and "serve millions of users" are gone, or the
+  second is replaced by a figure the owner can source.
+- No other section description on `/` makes a claim the page cannot back.
+
+Effort: an hour of writing, minutes of code.
+
+## 3. Real images on the project cards
+
+All seven cards in `projects.html` render `room-img-placeholder`, a gradient box. It is the
+clearest tutorial signal on the page.
+
+**DoD:**
+
+- The four live routes (`/dashboard`, `/booking`, `/gallery`, `/aesthetic`) each show a real
+  frame of themselves. The images are produced by a script, not by hand, so they cannot drift
+  from the app silently — the `resume:pdf` / `resume:check` pair is the precedent.
+- The three NDA cards show no fake screenshot: either no image slot, or a typographic treatment
+  that does not pretend to be one.
+- Images are WebP with explicit `width`/`height` and lazy-loaded below the fold; the Lighthouse
+  thresholds on `/` hold without being touched.
+- Every image has alt text that says what the frame shows, not "screenshot of project".
+
+Effort: half a day.
+
+## 4. Link the code
+
+`github.com/mille409Fog` sits in `resume.data.ts` and is rendered nowhere on the site; the footer
+says "Built with Angular". Hiring managers' commonest one-minute path is homepage → one project →
+the code → the GitHub profile, and this repo's gates are the strongest exhibit it has.
+
+**DoD:**
+
+- The owner decides whether the repository is public. If it is not, this item shrinks to linking
+  the profile and stops there.
+- The GitHub profile is linked from the contact section, read from `resume.data.ts` rather than
+  typed a second time.
+- If public: the footer names the repository and one sentence on what is enforced (the six gates,
+  `check:docs`), linking to it — a colophon that makes a claim instead of a credit.
+
+Effort: an hour, after the decision.
+
+## 5. A writing section
+
+Six of the eight portfolios above have one, usually ranked above projects. The owner writes long
+form, and the repo already holds finished essays in its comments and docs: comparing the résumé
+PDF by text rather than bytes, a docs file that fails the build when it lies, a 1.5s frame as a
+canary for a shader regression. The case studies are writing too, and sit one click away.
+
+**DoD:**
+
+- A `/writing` route with at least two posts, each about a decision made in this repository, each
+  linking to the code it describes.
+- The route is registered everywhere a route has to be (router, `vercel.json`,
+  `emit-route-meta.mjs`) so a shared post gets its own card.
+- The home page lists the posts, and the case studies, in one writing block.
+- No post explains what a tool _is_ — same rule as the docs.
+
+Effort: days, nearly all of it writing.
+
+## 6. Show Aubade, without folding it in
+
+The most distinctive work here is one line in the footer. The footer comment's reasoning (the
+nav answers one question; Aubade is a separate work) stays right. That argument is about filing,
+not visibility.
+
+**DoD:**
+
+- The home page carries one committed still from `docs/images/`, a caption, and a link to
+  `/aubade` and `/aubade/reader`, placed outside the projects grid so it is not filed as a
+  portfolio section.
+- Nothing under `src/app/` imports from `src/aubade/`, and no WebGL is fetched on `/` —
+  `check:docs` already gates both and must still pass untouched.
+- AUBADE.md is consulted first; if it states a position on being advertised from `/`, that wins.
+
+Effort: an hour or two.
+
+## 7. Restraint
+
+The home page has a separate Skills section although every job and project already carries tech
+tags, plus a parallax hero, a pulsing button and gothic dividers. None of the reference sites
+spends that much on decoration.
+
+**DoD:**
+
+- The Skills section is removed from `/` (the résumé keeps its skills; `resume.data.ts` is
+  untouched) and the nav loses its link.
+- The `pulse` animation and the hero parallax are removed or justified in a comment.
+- Lighthouse on `/` does not regress, and the e2e/axe suite passes.
+
+Effort: an hour.
+
+## 8. One human line, and availability
+
+Every site above has a sentence that is about the person, and a way to reach them without
+hunting.
+
+**DoD:**
+
+- One sentence on the home page that is about the owner rather than the work.
+- An availability line ("open to … roles") with a direct `mailto:` from `resume.data.ts`, visible
+  without scrolling past the experience section.
+- The line is cheap to remove: when it stops being true it goes, rather than going stale.
+
+Effort: minutes of code; the sentence is the owner's.
+
 ## Deliberately not doing
 
 Recorded so the next instance does not helpfully add them:
