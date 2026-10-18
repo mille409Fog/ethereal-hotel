@@ -1,4 +1,4 @@
-import { formatMonth, formatPeriod, IJob, RESUME } from './resume.data';
+import { emphasis, formatMonth, formatPeriod, IJob, RESUME } from './resume.data';
 
 /**
  * The résumé's invariants.
@@ -7,8 +7,8 @@ import { formatMonth, formatPeriod, IJob, RESUME } from './resume.data';
  * because the dates are the one part a reader will actually verify against
  * LinkedIn, and a typo in a month is invisible on screen and permanent in a
  * PDF. The bullet ceiling exists because the PDF is one page by design: a
- * fourth bullet does not look like a layout bug in the data file, it looks like
- * a fourth bullet, and it is only wrong once printed.
+ * sixth bullet does not look like a layout bug in the data file, it looks like
+ * a sixth bullet, and it is only wrong once printed.
  *
  * Worth noting the inversion against `work.data.spec.ts`, which fails the build
  * if a case study so much as says "Charter". These are the same employers seen
@@ -75,22 +75,38 @@ describe('résumé data', () => {
       }
     });
 
-    it('marks exactly one job as current', () => {
-      const current = RESUME.experience.filter((job) => job.end === null);
-      expect(current.length, 'exactly one role should be open-ended').toBe(1);
-      // …and it must be the newest, or the page prints "Present" halfway down.
-      expect(RESUME.experience[0].end).toBeNull();
+    it('leaves no role open-ended but the newest', () => {
+      // Between jobs none is current, so zero is allowed; but an open end
+      // anywhere else prints "Present" halfway down the page.
+      for (const job of RESUME.experience.slice(1)) {
+        expect(job.end, `${job.company} is open-ended but not the newest`).not.toBeNull();
+      }
+    });
+
+    it('ends no role in the future', () => {
+      const now = new Date();
+      const today = now.getUTCFullYear() * 12 + (now.getUTCMonth() + 1);
+      for (const job of RESUME.experience) {
+        if (job.end === null) continue;
+        expect(ordinal(job.end), `${job.company} ends in the future`).toBeLessThanOrEqual(today);
+      }
     });
   });
 
   describe('shape the PDF depends on', () => {
-    it('keeps every job to three bullets or fewer', () => {
+    it('keeps every job to five bullets or fewer', () => {
       for (const job of RESUME.experience) {
         expect(
           job.bullets.length,
           `${job.company} has ${job.bullets.length} bullets`
-        ).toBeLessThanOrEqual(3);
+        ).toBeLessThanOrEqual(5);
         expect(job.bullets.length, `${job.company} has no bullets`).toBeGreaterThan(0);
+      }
+    });
+
+    it('pairs every emphasis marker', () => {
+      for (const bullet of RESUME.experience.flatMap((job) => job.bullets)) {
+        expect(() => emphasis(bullet), bullet).not.toThrow();
       }
     });
 
@@ -105,12 +121,20 @@ describe('résumé data', () => {
         ...RESUME.experience.flatMap((job) => [
           job.title,
           job.company,
+          job.location,
           ...job.bullets,
           ...job.tech,
+        ]),
+        ...RESUME.projects.flatMap((project) => [
+          project.name,
+          project.summary,
+          ...project.links,
+          ...project.stack,
         ]),
         ...RESUME.skills.flatMap((category) => [category.name, ...category.skills]),
         RESUME.education.degree,
         RESUME.education.institution,
+        ...RESUME.education.honors,
         ...RESUME.education.certifications,
       ];
       for (const value of strings) {
@@ -131,7 +155,13 @@ describe('résumé data', () => {
       // No scheme on the links: they are printed and read, not clicked, and
       // "https://" spends a third of the line telling the reader nothing.
       expect(RESUME.contact.email).toMatch(/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i);
-      for (const link of [RESUME.contact.linkedin, RESUME.contact.github, RESUME.contact.site]) {
+      const links = [
+        RESUME.contact.linkedin,
+        RESUME.contact.github,
+        RESUME.contact.site,
+        ...RESUME.projects.flatMap((project) => project.links),
+      ];
+      for (const link of links) {
         expect(link, `"${link}" should not carry a scheme`).not.toMatch(/^https?:\/\//);
       }
     });
@@ -154,10 +184,32 @@ describe('résumé data', () => {
     });
   });
 
+  describe('emphasis', () => {
+    it('splits a bullet into plain and strong runs', () => {
+      expect(emphasis('cut **40%** of bugs')).toEqual([
+        { text: 'cut ', strong: false },
+        { text: '40%', strong: true },
+        { text: ' of bugs', strong: false },
+      ]);
+    });
+
+    it('drops the empty run a leading marker leaves', () => {
+      expect(emphasis('**30M+** customers')).toEqual([
+        { text: '30M+', strong: true },
+        { text: ' customers', strong: false },
+      ]);
+    });
+
+    it('throws on an unpaired marker rather than printing it', () => {
+      expect(() => emphasis('cut **40% of bugs')).toThrow(RangeError);
+    });
+  });
+
   describe('formatPeriod', () => {
     const job = (start: string, end: string | null): IJob => ({
       title: 'Engineer',
       company: 'Somewhere',
+      location: 'Anywhere',
       start,
       end,
       bullets: ['Did the thing'],

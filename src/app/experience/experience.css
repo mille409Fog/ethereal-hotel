@@ -113,6 +113,11 @@
   margin-bottom: 0.5rem;
 }
 
+.experience-bullets strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .experience-tech {
   display: flex;
   flex-wrap: wrap;

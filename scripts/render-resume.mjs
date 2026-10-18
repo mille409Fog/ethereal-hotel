@@ -47,7 +47,7 @@ import { chromium } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { RESUME, formatPeriod } from '../src/app/resume/resume.data.ts';
+import { RESUME, emphasis, formatPeriod } from '../src/app/resume/resume.data.ts';
 import { extractText, pageSizes } from './pdf-text.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -63,7 +63,7 @@ const outputPath = path.join(repoRoot, 'public', 'jacob-miller-resume.pdf');
  * measuring against the wrong number and passing a two-page résumé.
  */
 const PAGE_MM = { width: 210, height: 279.4 };
-const MARGIN_MM = { top: 13, bottom: 12, left: 15, right: 15 };
+const MARGIN_MM = { top: 12, bottom: 11, left: 13, right: 13 };
 
 /** The box the content actually gets, once the margins are taken out. */
 const CONTENT_MM = {
@@ -84,6 +84,10 @@ const mmToPx = (value) => (value / 25.4) * 96;
 // but vanish on paper. On white: text 14.98, secondary 9.16, muted 5.95,
 // accent 6.27, all of which survive a cheap laser printer and a grayscale
 // photocopy.
+//
+// The accent is spent in exactly one place, the section headings. An earlier
+// layout also coloured the role, the company and the bullet markers, and a page
+// where four things are blue has no colour that means anything.
 const COLOR = {
   text: '#1a2a25',
   secondary: '#3d4b46',
@@ -95,8 +99,7 @@ const COLOR = {
 const escapeHtml = (value) =>
   String(value).replace(
     /[&<>"']/g,
-    (char) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]
+    (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]
   );
 
 /** Inline a woff2 as a data URI so the render needs no network and no system fonts. */
@@ -111,16 +114,40 @@ async function fontFace(family, file, weights) {
     }`;
 }
 
+/** A bullet with its `**…**` figures in bold — the only bold inside a job. */
+function bulletHtml(line) {
+  const runs = emphasis(line).map(({ text, strong }) =>
+    strong ? `<strong>${escapeHtml(text)}</strong>` : escapeHtml(text)
+  );
+  return `<li>${runs.join('')}</li>`;
+}
+
+/**
+ * The company leads, in bold, because it is what a skimming reader looks for
+ * first; the title follows it on the same line rather than costing one of its
+ * own. Dates keep the right edge to themselves, so they read as a column.
+ */
 function jobHtml(job) {
-  const bullets = job.bullets.map((line) => `<li>${escapeHtml(line)}</li>`).join('');
   return `<article class="job">
-      <header class="job-head">
-        <h3>${escapeHtml(job.title)}</h3>
+      <header class="entry-head">
+        <h3><span class="company">${escapeHtml(job.company)}</span><span class="aside"
+          >${escapeHtml(job.title)}</span><span class="aside muted">${escapeHtml(job.location)}</span></h3>
         <span class="period">${escapeHtml(formatPeriod(job))}</span>
       </header>
-      <p class="company">${escapeHtml(job.company)}</p>
-      <ul class="bullets">${bullets}</ul>
-      <p class="tech">${job.tech.map(escapeHtml).join(' &middot; ')}</p>
+      <ul class="bullets">${job.bullets.map(bulletHtml).join('')}</ul>
+    </article>`;
+}
+
+/** Same frame as a job, with the stack where the dates would be. */
+function projectHtml(project) {
+  return `<article class="project">
+      <header class="entry-head">
+        <h3><span class="company">${escapeHtml(project.name)}</span>${project.links
+          .map((link) => `<span class="aside muted">${escapeHtml(link)}</span>`)
+          .join('')}</h3>
+        <span class="period">${project.stack.map(escapeHtml).join(' &middot; ')}</span>
+      </header>
+      <p class="project-summary">${escapeHtml(project.summary)}</p>
     </article>`;
 }
 
@@ -140,6 +167,7 @@ export async function buildHtml() {
   const { contact, education } = RESUME;
 
   const experience = RESUME.experience.map(jobHtml).join('');
+  const projects = RESUME.projects.map(projectHtml).join('');
 
   const skills = `<dl class="skills">${RESUME.skills
     .map(
@@ -149,8 +177,9 @@ export async function buildHtml() {
     .join('')}</dl>`;
 
   const educationHtml = `<p class="degree"><strong>${escapeHtml(education.degree)}</strong>
-      <span class="muted">&mdash; ${escapeHtml(education.institution)}, ${education.year}</span></p>
-    <p class="muted certs">${education.certifications.map(escapeHtml).join(' &middot; ')}</p>`;
+      <span class="secondary">&mdash; ${escapeHtml(education.institution)}, ${education.year}</span
+      ><span class="muted">${education.honors.map((honor) => ` &middot; ${escapeHtml(honor)}`).join('')}</span></p>
+    <p class="secondary certs">${education.certifications.map(escapeHtml).join(' &middot; ')}</p>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -164,8 +193,8 @@ export async function buildHtml() {
 
       body {
         font-family: 'Source Sans 3', sans-serif;
-        font-size: 10pt;
-        line-height: 1.42;
+        font-size: 9.6pt;
+        line-height: 1.3;
         color: ${COLOR.text};
         background: #fff;
         -webkit-font-smoothing: antialiased;
@@ -175,23 +204,23 @@ export async function buildHtml() {
       .name {
         font-family: 'Source Serif 4', serif;
         font-weight: 600;
-        font-size: 25pt;
+        font-size: 23pt;
         line-height: 1.05;
       }
       .role {
-        font-size: 11.5pt;
-        color: ${COLOR.accent};
+        font-size: 10.5pt;
+        color: ${COLOR.secondary};
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        margin-top: 2.5mm;
+        margin-top: 1.4mm;
       }
       /* Two deliberate lines — details, then links — rather than one long line
          left to wrap wherever it lands. The wrap point moved with the length of
          the email address and split a URL across lines; this is the same two
          lines every time. */
       .contact {
-        margin-top: 3mm;
-        padding-top: 2.6mm;
+        margin-top: 2.4mm;
+        padding-top: 2mm;
         border-top: 0.5pt solid ${COLOR.rule};
         font-size: 9pt;
         color: ${COLOR.secondary};
@@ -203,17 +232,12 @@ export async function buildHtml() {
       }
 
       /* ----- Summary ----- */
+      /* Two lines, and only what the experience below can back. */
       .summary {
-        margin-top: 4.5mm;
-        font-size: 10pt;
+        margin-top: 3.4mm;
+        font-size: 9.8pt;
         color: ${COLOR.secondary};
       }
-      .seeking {
-        margin-top: 1.8mm;
-        font-size: 9pt;
-        color: ${COLOR.muted};
-      }
-      .seeking strong { color: ${COLOR.secondary}; font-weight: 600; }
 
       /* ----- Section frame ----- */
       .block { margin-top: 4.4mm; }
@@ -225,44 +249,37 @@ export async function buildHtml() {
         color: ${COLOR.accent};
         padding-bottom: 1.2mm;
         border-bottom: 0.5pt solid ${COLOR.rule};
-        margin-bottom: 3mm;
+        margin-bottom: 2.2mm;
       }
 
-      /* ----- Experience ----- */
-      .job { margin-bottom: 3.6mm; }
-      .job:last-child { margin-bottom: 0; }
-      .job-head {
+      /* ----- Experience and projects ----- */
+      .job, .project { margin-bottom: 3.2mm; }
+      .job:last-child, .project:last-child { margin-bottom: 0; }
+      .entry-head {
         display: flex;
         justify-content: space-between;
         align-items: baseline;
         gap: 6mm;
       }
-      .job-head h3 { font-size: 11pt; font-weight: 600; }
+      .entry-head h3 { font-size: 10pt; font-weight: 400; color: ${COLOR.secondary}; }
+      .company { font-size: 10.8pt; font-weight: 650; color: ${COLOR.text}; }
+      .aside::before { content: ' · '; color: ${COLOR.muted}; }
       .period {
-        font-size: 8.8pt;
+        font-size: 9pt;
         color: ${COLOR.muted};
         white-space: nowrap;
       }
-      .company {
-        font-size: 9.6pt;
-        color: ${COLOR.accent};
-        margin-top: 0.3mm;
-      }
-      .bullets { margin: 1.6mm 0 0 4.6mm; }
-      .bullets li { margin-bottom: 0.75mm; padding-left: 0.6mm; }
-      .bullets li::marker { color: ${COLOR.accent}; }
-      .tech {
-        margin-top: 1.4mm;
-        font-size: 8.6pt;
-        color: ${COLOR.muted};
-        letter-spacing: 0.015em;
-      }
+      .bullets { margin: 1.2mm 0 0 4.4mm; }
+      .bullets li { margin-bottom: 0.5mm; padding-left: 0.8mm; }
+      .bullets li::marker { color: ${COLOR.muted}; }
+      .bullets strong { font-weight: 650; color: ${COLOR.text}; }
+      .project-summary { margin-top: 0.8mm; color: ${COLOR.text}; }
 
       /* ----- Skills ----- */
       .skills {
         display: grid;
         grid-template-columns: 26mm 1fr;
-        row-gap: 1.5mm;
+        row-gap: 0.8mm;
         column-gap: 3mm;
         font-size: 9.4pt;
       }
@@ -274,7 +291,8 @@ export async function buildHtml() {
 
       /* ----- Education ----- */
       .degree { font-size: 10pt; }
-      .certs { font-size: 9pt; margin-top: 0.8mm; }
+      .certs { font-size: 9.4pt; margin-top: 0.8mm; }
+      .secondary { color: ${COLOR.secondary}; }
       .muted { color: ${COLOR.muted}; }
     </style>
   </head>
@@ -289,9 +307,11 @@ export async function buildHtml() {
     </div>
 
     <p class="summary">${escapeHtml(RESUME.summary)}</p>
-    <p class="seeking"><strong>Seeking:</strong> ${escapeHtml(RESUME.preferredRoles.join(', '))}</p>
 
+    <!-- Experience directly under the summary: it is what a reader skims for
+         first, and a skills block above it pushed it a third of the way down. -->
     ${sectionHtml('Experience', experience)}
+    ${sectionHtml('Projects', projects)}
     ${sectionHtml('Skills', skills)}
     ${sectionHtml('Education', educationHtml)}
   </body>

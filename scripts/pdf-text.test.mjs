@@ -306,7 +306,7 @@ describe('the committed résumé', () => {
     for (const expected of [
       'Jacob Miller',
       'Charter Communications',
-      'June 2023 – Present',
+      'June 2023 – October 2026',
       'B.S. Mathematics',
       'millerjacob67@gmail.com',
     ]) {

@@ -22,8 +22,16 @@
               <span class="experience-period">{{ job.period }}</span>
             </div>
             <ul class="experience-bullets">
-              @for (bullet of job.bullets; track $index) {
-                <li>{{ bullet }}</li>
+              @for (bullet of job.runs; track $index) {
+                <li>
+                  @for (run of bullet; track $index) {
+                    @if (run.strong) {
+                      <strong>{{ run.text }}</strong>
+                    } @else {
+                      {{ run.text }}
+                    }
+                  }
+                </li>
               }
             </ul>
             <div class="experience-tech">

@@ -32,6 +32,7 @@
 export interface IJob {
   readonly title: string;
   readonly company: string;
+  readonly location: string;
 
   /** First month in the role, `YYYY-MM`. */
   readonly start: string;
@@ -40,14 +41,29 @@ export interface IJob {
   readonly end: string | null;
 
   /**
-   * What the role actually produced. Kept to three so the PDF stays one page —
-   * `resume.data.spec.ts` enforces the ceiling rather than trusting a proofread,
-   * because a fourth bullet does not look like a layout bug until it is printed.
+   * What the role actually produced, at most five and each about two printed
+   * lines. `resume.data.spec.ts` enforces the ceiling, and the renderer's
+   * one-page check is what actually decides whether another one fits.
+   *
+   * `**…**` marks the figure a skimming reader should land on, and nothing
+   * else — bold a phrase and the page has no emphasis at all. Read it through
+   * `emphasis()`, never by printing the string.
    */
   readonly bullets: readonly string[];
 
-  /** Shown as badges on the site and as a single dense line in the PDF. */
+  /** Shown as badges on the site. The PDF leaves them out: its bullets name the stack. */
   readonly tech: readonly string[];
+}
+
+/** Side work worth a line, with links a reader can type. */
+export interface IProject {
+  readonly name: string;
+
+  /** Without scheme, like the contact links, and for the same reason. */
+  readonly links: readonly string[];
+
+  readonly stack: readonly string[];
+  readonly summary: string;
 }
 
 /** One labelled group of technologies. */
@@ -77,6 +93,10 @@ export interface IEducation {
   readonly degree: string;
   readonly institution: string;
   readonly year: number;
+
+  /** Printed on the degree's line in the PDF; the site's card has no room for them. */
+  readonly honors: readonly string[];
+
   readonly certifications: readonly string[];
 }
 
@@ -85,10 +105,10 @@ export interface IResume {
   readonly role: string;
 
   /**
-   * The opening paragraph. Shares its wording with the hero on purpose — this
-   * is the site's own claim about itself, minus the closing call to action,
-   * which reads as an invitation on a web page and as a non sequitur on a
-   * printed résumé.
+   * The opening paragraph, held to two printed lines. It used to share its
+   * wording with the hero, which put "scalable, high-performance" at the top of
+   * the résumé too; it now says only what the experience below can back, and
+   * the hero's copy is the ROADMAP's business.
    */
   readonly summary: string;
 
@@ -97,104 +117,203 @@ export interface IResume {
   /** Newest first. `resume.data.spec.ts` enforces the order and the continuity. */
   readonly experience: readonly IJob[];
 
+  readonly projects: readonly IProject[];
   readonly skills: readonly ISkillCategory[];
   readonly education: IEducation;
 
   /** One line, shown on the site's contact card only. */
   readonly availability: string;
 
-  /** The roles being sought, listed on the site and under the PDF's summary. */
+  /** The roles being sought, listed on the site's contact card. */
   readonly preferredRoles: readonly string[];
 }
+
+const GITHUB = 'github.com/mille409Fog';
 
 export const RESUME: IResume = {
   name: 'Jacob Miller',
   role: 'Senior Software Engineer',
   summary:
-    'I build scalable, high-performance applications across the full stack. Specializing in ' +
-    "Angular, C#, Java, and modern cloud architectures, I've delivered enterprise solutions for " +
-    'telecommunications, finance, and retail at scale.',
+    'Senior full-stack engineer with 8+ years building payment, transaction and regulated ' +
+    'systems for telecom, fintech, retail and government: Angular and React front ends over ' +
+    'C#/.NET, Java/Spring, Node.js and Python.',
   contact: {
     email: 'millerjacob67@gmail.com',
     phone: '720-636-1085',
     location: 'Denver, CO',
     linkedin: 'linkedin.com/in/jacob-miller-485603146',
-    github: 'github.com/mille409Fog',
+    github: GITHUB,
     site: 'jacobmiller.dev',
   },
   experience: [
     {
       title: 'Senior Software Engineer',
-      company: 'Charter Communications',
+      company: 'Charter Communications (Spectrum)',
+      location: 'Denver, CO',
       start: '2023-06',
-      end: null,
+      end: '2026-10',
       bullets: [
-        'Architected and launched multiple revenue-generating features across the full stack using Angular 22 and GraphQL',
-        'Hardened enterprise data pipelines processing millions of daily transactions with improved reliability',
-        'Led codebase modernization initiative improving developer velocity and maintainability',
+        "Designed and launched new revenue flows on Spectrum's web, iOS and Android apps, reaching " +
+          '**30M+ customers** and generating multi-million-dollar revenue.',
+        'Owned each flow from concept to launch: Angular UX from Figma designs through GraphQL ' +
+          'APIs, pricing and payment exchange, released behind feature flags, A/B tests and canaries.',
+        'Built continuous mutation testing into AI-assisted test generation when Kiro adoption ' +
+          'surged MR volume; built in a week, adopted org-wide in two, **cutting bug reports 40%**.',
+        'Led modernization of **~50 services** on a proprietary framework; hardened data ' +
+          'pipelines, **cutting failures ~20%**.',
+        'Reviewed merge requests, mentored engineers, maintained a proprietary UI component ' +
+          'library, and served on call.',
       ],
-      tech: ['Angular 22', 'GraphQL', 'TypeScript', 'Azure', 'CI/CD'],
+      tech: ['Angular', 'TypeScript', 'GraphQL', 'Feature flags', 'A/B testing'],
     },
     {
       title: 'Software Engineer',
       company: 'Feature 23',
+      location: 'Denver, CO',
       start: '2021-03',
       end: '2023-06',
       bullets: [
-        'Built enterprise Angular/C#/Blazor application handling high-volume transactions for financial clearinghouse',
-        'Developed government tax filing platform using Angular, C#, and SQL on Azure Government cloud',
-        'Established comprehensive testing strategy with XUnit and Selenium',
+        'Built an enterprise web application (Angular, C#, Blazor, T-SQL) handling high-volume ' +
+          'transaction flows for a major financial clearinghouse, covered by xUnit and Selenium.',
+        'Built a government tax filing application on Azure Government, to its security and ' +
+          'regulatory standards.',
+        'Wrote third-party sync code against reverse-engineered vendor schemas, with retries, ' +
+          'backoff and idempotent writes.',
+        'Built mobile features in Swift (an iOS therapy-dog app serving veterans) and Kotlin (Android).',
       ],
-      tech: ['Angular', 'C#', 'Blazor', 'T-SQL', 'Azure'],
+      tech: ['Angular', 'C#', 'Blazor', 'T-SQL', 'Azure Government', 'Swift', 'Kotlin'],
     },
     {
       title: 'Software Engineer',
       company: 'Walmart Labs',
+      location: 'Bentonville, AR',
       start: '2018-08',
       end: '2021-03',
       bullets: [
-        'Engineered Java/Spring microservices processing device telemetry data at retail scale',
-        'Built dynamic financial management application in Angular 8 with fully configurable fields',
-        'Achieved broad test coverage with JUnit, Serenity, and Karma',
+        "Built Java/Spring Boot microservices processing POS terminal telemetry across Walmart's " +
+          'U.S. store network, a parallel Node.js/Meteor.js service suite, and its full React front end.',
+        'Built a financial management app with fully configurable fields (Angular, Java/Spring), ' +
+          'tested with JUnit, Serenity and Karma.',
       ],
-      tech: ['Java', 'Spring Boot', 'Angular 8', 'Microservices'],
+      tech: ['Java', 'Spring Boot', 'Node.js', 'React', 'Angular'],
+    },
+  ],
+  projects: [
+    {
+      name: 'Hotel Operations Demo',
+      links: ['jacobmiller.dev', `${GITHUB}/ethereal-hotel`],
+      stack: ['Angular', 'FastAPI', 'Vercel'],
+      summary:
+        'Full-stack app where every on-screen number comes from a real database row; built with ' +
+        'Claude Code, reviewed by hand.',
+    },
+    {
+      name: 'ATS Screener',
+      links: [`${GITHUB}/ats-screener`],
+      stack: ['Python', 'pytest', 'GitHub Actions'],
+      summary:
+        'CLI checking PDF parsing, keyword coverage and knockout criteria against a job posting; ' +
+        'Claude API rubric; 38 tests.',
     },
   ],
   skills: [
     {
+      name: 'Languages',
+      skills: ['TypeScript', 'JavaScript', 'C#', 'Java', 'Python', 'SQL', 'Swift', 'Kotlin', 'F#'],
+    },
+    {
       name: 'Frontend',
-      skills: ['Angular', 'React', 'TypeScript', 'JavaScript', 'HTML/CSS', 'RxJS', 'NgRx'],
+      skills: [
+        'Angular',
+        'React',
+        'RxJS',
+        'Blazor',
+        'SwiftUI',
+        'Android',
+        'component libraries',
+        'accessibility',
+      ],
     },
     {
-      name: 'Backend',
-      skills: ['C#', 'Java', 'Node.js', 'ASP.NET', 'Spring Boot', 'REST APIs', 'GraphQL'],
+      name: 'Backend & data',
+      skills: [
+        'ASP.NET Core',
+        'EF Core',
+        'Spring Boot',
+        'Node.js',
+        'FastAPI',
+        'Django',
+        'GraphQL',
+        'REST',
+        'SQL Server',
+        'PostgreSQL',
+      ],
     },
     {
-      name: 'Database',
-      skills: ['T-SQL', 'SQL Server', 'PostgreSQL', 'Hibernate', 'Entity Framework'],
-    },
-    {
-      name: 'Cloud & DevOps',
-      skills: ['Azure', 'AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Git', 'Jenkins'],
+      name: 'Delivery',
+      skills: [
+        'GitLab CI/CD',
+        'Azure DevOps',
+        'Docker',
+        'AWS EKS',
+        'Azure',
+        'Splunk',
+        'Azure Monitor',
+        'feature flags',
+        'YAML IaC',
+      ],
     },
     {
       name: 'Testing',
-      skills: ['XUnit', 'JUnit', 'Karma', 'Jasmine', 'Selenium', 'Serenity'],
+      skills: [
+        'Jest',
+        'Karma',
+        'pytest',
+        'xUnit',
+        'JUnit',
+        'Selenium',
+        'Serenity',
+        'mutation testing',
+      ],
     },
     {
-      name: 'Architecture',
-      skills: ['Microservices', 'Event-Driven', 'Domain-Driven Design', 'SOLID', 'Design Patterns'],
+      name: 'AI-assisted',
+      skills: ['Claude Code daily', 'agentic workflows with sub-agents', 'every change tested'],
     },
   ],
   education: {
     degree: 'B.S. Mathematics',
     institution: 'Western Washington University',
     year: 2016,
-    certifications: ['SOA Exam P (2017)', 'SOA Exam FM (2018)'],
+    honors: ['Putnam exam representative', 'Phi Eta Sigma', 'Golden Key'],
+    certifications: [
+      'SOA Exam P — Probability (2017)',
+      'SOA Exam FM — Financial Mathematics (2018)',
+    ],
   },
-  availability: 'Currently employed and open to discussing new opportunities.',
+  availability: 'Open to new roles.',
   preferredRoles: ['Senior Software Engineer', 'Tech Lead', 'Solution Architect'],
 };
+
+/** A run of bullet text, emphasised or not. */
+export interface ISegment {
+  readonly text: string;
+  readonly strong: boolean;
+}
+
+/**
+ * Split a bullet on its `**…**` markers. Throws on an unpaired marker, because
+ * the alternative is a pair of asterisks printed in front of a recruiter.
+ */
+export function emphasis(bullet: string): readonly ISegment[] {
+  const parts = bullet.split('**');
+  if (parts.length % 2 === 0) {
+    throw new RangeError(`Unpaired ** in "${bullet}"`);
+  }
+  return parts
+    .map((text, index) => ({ text, strong: index % 2 === 1 }))
+    .filter((segment) => segment.text.length > 0);
+}
 
 const MONTHS = [
   'January',
