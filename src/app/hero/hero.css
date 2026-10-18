@@ -48,6 +48,23 @@
   flex-wrap: wrap;
 }
 
+.hero-availability {
+  margin: 1.5rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+}
+
+/* Underlined, unlike the contact card's links: this one sits inside a
+   sentence, and colour alone would not mark it as a link. */
+.hero-availability a {
+  color: var(--color-accent-text);
+  text-underline-offset: 0.2em;
+}
+
+.hero-availability a:hover {
+  color: var(--color-text);
+}
+
 /* Buttons used in hero */
 .btn {
   display: inline-block;

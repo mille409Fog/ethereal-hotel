@@ -43,11 +43,12 @@
       </div>
 
       <!-- Availability -->
-      <div class="contact-block">
-        <h3 class="contact-block-title">Availability</h3>
-        <p>{{ availability }}</p>
-        <p class="text-muted">Preferred roles: {{ preferredRoles }}</p>
-      </div>
+      @if (availability; as line) {
+        <div class="contact-block">
+          <h3 class="contact-block-title">Availability</h3>
+          <p>{{ line }}</p>
+        </div>
+      }
 
       <!-- Resume -->
       <div class="contact-block">

@@ -19,7 +19,8 @@ test.describe('landing page', () => {
 
     const hero = page.locator('#home');
     await expect(hero.getByRole('heading', { level: 1 })).toHaveText('Jacob Miller');
-    await expect(hero.getByText('Senior Software Engineer')).toBeVisible();
+    // Exact, because the availability line below names the same role.
+    await expect(hero.getByText('Senior Software Engineer', { exact: true })).toBeVisible();
 
     // The two calls to action, which are the only interactive things in the
     // hero and the first thing a visitor is offered.
@@ -30,6 +31,13 @@ test.describe('landing page', () => {
     await expect(hero.getByRole('link', { name: 'Get In Touch' })).toHaveAttribute(
       'href',
       '#contact'
+    );
+
+    // A direct way to write, on the first screen. Absent once `openTo` is
+    // null, and this assertion should go with it.
+    await expect(hero.getByRole('link', { name: /@/ })).toHaveAttribute(
+      'href',
+      /^mailto:[^@\s]+@[^@\s]+$/
     );
   });
 

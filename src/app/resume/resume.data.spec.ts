@@ -1,4 +1,4 @@
-import { emphasis, formatMonth, formatPeriod, IJob, RESUME } from './resume.data';
+import { availabilityLine, emphasis, formatMonth, formatPeriod, IJob, RESUME } from './resume.data';
 
 /**
  * The résumé's invariants.
@@ -115,9 +115,8 @@ describe('résumé data', () => {
         RESUME.name,
         RESUME.role,
         RESUME.summary,
-        RESUME.availability,
         ...Object.values(RESUME.contact),
-        ...RESUME.preferredRoles,
+        ...(RESUME.openTo ?? []),
         ...RESUME.experience.flatMap((job) => [
           job.title,
           job.company,
@@ -202,6 +201,24 @@ describe('résumé data', () => {
 
     it('throws on an unpaired marker rather than printing it', () => {
       expect(() => emphasis('cut **40% of bugs')).toThrow(RangeError);
+    });
+  });
+
+  describe('availabilityLine', () => {
+    it('lists the roles with a comma series and a final "or"', () => {
+      expect(availabilityLine(['Tech Lead'])).toBe('Open to Tech Lead roles.');
+      expect(availabilityLine(['A', 'B'])).toBe('Open to A or B roles.');
+      expect(availabilityLine(['A', 'B', 'C'])).toBe('Open to A, B or C roles.');
+    });
+
+    it('throws on an empty list, because not looking is null', () => {
+      expect(() => availabilityLine([])).toThrow(RangeError);
+    });
+
+    it('formats the real list without throwing', () => {
+      if (RESUME.openTo !== null) {
+        expect(availabilityLine(RESUME.openTo)).toMatch(/^Open to .+ roles\.$/);
+      }
     });
   });
 

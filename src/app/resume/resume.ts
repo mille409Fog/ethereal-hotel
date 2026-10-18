@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ANALYTICS_EVENTS, AnalyticsService } from '../services/analytics.service';
-import { RESUME } from './resume.data';
+import { availabilityLine, RESUME } from './resume.data';
 
 @Component({
   selector: 'app-resume',
@@ -18,8 +18,8 @@ export class Resume {
    */
   public readonly contact = RESUME.contact;
   public readonly education = RESUME.education;
-  public readonly availability = RESUME.availability;
-  public readonly preferredRoles = RESUME.preferredRoles.join(', ');
+  /** `null` when not looking, and the block goes with it; see `openTo`. */
+  public readonly availability = RESUME.openTo === null ? null : availabilityLine(RESUME.openTo);
   public readonly certifications = RESUME.education.certifications.join(', ');
 
   /**

@@ -121,11 +121,14 @@ export interface IResume {
   readonly skills: readonly ISkillCategory[];
   readonly education: IEducation;
 
-  /** One line, shown on the site's contact card only. */
-  readonly availability: string;
-
-  /** The roles being sought, listed on the site's contact card. */
-  readonly preferredRoles: readonly string[];
+  /**
+   * The roles being sought, or `null` when not looking. This is the off switch:
+   * `availabilityLine` turns it into the hero's "Open to … roles" line and the
+   * contact card's Availability block, and both render under an `@if`, so one
+   * `null` here removes the claim everywhere rather than leaving it to go stale
+   * on one of them. The PDF never prints it — a résumé outlives the search.
+   */
+  readonly openTo: readonly string[] | null;
 }
 
 const GITHUB = 'github.com/mille409Fog';
@@ -291,9 +294,21 @@ export const RESUME: IResume = {
       'SOA Exam FM — Financial Mathematics (2018)',
     ],
   },
-  availability: 'Open to new roles.',
-  preferredRoles: ['Senior Software Engineer', 'Tech Lead', 'Solution Architect'],
+  openTo: ['Senior Software Engineer', 'Tech Lead', 'Solution Architect'],
 };
+
+/**
+ * `['A', 'B', 'C']` → `Open to A, B or C roles.` Throws on an empty list, which
+ * would otherwise print "Open to  roles." — not looking is `null`, not `[]`.
+ */
+export function availabilityLine(roles: readonly string[]): string {
+  if (roles.length === 0) {
+    throw new RangeError('openTo is empty; set it to null to stop looking');
+  }
+  const head = roles.slice(0, -1);
+  const last = roles[roles.length - 1];
+  return `Open to ${head.length > 0 ? `${head.join(', ')} or ${last}` : last} roles.`;
+}
 
 /** A run of bullet text, emphasised or not. */
 export interface ISegment {

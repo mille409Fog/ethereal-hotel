@@ -49,7 +49,7 @@ passes the billing guard first (ADR 0004 in `triage/docs/decisions/`).
 
 Effort: weeks, in stages.
 
-Items 2–4 came from comparing the home page with the portfolios engineers themselves cite
+Items 2–3 came from comparing the home page with the portfolios engineers themselves cite
 (Brittany Chiang, Lee Robinson, Emil Kowalski, Rauno Freiberg, Sam Rose, Julia Evans, Josh
 Comeau, Bruno Simon). What they share: one specific claim on the first screen, evidence over
 assertion, writing as the proof of judgment, the most distinctive work first, restraint, and one
@@ -90,20 +90,6 @@ canary for a shader regression. The case studies are writing too, and sit one cl
 - No post explains what a tool _is_ — same rule as the docs.
 
 Effort: days, nearly all of it writing.
-
-## 4. One human line, and availability
-
-Every site above has a sentence that is about the person, and a way to reach them without
-hunting.
-
-**DoD:**
-
-- One sentence on the home page that is about the owner rather than the work.
-- An availability line ("open to … roles") with a direct `mailto:` from `resume.data.ts`, visible
-  without scrolling past the experience section.
-- The line is cheap to remove: when it stops being true it goes, rather than going stale.
-
-Effort: minutes of code; the sentence is the owner's.
 
 ## Deliberately not doing
 
