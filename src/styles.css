@@ -31,20 +31,6 @@
   --font-serif: 'Cinzel', 'Times New Roman', serif;
 }
 
-/* ----- Scroll Reveal Animations ----- */
-.scroll-reveal {
-  opacity: 0;
-  transform: translateY(30px);
-  transition:
-    opacity 0.8s ease,
-    transform 0.8s ease;
-}
-
-.scroll-reveal.revealed {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 /* Reset & Base */
 *,
 *::before,
@@ -163,155 +149,6 @@ strong {
 }
 
 /* ===================================================
-   GOTHIC ORNAMENTAL DIVIDERS
-   =================================================== */
-
-.gothic-divider {
-  position: relative;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--color-border) 20%,
-    var(--color-border) 80%,
-    transparent
-  );
-  margin: 4rem auto;
-  max-width: 600px;
-}
-
-.gothic-divider::before,
-.gothic-divider::after {
-  content: '◆';
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  /* Ornament, not text: generated content nobody reads, so it keeps the deep
-     accent rather than the lightened readable tint. */
-  color: var(--color-blood);
-  font-size: 0.75rem;
-  text-shadow: 0 0 8px rgba(157, 34, 53, 0.6);
-  animation: pulse-glow 3s ease-in-out infinite;
-}
-
-.gothic-divider::before {
-  left: -1rem;
-}
-
-.gothic-divider::after {
-  right: -1rem;
-}
-
-.gothic-divider-center {
-  position: relative;
-  text-align: center;
-  margin: 4rem 0;
-}
-
-.gothic-divider-center::before,
-.gothic-divider-center::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 40%;
-  height: 1px;
-  background: linear-gradient(to right, transparent, var(--color-border));
-}
-
-.gothic-divider-center::before {
-  left: 0;
-}
-
-.gothic-divider-center::after {
-  right: 0;
-  background: linear-gradient(to left, transparent, var(--color-border));
-}
-
-.gothic-divider-center span {
-  display: inline-block;
-  padding: 0 1.5rem;
-  color: var(--color-blood);
-  font-size: 1.5rem;
-  text-shadow: 0 0 12px rgba(157, 34, 53, 0.5);
-  animation: pulse-glow 3s ease-in-out infinite;
-}
-
-/* ===================================================
-   PULSING HEARTBEAT ANIMATIONS
-   =================================================== */
-
-@keyframes pulse-glow {
-  0%,
-  100% {
-    text-shadow:
-      0 0 8px rgba(157, 34, 53, 0.4),
-      0 0 16px rgba(157, 34, 53, 0.2);
-    filter: brightness(1);
-  }
-  50% {
-    text-shadow:
-      0 0 12px rgba(157, 34, 53, 0.6),
-      0 0 24px rgba(157, 34, 53, 0.3);
-    filter: brightness(1.1);
-  }
-}
-
-@keyframes heartbeat {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow:
-      0 4px 20px rgba(157, 34, 53, 0.4),
-      0 0 20px rgba(157, 34, 53, 0.2);
-  }
-  10% {
-    transform: scale(1.05);
-    box-shadow:
-      0 6px 25px rgba(157, 34, 53, 0.5),
-      0 0 25px rgba(157, 34, 53, 0.3);
-  }
-  20% {
-    transform: scale(1);
-    box-shadow:
-      0 4px 20px rgba(157, 34, 53, 0.4),
-      0 0 20px rgba(157, 34, 53, 0.2);
-  }
-  30% {
-    transform: scale(1.05);
-    box-shadow:
-      0 6px 25px rgba(157, 34, 53, 0.5),
-      0 0 25px rgba(157, 34, 53, 0.3);
-  }
-  40%,
-  100% {
-    transform: scale(1);
-    box-shadow:
-      0 4px 20px rgba(157, 34, 53, 0.4),
-      0 0 20px rgba(157, 34, 53, 0.2);
-  }
-}
-
-/* Apply heartbeat to primary CTAs */
-.btn-primary.pulse {
-  animation: heartbeat 3s ease-in-out infinite;
-}
-
-/* Subtle continuous pulse for less prominent elements */
-@keyframes pulse-subtle {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.85;
-  }
-}
-
-.pulse-subtle {
-  animation: pulse-subtle 2s ease-in-out infinite;
-}
-
-/* ===================================================
    ENHANCED FOCUS STATES FOR ACCESSIBILITY
    =================================================== */
 
@@ -418,17 +255,18 @@ section[id]:focus {
    =================================================== */
 
 /*
- * This site leans on motion: a parallax hero, a heartbeat on the primary CTA,
- * pulsing metric cards, a glow on the ornaments, and a fade-and-rise on every
- * section as it scrolls into view. For a user with vestibular sensitivity that
- * is not decoration, it is a reason to close the tab.
+ * Little moves here any more. The portfolio's decorative motion (a parallax
+ * hero, a heartbeat on the primary CTA, pulsing metric cards, glowing
+ * ornaments, a fade-and-rise on every section) was removed rather than
+ * tamed. What is left: hover and focus transitions, the smooth scroll to
+ * an in-page anchor, and the few loops that show state. Those are the "live"
+ * dot on the dashboard and booking badges, and the `/aesthetic` medallion
+ * turning until a colour is chosen. `check:docs` requires each loop to say
+ * what it shows.
  *
- * Everything animated is switched off here rather than merely slowed. The
- * scroll-reveal transition needs the extra rule: its resting state is
- * `opacity: 0`, so killing the transition alone would leave content
- * permanently invisible rather than immediately visible. The directive also
- * checks the same media query and skips the observer entirely — this block is
- * the belt to that directive's braces, and covers the pre-hydration paint.
+ * Under reduced motion all of it stops rather than slowing down. One
+ * collapsed frame is still enough for a `transition` to land in its end state,
+ * so nothing is left halfway.
  */
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -442,10 +280,5 @@ section[id]:focus {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-
-  .scroll-reveal {
-    opacity: 1;
-    transform: none;
   }
 }

@@ -1,7 +1,6 @@
 <!-- ===== A: HOME ===== -->
 <section id="home" class="section section-home" tabindex="-1">
-  <div class="hero-background" [style.transform]="'translateY(' + parallaxOffset() + 'px)'"></div>
-  <div class="section-inner hero-content">
+  <div class="section-inner">
     <h1 class="hero-title">Jacob Miller</h1>
     <p class="hero-subtitle">Senior Software Engineer</p>
     <p class="hero-bio">
@@ -13,7 +12,7 @@
          performing an action, so `<a href="#…">` is the honest element. It also
          gets focus management, middle click and copy-link for free. -->
     <div class="hero-actions">
-      <a class="btn btn-primary pulse" href="#projects">View My Work</a>
+      <a class="btn btn-primary" href="#projects">View My Work</a>
       <!-- A route, not an anchor, so this one is a real navigation. Same plain
            `href` as the links to /dashboard and /booking rather than
            routerLink: the site treats its routes as pages, and a hero that

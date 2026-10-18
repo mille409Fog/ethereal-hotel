@@ -45,6 +45,15 @@
 }
 
 /* ----- Sections ----- */
+/* A hairline between the page's sections, where a glowing ornament used to
+   sit. Experience and Contact share a background, so without it the one runs
+   into the other. The hosts are custom elements and inline by default, so a
+   border on them needs `display: block`. */
+main > * + * {
+  display: block;
+  border-top: 1px solid var(--color-border);
+}
+
 .section {
   padding: 5rem 2rem;
   background: var(--color-bg);

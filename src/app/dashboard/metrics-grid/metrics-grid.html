@@ -6,7 +6,7 @@
   <h2 id="metrics-heading" class="visually-hidden">Current hotel metrics</h2>
 
   <div class="metrics-grid">
-    <div class="metric-card pulse-subtle">
+    <div class="metric-card">
       <div class="metric-icon" aria-hidden="true">🛏️</div>
       <div class="metric-value">{{ metrics().occupancy | number: '1.1-1' }}%</div>
       <div class="metric-label">Occupancy</div>
@@ -15,21 +15,21 @@
       </div>
     </div>
 
-    <div class="metric-card pulse-subtle">
+    <div class="metric-card">
       <div class="metric-icon" aria-hidden="true">💵</div>
       <div class="metric-value">{{ metrics().adr | currency: 'USD' : 'symbol' : '1.0-0' }}</div>
       <div class="metric-label">ADR</div>
       <div class="metric-detail">Average daily rate per occupied room</div>
     </div>
 
-    <div class="metric-card pulse-subtle">
+    <div class="metric-card">
       <div class="metric-icon" aria-hidden="true">📈</div>
       <div class="metric-value">{{ metrics().revpar | currency: 'USD' : 'symbol' : '1.0-0' }}</div>
       <div class="metric-label">RevPAR</div>
       <div class="metric-detail">Revenue per available room</div>
     </div>
 
-    <div class="metric-card pulse-subtle">
+    <div class="metric-card">
       <div class="metric-icon" aria-hidden="true">🧾</div>
       <div class="metric-value">
         {{ metrics().revenueToday | currency: 'USD' : 'symbol' : '1.0-0' }}
@@ -38,7 +38,7 @@
       <div class="metric-detail">{{ metrics().guestsInHouse | number }} guests in house</div>
     </div>
 
-    <div class="metric-card pulse-subtle">
+    <div class="metric-card">
       <div class="metric-icon" aria-hidden="true">🛎️</div>
       <div class="metric-value">
         {{ metrics().arrivalsToday }} / {{ metrics().departuresToday }}
@@ -59,7 +59,7 @@
       </div>
     </div>
 
-    <div class="metric-card pulse-subtle">
+    <div class="metric-card">
       <div class="metric-icon" aria-hidden="true">🗝️</div>
       <div class="metric-value">{{ metrics().availableRooms }}</div>
       <div class="metric-label">Rooms Available</div>

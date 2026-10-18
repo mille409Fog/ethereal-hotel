@@ -8,7 +8,7 @@ import { CASE_STUDIES, ICaseStudy } from './work.data';
  *
  * A route rather than a homepage section because these are the long-form
  * artefact on the site: 300 words each want a page with its own title and its
- * own shareable URL, not a band between two scroll-reveal sections. It follows
+ * own shareable URL, not a band between two homepage sections. It follows
  * `/dashboard` and `/booking` in owning a `main` landmark, since it is the only
  * thing the route renders.
  *

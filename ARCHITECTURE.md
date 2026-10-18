@@ -317,7 +317,7 @@ scans clean empty can still fail the moment it fails.
 
 Alongside the scan, Playwright checks what axe cannot: that the first Tab reaches a skip link,
 that the nav is traversable and moves focus to the section it targets, and that under
-`prefers-reduced-motion` the animations stop and no content stays stranded behind a fade-in.
+`prefers-reduced-motion` the animations stop.
 
 Two decisions went against the obvious version:
 
@@ -372,8 +372,8 @@ ethereal-hotel/
 │   │   │   ├── booking-api.service.ts       # bookings + reference data
 │   │   │   ├── analytics.service.ts         # see docs/analytics.md
 │   │   │   └── offline-dashboard.fixture.json
-│   │   ├── hero/ work/ projects/ experience/ skills/ resume/  # portfolio sections
-│   │   ├── navigation/ footer/ directives/
+│   │   ├── hero/ work/ projects/ experience/ resume/  # portfolio sections
+│   │   ├── navigation/ footer/
 │   │   └── app.routes.ts          # lazy routes, titles from src/route-meta.json
 │   ├── environments/              # environment.ts, .prod.ts, .model.ts
 │   ├── route-meta.json            # per-route social card copy

@@ -116,11 +116,7 @@ check('the résumé still has a single source', () => {
   }
 
   // Every section that shows résumé content must read it, not restate it.
-  for (const consumer of [
-    'src/app/experience/experience.ts',
-    'src/app/skills/skills.ts',
-    'src/app/resume/resume.ts',
-  ]) {
+  for (const consumer of ['src/app/experience/experience.ts', 'src/app/resume/resume.ts']) {
     if (!exists(consumer)) {
       problems.push(`${consumer} is gone; CLAUDE.md says it reads the résumé structure.`);
     } else if (!/from '(\.\.\/resume|\.)\/resume\.data'/.test(read(consumer))) {
@@ -2157,6 +2153,36 @@ check('the images the docs embed exist, and the capture stays inside its budget'
     }
   }
 
+  return problems;
+});
+
+// The portfolio was told it was "too much", and most of what earned that was
+// loops: a heartbeat on a button, glowing ornaments, pulsing metric cards. Each
+// was one `animation: … infinite` line, and nothing stops the next one arriving
+// the same way. So a loop in `src/app/` or `styles.css` has to be introduced by
+// a comment on the line directly above, saying what state it shows. A loop with
+// nothing to say is decoration, and has no business being there.
+check('every looping animation says what it shows', () => {
+  const sheets = [
+    'src/styles.css',
+    ...readdirSync(path.join(repoRoot, 'src/app'), { recursive: true })
+      .map((file) => `src/app/${String(file).replace(/\\/g, '/')}`)
+      .filter((file) => file.endsWith('.css')),
+  ];
+
+  const problems = [];
+  for (const sheet of sheets) {
+    const lines = read(sheet).split('\n');
+    lines.forEach((line, index) => {
+      if (!/^\s*animation(-iteration-count)?\s*:[^;]*\binfinite\b/.test(line)) return;
+      if (!/\*\/\s*$/.test(lines[index - 1] ?? '')) {
+        problems.push(
+          `${sheet}:${index + 1} loops an animation with no comment directly above it. ` +
+            `Say what state it shows, or remove it: CLAUDE.md allows no decorative loops.`
+        );
+      }
+    });
+  }
   return problems;
 });
 

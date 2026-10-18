@@ -86,27 +86,6 @@
   color: #d88894;
 }
 
-/* Pulse animation for metric cards */
-@keyframes pulse-metric {
-  0%,
-  100% {
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.3),
-      0 8px 24px rgba(0, 0, 0, 0.2),
-      0 0 40px rgba(157, 34, 53, 0.05);
-  }
-  50% {
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.3),
-      0 8px 24px rgba(0, 0, 0, 0.2),
-      0 0 50px rgba(157, 34, 53, 0.12);
-  }
-}
-
-.metric-card.pulse-subtle {
-  animation: pulse-metric 3s ease-in-out infinite;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
   .metrics-grid {

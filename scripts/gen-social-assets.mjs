@@ -97,7 +97,7 @@ const OG_HTML = `<!doctype html>
         position: relative;
         overflow: hidden;
       }
-      /* The same ornament as .gothic-divider, drawn large and bled off the
+      /* The ◆ the page's dividers used to carry, drawn large and bled off the
          right edge so the card has the page's texture without competing with
          the wordmark for attention. */
       .watermark {

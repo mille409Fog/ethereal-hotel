@@ -99,8 +99,7 @@
             />
           </defs>
 
-          <!-- The rim: a dotted ring and eight stars, turning once in four
-               minutes. Decoration only. -->
+          <!-- The rim: a dotted ring and eight stars. Decoration only. -->
           <g class="rete" aria-hidden="true">
             <circle class="rete-ring" [attr.r]="radii.rete" />
             @for (star of stars; track star) {
@@ -137,8 +136,7 @@
             }
           </g>
 
-          <!-- The filigree: two fine rings with lozenges and beads between,
-               turning the other way from the rim, and more slowly. -->
+          <!-- The filigree: two fine rings with lozenges and beads between. -->
           <g class="filigree" aria-hidden="true">
             <circle class="filigree-rule" [attr.r]="radii.filigreeInner" />
             <circle class="filigree-rule" [attr.r]="radii.filigreeOuter" />

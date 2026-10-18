@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 
 /**
  * A card in the projects grid.
@@ -29,7 +28,6 @@ interface IProject {
  */
 @Component({
   selector: 'app-projects',
-  imports: [ScrollRevealDirective],
   templateUrl: './projects.html',
   styleUrl: './projects.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -50,7 +50,7 @@ needs a browser once: `npx playwright install --only-shell chromium`.
 
 ## The résumé
 
-The site's experience, skills and contact sections and the downloadable PDF are one structure:
+The site's experience and contact sections and the downloadable PDF are one structure:
 `src/app/resume/resume.data.ts`. Edit that, then:
 
 ```bash

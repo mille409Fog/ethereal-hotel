@@ -53,6 +53,9 @@
   height: 0.5rem;
   border-radius: 50%;
   background: currentColor;
+  /* Carries state: the template renders this dot only in the two live states,
+     so a beating dot means numbers are arriving from the API right now. The
+     simulated and connecting badges have no dot. */
   animation: data-source-pulse 2s ease-in-out infinite;
 }
 

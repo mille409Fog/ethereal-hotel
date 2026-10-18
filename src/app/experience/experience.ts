@@ -1,10 +1,8 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 import { formatPeriod, RESUME } from '../resume/resume.data';
 
 @Component({
   selector: 'app-experience',
-  imports: [ScrollRevealDirective],
   templateUrl: './experience.html',
   styleUrl: './experience.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

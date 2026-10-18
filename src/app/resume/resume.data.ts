@@ -9,7 +9,7 @@
  * A site whose entire argument is that its numbers are real cannot ship a
  * résumé that contradicts itself.
  *
- * So this is the source. The three components read from it, and
+ * So this is the source. The experience and contact sections read from it, and
  * `scripts/render-resume.mjs` renders it to `public/jacob-miller-resume.pdf`
  * through headless Chromium. Nothing writes the PDF by hand any more, and CI
  * fails when the committed one stops matching this file.

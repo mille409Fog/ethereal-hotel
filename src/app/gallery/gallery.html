@@ -17,13 +17,12 @@
     <section class="orbs-section" aria-labelledby="orbs-heading">
       <h2 id="orbs-heading" class="visually-hidden">Choose a colour</h2>
       <ul class="orbs">
-        @for (orb of offered(); track orb.id; let i = $index) {
+        @for (orb of offered(); track orb.id) {
           <li>
             <button
               type="button"
               class="orb"
               [style.--orb]="orb.hex"
-              [style.--i]="i"
               [attr.aria-pressed]="colour()?.id === orb.id"
               (click)="choose(orb)"
             >

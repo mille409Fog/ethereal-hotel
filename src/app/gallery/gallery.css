@@ -78,10 +78,9 @@
 }
 
 /* The sphere is a radial gradient lit from the upper left, and the glow is a
-   separate layer behind it. The glow breathes through `opacity` and
-   `transform` only, which the compositor animates without repainting; the
-   obvious version, an animated `box-shadow`, repaints five orbs on every
-   frame. The global reduced-motion block in styles.css stops the animation. */
+   separate layer behind it. The glow used to breathe; it is still now,
+   because a loop that tells the visitor nothing is decoration, and the site
+   no longer keeps any. */
 .orb-sphere {
   position: relative;
   width: 5.5rem;
@@ -109,21 +108,8 @@
     color-mix(in srgb, var(--orb) 55%, transparent) 0%,
     transparent 65%
   );
-  animation: orb-breathe 5s ease-in-out infinite;
-  /* Staggered so five orbs do not pulse in unison like a loading spinner. */
-  animation-delay: calc(var(--i, 0) * -1.1s);
-}
-
-@keyframes orb-breathe {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(0.9);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
+  /* The middle of the old breath, so the orbs sit where they used to on average. */
+  opacity: 0.8;
 }
 
 .orb:hover .orb-sphere,

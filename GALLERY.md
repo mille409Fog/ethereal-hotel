@@ -97,9 +97,9 @@ second generation of lossy encoding.
   the picture stays below the fold. `preventScroll` on the focus call, followed by
   `scrollIntoView`, fixes that. The global `scroll-behavior` makes the scroll smooth, and the
   reduced-motion block makes it instant.
-- **The glow breathes on a `::before` layer through `opacity` and `transform`**, not by animating
-  `box-shadow`, which would repaint five orbs on every frame. That layer sits at `z-index: -1`, so
-  `.orb` needs `isolation: isolate`; without it the glow disappears behind the page background.
+- **The glow is a `::before` layer at `z-index: -1`**, so `.orb` needs `isolation: isolate`;
+  without it the glow disappears behind the page background. It used to breathe and is now
+  still: the site keeps no loop that does not show state, and `check:docs` enforces it.
 - **The button styles are the gallery's own.** `.btn` is scoped to each component on this site,
   not global, so reusing the class name renders unstyled.
 - **No analytics event is sent when an orb is chosen.** Adding one means adding it to

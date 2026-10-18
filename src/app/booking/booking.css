@@ -75,6 +75,9 @@
   height: 0.5rem;
   border-radius: 50%;
   background: currentColor;
+  /* Carries state: the template renders this dot only once the API answers,
+     so a beating dot means the form is reading and writing live. The
+     unreachable and connecting badges have no dot. */
   animation: data-source-pulse 2s ease-in-out infinite;
 }
 

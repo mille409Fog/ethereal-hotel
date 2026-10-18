@@ -9,7 +9,7 @@
 import { expect, test } from '@playwright/test';
 
 /** The nav, in the order it is laid out. */
-const NAV_LINKS = ['Home', 'Projects', 'Experience', 'Skills', 'Contact'];
+const NAV_LINKS = ['Home', 'Projects', 'Experience', 'Contact'];
 
 test.describe('landing page', () => {
   test('renders the hero', async ({ page }) => {

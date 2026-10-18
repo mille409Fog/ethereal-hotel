@@ -116,18 +116,12 @@
 
 /* SVG children rotate about the view box's origin, which is the wheel's
    centre; said explicitly because the default differs between engines. */
-.rete,
-.filigree,
 .marker {
   transform-box: view-box;
   transform-origin: 0 0;
 }
 
 /* ----- Ornament ----- */
-
-.rete {
-  animation: wheel-turn 240s linear infinite;
-}
 
 .rete-ring {
   fill: none;
@@ -183,10 +177,6 @@
   font-size: 11px;
   letter-spacing: 0.2em;
   fill: #dcc48e;
-}
-
-.filigree {
-  animation: wheel-turn 360s linear infinite reverse;
 }
 
 .lozenge {
@@ -333,16 +323,19 @@
   border-radius: 50%;
 }
 
-/* Before a choice: the whole continuum, dimmed and turning slowly, a colour
-   waiting to be chosen. It fades out once one is. */
+/* Before a choice: the whole continuum, dimmed. It fades out once a colour is
+   chosen. */
 .medallion-void {
   filter: saturate(0.75) brightness(0.55);
+  /* Carries state: the turn says "nothing chosen yet" and stops the moment
+     something is. It is the only motion on the wheel. */
   animation: wheel-turn 60s linear infinite;
   transition: opacity 0.8s ease;
 }
 
 .chosen .medallion-void {
   opacity: 0;
+  animation-play-state: paused;
 }
 
 .medallion-colour {

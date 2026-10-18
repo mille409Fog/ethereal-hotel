@@ -128,14 +128,11 @@ async function waitForSettledAubade(page: Page): Promise<void> {
 test.describe('accessibility', () => {
   for (const route of ROUTES) {
     test(`${route.name} has no critical or serious axe violations`, async ({ page }, testInfo) => {
-      // Scanned under reduced motion, which is what makes this scan repeatable
-      // rather than a coin flip. axe skips elements it considers invisible, and
-      // the scroll-reveal directive parks every section below the fold at
-      // `opacity: 0` until an IntersectionObserver fires — so whether a given
-      // section got audited depended on observer timing, and an early run of
-      // this suite reported 30 contrast failures where a later one reported 2.
-      // Reduced motion renders the whole page immediately, so every section is
-      // audited on every run.
+      // Scanned under reduced motion, so no transition is caught mid-flight.
+      // axe skips elements it considers invisible: when sections faded in on
+      // scroll, an early run of this suite reported 30 contrast failures where
+      // a later one reported 2. The fade is gone, but a scan that depends on
+      // timing is the thing being guarded against.
       await page.emulateMedia({ reducedMotion: 'reduce' });
 
       if (route.path === '/booking') {
@@ -301,7 +298,7 @@ test.describe('keyboard operability', () => {
   test('every nav link is reachable by Tab in visual order', async ({ page }) => {
     await page.goto('/');
 
-    const expected = ['Home', 'Projects', 'Experience', 'Skills', 'Contact'];
+    const expected = ['Home', 'Projects', 'Experience', 'Contact'];
     const reached: string[] = [];
 
     // Walk forward from the skip link until the nav has been traversed,
@@ -334,29 +331,24 @@ test.describe('keyboard operability', () => {
 });
 
 /**
- * Note the explicit `emulateMedia` calls rather than
+ * Note the explicit `emulateMedia` call rather than
  * `test.use({ reducedMotion: 'reduce' })`. The fixture form silently failed to
  * reach the page here — `matchMedia('(prefers-reduced-motion: reduce)')` still
- * reported `false` inside the browser, so both tests below "passed the app" for
- * the wrong reason until that was checked. `emulateMedia` also runs before
- * `goto`, which matters: the directive reads the preference once, in `ngOnInit`.
+ * reported `false` inside the browser, so the test below "passed the app" for
+ * the wrong reason until that was checked.
+ *
+ * `/booking` with the API stubbed up, not `/`. The landing page no longer
+ * loops anything, so it would pass whether or not the reduced-motion block
+ * worked. The booking badge's live dot is a loop that the block has to stop,
+ * and the stub is what puts the badge in its live state.
  */
 test.describe('reduced motion', () => {
-  test('content is revealed without the scroll animation', async ({ page }) => {
+  test('the looping animations are stopped', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/');
-
-    // The scroll-reveal directive starts elements at opacity 0 and fades them
-    // in. Under reduced motion the content must be present from the start
-    // rather than waiting on an animation that will never run.
-    const projects = page.locator('#projects');
-    await expect(projects).toBeVisible();
-    await expect(projects).toHaveCSS('opacity', '1');
-  });
-
-  test('the looping heartbeat and pulse animations are stopped', async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/');
+    await stubBookingApi(page);
+    await page.goto('/booking');
+    await waitForSettledBooking(page);
+    await expect(page.locator('.data-source-dot')).toBeAttached();
 
     // Polled, not sampled once. The reduced-motion block does not delete these
     // animations — it collapses them to `animation-duration: 0.01ms` with a

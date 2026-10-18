@@ -1,11 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { ScrollRevealDirective } from '../directives/scroll-reveal.directive';
 import { ANALYTICS_EVENTS, AnalyticsService } from '../services/analytics.service';
 import { RESUME } from './resume.data';
 
 @Component({
   selector: 'app-resume',
-  imports: [ScrollRevealDirective],
   templateUrl: './resume.html',
   styleUrl: './resume.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
