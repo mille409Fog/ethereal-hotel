@@ -279,6 +279,9 @@ test.describe('accessibility', () => {
 test.describe('keyboard operability', () => {
   test('the first Tab reaches a skip link that jumps to main content', async ({ page }) => {
     await page.goto('/');
+    // `goto` resolves on `load`, which can beat Angular's first render on a slow
+    // runner; a Tab pressed into the empty page then focuses nothing at all.
+    await expect(page.locator('a[href="#main-content"]')).toBeAttached();
 
     await page.keyboard.press('Tab');
     const skipLink = page.locator(':focus');
@@ -299,6 +302,8 @@ test.describe('keyboard operability', () => {
 
   test('every nav link is reachable by Tab in visual order', async ({ page }) => {
     await page.goto('/');
+    // Same race as above: wait for the first render before the first Tab.
+    await expect(page.locator('a[href="#main-content"]')).toBeAttached();
 
     const expected = ['Home', 'Projects', 'Experience', 'Contact'];
     const reached: string[] = [];

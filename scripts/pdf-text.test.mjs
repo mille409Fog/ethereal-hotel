@@ -26,7 +26,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import path from 'node:path';
-import { extractText, pageSizes, parseToUnicode } from './pdf-text.mjs';
+import { comparable, extractText, pageSizes, parseToUnicode } from './pdf-text.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -255,6 +255,25 @@ describe('extractText', () => {
   });
 });
 
+describe('comparable', () => {
+  // Chromium draws no glyph for the space a line wraps at, so the same words
+  // wrapped one word apart extract with and without it. Seen on CI: Linux fit
+  // "generating" on a line Windows had wrapped after "and".
+  test('ignores where a line wrapped', () => {
+    assert.equal(
+      comparable('reaching 30M+ customers andgenerating multi-million-dollar revenue.'),
+      comparable('reaching 30M+ customers and generatingmulti-million-dollar revenue.')
+    );
+  });
+
+  test('still reports a difference when a word changes', () => {
+    assert.notEqual(
+      comparable('reaching 30M+ customers and generating revenue.'),
+      comparable('reaching 20M+ customers and generating revenue.')
+    );
+  });
+});
+
 /* ---------------------------------------------------------------------------
  * pageSizes
  * ------------------------------------------------------------------------- */
@@ -310,7 +329,10 @@ describe('the committed résumé', () => {
       'B.S. Mathematics',
       'millerjacob67@gmail.com',
     ]) {
-      assert.ok(text.includes(expected), `the extracted text is missing ${JSON.stringify(expected)}`);
+      assert.ok(
+        text.includes(expected),
+        `the extracted text is missing ${JSON.stringify(expected)}`
+      );
     }
   });
 

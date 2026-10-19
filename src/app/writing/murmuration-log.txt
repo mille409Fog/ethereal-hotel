@@ -1,0 +1,4 @@
+COMMIT NUMBER, COMMIT HASH, : NOTE
+
+1, f821ede : initial project cell, deliberately filled with placeholder
+nonsense.

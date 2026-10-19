@@ -48,7 +48,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { RESUME, emphasis, formatPeriod } from '../src/app/resume/resume.data.ts';
-import { extractText, pageSizes } from './pdf-text.mjs';
+import { comparable, extractText, pageSizes } from './pdf-text.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fontDir = path.join(repoRoot, 'scripts', 'resume-fonts');
@@ -417,21 +417,41 @@ function describeDrift(committedText, renderedText, committedPages, renderedPage
     );
   }
 
+  // Found on the whitespace-free form the gate compares, then mapped back onto
+  // the readable text so the excerpt still has its spaces.
+  const committedKey = comparable(committedText);
+  const renderedKey = comparable(renderedText);
   let at = 0;
   while (
-    at < committedText.length &&
-    at < renderedText.length &&
-    committedText[at] === renderedText[at]
+    at < committedKey.length &&
+    at < renderedKey.length &&
+    committedKey[at] === renderedKey[at]
   ) {
     at += 1;
   }
 
+  const readableIndex = (text) => {
+    let seen = 0;
+    for (let i = 0; i < text.length; i += 1) {
+      if (!/\s/.test(text[i])) {
+        if (seen === at) {
+          return i;
+        }
+        seen += 1;
+      }
+    }
+    return text.length;
+  };
+
   // A window either side of the divergence: enough left-hand context to locate
   // the sentence, enough right-hand text to see what replaced what.
-  const window = (text) => text.slice(Math.max(0, at - 40), at + 60).replace(/\s+/g, ' ');
+  const window = (text) => {
+    const from = readableIndex(text);
+    return text.slice(Math.max(0, from - 40), from + 60).replace(/\s+/g, ' ');
+  };
 
   return (
-    `They first differ ${at} characters in:\n` +
+    `They first differ ${at} characters in (not counting spaces):\n` +
     `  committed: …${window(committedText)}…\n` +
     `  rendered:  …${window(renderedText)}…`
   );
@@ -462,7 +482,7 @@ async function main() {
   const committedPages = pageSizes(committed).join(', ');
   const renderedPages = pageSizes(rendered).join(', ');
 
-  if (committedText === renderedText && committedPages === renderedPages) {
+  if (comparable(committedText) === comparable(renderedText) && committedPages === renderedPages) {
     process.stdout.write(`${relative(outputPath)} is up to date.\n`);
     return;
   }

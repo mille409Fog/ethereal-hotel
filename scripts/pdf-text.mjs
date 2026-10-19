@@ -33,7 +33,9 @@
  * the author's Windows box. The change of faces left it unchanged here,
  * character for character (2,080 of them), and the CI job that runs
  * `resume:check` on Linux is what confirms it there. So that is what the gate
- * compares.
+ * compares — less its whitespace, because "identical" held only until a bullet
+ * landed within a hair of the margin and wrapped one word later on Linux, which
+ * moves a space the text layer never draws. `comparable` has the details.
  *
  * ## The one rule this file obeys
  *
@@ -278,6 +280,26 @@ export function extractText(pdf) {
   }
 
   return text;
+}
+
+/**
+ * What the staleness gate actually compares: the text with no whitespace at all.
+ *
+ * Collapsing whitespace is not enough, because Chromium draws no glyph for the
+ * space a line wraps at — it hangs past the margin — so `extractText` reads
+ * "and generating" on one line as `and generating` and wrapped after "and" as
+ * `andgenerating`. Where a line wraps depends on glyph advances, which differ
+ * between platforms, so a line within a fraction of a point of full wrapped one
+ * word later on the Linux CI image than on Windows and failed a PDF that was up
+ * to date. Dropping whitespace is the text-layer twin of never reading a
+ * position. It costs nothing a reader would call the document saying something
+ * different: every word is still compared, letter for letter and in order.
+ *
+ * @param {string} text As `extractText` returns it.
+ * @returns {string} The same characters with every whitespace character removed.
+ */
+export function comparable(text) {
+  return text.replace(/\s+/g, '');
 }
 
 /**
