@@ -76,7 +76,7 @@ Performance and accessibility are budgets rather than aspirations. `npm run ligh
 production build on `/`, `/dashboard` and `/gallery` — the desktop profile, three runs, asserted
 against the median — and the build **fails** below **performance 90**, **accessibility 100** and
 **best practices 95**. Size has a ceiling in the same spirit: `angular.json` caps the
-**initial payload at 350 kB** and **all scripts at 1200 kB**. Those ceilings carry about 30%
+**initial payload at 350 kB** and **all scripts at 1650 kB**. Those ceilings carry about 30%
 headroom, because a margin of a few kilobytes failed Vercel deploys that passed locally; the
 warnings sit just above today's build, so growth is still visible long before it fails.
 `npm run check:docs` fails if these numbers and the configs that enforce them ever disagree.
@@ -86,7 +86,8 @@ wire), Angular and the router included, with six floors of raymarched hotel in t
 because `/aubade` is a lazy route whose renderer sits
 behind a second dynamic import, so the shaders reach a browser only when someone opens that page.
 The all-scripts ceiling is what a new floor spends, and most of it is comments: GLSL lives inside a
-template literal, so a minifier never sees them. Its Reader's Edition at `/aubade/reader` is a third chunk again, and creates no
+template literal, so a minifier never sees them. The largest single spend is `/murmuration`'s
+three.js, about 250 kB, in a lazy chunk of its own. Its Reader's Edition at `/aubade/reader` is a third chunk again, and creates no
 WebGL context at all. `npm run verify:shader` compiles them in headless Chromium and renders a frame —
 GLSL is the only code here whose compiler would otherwise run for the first time in production.
 

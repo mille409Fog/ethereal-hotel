@@ -124,6 +124,9 @@ fails if it does not, and fails again if the note outlives the thing it excused.
 A pre-commit hook runs lint-staged over your staged files and will auto-fix what it can.
 Anything it can't fix — an ESLint error, an undefined name — blocks the commit.
 
+A pre-push hook runs `npm run build`, because the `angular.json` size budgets are checked nowhere
+else before CI. A new dependency or lazy route that breaks one blocks the push here instead.
+
 ## Standards worth knowing up front
 
 - **Commits follow [Conventional Commits](https://www.conventionalcommits.org/)**, enforced by

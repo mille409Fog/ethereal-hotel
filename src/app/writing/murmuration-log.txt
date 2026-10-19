@@ -14,3 +14,7 @@ filled, which is fine. I build artifacts for the end result not to impress
 hoi polloi. 1 caused an error due to a unit test prohibiting fake routes.
 2 caused an error due to a disconnect between the generated route and the
 Claude.md file.
+
+3, 3d785ac: imports three js, creates some basic logic which is unused in the
+ngOnInit lifecycle, we create a scene and add some ambient lighting to it
+in a robin's egg blue. causes CI/CD failures with the increased bundle size.
