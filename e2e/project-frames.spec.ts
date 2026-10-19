@@ -148,6 +148,13 @@ const RECIPES: Readonly<Record<string, IRecipe>> = {
       await expect(page.locator('.triad-primary .triad-name')).toBeVisible();
     },
   },
+  '/murmuration': {
+    anchors: ['app-murmuration canvas'],
+    prepare: async (page) => {
+      await page.goto('/murmuration');
+      await expect(page.locator('app-murmuration canvas')).toBeVisible();
+    },
+  },
 };
 
 /**

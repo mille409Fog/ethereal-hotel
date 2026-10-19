@@ -59,14 +59,17 @@ export interface IProject {
 }
 
 export const PROJECTS: readonly IProject[] = [
-  // Murmuration: its page does not exist yet. No link and no frame until it
-  // does — then add `link: '/murmuration'`, a recipe in the frame spec and
-  // `npm run frames:capture`, together.
   {
-    name: 'x',
-    description: 'x',
+    name: 'murmuration',
+    description: 'watch bats dance in the sky, experience wonder',
     category: 'Live Demo',
-    tech: ['x'],
+    tech: ['Angular 22', 'three.js'],
+    link: '/murmuration',
+    linkLabel: 'watch the murmuration',
+    frame: {
+      src: '/projects/murmuration.webp',
+      alt: 'A single dark batoid held still against the sky, lit from above and to its right.',
+    },
   },
   {
     name: 'Hotel Operations Dashboard',
