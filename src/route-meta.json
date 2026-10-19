@@ -47,6 +47,11 @@
       "path": "aubade/reader",
       "title": "Hôtel Aubade - The Reader's Edition",
       "description": "The hotel written out: six floors, the poem it is named after, and how a time zone and the equation of time decide whether it is open. No canvas, no WebGL, about twelve hundred words."
+    },
+    "murmuration": {
+      "path": "murmuration",
+      "title": "murmuration - Jacob Miller",
+      "description": "a generator that models a biological murmuration patten by creating bird droids or boids"
     }
   }
 }

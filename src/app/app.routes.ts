@@ -69,4 +69,9 @@ export const routes: Routes = [
     loadComponent: () => import('./app').then((m) => m.App),
     title: meta.home.title,
   },
+  {
+    path: meta.murmuration.path,
+    loadComponent: () => import('./murmuration/murmuration').then((m) => m.Murmuration),
+    title: meta.murmuration.title,
+  },
 ];
