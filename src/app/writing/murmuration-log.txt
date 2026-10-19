@@ -2,3 +2,15 @@ COMMIT NUMBER, COMMIT HASH, : NOTE
 
 1, f821ede : initial project cell, deliberately filled with placeholder
 nonsense.
+
+2, 94644dd: created the routing logic in the route-meta file as well as
+the app routes file. unlike other projects we are going as slowly and
+carefully as possible here "hand-writing" code so expect extremely messy
+small commits written at a glacial pace. I will also generate additional
+work in parallel with agents, however I believe it is important to maintain
+both approaches for the cognitive benefits. A seasoned console cowboy
+or even a talented junior would find this approach painstaking and error
+filled, which is fine. I build artifacts for the end result not to impress
+hoi polloi. 1 caused an error due to a unit test prohibiting fake routes.
+2 caused an error due to a disconnect between the generated route and the
+Claude.md file.
