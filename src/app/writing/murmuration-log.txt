@@ -18,3 +18,8 @@ Claude.md file.
 3, 3d785ac: imports three js, creates some basic logic which is unused in the
 ngOnInit lifecycle, we create a scene and add some ambient lighting to it
 in a robin's egg blue. causes CI/CD failures with the increased bundle size.
+
+4, 90e9c50: we create a prepush hook to handle building so that we do not run
+into bundle failures at the CI/CD stage. we then create the basics of the
+bat-oid (decided on bat rather than bird) geometry. I'm not a wildlife expert
+but I'm sure murmuration can occur with bats as well as starlings.

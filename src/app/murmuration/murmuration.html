@@ -1,1 +1,4 @@
-<canvas #stage></canvas>
+@if (webGLfailure()) {
+  <p>browser unable to operate webGL</p>
+}
+<canvas #stage [hidden]="webGLfailure()"></canvas>

@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, signal, viewChild } from '@angular/core';
 import * as THREE from 'three';
 
 // a bat-droid (batoid) set in statis, later logic will be used to handle the movement
@@ -23,6 +23,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('stage');
   private renderer?: THREE.WebGLRenderer;
   private batoid?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  protected readonly webGLfailure = signal(false);
 
   public ngAfterViewInit(): void {
     const canvas = this.canvas().nativeElement;
@@ -51,11 +52,15 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     );
     this.batoid.rotation.y = Math.PI / 5;
     scene.add(this.batoid);
-
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-    this.renderer.render(scene, camera);
+    // some very unfortunate people can not run web gl, we need to account for this failure
+    try {
+      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      this.renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+      this.renderer.render(scene, camera);
+    } catch {
+      this.webGLfailure.set(true);
+    }
   }
 
   public ngOnDestroy(): void {
