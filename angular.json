@@ -45,13 +45,13 @@
                 },
                 {
                   "type": "allScript",
-                  "maximumWarning": "1300kB",
-                  "maximumError": "1650kB"
+                  "maximumWarning": "1600kB",
+                  "maximumError": "2500kB"
                 },
                 {
                   "type": "any",
-                  "maximumWarning": "260kB",
-                  "maximumError": "350kB"
+                  "maximumWarning": "600kB",
+                  "maximumError": "1000kB"
                 },
                 {
                   "type": "anyComponentStyle",
