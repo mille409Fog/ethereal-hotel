@@ -50,3 +50,22 @@ we now have an individal bat which rotates with constant y pertubations.
 the temporal world. this allows us to see things solely in term of the internal clock.
 we use a clamp and an accumulator, similar to the more complex example in aubade to
 prevent dramatic time warping and to account for temporal or frequency discrepencies.
+
+10, 9270858: one of the more major commits thus far. I have been intentionally moving at
+as slow a pace as possible becuase I want to have a "deeper" understanding of the mechanics
+behing three js and flock / swarm modeling. this change goes from a singular batoid to a group
+of bats or a cauldron. we had to change the instantiation logic in order to accomodate this.
+additionally this caused the lines per file to spill over my recommended svelte approach which
+meant additional abstraction to various files. in modern development a group would undoubtedly want
+less files with more lines in them however I am very fond of this modularized approach. moving forward
+I will continue to implement greater modularization, skinner and more numerous files, and additional folders
+to handle different cognitive distinctions. the bats themselves load well, we're using an instanced mesh here
+which means that there's only a singular call to the GPU  rather than repeated back and forth opererations.
+the additional abstraction also meant changing the initial clock / tick approach by creating a pure (mathematically
+a standard) function which solely reports on the state of time in the eyes of the bats, both in terms of mS
+at the time that the bat-universe is aware of them and in the preferred modulo measurement, ticks.
+some additional changes to logic, we implement an injection token which handles a very basic conception of randomness,
+essentially a uniform distribution around some radious centered at 0. this leads to us defining a singular type is a separte file
+, which I prefer to cluttering up the  already portly murmuration file. additionally in a quirk of the testing environment we
+need to change how we are handling the canvas generation itself with an additional injection token, so that the unit testing
+can proceed smoothly. I will have to abstract both of these tokens to other files later.
