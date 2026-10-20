@@ -69,3 +69,6 @@ essentially a uniform distribution around some radious centered at 0. this leads
 , which I prefer to cluttering up the  already portly murmuration file. additionally in a quirk of the testing environment we
 need to change how we are handling the canvas generation itself with an additional injection token, so that the unit testing
 can proceed smoothly. I will have to abstract both of these tokens to other files later.
+
+11, ea14092: minor restructuring, placing auxillary files into folders. this type of work, making complex things simpler, is deeply satisfying
+even if there is no discernable improvemenent to 'performance'. fixed a unit test failure.

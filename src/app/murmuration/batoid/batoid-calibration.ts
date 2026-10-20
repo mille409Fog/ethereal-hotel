@@ -5,15 +5,16 @@ export const PALETTE = {
   batoid: 0x2b2b30,
 } as const;
 
+export const CAULDRON = {
+  count: 200,
+  halfWidth: 1.44,
+  halfHeight: 0.6,
+  halfDepth: 0.12,
+  batScale: 0.1,
+} as const;
+
 export const SPIN_RADIANS_PER_SECOND = Math.PI / 8;
+export const FLIGHT_VELOCITY_X = 2; // measured in units per second
 
 export const TICK_SECONDS = 1 / 60;
 export const CLAMP_SECONDS = 0.25;
-
-export const CAULDRON = {
-  count: 200,
-  halfWidth: 1.2,
-  halfHeight: 0.5,
-  halfDepth: 0.1,
-  batScale: 0.1,
-} as const;
