@@ -1,4 +1,4 @@
-import { CLAMP_SECONDS, TICK_SECONDS } from './batoid-calibration';
+import { CLAMP_SECONDS, TICK_SECONDS } from '../batoid/batoid-calibration';
 import { advance, IClockState, STOPPED_CLOCK } from './cauldron-clock';
 
 /** A clock that last saw a frame at `lastMs` and is carrying nothing. */

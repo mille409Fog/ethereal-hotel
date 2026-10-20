@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
-import * as CALIBRATION from './batoid-calibration';
-import { spread } from './batoid-transformation';
-import { Random } from './batoid-types';
+import { Random } from '../batoid/batoid-types';
+import * as CALIBRATION from '../batoid/batoid-calibration';
+import { spread } from '../batoid/batoid-transformation';
 import { createCauldron } from './cauldron-creation';
 
 type Triple = readonly [number, number, number];
@@ -91,22 +91,22 @@ describe('createCauldron', () => {
   it('places each bat from the given chance, drawing x, y, z and then heading', () => {
     // Five draws, so bat 1 starts where bat 0 left off rather than repeating it.
     const flock = cauldron(sequence([0.1, 0.5, 0.9, 0.3, 0.7]));
-    const { halfWidth, halfHeight } = CALIBRATION.CAULDRON;
+    const { halfWidth, halfHeight, halfDepth } = CALIBRATION.CAULDRON;
     const at = (draw: number, radius: number): number => spread(() => draw, radius);
 
     const first = poseOf(flock, 0);
-    expectNear(first.position, [at(0.1, halfWidth), at(0.5, halfHeight), at(0.9, halfWidth)]);
+    expectNear(first.position, [at(0.1, halfWidth), at(0.5, halfHeight), at(0.9, halfDepth)]);
     expectNear(first.facing, facingFor(0.3 * Math.PI * 2));
 
     const second = poseOf(flock, 1);
-    expectNear(second.position, [at(0.7, halfWidth), at(0.1, halfHeight), at(0.5, halfWidth)]);
+    expectNear(second.position, [at(0.7, halfWidth), at(0.1, halfHeight), at(0.5, halfDepth)]);
     expectNear(second.facing, facingFor(0.9 * Math.PI * 2));
   });
 
   it('keeps every bat inside the cauldron at both extremes of chance', () => {
     // 0 and the largest draw below 1 are where an off-by-a-factor bound would show.
     const flock = cauldron(sequence([0, 1 - Number.EPSILON, 0]));
-    const { halfWidth, halfHeight } = CALIBRATION.CAULDRON;
+    const { halfWidth, halfHeight, halfDepth } = CALIBRATION.CAULDRON;
     // Slack for the float32 round trip, not for the bound itself.
     const slack = 1e-6;
 
@@ -114,7 +114,7 @@ describe('createCauldron', () => {
       const [x, y, z] = poseOf(flock, i).position;
       expect(Math.abs(x)).toBeLessThanOrEqual(halfWidth + slack);
       expect(Math.abs(y)).toBeLessThanOrEqual(halfHeight + slack);
-      expect(Math.abs(z)).toBeLessThanOrEqual(halfWidth + slack);
+      expect(Math.abs(z)).toBeLessThanOrEqual(halfDepth + slack);
     }
   });
 

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import * as CALIBRATION from './batoid-calibration';
-import { createBatoidGeometry } from './batoid-geometry';
-import { spread } from './batoid-transformation';
-import { Random } from './batoid-types';
+import { createBatoidGeometry } from '../batoid/batoid-geometry';
+import { spread } from '../batoid/batoid-transformation';
+import { Random } from '../batoid/batoid-types';
+import * as CALIBRATION from '../batoid/batoid-calibration';
 export function createCauldron(
   random: Random
 ): THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> {

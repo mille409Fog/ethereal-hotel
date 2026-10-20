@@ -9,10 +9,10 @@ import {
   viewChild,
 } from '@angular/core';
 import * as THREE from 'three';
-import * as CALIBRATION from './batoid-calibration';
-import { Random } from './batoid-types';
-import { advance, STOPPED_CLOCK } from './cauldron-clock';
-import { createCauldron } from './cauldron-creation';
+import * as CALIBRATION from './batoid/batoid-calibration';
+import { Random } from './batoid/batoid-types';
+import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
+import { createCauldron } from './cauldron/cauldron-creation';
 
 export const MURMURATION_RANDOM = new InjectionToken<Random>('MURMURATION_RANDOM', {
   factory: () => Math.random,

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import * as THREE from 'three';
-import * as CALIBRATION from './batoid-calibration';
-import { Random } from './batoid-types';
+import * as CALIBRATION from './batoid/batoid-calibration';
+import { Random } from './batoid/batoid-types';
 import { Murmuration, MURMURATION_RANDOM, MURMURATION_RENDERER } from './murmuration';
 
 /**
@@ -160,14 +160,14 @@ describe('Murmuration', () => {
     const random = vi.fn(() => 0);
     stubReducedMotion(true);
     await mount({ random });
-    const { count, halfWidth, halfHeight } = CALIBRATION.CAULDRON;
+    const { count, halfWidth, halfHeight, halfDepth } = CALIBRATION.CAULDRON;
     // A 4×4 matrix is column-major; its translation is elements 12, 13, 14.
     const [x, y, z] = flockIn(onlyRenderer()).instanceMatrix.array.slice(12, 15);
 
     expect(random).toHaveBeenCalledTimes(4 * count);
     expect(x).toBeCloseTo(-halfWidth, 5);
     expect(y).toBeCloseTo(-halfHeight, 5);
-    expect(z).toBeCloseTo(-halfWidth, 5);
+    expect(z).toBeCloseTo(-halfDepth, 5);
   });
 
   it('draws every frame of the loop, including those worth no tick', async () => {
