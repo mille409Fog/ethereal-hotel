@@ -13,6 +13,13 @@ function createBatoidGeometry(): THREE.BufferGeometry {
   return geometry;
 }
 
+const PALETTE = {
+  sky: 0x96ded1,
+  ground: 0x2e2a1f,
+  sun: 0xf3d9c4,
+  batoid: 0x2b2b30,
+} as const;
+
 @Component({
   imports: [],
   selector: 'app-murmuration',
@@ -29,10 +36,12 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     const canvas = this.canvas().nativeElement;
     const scene = new THREE.Scene();
 
-    const hemisphereLight = new THREE.HemisphereLight(0x96ded1, 0x2e2a1f, 0.5);
+    scene.background = new THREE.Color(PALETTE.sky);
+
+    const hemisphereLight = new THREE.HemisphereLight(PALETTE.sky, PALETTE.ground, 0.5);
     scene.add(hemisphereLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xf3d9c4, 1.5);
+    const directionalLight = new THREE.DirectionalLight(PALETTE.sun, 1.5);
     directionalLight.position.set(2, 3, 4);
     scene.add(directionalLight);
 
@@ -43,12 +52,12 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       100
     );
 
-    camera.position.set(0, 0.6, 3);
+    camera.position.set(0, 0.2, 3);
     camera.lookAt(0, 0, 0);
 
     this.batoid = new THREE.Mesh(
       createBatoidGeometry(),
-      new THREE.MeshStandardMaterial({ color: 0x2b2b30, flatShading: true })
+      new THREE.MeshStandardMaterial({ color: PALETTE.batoid, flatShading: true })
     );
     this.batoid.rotation.y = Math.PI / 5;
     scene.add(this.batoid);

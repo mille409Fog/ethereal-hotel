@@ -23,3 +23,10 @@ in a robin's egg blue. causes CI/CD failures with the increased bundle size.
 into bundle failures at the CI/CD stage. we then create the basics of the
 bat-oid (decided on bat rather than bird) geometry. I'm not a wildlife expert
 but I'm sure murmuration can occur with bats as well as starlings.
+
+5, 59c4249: this is just linking the original project cell at the homepage
+to the actual murmuration site. due to the exacting standards that we've set
+up the frame used to demonstate the project in the project card is not
+simply an arbitrary or evocative image but is rather an actual frame from
+some section of the program itself. I expect this to be an actual problem if
+we are looking at non-deterministic behavior with the bat-oids.
