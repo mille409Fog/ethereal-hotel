@@ -1,17 +1,6 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, signal, viewChild } from '@angular/core';
 import * as THREE from 'three';
-
-// a bat-droid (batoid) set in statis, later logic will be used to handle the movement
-
-function createBatoidGeometry(): THREE.BufferGeometry {
-  const geometry = new THREE.BufferGeometry();
-  // each ordered triplet gives a point in space, the n-tuple is ordered implicity by the 3 in the set attribute call
-  const vertices = new Float32Array([0, 0, 0.6, -0.35, 0, -0.4, 0.35, 0, -0.4, 0, 0.15, -0.3]);
-  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-  geometry.setIndex([0, 3, 1, 0, 2, 3, 0, 1, 2, 1, 3, 2]);
-  geometry.computeVertexNormals();
-  return geometry;
-}
+import { createBatoidGeometry } from './batoid-geometry';
 
 const PALETTE = {
   sky: 0x96ded1,
@@ -52,7 +41,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       100
     );
 
-    camera.position.set(0, 0.2, 3);
+    camera.position.set(0, 2.5, 1.5);
     camera.lookAt(0, 0, 0);
 
     this.batoid = new THREE.Mesh(

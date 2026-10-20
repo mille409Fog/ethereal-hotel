@@ -30,3 +30,10 @@ up the frame used to demonstate the project in the project card is not
 simply an arbitrary or evocative image but is rather an actual frame from
 some section of the program itself. I expect this to be an actual problem if
 we are looking at non-deterministic behavior with the bat-oids.
+
+6, 5aba131: you can actually see the live graphical progress from the generated
+webp file here public/projects/murmuration.webp. we were getting a black on
+black image because the scene itself had no background light even though we had
+supplied the same colour in the horizon light itself. I also changed the colour
+literals to a const supplied value, so that input values are limited and can be
+handled all in one section.
