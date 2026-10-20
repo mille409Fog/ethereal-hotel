@@ -42,3 +42,6 @@ handled all in one section.
 separated the logic so that it resides in another file. I considered placing this
 as as a service but settled on a generic ts file closer to the component. I want
 to move to greater and greater modularity as we progress.
+
+8, 1c8edb3: animation loop, changed rotational constants to individualized consts,
+we now have an individal bat which rotates with constant y pertubations.

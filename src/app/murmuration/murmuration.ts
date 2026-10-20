@@ -1,16 +1,7 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, signal, viewChild } from '@angular/core';
 import * as THREE from 'three';
+import * as CALIBRATION from './batoid-calibration';
 import { createBatoidGeometry } from './batoid-geometry';
-
-const PALETTE = {
-  sky: 0x96ded1,
-  ground: 0x2e2a1f,
-  sun: 0xf3d9c4,
-  batoid: 0x2b2b30,
-} as const;
-
-const SPIN_RADIANS_PER_SECOND = Math.PI / 8;
-const INITIAL_HEADING = Math.PI / 5;
 
 @Component({
   imports: [],
@@ -28,12 +19,16 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     const canvas = this.canvas().nativeElement;
     const scene = new THREE.Scene();
 
-    scene.background = new THREE.Color(PALETTE.sky);
+    scene.background = new THREE.Color(CALIBRATION.PALETTE.sky);
 
-    const hemisphereLight = new THREE.HemisphereLight(PALETTE.sky, PALETTE.ground, 0.5);
+    const hemisphereLight = new THREE.HemisphereLight(
+      CALIBRATION.PALETTE.sky,
+      CALIBRATION.PALETTE.ground,
+      0.5
+    );
     scene.add(hemisphereLight);
 
-    const directionalLight = new THREE.DirectionalLight(PALETTE.sun, 1.5);
+    const directionalLight = new THREE.DirectionalLight(CALIBRATION.PALETTE.sun, 1.5);
     directionalLight.position.set(2, 3, 4);
     scene.add(directionalLight);
 
@@ -49,22 +44,32 @@ export class Murmuration implements AfterViewInit, OnDestroy {
 
     const batoid = new THREE.Mesh(
       createBatoidGeometry(),
-      new THREE.MeshStandardMaterial({ color: PALETTE.batoid, flatShading: true })
+      new THREE.MeshStandardMaterial({ color: CALIBRATION.PALETTE.batoid, flatShading: true })
     );
     this.batoid = batoid;
-    batoid.rotation.y = INITIAL_HEADING;
+    batoid.rotation.y = CALIBRATION.INITIAL_HEADING;
     scene.add(batoid);
+
     // some very unfortunate people can not run web gl, we need to account for this failure
     try {
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       this.renderer = renderer; // we use a const to obviate the existence problem while inside the animation loop
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-      if (window.matchMedia('(prefers-reduced-motion: reduce').matches) {
-        renderer!.render(scene, camera);
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        renderer.render(scene, camera);
       } else {
-        renderer.setAnimationLoop((tempsMs) => {
-          batoid.rotation.y = INITIAL_HEADING + (tempsMs / 1000) * SPIN_RADIANS_PER_SECOND;
+        let lastMs: number | undefined;
+        let accumulator = 0;
+        renderer.setAnimationLoop((nowMs) => {
+          const frame =
+            lastMs === undefined ? 0 : Math.min((nowMs - lastMs) / 1000, CALIBRATION.CLAMP_SECONDS);
+          lastMs = nowMs;
+          accumulator += frame;
+          while (accumulator >= CALIBRATION.TICK_SECONDS) {
+            batoid.rotation.y += CALIBRATION.SPIN_RADIANS_PER_SECOND * CALIBRATION.TICK_SECONDS;
+            accumulator -= CALIBRATION.TICK_SECONDS;
+          }
           renderer.render(scene, camera);
         });
       }
@@ -74,7 +79,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   }
 
   public ngOnDestroy(): void {
-    this.renderer?.setAnimationLoop(null); // implicityly handled by dispose however we wish for semiotic clarity
+    this.renderer?.setAnimationLoop(null); // implicitly handled by dispose however we wish for semiotic clarity
     this.batoid?.geometry.dispose();
     this.batoid?.material.dispose();
     this.renderer?.dispose();
