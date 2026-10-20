@@ -37,3 +37,8 @@ black image because the scene itself had no background light even though we had
 supplied the same colour in the horizon light itself. I also changed the colour
 literals to a const supplied value, so that input values are limited and can be
 handled all in one section.
+
+7, 9e04a50: changed the bat geometry to a more identifiable bat object and then
+separated the logic so that it resides in another file. I considered placing this
+as as a service but settled on a generic ts file closer to the component. I want
+to move to greater and greater modularity as we progress.

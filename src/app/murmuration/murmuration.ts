@@ -9,6 +9,9 @@ const PALETTE = {
   batoid: 0x2b2b30,
 } as const;
 
+const SPIN_RADIANS_PER_SECOND = Math.PI / 8;
+const INITIAL_HEADING = Math.PI / 5;
+
 @Component({
   imports: [],
   selector: 'app-murmuration',
@@ -44,24 +47,34 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     camera.position.set(0, 2.5, 1.5);
     camera.lookAt(0, 0, 0);
 
-    this.batoid = new THREE.Mesh(
+    const batoid = new THREE.Mesh(
       createBatoidGeometry(),
       new THREE.MeshStandardMaterial({ color: PALETTE.batoid, flatShading: true })
     );
-    this.batoid.rotation.y = Math.PI / 5;
-    scene.add(this.batoid);
+    this.batoid = batoid;
+    batoid.rotation.y = INITIAL_HEADING;
+    scene.add(batoid);
     // some very unfortunate people can not run web gl, we need to account for this failure
     try {
-      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      this.renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-      this.renderer.render(scene, camera);
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      this.renderer = renderer; // we use a const to obviate the existence problem while inside the animation loop
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+      if (window.matchMedia('(prefers-reduced-motion: reduce').matches) {
+        renderer!.render(scene, camera);
+      } else {
+        renderer.setAnimationLoop((tempsMs) => {
+          batoid.rotation.y = INITIAL_HEADING + (tempsMs / 1000) * SPIN_RADIANS_PER_SECOND;
+          renderer.render(scene, camera);
+        });
+      }
     } catch {
       this.webGLfailure.set(true);
     }
   }
 
   public ngOnDestroy(): void {
+    this.renderer?.setAnimationLoop(null); // implicityly handled by dispose however we wish for semiotic clarity
     this.batoid?.geometry.dispose();
     this.batoid?.material.dispose();
     this.renderer?.dispose();
