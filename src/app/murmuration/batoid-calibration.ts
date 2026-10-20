@@ -6,7 +6,14 @@ export const PALETTE = {
 } as const;
 
 export const SPIN_RADIANS_PER_SECOND = Math.PI / 8;
-export const INITIAL_HEADING = Math.PI / 5;
 
 export const TICK_SECONDS = 1 / 60;
 export const CLAMP_SECONDS = 0.25;
+
+export const CAULDRON = {
+  count: 200,
+  halfWidth: 1.2,
+  halfHeight: 0.5,
+  halfDepth: 0.1,
+  batScale: 0.1,
+} as const;

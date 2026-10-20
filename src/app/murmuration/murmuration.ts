@@ -1,7 +1,31 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, signal, viewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  inject,
+  InjectionToken,
+  OnDestroy,
+  signal,
+  viewChild,
+} from '@angular/core';
 import * as THREE from 'three';
 import * as CALIBRATION from './batoid-calibration';
-import { createBatoidGeometry } from './batoid-geometry';
+import { Random } from './batoid-types';
+import { advance, STOPPED_CLOCK } from './cauldron-clock';
+import { createCauldron } from './cauldron-creation';
+
+export const MURMURATION_RANDOM = new InjectionToken<Random>('MURMURATION_RANDOM', {
+  factory: () => Math.random,
+});
+
+/**
+ * additonal renderer abstraction in order to facilitate the spec environment.
+ */
+export const MURMURATION_RENDERER = new InjectionToken<
+  (canvas: HTMLCanvasElement) => THREE.WebGLRenderer
+>('MURMURATION_RENDERER', {
+  factory: () => (canvas) => new THREE.WebGLRenderer({ canvas, antialias: true }),
+});
 
 @Component({
   imports: [],
@@ -10,9 +34,11 @@ import { createBatoidGeometry } from './batoid-geometry';
   templateUrl: './murmuration.html',
 })
 export class Murmuration implements AfterViewInit, OnDestroy {
+  private readonly random = inject(MURMURATION_RANDOM);
+  private readonly createRenderer = inject(MURMURATION_RENDERER);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('stage');
   private renderer?: THREE.WebGLRenderer;
-  private batoid?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  private bats?: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   protected readonly webGLfailure = signal(false);
 
   public ngAfterViewInit(): void {
@@ -42,33 +68,25 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     camera.position.set(0, 2.5, 1.5);
     camera.lookAt(0, 0, 0);
 
-    const batoid = new THREE.Mesh(
-      createBatoidGeometry(),
-      new THREE.MeshStandardMaterial({ color: CALIBRATION.PALETTE.batoid, flatShading: true })
-    );
-    this.batoid = batoid;
-    batoid.rotation.y = CALIBRATION.INITIAL_HEADING;
-    scene.add(batoid);
+    const bats = createCauldron(this.random);
+    this.bats = bats;
+    scene.add(bats);
 
     // some very unfortunate people can not run web gl, we need to account for this failure
     try {
-      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      const renderer = this.createRenderer(canvas);
       this.renderer = renderer; // we use a const to obviate the existence problem while inside the animation loop
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         renderer.render(scene, camera);
       } else {
-        let lastMs: number | undefined;
-        let accumulator = 0;
+        let clock = STOPPED_CLOCK;
         renderer.setAnimationLoop((nowMs) => {
-          const frame =
-            lastMs === undefined ? 0 : Math.min((nowMs - lastMs) / 1000, CALIBRATION.CLAMP_SECONDS);
-          lastMs = nowMs;
-          accumulator += frame;
-          while (accumulator >= CALIBRATION.TICK_SECONDS) {
-            batoid.rotation.y += CALIBRATION.SPIN_RADIANS_PER_SECOND * CALIBRATION.TICK_SECONDS;
-            accumulator -= CALIBRATION.TICK_SECONDS;
+          const advanced = advance(clock, nowMs);
+          clock = advanced.state;
+          for (let i = 0; i < advanced.ticks; i++) {
+            bats.rotation.y += CALIBRATION.SPIN_RADIANS_PER_SECOND * CALIBRATION.TICK_SECONDS;
           }
           renderer.render(scene, camera);
         });
@@ -80,8 +98,9 @@ export class Murmuration implements AfterViewInit, OnDestroy {
 
   public ngOnDestroy(): void {
     this.renderer?.setAnimationLoop(null); // implicitly handled by dispose however we wish for semiotic clarity
-    this.batoid?.geometry.dispose();
-    this.batoid?.material.dispose();
+    this.bats?.geometry.dispose();
+    this.bats?.material.dispose();
+    this.bats?.dispose(); //unlike in the single case, the instanced mesh itself must be disposed as well as its constituent parts
     this.renderer?.dispose();
   }
 }

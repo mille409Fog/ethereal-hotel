@@ -68,7 +68,7 @@ export const PROJECTS: readonly IProject[] = [
     linkLabel: 'watch the murmuration',
     frame: {
       src: '/projects/murmuration.webp',
-      alt: 'A single dark batoid held still against the sky, lit from above and to its right.',
+      alt: 'an entire cauldron of batoids held still against the sky, lit from above and to its right.',
     },
   },
   {

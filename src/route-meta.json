@@ -51,7 +51,7 @@
     "murmuration": {
       "path": "murmuration",
       "title": "murmuration - Jacob Miller",
-      "description": "a generator that models a biological murmuration patten by creating bird droids or boids"
+      "description": "a generator that models a biological murmuration pattern by creating bat droids or batoids"
     }
   }
 }
