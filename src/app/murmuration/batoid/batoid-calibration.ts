@@ -14,7 +14,7 @@ export const CAULDRON = {
 } as const;
 
 export const SPIN_RADIANS_PER_SECOND = Math.PI / 8;
-export const FLIGHT_VELOCITY_X = 2; // measured in units per second
+export const FLIGHT_VELOCITY_X = 2; // measured in units per second, we use a simpler formulation for now
 
 export const TICK_SECONDS = 1 / 60;
 export const CLAMP_SECONDS = 0.25;
