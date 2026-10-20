@@ -45,3 +45,8 @@ to move to greater and greater modularity as we progress.
 
 8, 1c8edb3: animation loop, changed rotational constants to individualized consts,
 we now have an individal bat which rotates with constant y pertubations.
+
+9, f8d4f24: adding a separate tick sense of time which decouples the animation from
+the temporal world. this allows us to see things solely in term of the internal clock.
+we use a clamp and an accumulator, similar to the more complex example in aubade to
+prevent dramatic time warping and to account for temporal or frequency discrepencies.
