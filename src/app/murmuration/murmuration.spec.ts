@@ -93,7 +93,7 @@ const flockIn = (renderer: FakeRenderer): THREE.InstancedMesh => {
 };
 
 /**
- * A draw of one half is the centre of every spread and a heading of 0, so
+ * A draw of one half is the centre of every spread, a heading of 0 and no climb, so
  * every bat launches from the origin flying along +x at `FLIGHT_SPEED`, and
  * how far bat 0 has come along x is a direct count of the ticks spent.
  */
@@ -182,7 +182,7 @@ describe('Murmuration', () => {
     // A 4×4 matrix is column-major; its translation is elements 12, 13, 14.
     const [x, y, z] = flockIn(onlyRenderer()).instanceMatrix.array.slice(12, 15);
 
-    expect(random).toHaveBeenCalledTimes(4 * count);
+    expect(random).toHaveBeenCalledTimes(5 * count);
     expect(x).toBeCloseTo(-halfWidth, 5);
     expect(y).toBeCloseTo(-halfHeight, 5);
     expect(z).toBeCloseTo(-halfDepth, 5);

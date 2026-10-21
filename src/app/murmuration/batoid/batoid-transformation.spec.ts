@@ -1,5 +1,5 @@
 import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
-import { FLIGHT_SPEED } from './batoid-calibration';
+import { FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
 import {
   flightStep,
   launchInitialState,
@@ -48,13 +48,16 @@ describe('spread', () => {
   });
 });
 
+/** the fastest a bat may climb or dive: FLIGHT_SPEED tipped up by MAX_PITCH */
+const MAX_CLIMB = FLIGHT_SPEED * Math.sin(MAX_PITCH);
+
 describe('launchSingleFlightState', () => {
-  it('draws exactly four times: x, y, z, then heading', () => {
+  it('draws exactly five times: x, y, z, heading, then climb', () => {
     const random = vi.fn(() => 0.5);
 
     launchSingleFlightState(random, RADII);
 
-    expect(random).toHaveBeenCalledTimes(4);
+    expect(random).toHaveBeenCalledTimes(5);
   });
 
   it('spends its draws on position in x, y, z order', () => {
@@ -66,25 +69,59 @@ describe('launchSingleFlightState', () => {
   });
 
   it('spends its fourth draw on heading: a draw of one half flies along +x', () => {
-    const { velocity } = launchSingleFlightState(sequence(0.5, 0.5, 0.5, 0.5), RADII);
+    // the fifth draw is also one half, which is level flight
+    const { velocity } = launchSingleFlightState(sequence(0.5, 0.5, 0.5, 0.5, 0.5), RADII);
 
     expect(velocity.x).toBeCloseTo(FLIGHT_SPEED, 10);
     expect(velocity.z).toBeCloseTo(0, 10);
   });
 
   it('turns a draw of three quarters into flight along +z', () => {
-    const { velocity } = launchSingleFlightState(sequence(0.5, 0.5, 0.5, 0.75), RADII);
+    const { velocity } = launchSingleFlightState(sequence(0.5, 0.5, 0.5, 0.75, 0.5), RADII);
 
     expect(velocity.x).toBeCloseTo(0, 10);
     expect(velocity.z).toBeCloseTo(FLIGHT_SPEED, 10);
   });
 
-  it('flies at FLIGHT_SPEED whatever the heading, and never vertically', () => {
-    for (const draw of [0, 0.1, 0.33, 0.5, 0.62, 0.9, 1 - Number.EPSILON]) {
-      const { velocity } = launchSingleFlightState(sequence(0.5, 0.5, 0.5, draw), RADII);
+  it('spends its fifth draw on climb: one half is level flight', () => {
+    const { velocity } = launchSingleFlightState(sequence(0.5, 0.5, 0.5, 0.5, 0.5), RADII);
 
-      expect(Math.hypot(velocity.x, velocity.y, velocity.z)).toBeCloseTo(FLIGHT_SPEED, 10);
-      expect(velocity.y).toBe(0);
+    expect(velocity.y).toBe(0);
+  });
+
+  it('turns a draw of 0 into the steepest dive MAX_PITCH allows', () => {
+    const { velocity } = launchSingleFlightState(sequence(0.5, 0.5, 0.5, 0.5, 0), RADII);
+
+    expect(velocity.y).toBeCloseTo(-MAX_CLIMB, 10);
+  });
+
+  it('turns a draw of three quarters into a climb at half the steepest rate', () => {
+    const { velocity } = launchSingleFlightState(sequence(0.5, 0.5, 0.5, 0.5, 0.75), RADII);
+
+    expect(velocity.y).toBeCloseTo(MAX_CLIMB / 2, 10);
+  });
+
+  it('takes the climb out of the level speed, so it tips the heading rather than turning it', () => {
+    // heading +x and climbing: all of the horizontal speed stays on x
+    const { velocity } = launchSingleFlightState(sequence(0.5, 0.5, 0.5, 0.5, 0.75), RADII);
+
+    expect(velocity.z).toBeCloseTo(0, 10);
+    expect(velocity.x).toBeCloseTo(Math.sqrt(FLIGHT_SPEED ** 2 - velocity.y ** 2), 10);
+  });
+
+  it('flies at FLIGHT_SPEED whatever the heading and climb, and never steeper than MAX_PITCH', () => {
+    const draws = [0, 0.1, 0.33, 0.5, 0.62, 0.9, 1 - Number.EPSILON];
+    for (const heading of draws) {
+      for (const climb of draws) {
+        const { velocity } = launchSingleFlightState(
+          sequence(0.5, 0.5, 0.5, heading, climb),
+          RADII
+        );
+        const level = Math.hypot(velocity.x, velocity.z);
+
+        expect(Math.hypot(velocity.x, velocity.y, velocity.z)).toBeCloseTo(FLIGHT_SPEED, 10);
+        expect(Math.abs(Math.atan2(velocity.y, level))).toBeLessThanOrEqual(MAX_PITCH + 1e-12);
+      }
     }
   });
 });
@@ -99,12 +136,12 @@ describe('launchInitialState', () => {
     expect(flight.velocities).toHaveLength(QUANTITY * 3);
   });
 
-  it('draws exactly four times per bat, so the quantity decides how many bats are launched', () => {
+  it('draws exactly five times per bat, so the quantity decides how many bats are launched', () => {
     const random = vi.fn(() => 0.5);
 
     launchInitialState(random, RADII, QUANTITY);
 
-    expect(random).toHaveBeenCalledTimes(QUANTITY * 4);
+    expect(random).toHaveBeenCalledTimes(QUANTITY * 5);
   });
 
   it('launches nothing, and draws nothing, for a quantity of zero', () => {
@@ -117,7 +154,8 @@ describe('launchInitialState', () => {
   });
 
   it('writes bat i at offset i * 3, in the order launchSingleFlightState produces them', () => {
-    const draws = [0.1, 0.9, 0.3, 0.2, 0.7, 0.4, 0.6, 0.8, 0.05, 0.95, 0.5, 0.35];
+    // fifteen draws, five per bat, so no two bats share a climb
+    const draws = [0.1, 0.9, 0.3, 0.2, 0.7, 0.4, 0.6, 0.8, 0.05, 0.95, 0.5, 0.35, 0.15, 0.85, 0.25];
     const flight = launchInitialState(sequence(...draws), RADII, QUANTITY);
     const replay = sequence(...draws);
 
@@ -135,7 +173,7 @@ describe('launchInitialState', () => {
     }
   });
 
-  it('keeps every bat inside the radii and at FLIGHT_SPEED under a real random source', () => {
+  it('keeps every bat inside the radii, at FLIGHT_SPEED and within MAX_PITCH under a real random source', () => {
     const quantity = 500;
     const flight = launchInitialState(Math.random, RADII, quantity);
 
@@ -149,7 +187,18 @@ describe('launchInitialState', () => {
       expect(Math.abs(p[o + 1])).toBeLessThanOrEqual(Math.fround(RADII.y));
       expect(Math.abs(p[o + 2])).toBeLessThanOrEqual(Math.fround(RADII.z));
       expect(Math.hypot(v[o], v[o + 1], v[o + 2])).toBeCloseTo(FLIGHT_SPEED, 6);
+      // single precision again: the climb can round a hair past its exact bound
+      expect(Math.abs(v[o + 1])).toBeLessThanOrEqual(Math.fround(MAX_CLIMB) * (1 + 1e-6));
     }
+  });
+
+  it('launches some bats climbing and some diving under a real random source', () => {
+    // a launch that silently dropped the climb would pass every bound above
+    const flight = launchInitialState(Math.random, RADII, 500);
+    const climbs = [...flight.velocities].filter((_, i) => i % 3 === 1);
+
+    expect(climbs.some((vy) => vy > 0)).toBe(true);
+    expect(climbs.some((vy) => vy < 0)).toBe(true);
   });
 });
 

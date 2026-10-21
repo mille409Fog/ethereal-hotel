@@ -8,13 +8,13 @@ export const PALETTE = {
 export const CAULDRON = {
   count: 200,
   halfWidth: 1.44,
-  halfHeight: 0.6,
+  halfHeight: 0.8,
   halfDepth: 0.6,
   batScale: 0.1,
 } as const;
 
-export const SPIN_RADIANS_PER_SECOND = Math.PI / 8;
 export const FLIGHT_SPEED = 0.314; // measured in units per second, we use a simpler formulation for now
+export const MAX_PITCH = Math.PI / 12; // we set bounds on the pitch to model bat behavior, pi/2 pitch angles are unrealistic
 
 export const TICK_SECONDS = 1 / 60;
 export const CLAMP_SECONDS = 0.25;

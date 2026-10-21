@@ -67,6 +67,22 @@ const flightOf = (...bats: readonly IBat[]): IFlight => {
   return { positions, velocities };
 };
 
+/**
+ * Climbing and diving, along both horizontal axes and between them. A bat
+ * heading along x is the one a wrong rotation order gives away: pitching it
+ * about the world's x axis rolls it instead of tipping its nose.
+ */
+const PITCHED: readonly IThreeTuple[] = [
+  { x: 1, y: 0.2, z: 0 },
+  { x: -1, y: -0.2, z: 0 },
+  { x: 0, y: 0.2, z: 1 },
+  { x: 0, y: -0.2, z: -1 },
+  { x: 0.3, y: 0.1, z: 0.4 },
+  { x: -0.3, y: -0.1, z: 0.4 },
+  { x: -0.3, y: 0.1, z: -0.4 },
+  { x: 0.3, y: -0.1, z: -0.4 },
+];
+
 /** One heading per quadrant and both axes, so a swapped atan2 argument shows in at least one. */
 const HEADINGS: readonly IThreeTuple[] = [
   { x: 1, y: 0, z: 0 },
@@ -145,6 +161,33 @@ describe('cauldron', () => {
 
       HEADINGS.forEach((velocity, i) => {
         expectNear(poseOf(flock, i).facing, along(velocity));
+      });
+    });
+
+    it('tips each bat up or down to face along a climbing or diving velocity', () => {
+      const flock = cauldron();
+      const flight = flightOf(
+        ...PITCHED.map((velocity) => ({ position: { x: 0, y: 0, z: 0 }, velocity }))
+      );
+
+      poseCauldron(flight, flock, new THREE.Object3D());
+
+      PITCHED.forEach((velocity, i) => {
+        expectNear(poseOf(flock, i).facing, along(velocity));
+      });
+    });
+
+    it('keeps the wings level while climbing or diving, so a bat pitches without rolling', () => {
+      // local +x is the wing axis; column 0 (elements 0–2) is where it went
+      const flock = cauldron();
+      const flight = flightOf(
+        ...PITCHED.map((velocity) => ({ position: { x: 0, y: 0, z: 0 }, velocity }))
+      );
+
+      poseCauldron(flight, flock, new THREE.Object3D());
+
+      PITCHED.forEach((_, i) => {
+        expect(flock.instanceMatrix.array[i * 16 + 1]).toBeCloseTo(0, DIGITS);
       });
     });
 

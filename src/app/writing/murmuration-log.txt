@@ -95,3 +95,6 @@ and a position (posing) function. there are obvious issues around array corrupti
 array discrepencies we'll fail immediately and "inexplicably". all the array behavior looks solid in practice and the sizing is
 derived from a constant so at the moment it will be fine yet I still feel compelled to create safeguards. the bats also fly off into the void
 and never return, we'll need to use a loop.
+
+17, 6106af2: wrapping, so that the bats no longer fly into the void. we use modular logic to check which dimension is relevant
+and then subtract or add twice the relevant radius in order to make the intended position within the (-radius, radius) bounds.

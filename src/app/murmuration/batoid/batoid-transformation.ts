@@ -1,5 +1,5 @@
 import { IFlight, IPositionAndVelocity, IThreeTuple } from '../cauldron/cauldron-flight';
-import { FLIGHT_SPEED } from './batoid-calibration';
+import { FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
 import { Random } from './batoid-types';
 
 /** given some mapping function that produces a random number derived from an injection token we produce a random response from an equally distributed region of a given radius length about 0*/
@@ -13,9 +13,11 @@ export function launchSingleFlightState(random: Random, radii: IThreeTuple): IPo
   const z = spread(random, radii.z);
   const heading = spread(random, Math.PI);
 
-  const xv = Math.cos(heading) * FLIGHT_SPEED;
-  const zv = Math.sin(heading) * FLIGHT_SPEED;
-  return { position: { x, y, z }, velocity: { x: xv, y: 0, z: zv } };
+  const vy = spread(random, FLIGHT_SPEED * Math.sin(MAX_PITCH));
+  const horizontal = Math.sqrt(FLIGHT_SPEED ** 2 - vy ** 2);
+  const xv = Math.cos(heading) * horizontal; // the x and z plane is giving the remainder of the magnitude
+  const zv = Math.sin(heading) * horizontal; // this means that the flight components distribute evenly over a certain angle c.f. sphere enclosures within cylinders
+  return { position: { x, y, z }, velocity: { x: xv, y: vy, z: zv } };
 }
 /** generates the initial flight state for the cauldron from a random token and collection of radii
  *  we use quantity as an input to aid unit simulation **/

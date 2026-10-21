@@ -25,10 +25,15 @@ export function poseCauldron(
   bats: THREE.InstancedMesh,
   pose: THREE.Object3D
 ): void {
+  pose.rotation.order = 'YXZ'; // this maintains wing axis
   for (let i = 0; i < bats.count; i++) {
     const offset = i * 3;
     pose.position.fromArray(flight.positions, offset);
     pose.rotation.y = Math.atan2(flight.velocities[offset], flight.velocities[offset + 2]);
+    pose.rotation.x = -Math.atan2(
+      flight.velocities[offset + 1],
+      Math.hypot(flight.velocities[offset], flight.velocities[offset + 2])
+    );
     pose.scale.setScalar(CALIBRATION.CAULDRON.batScale);
     pose.updateMatrix();
     bats.setMatrixAt(i, pose.matrix);
