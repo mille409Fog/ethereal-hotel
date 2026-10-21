@@ -86,3 +86,6 @@ this means that for now we are using a velocity vector with no y component, and 
 xz plane. for this logic to take place we had to add multiple interfaces to the flight section as well as
 several sections of logic to the transformations. for a further improvemenent there are some minor helper
 functions we can use to handle the three tuple mapping.
+
+15, d1e80a3: modularizing the launch logic by adding a function which writes the three tuple values to a given float 32 array.
+the code is cleaner and more elegant now, I prefer commits like these to the heavier lifting in 14 sometimes.
