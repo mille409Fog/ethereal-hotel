@@ -104,3 +104,5 @@ the rotational ordering on the pose itself, if we used the standardized alphabet
 the wrong axis principally rather than the wing.
 
 19, 6bbafaf: a small commit that adds ACES filmic toning, it's a very smooth curve similar to say uncharted 4 tonal distributions
+
+20, 3fc9379: changed constants to use a warm amber key light and a cooler fill light. added a rim light.

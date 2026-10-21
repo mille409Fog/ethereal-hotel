@@ -61,8 +61,10 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     scene.add(directionalLight);
 
     const rimLight = new THREE.DirectionalLight(CALIBRATION.PALETTE.sun, 1);
-    rimLight.position.set(2, -0.4, 1);
+    rimLight.position.set(3, 1, -3);
     scene.add(rimLight);
+
+    scene.fog = new THREE.Fog(CALIBRATION.PALETTE.fog, 1, 2);
 
     const camera = new THREE.PerspectiveCamera(
       50,
@@ -71,8 +73,8 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       100
     );
 
-    camera.position.set(0, 2.5, 1.5);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(0, -0.3, 3);
+    camera.lookAt(0, 0.5, 0);
 
     const bats = createCauldron();
     const initialDimensions: IThreeTuple = {
