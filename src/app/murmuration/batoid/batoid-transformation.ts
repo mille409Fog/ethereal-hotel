@@ -26,12 +26,14 @@ export function launchInitialState(random: Random, radii: IThreeTuple, quantity:
   for (let i = 0; i < quantity; i++) {
     const o = i * 3;
     const positionAndVelocity = launchSingleFlightState(random, radii);
-    positions[o] = positionAndVelocity.position.x;
-    positions[o + 1] = positionAndVelocity.position.y;
-    positions[o + 2] = positionAndVelocity.position.z;
-    velocities[o] = positionAndVelocity.velocity.x;
-    velocities[o + 1] = positionAndVelocity.velocity.y;
-    velocities[o + 2] = positionAndVelocity.velocity.z;
+    writeThreeTuple(positions, o, positionAndVelocity.position);
+    writeThreeTuple(velocities, o, positionAndVelocity.velocity);
   }
   return { positions, velocities };
+}
+/** writes an existing three tuple to a float 32 array */
+export function writeThreeTuple(array: Float32Array, offset: number, tuple: IThreeTuple): void {
+  array[offset] = tuple.x;
+  array[offset + 1] = tuple.y;
+  array[offset + 2] = tuple.z;
 }

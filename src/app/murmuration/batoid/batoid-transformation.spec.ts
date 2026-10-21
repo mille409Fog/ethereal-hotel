@@ -1,6 +1,11 @@
 import { IThreeTuple } from '../cauldron/cauldron-flight';
 import { FLIGHT_SPEED } from './batoid-calibration';
-import { launchInitialState, launchSingleFlightState, spread } from './batoid-transformation';
+import {
+  launchInitialState,
+  launchSingleFlightState,
+  spread,
+  writeThreeTuple,
+} from './batoid-transformation';
 import { Random } from './batoid-types';
 
 const RADII: IThreeTuple = { x: 1.2, y: 0.6, z: 0.2 };
@@ -144,5 +149,49 @@ describe('launchInitialState', () => {
       expect(Math.abs(p[o + 2])).toBeLessThanOrEqual(Math.fround(RADII.z));
       expect(Math.hypot(v[o], v[o + 1], v[o + 2])).toBeCloseTo(FLIGHT_SPEED, 6);
     }
+  });
+});
+
+describe('writeThreeTuple', () => {
+  // every value here is exactly representable in single precision, so toBe is safe
+  const TUPLE: IThreeTuple = { x: 0.5, y: -1.25, z: 2 };
+  const UNTOUCHED = 9;
+
+  /** three bats' worth of slots, each holding a sentinel that no write should produce */
+  function slots(): Float32Array {
+    return new Float32Array(9).fill(UNTOUCHED);
+  }
+
+  it('writes x, y and z into the three slots starting at the offset', () => {
+    const array = slots();
+
+    writeThreeTuple(array, 3, TUPLE);
+
+    expect([array[3], array[4], array[5]]).toEqual([0.5, -1.25, 2]);
+  });
+
+  it('leaves every slot outside those three untouched', () => {
+    const array = slots();
+
+    writeThreeTuple(array, 3, TUPLE);
+
+    expect([...array.slice(0, 3), ...array.slice(6)]).toEqual(Array(6).fill(UNTOUCHED));
+  });
+
+  it('writes the last bat at the last valid offset, length - 3', () => {
+    const array = slots();
+
+    writeThreeTuple(array, array.length - 3, TUPLE);
+
+    expect([...array.slice(-3)]).toEqual([0.5, -1.25, 2]);
+  });
+
+  it('silently drops the part of a write that falls past the end of the array', () => {
+    // not a behaviour to rely on: this is the trap that hid the old loop-bound bug
+    const array = slots();
+
+    expect(() => writeThreeTuple(array, array.length - 1, TUPLE)).not.toThrow();
+    expect(array).toHaveLength(9);
+    expect(array[8]).toBe(0.5);
   });
 });

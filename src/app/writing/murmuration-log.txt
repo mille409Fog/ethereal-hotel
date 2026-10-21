@@ -79,3 +79,10 @@ and the velocity is constant. we want to start with the most basic version and t
 
 13, a550fbd: this is just creating a new file and an interface used to hold the flight state, a base 32 array
 for positions and another for velocities. every "element" (bat) will possess these.
+
+14, 5104331: creates the launch logic used to generate the inital positioning. currently very rough, we
+at this point use a constant velocity value partioned into x and z elements depending on a generated angle.
+this means that for now we are using a velocity vector with no y component, and the bats proceed along a
+xz plane. for this logic to take place we had to add multiple interfaces to the flight section as well as
+several sections of logic to the transformations. for a further improvemenent there are some minor helper
+functions we can use to handle the three tuple mapping.
