@@ -106,3 +106,7 @@ the wrong axis principally rather than the wing.
 19, 6bbafaf: a small commit that adds ACES filmic toning, it's a very smooth curve similar to say uncharted 4 tonal distributions
 
 20, 3fc9379: changed constants to use a warm amber key light and a cooler fill light. added a rim light.
+
+21, 8997708: a radical change. we alter the light positions and camera angles and add fog. using an aberrent
+fog colour makes the bats appear white, I'll have to set it identical to the sky colour for now. ideally later
+I would like it to be an imperceptibly different colour of some sort but that can be handled at another time.

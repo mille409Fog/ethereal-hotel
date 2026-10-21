@@ -41,18 +41,17 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('stage');
   private renderer?: THREE.WebGLRenderer;
   private bats?: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  private skyDome?: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
   protected readonly webGLfailure = signal(false);
 
   public ngAfterViewInit(): void {
     const canvas = this.canvas().nativeElement;
     const scene = new THREE.Scene();
 
-    scene.background = new THREE.Color(CALIBRATION.PALETTE.sky);
-
     const hemisphereLight = new THREE.HemisphereLight(
-      CALIBRATION.PALETTE.sky,
+      CALIBRATION.PALETTE.fill,
       CALIBRATION.PALETTE.ground,
-      0.5
+      0.3
     );
     scene.add(hemisphereLight);
 
@@ -64,7 +63,40 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     rimLight.position.set(3, 1, -3);
     scene.add(rimLight);
 
-    scene.fog = new THREE.Fog(CALIBRATION.PALETTE.fog, 1, 2);
+    scene.fog = new THREE.Fog(CALIBRATION.PALETTE.sky, 2, 5);
+
+    const skyDome = new THREE.Mesh(
+      new THREE.SphereGeometry(50, 32, 16),
+      new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        uniforms: {
+          horizon: { value: new THREE.Color(CALIBRATION.PALETTE.sky) },
+          zenith: { value: new THREE.Color(CALIBRATION.PALETTE.zenith) },
+          sunDirection: { value: directionalLight.position.clone().normalize() },
+        },
+        vertexShader: /* glsl */ `
+          varying vec3 vDirection;
+          void main() {
+            vDirection = normalize(position);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+          }`,
+        fragmentShader: /* glsl */ `
+          uniform vec3 horizon, zenith, sunDirection;
+          varying vec3 vDirection;
+          void main() {
+            vec3 d = normalize(vDirection);
+            float h = clamp(d.y, 0.0, 1.0);
+            vec3 colour = mix(horizon, zenith, pow(h,0.6));
+            float glow = pow(max(dot(d,sunDirection),0.0),8.0);
+            gl_FragColor = vec4(colour + glow * horizon * 0.6, 1.0);
+            #include <tonemapping_fragment>
+            #include <colorspace_fragment>
+          }`,
+      })
+    );
+    this.skyDome = skyDome;
+    scene.add(skyDome);
 
     const camera = new THREE.PerspectiveCamera(
       50,
@@ -122,6 +154,9 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     this.bats?.geometry.dispose();
     this.bats?.material.dispose();
     this.bats?.dispose(); //unlike in the single case, the instanced mesh itself must be disposed as well as its constituent parts
+    this.skyDome?.material.dispose();
+    this.skyDome?.geometry.dispose();
+    this.skyDome?.dispose();
     this.renderer?.dispose();
   }
 }

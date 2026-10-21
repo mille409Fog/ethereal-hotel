@@ -92,6 +92,49 @@ const flockIn = (renderer: FakeRenderer): THREE.InstancedMesh => {
   return flock;
 };
 
+type SkyDome = THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
+
+/**
+ * The sky dome in the last scene drawn: the one mesh whose material is a
+ * shader. Found by material rather than by `Mesh`, because the flock is a
+ * mesh too.
+ */
+const skyIn = (renderer: FakeRenderer): SkyDome => {
+  const [scene] = renderer.render.mock.lastCall ?? [];
+  const sky = scene?.children.find(
+    (child) => child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial
+  );
+  if (!(sky instanceof THREE.Mesh)) {
+    throw new Error('no sky dome in the rendered scene');
+  }
+  return sky as SkyDome;
+};
+
+/** The camera the last frame was drawn through. */
+const cameraOf = (renderer: FakeRenderer): THREE.PerspectiveCamera => {
+  const [, camera] = renderer.render.mock.lastCall ?? [];
+  if (!(camera instanceof THREE.PerspectiveCamera)) {
+    throw new Error('no perspective camera was rendered through');
+  }
+  return camera;
+};
+
+/**
+ * The key light: the brightest directional light. Found by intensity rather
+ * than by order, so adding a light in front of it does not quietly move the sun.
+ */
+const keyLightIn = (renderer: FakeRenderer): THREE.DirectionalLight => {
+  const [scene] = renderer.render.mock.lastCall ?? [];
+  const lights = (scene?.children ?? []).filter(
+    (child): child is THREE.DirectionalLight => child instanceof THREE.DirectionalLight
+  );
+  const key = lights.sort((a, b) => b.intensity - a.intensity)[0];
+  if (!key) {
+    throw new Error('no directional light in the rendered scene');
+  }
+  return key;
+};
+
 /**
  * A draw of one half is the centre of every spread, a heading of 0 and no climb, so
  * every bat launches from the origin flying along +x at `FLIGHT_SPEED`, and
@@ -264,6 +307,83 @@ describe('Murmuration', () => {
 
     expect(renderer.setAnimationLoop).toHaveBeenLastCalledWith(null);
     expect(renderer.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  describe('sky dome', () => {
+    beforeEach(() => {
+      stubReducedMotion(true);
+    });
+
+    it('is seen from inside, and never hides a bat', async () => {
+      await mount();
+      const material = skyIn(onlyRenderer()).material;
+
+      expect(material.side).toBe(THREE.BackSide);
+      expect(material.depthWrite).toBe(false);
+    });
+
+    it('sits inside the far plane, or the camera would clip the sky away', async () => {
+      await mount();
+      const renderer = onlyRenderer();
+      const { radius } = skyIn(renderer).geometry.parameters;
+      const camera = cameraOf(renderer);
+
+      // the camera is off-centre, so the far wall is up to its distance from the origin further away
+      expect(radius + camera.position.length()).toBeLessThan(camera.far);
+    });
+
+    it('meets the fog at the horizon, so a distant bat fades into the sky behind it', async () => {
+      await mount();
+      const renderer = onlyRenderer();
+      const [scene] = renderer.render.mock.lastCall ?? [];
+      const horizon = skyIn(renderer).material.uniforms['horizon'].value as THREE.Color;
+
+      expect(scene?.fog).toBeInstanceOf(THREE.Fog);
+      expect(horizon.getHex()).toBe((scene?.fog as THREE.Fog).color.getHex());
+    });
+
+    it('is not fogged itself, or the fog would paint the whole sky one colour', async () => {
+      await mount();
+
+      expect(skyIn(onlyRenderer()).material.fog).toBe(false);
+    });
+
+    it('glows toward the key light, so the sky is lit from where the bats are', async () => {
+      await mount();
+      const renderer = onlyRenderer();
+      const sun = skyIn(renderer).material.uniforms['sunDirection'].value as THREE.Vector3;
+      const key = keyLightIn(renderer).position.clone().normalize();
+
+      expect(sun.length()).toBeCloseTo(1, 10);
+      expect(sun.x).toBeCloseTo(key.x, 10);
+      expect(sun.y).toBeCloseTo(key.y, 10);
+      expect(sun.z).toBeCloseTo(key.z, 10);
+    });
+
+    it('finishes through the renderer, so its horizon and the fog on the bats are the same colour', async () => {
+      // jsdom cannot compile GLSL, so this reads the source: without these two
+      // includes the dome is written linear and untone-mapped while the bats are not
+      await mount();
+      const { fragmentShader } = skyIn(onlyRenderer()).material;
+
+      expect(fragmentShader).toContain('#include <tonemapping_fragment>');
+      expect(fragmentShader).toContain('#include <colorspace_fragment>');
+    });
+  });
+
+  it('releases the sky dome: its geometry, its material and the mesh', async () => {
+    stubReducedMotion(true);
+    const fixture = await mount();
+    const sky = skyIn(onlyRenderer());
+    const geometry = vi.spyOn(sky.geometry, 'dispose');
+    const material = vi.spyOn(sky.material, 'dispose');
+    const mesh = vi.spyOn(sky, 'dispose');
+
+    fixture.destroy();
+
+    expect(geometry).toHaveBeenCalledTimes(1);
+    expect(material).toHaveBeenCalledTimes(1);
+    expect(mesh).toHaveBeenCalledTimes(1);
   });
 
   it('releases the flock: its geometry, its material and its instance buffer', async () => {

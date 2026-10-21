@@ -3,7 +3,8 @@ export const PALETTE = {
   ground: 0x1a1410, // altering ground to account for dusk
   sun: 0xffa860, //moving towards dusk
   batoid: 0x2b2b30,
-  fog: 0xf2f8f7,
+  zenith: 0x2b0071, // using a deep indigo
+  fill: 0x6a7fa8,
 } as const;
 
 export const CAULDRON = {
