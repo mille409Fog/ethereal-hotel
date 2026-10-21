@@ -9,12 +9,12 @@ export const CAULDRON = {
   count: 200,
   halfWidth: 1.44,
   halfHeight: 0.6,
-  halfDepth: 0.12,
+  halfDepth: 0.6,
   batScale: 0.1,
 } as const;
 
 export const SPIN_RADIANS_PER_SECOND = Math.PI / 8;
-export const FLIGHT_VELOCITY_X = 2; // measured in units per second, we use a simpler formulation for now
+export const FLIGHT_SPEED = 0.314; // measured in units per second, we use a simpler formulation for now
 
 export const TICK_SECONDS = 1 / 60;
 export const CLAMP_SECONDS = 0.25;

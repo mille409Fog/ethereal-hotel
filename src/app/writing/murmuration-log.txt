@@ -72,3 +72,10 @@ can proceed smoothly. I will have to abstract both of these tokens to other file
 
 11, ea14092: minor restructuring, placing auxillary files into folders. this type of work, making complex things simpler, is deeply satisfying
 even if there is no discernable improvemenent to 'performance'. fixed a unit test failure.
+
+12, 7363903: transitioning to actual flight, to start with we're just increasing the size of the ambient space
+that the bats are operating in by 20% and then adding a basic x velocity, note that there are no y and z components
+and the velocity is constant. we want to start with the most basic version and then gradually introduce complexity/
+
+13, a550fbd: this is just creating a new file and an interface used to hold the flight state, a base 32 array
+for positions and another for velocities. every "element" (bat) will possess these.
