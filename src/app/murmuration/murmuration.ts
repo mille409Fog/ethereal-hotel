@@ -56,9 +56,13 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     );
     scene.add(hemisphereLight);
 
-    const directionalLight = new THREE.DirectionalLight(CALIBRATION.PALETTE.sun, 1.5);
-    directionalLight.position.set(2, 3, 4);
+    const directionalLight = new THREE.DirectionalLight(CALIBRATION.PALETTE.sun, 4);
+    directionalLight.position.set(-3, 0.6, -4);
     scene.add(directionalLight);
+
+    const rimLight = new THREE.DirectionalLight(CALIBRATION.PALETTE.sun, 1);
+    rimLight.position.set(2, -0.4, 1);
+    scene.add(rimLight);
 
     const camera = new THREE.PerspectiveCamera(
       50,

@@ -102,3 +102,5 @@ and then subtract or add twice the relevant radius in order to make the intended
 18, d2ac060: actual y velocity, bounded pitch to add 'realism'. the change that most surprised me here was altering
 the rotational ordering on the pose itself, if we used the standardized alphabetical axis ordering we would rotate along
 the wrong axis principally rather than the wing.
+
+19, 6bbafaf: a small commit that adds ACES filmic toning, it's a very smooth curve similar to say uncharted 4 tonal distributions

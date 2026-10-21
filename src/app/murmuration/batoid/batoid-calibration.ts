@@ -1,7 +1,7 @@
 export const PALETTE = {
   sky: 0x96ded1,
-  ground: 0x2e2a1f,
-  sun: 0xf3d9c4,
+  ground: 0x1a1410, // altering ground to account for dusk
+  sun: 0xffa860, //moving towards dusk
   batoid: 0x2b2b30,
 } as const;
 
