@@ -88,6 +88,8 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       this.renderer = renderer; // we use a const to obviate the existence problem while inside the animation loop
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         renderer.render(scene, camera);
       } else {
