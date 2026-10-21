@@ -92,18 +92,28 @@ const flockIn = (renderer: FakeRenderer): THREE.InstancedMesh => {
   return flock;
 };
 
-/** The flock's heading before any tick has turned it. */
-const UNTURNED = 0;
+/**
+ * A draw of one half is the centre of every spread and a heading of 0, so
+ * every bat launches from the origin flying along +x at `FLIGHT_SPEED`, and
+ * how far bat 0 has come along x is a direct count of the ticks spent.
+ */
+const LEVEL = (): number => 0.5;
+
+/** Bat 0's x, read out of the instance buffer: element 12 of a column-major 4×4. */
+const firstBatX = (renderer: FakeRenderer): number => flockIn(renderer).instanceMatrix.array[12];
 
 /**
- * How far the flock turns in one tick. The exact tick counts behind each
- * frame are `cauldron-clock.spec.ts`'s to prove; this spec only checks that
- * the component spends whatever the clock hands it, at this rate.
+ * How far a bat flies in one tick. The exact tick counts behind each frame
+ * are `cauldron-clock.spec.ts`'s to prove; this spec only checks that the
+ * component spends whatever the clock hands it, at this rate.
  */
-const TURN_PER_TICK = CALIBRATION.SPIN_RADIANS_PER_SECOND * CALIBRATION.TICK_SECONDS;
+const STEP_PER_TICK = CALIBRATION.FLIGHT_SPEED * CALIBRATION.TICK_SECONDS;
 
-/** A sum of a few dozen identical float additions; nowhere near this many digits of drift. */
-const DIGITS = 12;
+/**
+ * Positions live in a `Float32Array` and are rounded after every tick, so a
+ * few dozen ticks drift in the seventh digit; five decimal places is well clear.
+ */
+const DIGITS = 5;
 
 describe('Murmuration', () => {
   beforeEach(() => {
@@ -150,11 +160,19 @@ describe('Murmuration', () => {
 
     expect(renderer.render).toHaveBeenCalledTimes(1);
     expect(renderer.setAnimationLoop).not.toHaveBeenCalled();
-    expect(flockIn(renderer).rotation.y).toBe(UNTURNED);
+  });
+
+  it('poses the flock before the still frame, rather than drawing every bat at the identity', async () => {
+    // An unposed instance is full size at the origin; a posed one is shrunk.
+    stubReducedMotion(true);
+    await mount();
+    const m = flockIn(onlyRenderer()).instanceMatrix.array;
+
+    expect(Math.hypot(m[8], m[9], m[10])).toBeCloseTo(CALIBRATION.CAULDRON.batScale, DIGITS);
   });
 
   it('builds its flock from the injected chance, not from Math.random', async () => {
-    // Where each draw puts each bat is `cauldron-creation.spec.ts`'s to prove.
+    // Where each draw puts each bat is `batoid-transformation.spec.ts`'s to prove.
     // Here: every draw comes from the token, and a draw of 0 is visibly a
     // bat at the cauldron's near corner.
     const random = vi.fn(() => 0);
@@ -182,28 +200,28 @@ describe('Murmuration', () => {
     expect(renderer.render).toHaveBeenCalledTimes(3);
   });
 
-  it('does not turn the flock on the first frame, whatever its timestamp', async () => {
-    await mount();
+  it('does not move the flock on the first frame, whatever its timestamp', async () => {
+    await mount({ random: LEVEL });
     const renderer = onlyRenderer();
 
     frameLoopOf(renderer)(90_000);
 
-    expect(flockIn(renderer).rotation.y).toBe(UNTURNED);
+    expect(firstBatX(renderer)).toBe(0);
   });
 
-  it('turns the flock by one tick of spin for every tick the clock counts', async () => {
-    await mount();
+  it('flies every bat one tick of its velocity for every tick the clock counts', async () => {
+    await mount({ random: LEVEL });
     const renderer = onlyRenderer();
     const loop = frameLoopOf(renderer);
 
     loop(1_000);
     loop(1_100); // 100ms: six ticks
 
-    expect(flockIn(renderer).rotation.y - UNTURNED).toBeCloseTo(6 * TURN_PER_TICK, DIGITS);
+    expect(firstBatX(renderer)).toBeCloseTo(6 * STEP_PER_TICK, DIGITS);
   });
 
   it('keeps one clock across frames, so short frames add up to a tick', async () => {
-    await mount();
+    await mount({ random: LEVEL });
     const renderer = onlyRenderer();
     const loop = frameLoopOf(renderer);
 
@@ -211,11 +229,11 @@ describe('Murmuration', () => {
     loop(1_010); // 10ms: less than a tick, carried
     loop(1_020); // 20ms in all: one tick
 
-    expect(flockIn(renderer).rotation.y - UNTURNED).toBeCloseTo(TURN_PER_TICK, DIGITS);
+    expect(firstBatX(renderer)).toBeCloseTo(STEP_PER_TICK, DIGITS);
   });
 
-  it('clamps a long gap between frames rather than spinning to catch up', async () => {
-    await mount();
+  it('clamps a long gap between frames rather than flying to catch up', async () => {
+    await mount({ random: LEVEL });
     const renderer = onlyRenderer();
     const loop = frameLoopOf(renderer);
 
@@ -223,7 +241,19 @@ describe('Murmuration', () => {
     loop(61_000);
 
     const ticks = Math.floor(CALIBRATION.CLAMP_SECONDS / CALIBRATION.TICK_SECONDS);
-    expect(flockIn(renderer).rotation.y - UNTURNED).toBeCloseTo(ticks * TURN_PER_TICK, DIGITS);
+    expect(firstBatX(renderer)).toBeCloseTo(ticks * STEP_PER_TICK, DIGITS);
+  });
+
+  it('leaves the instance buffer alone on a frame worth no tick, so nothing is re-uploaded', async () => {
+    await mount({ random: LEVEL });
+    const renderer = onlyRenderer();
+    const loop = frameLoopOf(renderer);
+
+    loop(1_000);
+    const before = flockIn(renderer).instanceMatrix.version;
+    loop(1_005); // 5ms: no tick
+
+    expect(flockIn(renderer).instanceMatrix.version).toBe(before);
   });
 
   it('stops the loop and releases the GPU on destroy', async () => {

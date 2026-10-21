@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-// N.B. currently creates a singular bat in stasis, future verions will create several bats that operate in a moving cauldron
+/**  creates the geometry for the cauldron of bats, the individual function provides the topological information for a singular bat which is
+ * then copied via an instanced mesh to create the cauldron as a whole.
+ */
 export function createBatoidGeometry(): THREE.BufferGeometry {
   // we create the 'classic' bat shape which comes from a series of lines and quadratic curves
   const half = new THREE.Path()

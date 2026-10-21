@@ -1,6 +1,7 @@
-import { IThreeTuple } from '../cauldron/cauldron-flight';
+import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
 import { FLIGHT_SPEED } from './batoid-calibration';
 import {
+  flightStep,
   launchInitialState,
   launchSingleFlightState,
   spread,
@@ -193,5 +194,66 @@ describe('writeThreeTuple', () => {
     expect(() => writeThreeTuple(array, array.length - 1, TUPLE)).not.toThrow();
     expect(array).toHaveLength(9);
     expect(array[8]).toBe(0.5);
+  });
+});
+
+describe('flightStep', () => {
+  // every value here, and every product and sum below, is exactly representable in single precision
+  const POSITIONS = [0, 1, -2, 0.5, 0, 4];
+  const VELOCITIES = [1, -2, 0.5, 0, 4, -0.25];
+
+  /** two bats, built fresh for each test because flightStep writes in place */
+  function flight(): IFlight {
+    return { positions: new Float32Array(POSITIONS), velocities: new Float32Array(VELOCITIES) };
+  }
+
+  it('moves every component of every bat by its own velocity times the step', () => {
+    const state = flight();
+
+    flightStep(state, 0.5);
+
+    expect([...state.positions]).toEqual([0.5, 0, -1.75, 0.5, 2, 3.875]);
+  });
+
+  it('writes into the flight it was given rather than returning a new one', () => {
+    const state = flight();
+    const positions = state.positions;
+
+    flightStep(state, 0.5);
+
+    expect(state.positions).toBe(positions);
+  });
+
+  it('leaves the velocities alone: straight-line flight does not steer', () => {
+    const state = flight();
+
+    flightStep(state, 0.5);
+
+    expect([...state.velocities]).toEqual(VELOCITIES);
+  });
+
+  it('moves nothing for a step of zero seconds', () => {
+    const state = flight();
+
+    flightStep(state, 0);
+
+    expect([...state.positions]).toEqual(POSITIONS);
+  });
+
+  it('adds up across steps, so two half steps land where one whole step does', () => {
+    const halves = flight();
+    const whole = flight();
+
+    flightStep(halves, 0.25);
+    flightStep(halves, 0.25);
+    flightStep(whole, 0.5);
+
+    expect([...halves.positions]).toEqual([...whole.positions]);
+  });
+
+  it('does nothing, and does not throw, for an empty flight', () => {
+    const empty: IFlight = { positions: new Float32Array(0), velocities: new Float32Array(0) };
+
+    expect(() => flightStep(empty, 1)).not.toThrow();
   });
 });

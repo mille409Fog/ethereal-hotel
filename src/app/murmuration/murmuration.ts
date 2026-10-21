@@ -10,9 +10,11 @@ import {
 } from '@angular/core';
 import * as THREE from 'three';
 import * as CALIBRATION from './batoid/batoid-calibration';
+import { flightStep, launchInitialState } from './batoid/batoid-transformation';
 import { Random } from './batoid/batoid-types';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
-import { createCauldron } from './cauldron/cauldron-creation';
+import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
+import { IThreeTuple } from './cauldron/cauldron-flight';
 
 export const MURMURATION_RANDOM = new InjectionToken<Random>('MURMURATION_RANDOM', {
   factory: () => Math.random,
@@ -68,7 +70,15 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     camera.position.set(0, 2.5, 1.5);
     camera.lookAt(0, 0, 0);
 
-    const bats = createCauldron(this.random);
+    const bats = createCauldron();
+    const initialDimensions: IThreeTuple = {
+      x: CALIBRATION.CAULDRON.halfWidth,
+      y: CALIBRATION.CAULDRON.halfHeight,
+      z: CALIBRATION.CAULDRON.halfDepth,
+    };
+    const flight = launchInitialState(this.random, initialDimensions, CALIBRATION.CAULDRON.count);
+    const pose = new THREE.Object3D();
+    poseCauldron(flight, bats, pose);
     this.bats = bats;
     scene.add(bats);
 
@@ -86,7 +96,10 @@ export class Murmuration implements AfterViewInit, OnDestroy {
           const advanced = advance(clock, nowMs);
           clock = advanced.state;
           for (let i = 0; i < advanced.ticks; i++) {
-            bats.rotation.y += CALIBRATION.SPIN_RADIANS_PER_SECOND * CALIBRATION.TICK_SECONDS;
+            flightStep(flight, CALIBRATION.TICK_SECONDS);
+          }
+          if (advanced.ticks > 0) {
+            poseCauldron(flight, bats, pose);
           }
           renderer.render(scene, camera);
         });
