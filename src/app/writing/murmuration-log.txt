@@ -89,3 +89,9 @@ functions we can use to handle the three tuple mapping.
 
 15, d1e80a3: modularizing the launch logic by adding a function which writes the three tuple values to a given float 32 array.
 the code is cleaner and more elegant now, I prefer commits like these to the heavier lifting in 14 sometimes.
+
+16, ea05271: relatively major, we take out the initial rotational and positional logic inside the cauldron creation fucntion and replace it with a flight calculation function
+and a position (posing) function. there are obvious issues around array corruption or sizing, if we have even minor
+array discrepencies we'll fail immediately and "inexplicably". all the array behavior looks solid in practice and the sizing is
+derived from a constant so at the moment it will be fine yet I still feel compelled to create safeguards. the bats also fly off into the void
+and never return, we'll need to use a loop.

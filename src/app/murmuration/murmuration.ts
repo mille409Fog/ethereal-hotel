@@ -96,7 +96,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
           const advanced = advance(clock, nowMs);
           clock = advanced.state;
           for (let i = 0; i < advanced.ticks; i++) {
-            flightStep(flight, CALIBRATION.TICK_SECONDS);
+            flightStep(flight, CALIBRATION.TICK_SECONDS, initialDimensions);
           }
           if (advanced.ticks > 0) {
             poseCauldron(flight, bats, pose);

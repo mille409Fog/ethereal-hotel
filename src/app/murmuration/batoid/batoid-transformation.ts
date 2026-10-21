@@ -39,10 +39,18 @@ export function writeThreeTuple(array: Float32Array, offset: number, tuple: IThr
 }
 
 /** one tick's worth of position change applied to each bat in the flight according to the velocity */
-export function flightStep(flight: IFlight, seconds: number): void {
+export function flightStep(flight: IFlight, seconds: number, radii: IThreeTuple): void {
   // this logic is completely dependent on a correct 'ordering', if ordered we do not need to pair components
   const { positions, velocities } = flight;
+  const termina = [radii.x, radii.y, radii.z];
   for (let i = 0; i < positions.length; i++) {
-    positions[i] += velocities[i] * seconds;
+    let destination = positions[i] + velocities[i] * seconds;
+    const radius = termina[i % 3];
+    if (destination > radius) {
+      destination -= 2 * radius;
+    } else if (destination < -radius) {
+      destination += 2 * radius;
+    }
+    positions[i] = destination;
   }
 }
