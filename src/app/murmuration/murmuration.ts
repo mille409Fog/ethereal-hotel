@@ -13,6 +13,11 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import {
+  BLOOM_RADIUS,
+  BLOOM_STRENGTH,
+  BLOOM_THRESHOLD,
+} from './atmosphere/atmospheric-calibration';
 import { createFog } from './atmosphere/fog';
 import { createSkyDome } from './atmosphere/sky-dome';
 import * as CALIBRATION from './batoid/batoid-calibration';
@@ -72,15 +77,8 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     this.skyDome = skyDome;
     scene.add(skyDome);
 
-    const camera = new THREE.PerspectiveCamera(
-      50,
-      canvas.clientWidth / canvas.clientHeight,
-      0.1,
-      100
-    );
-
-    camera.position.set(0, -0.3, 3);
-    camera.lookAt(0, 0.5, 0);
+    const camera = this.createCamera(canvas.clientWidth / canvas.clientHeight);
+    this.setAndOrientCamera(camera);
 
     const bats = createCauldron();
     const flight = launchInitialState(
@@ -97,16 +95,11 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       const renderer = this.createRenderer(canvas);
       this.renderer = renderer;
       const canvasResolution = new THREE.Vector2(canvas.clientWidth, canvas.clientHeight);
-      const bloomPass = new UnrealBloomPass(canvasResolution, 1.5, 0.4, 0.85);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.0;
+      const bloomPass = this.createBloomPass(canvasResolution);
+      this.calibrateRenderer(renderer, canvas.clientWidth, canvas.clientHeight);
       const composer = this.createComposer(renderer);
       this.composer = composer;
-      composer.addPass(new RenderPass(scene, camera));
-      composer.addPass(bloomPass);
-      composer.addPass(new OutputPass());
+      this.orchestrateComposerPasses(composer, bloomPass, scene, camera);
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         composer.render();
       } else {
@@ -135,11 +128,42 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     this.destroyRenderer();
   }
 
+  private createBloomPass(canvasResolution: THREE.Vector2): UnrealBloomPass {
+    return new UnrealBloomPass(canvasResolution, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD);
+  }
+
+  private createCamera(widthToHeightRatio: number): THREE.PerspectiveCamera {
+    return new THREE.PerspectiveCamera(50, widthToHeightRatio, 0.1, 100);
+  }
+
   private initializeScene(scene: THREE.Scene): void {
     scene.add(createHemisphereLight());
     scene.add(createKeyLight());
     scene.add(createRimLight());
     scene.fog = createFog();
+  }
+
+  private setAndOrientCamera(camera: THREE.PerspectiveCamera): void {
+    camera.position.set(0, -0.3, 3);
+    camera.lookAt(0, 0.5, 0);
+  }
+
+  private calibrateRenderer(renderer: THREE.WebGLRenderer, width: number, height: number): void {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height, false);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+  }
+
+  private orchestrateComposerPasses(
+    composer: EffectComposer,
+    bloomPass: UnrealBloomPass,
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera
+  ): void {
+    composer.addPass(new RenderPass(scene, camera));
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
   }
 
   private destroyBats(): void {

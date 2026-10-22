@@ -123,3 +123,6 @@ later we will want an additional folder to distinguish the atmospheric effects.
 
 25, d20daf2: we continue to make the formulation more elegant and clearer. we move the atmospheric effects into their
 own folder and modularize various constants.
+
+26, 34f7f64: additional streamlining, it's beginning to look like real code. part of the focus should always be in finding
+simplicity in chaos.
