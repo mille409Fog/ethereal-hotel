@@ -19,9 +19,22 @@ export const MURMURATION_RENDERER = new InjectionToken<
 
 /**
  * the composer is abstracted for the same reason: drawing its passes needs a real web gl context.
+ *
+ * it is built on a target carrying a depth texture, which the god-rays pass reads to find the bats;
+ * the composer clones this target for its second buffer, and the clone carries its own.
  */
 export const MURMURATION_COMPOSER = new InjectionToken<
   (renderer: THREE.WebGLRenderer) => EffectComposer
 >('MURMURATION_COMPOSER', {
-  factory: () => (renderer) => new EffectComposer(renderer),
+  factory: () => (renderer) => {
+    const { width, height } = renderer.getSize(new THREE.Vector2());
+    const target = new THREE.WebGLRenderTarget(width, height, {
+      type: THREE.HalfFloatType,
+      depthTexture: new THREE.DepthTexture(width, height),
+    });
+    const composer = new EffectComposer(renderer, target);
+    // a supplied target is taken as already sized; this applies the pixel ratio, as the default target would
+    composer.setSize(width, height);
+    return composer;
+  },
 });

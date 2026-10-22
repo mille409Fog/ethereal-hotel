@@ -30,7 +30,8 @@ import {
 } from './camera/camera-calibration';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
-import { KEY_LIGHT_POSITION } from './light/light-calibration';
+import { GodRaysPass } from './light/god-rays/god-rays-pass';
+import { GOD_RAYS, KEY_LIGHT_POSITION } from './light/light-calibration';
 import { createHemisphereLight, createKeyLight, createRimLight } from './light/light-initiation';
 import {
   MURMURATION_COMPOSER,
@@ -61,7 +62,9 @@ export class Murmuration implements AfterViewInit, OnDestroy {
 
     this.initializeScene(scene);
 
-    const skyDome = createSkyDome(new THREE.Vector3(...KEY_LIGHT_POSITION).normalize());
+    // one vector for the sky's glow and the light shafts, so the two cannot aim at different suns
+    const sunDirection = new THREE.Vector3(...KEY_LIGHT_POSITION).normalize();
+    const skyDome = createSkyDome(sunDirection);
     this.skyDome = skyDome;
     scene.add(skyDome);
 
@@ -87,7 +90,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       this.calibrateRenderer(renderer, canvas.clientWidth, canvas.clientHeight);
       const composer = this.createComposer(renderer);
       this.composer = composer;
-      this.orchestrateComposerPasses(composer, bloomPass, scene, camera);
+      this.orchestrateComposerPasses(composer, bloomPass, scene, camera, sunDirection);
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         composer.render();
       } else {
@@ -152,9 +155,11 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     composer: EffectComposer,
     bloomPass: UnrealBloomPass,
     scene: THREE.Scene,
-    camera: THREE.PerspectiveCamera
+    camera: THREE.PerspectiveCamera,
+    sunDirection: THREE.Vector3
   ): void {
     composer.addPass(new RenderPass(scene, camera));
+    composer.addPass(new GodRaysPass(camera, sunDirection, GOD_RAYS));
     composer.addPass(bloomPass);
     composer.addPass(new OutputPass());
   }

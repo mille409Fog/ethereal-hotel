@@ -7,6 +7,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
+import { GodRaysPass } from './light/god-rays/god-rays-pass';
 import { Murmuration } from './murmuration';
 import {
   MURMURATION_COMPOSER,
@@ -260,6 +261,23 @@ describe('Murmuration', () => {
     composer.dispose();
   });
 
+  it('builds the composer on buffers that keep their depth, which the light shafts read', () => {
+    // whichever buffer the render pass draws into, the god-rays pass after it needs its own depth
+    const renderer = {
+      getPixelRatio: (): number => 2,
+      getSize: (target: THREE.Vector2): THREE.Vector2 => target.set(4, 3),
+    };
+    const composer = TestBed.inject(MURMURATION_COMPOSER)(
+      renderer as unknown as THREE.WebGLRenderer
+    );
+
+    expect(composer.readBuffer.depthTexture).toBeInstanceOf(THREE.DepthTexture);
+    expect(composer.writeBuffer.depthTexture).toBeInstanceOf(THREE.DepthTexture);
+    expect(composer.readBuffer.depthTexture).not.toBe(composer.writeBuffer.depthTexture);
+    expect(composer.readBuffer.width).toBe(8);
+    composer.dispose();
+  });
+
   it('shows the canvas and no failure message when WebGL works', async () => {
     const fixture = await mount();
     const host: HTMLElement = fixture.nativeElement;
@@ -269,13 +287,14 @@ describe('Murmuration', () => {
   });
 
   describe('post-processing', () => {
-    it('draws the scene, blooms it, and only then tone-maps it', async () => {
+    it('draws the scene, lights it, blooms it, and only then tone-maps it', async () => {
       // OutputPass applies the renderer's tone mapping and colour space; anywhere
       // but last, the bloom would be added to a picture that is already finished.
+      // The shafts come before the bloom, so their brightest light blooms like the rest.
       await mount();
       const kinds = onlyComposer().passes.map((pass) => pass.constructor);
 
-      expect(kinds).toEqual([RenderPass, UnrealBloomPass, OutputPass]);
+      expect(kinds).toEqual([RenderPass, GodRaysPass, UnrealBloomPass, OutputPass]);
     });
 
     it('builds the composer on the renderer, after the renderer is sized', async () => {
@@ -414,7 +433,7 @@ describe('Murmuration', () => {
 
     fixture.destroy();
 
-    expect(passes).toHaveLength(3);
+    expect(passes).toHaveLength(4);
     for (const pass of passes) {
       expect(pass).toHaveBeenCalledTimes(1);
     }

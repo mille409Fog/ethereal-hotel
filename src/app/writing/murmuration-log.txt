@@ -133,3 +133,5 @@ bloom calibration.
 28, c7fbaed: created a new section to handle the camera calibration and constants
 
 29, ee1d437: moved the murmuration injection tokens to a separate tokens file, also aids spec processing
+
+30, 5e4fa77: fixes a unit test failure owing from the injection token changes, abstracts the render conifugration data to another folder
