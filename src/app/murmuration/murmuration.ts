@@ -3,7 +3,6 @@ import {
   Component,
   ElementRef,
   inject,
-  InjectionToken,
   OnDestroy,
   signal,
   viewChild,
@@ -22,7 +21,6 @@ import { createFog } from './atmosphere/fog';
 import { createSkyDome } from './atmosphere/sky-dome';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { flightStep, launchInitialState } from './batoid/batoid-transformation';
-import { Random } from './batoid/batoid-types';
 import {
   CAMERA_FAR,
   CAMERA_LOOK_AT_POINT,
@@ -34,29 +32,11 @@ import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
 import { KEY_LIGHT_POSITION } from './light/light-calibration';
 import { createHemisphereLight, createKeyLight, createRimLight } from './light/light-initiation';
-
-export const MURMURATION_RANDOM = new InjectionToken<Random>('MURMURATION_RANDOM', {
-  factory: () => Math.random,
-});
-
-/**
- * additonal renderer abstraction in order to facilitate the spec environment.
- */
-export const MURMURATION_RENDERER = new InjectionToken<
-  (canvas: HTMLCanvasElement) => THREE.WebGLRenderer
->('MURMURATION_RENDERER', {
-  factory: () => (canvas) => new THREE.WebGLRenderer({ canvas, antialias: true }),
-});
-
-/**
- * the composer is abstracted for the same reason: drawing its passes needs a real web gl context.
- */
-export const MURMURATION_COMPOSER = new InjectionToken<
-  (renderer: THREE.WebGLRenderer) => EffectComposer
->('MURMURATION_COMPOSER', {
-  factory: () => (renderer) => new EffectComposer(renderer),
-});
-
+import {
+  MURMURATION_COMPOSER,
+  MURMURATION_RANDOM,
+  MURMURATION_RENDERER,
+} from './murmuration.tokens';
 @Component({
   imports: [],
   selector: 'app-murmuration',

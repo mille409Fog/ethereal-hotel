@@ -129,3 +129,5 @@ simplicity in chaos.
 
 27, 51666eb: created five separate private functions to streamline the primary murmuration logic, created constants for
 bloom calibration.
+
+28, c7fbaed: created a new section to handle the camera calibration and constants
