@@ -23,6 +23,13 @@ import { createSkyDome } from './atmosphere/sky-dome';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { flightStep, launchInitialState } from './batoid/batoid-transformation';
 import { Random } from './batoid/batoid-types';
+import {
+  CAMERA_FAR,
+  CAMERA_LOOK_AT_POINT,
+  CAMERA_NEAR,
+  CAMERA_POSITION,
+  CAMERA_VERTICAL_FOV,
+} from './camera/camera-calibration';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
 import { KEY_LIGHT_POSITION } from './light/light-calibration';
@@ -133,7 +140,12 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   }
 
   private createCamera(widthToHeightRatio: number): THREE.PerspectiveCamera {
-    return new THREE.PerspectiveCamera(50, widthToHeightRatio, 0.1, 100);
+    return new THREE.PerspectiveCamera(
+      CAMERA_VERTICAL_FOV,
+      widthToHeightRatio,
+      CAMERA_NEAR,
+      CAMERA_FAR
+    );
   }
 
   private initializeScene(scene: THREE.Scene): void {
@@ -144,8 +156,8 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   }
 
   private setAndOrientCamera(camera: THREE.PerspectiveCamera): void {
-    camera.position.set(0, -0.3, 3);
-    camera.lookAt(0, 0.5, 0);
+    camera.position.set(...CAMERA_POSITION);
+    camera.lookAt(...CAMERA_LOOK_AT_POINT);
   }
 
   private calibrateRenderer(renderer: THREE.WebGLRenderer, width: number, height: number): void {

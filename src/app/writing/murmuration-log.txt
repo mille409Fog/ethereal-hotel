@@ -126,3 +126,6 @@ own folder and modularize various constants.
 
 26, 34f7f64: additional streamlining, it's beginning to look like real code. part of the focus should always be in finding
 simplicity in chaos.
+
+27, 51666eb: created five separate private functions to streamline the primary murmuration logic, created constants for
+bloom calibration.
