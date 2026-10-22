@@ -120,3 +120,6 @@ the logic to private functions which we will move to dedicated files later.
 
 24, 975cc8d: part of the sacred work of creating elegance. we further partition the light logic into its own folder,
 later we will want an additional folder to distinguish the atmospheric effects.
+
+25, d20daf2: we continue to make the formulation more elegant and clearer. we move the atmospheric effects into their
+own folder and modularize various constants.

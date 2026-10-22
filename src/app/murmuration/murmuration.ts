@@ -20,7 +20,6 @@ import { flightStep, launchInitialState } from './batoid/batoid-transformation';
 import { Random } from './batoid/batoid-types';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
-import { IThreeTuple } from './cauldron/cauldron-flight';
 import { KEY_LIGHT_POSITION } from './light/light-calibration';
 import { createHemisphereLight, createKeyLight, createRimLight } from './light/light-initiation';
 
@@ -67,10 +66,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     const canvas = this.canvas().nativeElement;
     const scene = new THREE.Scene();
 
-    scene.add(createHemisphereLight());
-    scene.add(createKeyLight());
-    scene.add(createRimLight());
-    scene.fog = createFog();
+    this.initializeScene(scene);
 
     const skyDome = createSkyDome(new THREE.Vector3(...KEY_LIGHT_POSITION).normalize());
     this.skyDome = skyDome;
@@ -87,21 +83,19 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     camera.lookAt(0, 0.5, 0);
 
     const bats = createCauldron();
-    const initialDimensions: IThreeTuple = {
-      x: CALIBRATION.CAULDRON.halfWidth,
-      y: CALIBRATION.CAULDRON.halfHeight,
-      z: CALIBRATION.CAULDRON.halfDepth,
-    };
-    const flight = launchInitialState(this.random, initialDimensions, CALIBRATION.CAULDRON.count);
+    const flight = launchInitialState(
+      this.random,
+      CALIBRATION.INITIAL_DIMENSIONS,
+      CALIBRATION.CAULDRON.count
+    );
     const pose = new THREE.Object3D();
     poseCauldron(flight, bats, pose);
     this.bats = bats;
     scene.add(bats);
 
-    // some very unfortunate people can not run web gl, we need to account for this failure
     try {
       const renderer = this.createRenderer(canvas);
-      this.renderer = renderer; // we use a const to obviate the existence problem while inside the animation loop
+      this.renderer = renderer;
       const canvasResolution = new THREE.Vector2(canvas.clientWidth, canvas.clientHeight);
       const bloomPass = new UnrealBloomPass(canvasResolution, 1.5, 0.4, 0.85);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -121,7 +115,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
           const advanced = advance(clock, nowMs);
           clock = advanced.state;
           for (let i = 0; i < advanced.ticks; i++) {
-            flightStep(flight, CALIBRATION.TICK_SECONDS, initialDimensions);
+            flightStep(flight, CALIBRATION.TICK_SECONDS, CALIBRATION.INITIAL_DIMENSIONS);
           }
           if (advanced.ticks > 0) {
             poseCauldron(flight, bats, pose);
@@ -138,8 +132,14 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     this.destroyBats();
     this.destroySkyDome();
     this.destroyComposer();
-    this.renderer?.setAnimationLoop(null);
-    this.renderer?.dispose();
+    this.destroyRenderer();
+  }
+
+  private initializeScene(scene: THREE.Scene): void {
+    scene.add(createHemisphereLight());
+    scene.add(createKeyLight());
+    scene.add(createRimLight());
+    scene.fog = createFog();
   }
 
   private destroyBats(): void {
@@ -162,5 +162,10 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       pass.dispose();
     }
     this.composer.dispose();
+  }
+
+  private destroyRenderer(): void {
+    this.renderer?.setAnimationLoop(null);
+    this.renderer?.dispose();
   }
 }

@@ -1,3 +1,5 @@
+import type { IThreeTuple } from '../cauldron/cauldron-flight';
+
 export const PALETTE = {
   sky: 0xe8a06a, // warmer sky value
   ground: 0x1a1410, // altering ground to account for dusk
@@ -20,3 +22,9 @@ export const MAX_PITCH = Math.PI / 12; // we set bounds on the pitch to model ba
 
 export const TICK_SECONDS = 1 / 60;
 export const CLAMP_SECONDS = 0.25;
+
+export const INITIAL_DIMENSIONS: Readonly<IThreeTuple> = {
+  x: CAULDRON.halfWidth,
+  y: CAULDRON.halfHeight,
+  z: CAULDRON.halfDepth,
+};
