@@ -23,13 +23,8 @@ import { createFog } from './atmosphere/fog';
 import { createSkyDome } from './atmosphere/sky-dome';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { flightStep, launchInitialState } from './batoid/batoid-transformation';
-import {
-  CAMERA_FAR,
-  CAMERA_LOOK_AT_POINT,
-  CAMERA_NEAR,
-  CAMERA_POSITION,
-  CAMERA_VERTICAL_FOV,
-} from './camera/camera-calibration';
+import { CAMERA_FAR, CAMERA_NEAR, CAMERA_VERTICAL_FOV } from './camera/camera-calibration';
+import { orbitCamera } from './camera/camera-orbit';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
 import { GRAIN_INTENSITY } from './grain/grain-calibration';
@@ -78,7 +73,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     scene.add(skyDome);
 
     const camera = this.createCamera(canvas.clientWidth / canvas.clientHeight);
-    this.setAndOrientCamera(camera);
+    orbitCamera(camera, 0);
 
     const bats = createCauldron();
     const flight = launchInitialState(
@@ -104,6 +99,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
         composer.render();
       } else {
         let clock = STOPPED_CLOCK;
+        let flownSeconds = 0;
         renderer.setAnimationLoop((nowMs) => {
           const advanced = advance(clock, nowMs);
           clock = advanced.state;
@@ -113,6 +109,9 @@ export class Murmuration implements AfterViewInit, OnDestroy {
           if (advanced.ticks > 0) {
             poseCauldron(flight, bats, pose);
           }
+          flownSeconds += advanced.ticks * CALIBRATION.TICK_SECONDS;
+          // the flock's clock, so a hidden tab does not swing the camera round; the carried remainder keeps it gliding between ticks
+          orbitCamera(camera, flownSeconds + clock.carriedSeconds);
           composer.render();
         });
       }
@@ -146,11 +145,6 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     scene.add(createKeyLight());
     scene.add(createRimLight());
     scene.fog = createFog();
-  }
-
-  private setAndOrientCamera(camera: THREE.PerspectiveCamera): void {
-    camera.position.set(...CAMERA_POSITION);
-    camera.lookAt(...CAMERA_LOOK_AT_POINT);
   }
 
   private calibrateRenderer(renderer: THREE.WebGLRenderer, width: number, height: number): void {

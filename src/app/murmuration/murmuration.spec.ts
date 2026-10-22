@@ -8,6 +8,8 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
+import { CAMERA_POSITION } from './camera/camera-calibration';
+import { orbitCamera } from './camera/camera-orbit';
 import { GrainPass } from './grain/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';
 import { Murmuration } from './murmuration';
@@ -425,6 +427,30 @@ describe('Murmuration', () => {
 
     const ticks = Math.floor(CALIBRATION.CLAMP_SECONDS / CALIBRATION.TICK_SECONDS);
     expect(firstBatX(onlyComposer())).toBeCloseTo(ticks * STEP_PER_TICK, DIGITS);
+  });
+
+  it('holds the still frame at the calibrated camera position', async () => {
+    stubReducedMotion(true);
+    await mount();
+    const [x, y, z] = CAMERA_POSITION;
+
+    expect(cameraOf(onlyComposer()).position.toArray()).toEqual([x, y, z]);
+  });
+
+  it('circles the camera on the flock clock, so a long gap swings it no further than a clamp', async () => {
+    // where the orbit puts the camera at a given second is `camera-orbit.spec.ts`'s to prove
+    await mount();
+    const loop = frameLoopOf(onlyRenderer());
+    const camera = cameraOf(onlyComposer());
+    const expected = new THREE.PerspectiveCamera();
+
+    loop(1_000);
+    loop(61_000);
+    orbitCamera(expected, CALIBRATION.CLAMP_SECONDS);
+
+    expect(camera.position.x).toBeCloseTo(expected.position.x, DIGITS);
+    expect(camera.position.z).toBeCloseTo(expected.position.z, DIGITS);
+    expect(camera.position.x).not.toBe(CAMERA_POSITION[0]);
   });
 
   it('leaves the instance buffer alone on a frame worth no tick, so nothing is re-uploaded', async () => {
