@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
@@ -287,14 +288,27 @@ describe('Murmuration', () => {
   });
 
   describe('post-processing', () => {
-    it('draws the scene, lights it, blooms it, and only then tone-maps it', async () => {
+    it('draws the scene, lights it, blooms it, vignettes it, and only then tone-maps it', async () => {
       // OutputPass applies the renderer's tone mapping and colour space; anywhere
       // but last, the bloom would be added to a picture that is already finished.
       // The shafts come before the bloom, so their brightest light blooms like the rest.
+      // The vignette follows the bloom, so the bloom cannot light the corners back up,
+      // and precedes the tone mapping, so it darkens linear light as a lens does
+      // rather than gamma-encoded values, where halving a corner leaves a fifth of its light.
       await mount();
       const kinds = onlyComposer().passes.map((pass) => pass.constructor);
 
-      expect(kinds).toEqual([RenderPass, GodRaysPass, UnrealBloomPass, OutputPass]);
+      expect(kinds).toEqual([RenderPass, GodRaysPass, UnrealBloomPass, ShaderPass, OutputPass]);
+    });
+
+    it('vignettes by darkening toward black, not by hazing toward grey', async () => {
+      // the shader mixes each pixel toward `1 - darkness`, so only a darkness of 1 is a pure darken
+      await mount();
+      const vignette = passOf(onlyComposer(), ShaderPass);
+
+      // `ShaderPass` names its material after the shader; the shader's typings omit that name
+      expect(vignette.material.name).toBe('VignetteShader');
+      expect(vignette.uniforms['darkness'].value).toBe(1);
     });
 
     it('builds the composer on the renderer, after the renderer is sized', async () => {
@@ -433,7 +447,7 @@ describe('Murmuration', () => {
 
     fixture.destroy();
 
-    expect(passes).toHaveLength(4);
+    expect(passes).toHaveLength(5);
     for (const pass of passes) {
       expect(pass).toHaveBeenCalledTimes(1);
     }

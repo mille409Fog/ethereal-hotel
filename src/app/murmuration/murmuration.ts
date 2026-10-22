@@ -11,7 +11,9 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js';
 import {
   BLOOM_RADIUS,
   BLOOM_STRENGTH,
@@ -161,6 +163,10 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(new GodRaysPass(camera, sunDirection, GOD_RAYS));
     composer.addPass(bloomPass);
+    const vignettePass = new ShaderPass(VignetteShader);
+    vignettePass.uniforms['offset'].value = 0.8;
+    vignettePass.uniforms['darkness'].value = 1.0;
+    composer.addPass(vignettePass);
     composer.addPass(new OutputPass());
   }
 

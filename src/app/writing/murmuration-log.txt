@@ -135,3 +135,5 @@ bloom calibration.
 29, ee1d437: moved the murmuration injection tokens to a separate tokens file, also aids spec processing
 
 30, 5e4fa77: fixes a unit test failure owing from the injection token changes, abstracts the render conifugration data to another folder
+
+31, cb97895: first attempt at post-processing with god rays. I still don't fully understand this process, I will need to dive into the mechanics more later.
