@@ -12,6 +12,10 @@ export const RIM_LIGHT_INTENSITY = 1;
 
 export const HEMISPHERE_LIGHT_INTENSITY = 0.3;
 
+export const VIGNETTER_DARKNESS = 1;
+
+export const VIGNETTE_OFFSET = 0.8;
+
 /** how the light shafts fade out as the sun leaves the frame */
 export interface ISunFade {
   /** how far past the frame's edge, in fractions of the frame, before the shafts are gone */

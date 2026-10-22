@@ -32,8 +32,15 @@ import {
 } from './camera/camera-calibration';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
+import { GRAIN_INTENSITY } from './grain/grain-calibration';
+import { GrainPass } from './grain/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';
-import { GOD_RAYS, KEY_LIGHT_POSITION } from './light/light-calibration';
+import {
+  GOD_RAYS,
+  KEY_LIGHT_POSITION,
+  VIGNETTE_OFFSET,
+  VIGNETTER_DARKNESS,
+} from './light/light-calibration';
 import { createHemisphereLight, createKeyLight, createRimLight } from './light/light-initiation';
 import {
   MURMURATION_COMPOSER,
@@ -163,11 +170,16 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(new GodRaysPass(camera, sunDirection, GOD_RAYS));
     composer.addPass(bloomPass);
-    const vignettePass = new ShaderPass(VignetteShader);
-    vignettePass.uniforms['offset'].value = 0.8;
-    vignettePass.uniforms['darkness'].value = 1.0;
-    composer.addPass(vignettePass);
+    composer.addPass(this.generateVignettePass());
     composer.addPass(new OutputPass());
+    composer.addPass(new GrainPass(GRAIN_INTENSITY));
+  }
+
+  private generateVignettePass(): ShaderPass {
+    const vignettePass = new ShaderPass(VignetteShader);
+    vignettePass.uniforms['offset'].value = VIGNETTE_OFFSET;
+    vignettePass.uniforms['darkness'].value = VIGNETTER_DARKNESS;
+    return vignettePass;
   }
 
   private destroyBats(): void {

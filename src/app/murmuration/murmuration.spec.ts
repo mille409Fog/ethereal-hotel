@@ -8,6 +8,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
+import { GrainPass } from './grain/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';
 import { Murmuration } from './murmuration';
 import {
@@ -288,17 +289,26 @@ describe('Murmuration', () => {
   });
 
   describe('post-processing', () => {
-    it('draws the scene, lights it, blooms it, vignettes it, and only then tone-maps it', async () => {
-      // OutputPass applies the renderer's tone mapping and colour space; anywhere
-      // but last, the bloom would be added to a picture that is already finished.
+    it('draws the scene, lights it, blooms it, vignettes it, tone-maps it, and only then grains it', async () => {
+      // OutputPass applies the renderer's tone mapping and colour space; before it,
+      // the bloom would be added to a picture that is already finished.
       // The shafts come before the bloom, so their brightest light blooms like the rest.
       // The vignette follows the bloom, so the bloom cannot light the corners back up,
       // and precedes the tone mapping, so it darkens linear light as a lens does
       // rather than gamma-encoded values, where halving a corner leaves a fifth of its light.
+      // The grain is the one pass after it: it belongs to the print, not the light, so
+      // it must not bloom, and it is sized in the display values a viewer sees.
       await mount();
       const kinds = onlyComposer().passes.map((pass) => pass.constructor);
 
-      expect(kinds).toEqual([RenderPass, GodRaysPass, UnrealBloomPass, ShaderPass, OutputPass]);
+      expect(kinds).toEqual([
+        RenderPass,
+        GodRaysPass,
+        UnrealBloomPass,
+        ShaderPass,
+        OutputPass,
+        GrainPass,
+      ]);
     });
 
     it('vignettes by darkening toward black, not by hazing toward grey', async () => {
@@ -447,7 +457,7 @@ describe('Murmuration', () => {
 
     fixture.destroy();
 
-    expect(passes).toHaveLength(5);
+    expect(passes).toHaveLength(6);
     for (const pass of passes) {
       expect(pass).toHaveBeenCalledTimes(1);
     }
