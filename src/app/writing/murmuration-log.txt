@@ -117,3 +117,6 @@ significant modularity required
 23, 3dc41db: a magnificent step, we add an additional bloom process as well as the necessary conductor object.
 this involves a heavier destruction lifecycle operation so we increase modulatization, we segregrate much of
 the logic to private functions which we will move to dedicated files later.
+
+24, 975cc8d: part of the sacred work of creating elegance. we further partition the light logic into its own folder,
+later we will want an additional folder to distinguish the atmospheric effects.

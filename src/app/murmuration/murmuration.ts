@@ -13,6 +13,8 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { createFog } from './atmosphere/fog';
+import { createSkyDome } from './atmosphere/sky-dome';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { flightStep, launchInitialState } from './batoid/batoid-transformation';
 import { Random } from './batoid/batoid-types';
@@ -20,13 +22,7 @@ import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
 import { IThreeTuple } from './cauldron/cauldron-flight';
 import { KEY_LIGHT_POSITION } from './light/light-calibration';
-import {
-  createFog,
-  createHemisphereLight,
-  createKeyLight,
-  createRimLight,
-} from './light/light-initiation';
-import { createSkyDome } from './light/sky-dome';
+import { createHemisphereLight, createKeyLight, createRimLight } from './light/light-initiation';
 
 export const MURMURATION_RANDOM = new InjectionToken<Random>('MURMURATION_RANDOM', {
   factory: () => Math.random,
