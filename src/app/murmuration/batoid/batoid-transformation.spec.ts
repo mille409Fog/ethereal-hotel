@@ -378,6 +378,7 @@ describe('flightStep', () => {
         // fround: the edge itself is only as exact as single precision makes it
         expect(Math.abs(p)).toBeLessThanOrEqual(Math.fround(radius[i % 3]));
       });
-    });
+      // well under a second alone, but it brushed the 5s default once while the full suite shared the box
+    }, 30_000);
   });
 });

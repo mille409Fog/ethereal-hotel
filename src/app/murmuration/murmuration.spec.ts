@@ -7,12 +7,12 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
+import { Murmuration } from './murmuration';
 import {
-  Murmuration,
   MURMURATION_COMPOSER,
   MURMURATION_RANDOM,
   MURMURATION_RENDERER,
-} from './murmuration';
+} from './murmuration.tokens';
 
 /**
  * jsdom has no WebGL, so a real `WebGLRenderer` always throws here and only the

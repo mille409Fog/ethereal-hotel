@@ -37,6 +37,7 @@ import {
   MURMURATION_RANDOM,
   MURMURATION_RENDERER,
 } from './murmuration.tokens';
+import { PIXEL_RATIO_FLOOR, TONE_MAPPING_EXPOSURE } from './renderer/renderer-calibration';
 @Component({
   imports: [],
   selector: 'app-murmuration',
@@ -141,10 +142,10 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   }
 
   private calibrateRenderer(renderer: THREE.WebGLRenderer, width: number, height: number): void {
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, PIXEL_RATIO_FLOOR));
     renderer.setSize(width, height, false);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
   }
 
   private orchestrateComposerPasses(
