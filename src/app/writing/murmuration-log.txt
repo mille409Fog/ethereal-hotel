@@ -139,3 +139,7 @@ bloom calibration.
 31, cb97895: first attempt at post-processing with god rays. I still don't fully understand this process, I will need to dive into the mechanics more later.
 
 32, 2a45cee: continuing post processing with the vignette shader. a significantly simpler approach, the main decision was making sure the composer applies the passes in the correct order.
+
+33, 02c62cd: adding a grain effect, abstracting the vignette
+
+34, cca4b41: making the camera loop, it performs an orbit over a two minute period.
