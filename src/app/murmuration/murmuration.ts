@@ -19,6 +19,14 @@ import { Random } from './batoid/batoid-types';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
 import { IThreeTuple } from './cauldron/cauldron-flight';
+import { KEY_LIGHT_POSITION } from './light/light-calibration';
+import {
+  createFog,
+  createHemisphereLight,
+  createKeyLight,
+  createRimLight,
+} from './light/light-initiation';
+import { createSkyDome } from './light/sky-dome';
 
 export const MURMURATION_RANDOM = new InjectionToken<Random>('MURMURATION_RANDOM', {
   factory: () => Math.random,
@@ -63,24 +71,12 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     const canvas = this.canvas().nativeElement;
     const scene = new THREE.Scene();
 
-    const hemisphereLight = new THREE.HemisphereLight(
-      CALIBRATION.PALETTE.fill,
-      CALIBRATION.PALETTE.ground,
-      0.3
-    );
-    scene.add(hemisphereLight);
+    scene.add(createHemisphereLight());
+    scene.add(createKeyLight());
+    scene.add(createRimLight());
+    scene.fog = createFog();
 
-    const directionalLight = new THREE.DirectionalLight(CALIBRATION.PALETTE.sun, 4);
-    directionalLight.position.set(-3, 0.6, -4);
-    scene.add(directionalLight);
-
-    const rimLight = new THREE.DirectionalLight(CALIBRATION.PALETTE.sun, 1);
-    rimLight.position.set(3, 1, -3);
-    scene.add(rimLight);
-
-    scene.fog = new THREE.Fog(CALIBRATION.PALETTE.sky, 2, 5);
-
-    const skyDome = this.createSkyDome(directionalLight.position.clone().normalize());
+    const skyDome = createSkyDome(new THREE.Vector3(...KEY_LIGHT_POSITION).normalize());
     this.skyDome = skyDome;
     scene.add(skyDome);
 
@@ -170,40 +166,5 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       pass.dispose();
     }
     this.composer.dispose();
-  }
-
-  private createSkyDome(
-    sunDirection: THREE.Vector3
-  ): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
-    return new THREE.Mesh(
-      new THREE.SphereGeometry(50, 32, 16),
-      new THREE.ShaderMaterial({
-        side: THREE.BackSide,
-        depthWrite: false,
-        uniforms: {
-          horizon: { value: new THREE.Color(CALIBRATION.PALETTE.sky) },
-          zenith: { value: new THREE.Color(CALIBRATION.PALETTE.zenith) },
-          sunDirection: { value: sunDirection },
-        },
-        vertexShader: /* glsl */ `
-          varying vec3 vDirection;
-          void main() {
-            vDirection = normalize(position);
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-          }`,
-        fragmentShader: /* glsl */ `
-          uniform vec3 horizon, zenith, sunDirection;
-          varying vec3 vDirection;
-          void main() {
-            vec3 d = normalize(vDirection);
-            float h = clamp(d.y, 0.0, 1.0);
-            vec3 colour = mix(horizon, zenith, pow(h,0.6));
-            float glow = pow(max(dot(d,sunDirection),0.0),8.0);
-            gl_FragColor = vec4(colour + glow * horizon * 0.6, 1.0);
-            #include <tonemapping_fragment>
-            #include <colorspace_fragment>
-          }`,
-      })
-    );
   }
 }
