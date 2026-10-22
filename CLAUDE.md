@@ -222,6 +222,16 @@ mistake for bugs:
   old red by value or by name, and on `/aesthetic`'s `@property --glow` drifting from
   `--color-border`. State colours are not the accent: an error is `--color-negative`, never blue.
   The charts read the tokens at runtime, so keep the tokens six-digit hex.
+- **Both rules above are about the interface, and `/murmuration`'s canvas is spectacle.** The
+  test is the reason a piece of code exists. Buttons, links, labels and cards are there to send a
+  reader somewhere else, so polish on them distracts rather than impresses — hence the two rules.
+  The murmuration is there to be beautiful and argues nothing, so heavy post-processing (bloom,
+  grading, vignette, grain, depth of field) and a scene that never stops moving are the point, not
+  a lapse. The exemption covers what the renderer draws and nothing around it: the route's own
+  controls and text obey both rules, effects belong in the WebGL pipeline rather than CSS
+  (`check:docs` fails on a `text-shadow` here too), and reduced motion still gets one still frame.
+  The one part that may later illustrate something is the orientation code, so keep it as tested
+  as it is now.
 - **The lobby is lit by the real sun**, so five things about it look like duplication and are not.
   `rooms/light-rig.ts` holds five rigs for one shader — five compiles would stall a driver at the
   moment the sky changes — and `check:docs` fails if a state loses its rig or its committed frame

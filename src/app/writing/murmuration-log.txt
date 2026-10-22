@@ -110,3 +110,6 @@ the wrong axis principally rather than the wing.
 21, 8997708: a radical change. we alter the light positions and camera angles and add fog. using an aberrent
 fog colour makes the bats appear white, I'll have to set it identical to the sky colour for now. ideally later
 I would like it to be an imperceptibly different colour of some sort but that can be handled at another time.
+
+22, e7e1719: we created an entire sky dome using primarily glsl, this removes the need for the explicit background colour
+significant modularity required

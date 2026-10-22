@@ -9,6 +9,10 @@ import {
   viewChild,
 } from '@angular/core';
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { flightStep, launchInitialState } from './batoid/batoid-transformation';
 import { Random } from './batoid/batoid-types';
@@ -29,6 +33,15 @@ export const MURMURATION_RENDERER = new InjectionToken<
   factory: () => (canvas) => new THREE.WebGLRenderer({ canvas, antialias: true }),
 });
 
+/**
+ * the composer is abstracted for the same reason: drawing its passes needs a real web gl context.
+ */
+export const MURMURATION_COMPOSER = new InjectionToken<
+  (renderer: THREE.WebGLRenderer) => EffectComposer
+>('MURMURATION_COMPOSER', {
+  factory: () => (renderer) => new EffectComposer(renderer),
+});
+
 @Component({
   imports: [],
   selector: 'app-murmuration',
@@ -38,8 +51,10 @@ export const MURMURATION_RENDERER = new InjectionToken<
 export class Murmuration implements AfterViewInit, OnDestroy {
   private readonly random = inject(MURMURATION_RANDOM);
   private readonly createRenderer = inject(MURMURATION_RENDERER);
+  private readonly createComposer = inject(MURMURATION_COMPOSER);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('stage');
   private renderer?: THREE.WebGLRenderer;
+  private composer?: EffectComposer;
   private bats?: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   private skyDome?: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
   protected readonly webGLfailure = signal(false);
@@ -65,36 +80,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
 
     scene.fog = new THREE.Fog(CALIBRATION.PALETTE.sky, 2, 5);
 
-    const skyDome = new THREE.Mesh(
-      new THREE.SphereGeometry(50, 32, 16),
-      new THREE.ShaderMaterial({
-        side: THREE.BackSide,
-        depthWrite: false,
-        uniforms: {
-          horizon: { value: new THREE.Color(CALIBRATION.PALETTE.sky) },
-          zenith: { value: new THREE.Color(CALIBRATION.PALETTE.zenith) },
-          sunDirection: { value: directionalLight.position.clone().normalize() },
-        },
-        vertexShader: /* glsl */ `
-          varying vec3 vDirection;
-          void main() {
-            vDirection = normalize(position);
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-          }`,
-        fragmentShader: /* glsl */ `
-          uniform vec3 horizon, zenith, sunDirection;
-          varying vec3 vDirection;
-          void main() {
-            vec3 d = normalize(vDirection);
-            float h = clamp(d.y, 0.0, 1.0);
-            vec3 colour = mix(horizon, zenith, pow(h,0.6));
-            float glow = pow(max(dot(d,sunDirection),0.0),8.0);
-            gl_FragColor = vec4(colour + glow * horizon * 0.6, 1.0);
-            #include <tonemapping_fragment>
-            #include <colorspace_fragment>
-          }`,
-      })
-    );
+    const skyDome = this.createSkyDome(directionalLight.position.clone().normalize());
     this.skyDome = skyDome;
     scene.add(skyDome);
 
@@ -124,12 +110,19 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     try {
       const renderer = this.createRenderer(canvas);
       this.renderer = renderer; // we use a const to obviate the existence problem while inside the animation loop
+      const canvasResolution = new THREE.Vector2(canvas.clientWidth, canvas.clientHeight);
+      const bloomPass = new UnrealBloomPass(canvasResolution, 1.5, 0.4, 0.85);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.0;
+      const composer = this.createComposer(renderer);
+      this.composer = composer;
+      composer.addPass(new RenderPass(scene, camera));
+      composer.addPass(bloomPass);
+      composer.addPass(new OutputPass());
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        renderer.render(scene, camera);
+        composer.render();
       } else {
         let clock = STOPPED_CLOCK;
         renderer.setAnimationLoop((nowMs) => {
@@ -141,7 +134,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
           if (advanced.ticks > 0) {
             poseCauldron(flight, bats, pose);
           }
-          renderer.render(scene, camera);
+          composer.render();
         });
       }
     } catch {
@@ -150,13 +143,67 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   }
 
   public ngOnDestroy(): void {
-    this.renderer?.setAnimationLoop(null); // implicitly handled by dispose however we wish for semiotic clarity
+    this.destroyBats();
+    this.destroySkyDome();
+    this.destroyComposer();
+    this.renderer?.setAnimationLoop(null);
+    this.renderer?.dispose();
+  }
+
+  private destroyBats(): void {
     this.bats?.geometry.dispose();
     this.bats?.material.dispose();
-    this.bats?.dispose(); //unlike in the single case, the instanced mesh itself must be disposed as well as its constituent parts
+    this.bats?.dispose();
+  }
+
+  private destroySkyDome(): void {
     this.skyDome?.material.dispose();
     this.skyDome?.geometry.dispose();
     this.skyDome?.dispose();
-    this.renderer?.dispose();
+  }
+
+  private destroyComposer(): void {
+    if (!this.composer) {
+      return;
+    }
+    for (const pass of this.composer.passes) {
+      pass.dispose();
+    }
+    this.composer.dispose();
+  }
+
+  private createSkyDome(
+    sunDirection: THREE.Vector3
+  ): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
+    return new THREE.Mesh(
+      new THREE.SphereGeometry(50, 32, 16),
+      new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        uniforms: {
+          horizon: { value: new THREE.Color(CALIBRATION.PALETTE.sky) },
+          zenith: { value: new THREE.Color(CALIBRATION.PALETTE.zenith) },
+          sunDirection: { value: sunDirection },
+        },
+        vertexShader: /* glsl */ `
+          varying vec3 vDirection;
+          void main() {
+            vDirection = normalize(position);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+          }`,
+        fragmentShader: /* glsl */ `
+          uniform vec3 horizon, zenith, sunDirection;
+          varying vec3 vDirection;
+          void main() {
+            vec3 d = normalize(vDirection);
+            float h = clamp(d.y, 0.0, 1.0);
+            vec3 colour = mix(horizon, zenith, pow(h,0.6));
+            float glow = pow(max(dot(d,sunDirection),0.0),8.0);
+            gl_FragColor = vec4(colour + glow * horizon * 0.6, 1.0);
+            #include <tonemapping_fragment>
+            #include <colorspace_fragment>
+          }`,
+      })
+    );
   }
 }
