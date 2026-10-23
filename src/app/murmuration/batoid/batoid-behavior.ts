@@ -1,22 +1,18 @@
-/** the central processes of a batoid e.g. separation, alignment, and cohesion are stored here.
+/** the central processes of a batoid e.g. separation, alignment, and cohesion are stored here, with homing, the
+ *  fourth steer that keeps the flock over the cauldron now that nothing wraps it round.
  *  each returns an unweighted steer; how much of each a bat obeys is decided where they are summed */
 
 import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
-import {
-  emptyNeighbourhood,
-  IAwareness,
-  INeighbourhood,
-  perceive,
-  wrappedOffset,
-} from './batoid-awareness';
+import { emptyNeighbourhood, IAwareness, INeighbourhood, perceive } from './batoid-awareness';
 import { FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
 import { writeThreeTuple } from './batoid-transformation';
 
-/** how much of each steer a bat obeys when the three are summed */
+/** how much of each steer a bat obeys when the four are summed */
 export interface IBehaviourWeights {
   separation: number;
   alignment: number;
   cohesion: number;
+  homing: number;
 }
 
 /** what a tick of steering writes into besides the flight, so the animation loop allocates no arrays per tick */
@@ -35,18 +31,17 @@ export function createSteeringScratch(quantity: number): ISteeringScratch {
 export function separation(
   flight: IFlight,
   self: number,
-  neighbourhood: INeighbourhood,
-  radii: IThreeTuple
+  neighbourhood: INeighbourhood
 ): IThreeTuple {
   const { positions } = flight;
   const a = self * 3;
   const steer: IThreeTuple = { x: 0, y: 0, z: 0 };
   for (const j of neighbourhood.separation) {
     const b = j * 3;
-    // from the neighbour to self, the short way through the wrapping box
-    const x = wrappedOffset(positions[b], positions[a], radii.x);
-    const y = wrappedOffset(positions[b + 1], positions[a + 1], radii.y);
-    const z = wrappedOffset(positions[b + 2], positions[a + 2], radii.z);
+    // from the neighbour to self
+    const x = positions[a] - positions[b];
+    const y = positions[a + 1] - positions[b + 1];
+    const z = positions[a + 2] - positions[b + 2];
     const distance = x * x + y * y + z * z;
     if (distance === 0) {
       continue;
@@ -88,14 +83,11 @@ export function alignment(
   };
 }
 
-/** the offset from self to the centre of the bats in the cohesion sphere.
- *  the centre is averaged from wrapped offsets rather than raw positions, since two bats either side of a face
- *  would otherwise average to the middle of the box, as far from both as it is possible to be */
+/** the offset from self to the centre of the bats in the cohesion sphere */
 export function cohesion(
   flight: IFlight,
   self: number,
-  neighbourhood: INeighbourhood,
-  radii: IThreeTuple
+  neighbourhood: INeighbourhood
 ): IThreeTuple {
   const { positions } = flight;
   const seen = neighbourhood.cohesion;
@@ -108,11 +100,24 @@ export function cohesion(
   let z = 0;
   for (const j of seen) {
     const b = j * 3;
-    x += wrappedOffset(positions[a], positions[b], radii.x);
-    y += wrappedOffset(positions[a + 1], positions[b + 1], radii.y);
-    z += wrappedOffset(positions[a + 2], positions[b + 2], radii.z);
+    x += positions[b] - positions[a];
+    y += positions[b + 1] - positions[a + 1];
+    z += positions[b + 2] - positions[a + 2];
   }
   return { x: x / seen.length, y: y / seen.length, z: z / seen.length };
+}
+
+/** the steer back toward the centre of the cauldron. the bat's position is measured in units of bounds, so the
+ *  cauldron becomes an ellipsoid of radius 1, and the steer points back along that measure scaled by its square:
+ *  barely there in the middle, so the flock is free to bulge and fold, one at the ellipsoid's surface, and eight
+ *  at twice its radius, so no bat strays far. it is a pull rather than a wall, and a bat can overshoot it */
+export function homing(flight: IFlight, self: number, bounds: IThreeTuple): IThreeTuple {
+  const a = self * 3;
+  const x = flight.positions[a] / bounds.x;
+  const y = flight.positions[a + 1] / bounds.y;
+  const z = flight.positions[a + 2] / bounds.z;
+  const reach = x * x + y * y + z * z;
+  return { x: -x * reach, y: -y * reach, z: -z * reach };
 }
 
 /** a steered velocity put back at FLIGHT_SPEED with its pitch held inside MAX_PITCH, the two things launch promises of every bat,
@@ -133,10 +138,11 @@ export function cruise(steered: IThreeTuple, previous: IThreeTuple): IThreeTuple
 /** the steer of a behaviour that was not consulted this tick */
 const UNHEARD: Readonly<IThreeTuple> = { x: 0, y: 0, z: 0 };
 
-/** one tick of the three behaviours across the flight, summed by weight and applied as an acceleration over seconds.
- *  separation takes absolute priority, after Couzin et al. (2002): a bat with anyone inside its separation sphere
- *  steers by separation alone that tick, and only an uncrowded bat listens to alignment and cohesion.
+/** one tick of the four behaviours across the flight, summed by weight and applied as an acceleration over seconds.
+ *  separation takes absolute priority over its neighbours, after Couzin et al. (2002): a bat with anyone inside its
+ *  separation sphere steers by separation alone that tick, and only an uncrowded bat listens to alignment and cohesion.
  *  so the radii decide when each behaviour speaks, and the weights only how loudly.
+ *  homing is outside that rule and always heard, or a crowd at the edge of the cauldron could push itself out of it.
  *  every bat reads the flight as it stood at the start of the tick, so the new velocities are gathered in scratch
  *  and written back together; steering bat 0 first must not change what bat 1 sees */
 export function steerFlight(
@@ -144,25 +150,27 @@ export function steerFlight(
   seconds: number,
   awareness: IAwareness,
   weights: IBehaviourWeights,
-  radii: IThreeTuple,
+  bounds: IThreeTuple,
   scratch: ISteeringScratch = createSteeringScratch(flight.positions.length / 3)
 ): void {
   const { velocities } = flight;
   const { neighbourhood } = scratch;
   const quantity = flight.positions.length / 3;
   for (let i = 0; i < quantity; i++) {
-    perceive(flight, i, awareness, radii, neighbourhood);
+    perceive(flight, i, awareness, neighbourhood);
     const crowded = neighbourhood.separation.length > 0;
-    const apart = crowded ? separation(flight, i, neighbourhood, radii) : UNHEARD;
+    const apart = crowded ? separation(flight, i, neighbourhood) : UNHEARD;
     const along = crowded ? UNHEARD : alignment(flight, i, neighbourhood);
-    const toward = crowded ? UNHEARD : cohesion(flight, i, neighbourhood, radii);
+    const toward = crowded ? UNHEARD : cohesion(flight, i, neighbourhood);
+    const home = homing(flight, i, bounds);
     const o = i * 3;
     const previous = { x: velocities[o], y: velocities[o + 1], z: velocities[o + 2] };
     const steer = (axis: keyof IThreeTuple): number =>
       previous[axis] +
       (weights.separation * apart[axis] +
         weights.alignment * along[axis] +
-        weights.cohesion * toward[axis]) *
+        weights.cohesion * toward[axis] +
+        weights.homing * home[axis]) *
         seconds;
     const steered = { x: steer('x'), y: steer('y'), z: steer('z') };
     writeThreeTuple(scratch.velocities, o, cruise(steered, previous));

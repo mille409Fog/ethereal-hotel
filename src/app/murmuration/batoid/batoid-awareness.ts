@@ -1,4 +1,4 @@
-import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
+import { IFlight } from '../cauldron/cauldron-flight';
 
 /** the radius of each sphere a bat attends to; the three behaviours decide what is done with each */
 export interface IAwareness {
@@ -18,30 +18,13 @@ export function emptyNeighbourhood(): INeighbourhood {
   return { separation: [], alignment: [], cohesion: [] };
 }
 
-/** the shortest signed distance from a to b along one axis of a box that wraps at ±radius,
- *  since flightStep carries a bat off one face and onto the opposite one, two bats either side of a face are close */
-export function wrappedOffset(a: number, b: number, radius: number): number {
-  let offset = b - a;
-  if (offset > radius) {
-    offset -= 2 * radius;
-  } else if (offset < -radius) {
-    offset += 2 * radius;
-  }
-  return offset;
-}
-
-/** squared distance between bat i and bat j through the wrapping box, squared so no comparison pays for a root */
-export function distanceSquared(
-  positions: Float32Array,
-  i: number,
-  j: number,
-  radii: IThreeTuple
-): number {
+/** squared distance between bat i and bat j, squared so no comparison pays for a root */
+export function distanceSquared(positions: Float32Array, i: number, j: number): number {
   const a = i * 3;
   const b = j * 3;
-  const x = wrappedOffset(positions[a], positions[b], radii.x);
-  const y = wrappedOffset(positions[a + 1], positions[b + 1], radii.y);
-  const z = wrappedOffset(positions[a + 2], positions[b + 2], radii.z);
+  const x = positions[b] - positions[a];
+  const y = positions[b + 1] - positions[a + 1];
+  const z = positions[b + 2] - positions[a + 2];
   return x * x + y * y + z * z;
 }
 
@@ -50,14 +33,13 @@ export function neighboursWithin(
   flight: IFlight,
   self: number,
   radius: number,
-  radii: IThreeTuple,
   into: number[] = []
 ): number[] {
   into.length = 0;
   const limit = radius * radius;
   const quantity = flight.positions.length / 3;
   for (let j = 0; j < quantity; j++) {
-    if (j !== self && distanceSquared(flight.positions, self, j, radii) <= limit) {
+    if (j !== self && distanceSquared(flight.positions, self, j) <= limit) {
       into.push(j);
     }
   }
@@ -71,7 +53,6 @@ export function perceive(
   flight: IFlight,
   self: number,
   awareness: IAwareness,
-  radii: IThreeTuple,
   into: INeighbourhood = emptyNeighbourhood()
 ): INeighbourhood {
   into.separation.length = 0;
@@ -85,7 +66,7 @@ export function perceive(
     if (j === self) {
       continue;
     }
-    const distance = distanceSquared(flight.positions, self, j, radii);
+    const distance = distanceSquared(flight.positions, self, j);
     if (distance <= separation) {
       into.separation.push(j);
     }

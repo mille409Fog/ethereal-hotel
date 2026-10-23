@@ -6,12 +6,7 @@ import {
   INeighbourhood,
   neighboursWithin,
   perceive,
-  wrappedOffset,
 } from './batoid-awareness';
-
-/** a box no bat below is near the faces of, so nothing here wraps unless a test means it to */
-const OPEN_SKY: IThreeTuple = { x: 100, y: 100, z: 100 };
-const UNIT: IThreeTuple = { x: 1, y: 1, z: 1 };
 
 /** a flight standing still at the given positions; awareness never reads velocity */
 function flock(...positions: IThreeTuple[]): IFlight {
@@ -21,54 +16,31 @@ function flock(...positions: IThreeTuple[]): IFlight {
   };
 }
 
-describe('wrappedOffset', () => {
-  it('is the plain difference when the bats are less than a radius apart', () => {
-    expect(wrappedOffset(0.25, 0.75, 1)).toBe(0.5);
-    expect(wrappedOffset(0.75, 0.25, 1)).toBe(-0.5);
-  });
-
-  it('goes the short way round through the +radius face', () => {
-    // 0.75 to -0.75 is 1.5 across the box, but only 0.5 through the face at +1
-    expect(wrappedOffset(0.75, -0.75, 1)).toBe(0.5);
-  });
-
-  it('goes the short way round through the -radius face', () => {
-    expect(wrappedOffset(-0.75, 0.75, 1)).toBe(-0.5);
-  });
-
-  it('is antisymmetric, so each bat sees the other in the opposite direction', () => {
-    expect(wrappedOffset(0.75, -0.5, 1)).toBe(-wrappedOffset(-0.5, 0.75, 1));
-  });
-
-  it('never exceeds the radius in size', () => {
-    const draws = [-1, -0.9, -0.3, 0, 0.4, 0.8, 1];
-    for (const a of draws) {
-      for (const b of draws) {
-        expect(Math.abs(wrappedOffset(a, b, 1))).toBeLessThanOrEqual(1);
-      }
-    }
-  });
-});
-
 describe('distanceSquared', () => {
-  it('is the squared euclidean distance inside the box', () => {
+  it('is the squared euclidean distance', () => {
     const { positions } = flock({ x: 0, y: 0, z: 0 }, { x: 3, y: 4, z: 0 });
 
-    expect(distanceSquared(positions, 0, 1, OPEN_SKY)).toBe(25);
+    expect(distanceSquared(positions, 0, 1)).toBe(25);
   });
 
-  it('measures each axis through its own faces', () => {
-    const radii: IThreeTuple = { x: 1, y: 2, z: 4 };
-    // x is 1.5 apart in a box 2 wide, so 0.5 through the face; y and z are well inside theirs
+  it('is the same measured from either bat', () => {
     const { positions } = flock({ x: 0.75, y: 0.75, z: 0.75 }, { x: -0.75, y: -0.75, z: -0.75 });
 
-    expect(distanceSquared(positions, 0, 1, radii)).toBe(0.25 + 2.25 + 2.25);
+    expect(distanceSquared(positions, 0, 1)).toBe(3 * 2.25);
+    expect(distanceSquared(positions, 1, 0)).toBe(3 * 2.25);
+  });
+
+  it('measures straight across, with no box to wrap through', () => {
+    // either side of where the old box's +1 face stood: 1.8 apart, not 0.2
+    const { positions } = flock({ x: 0.875, y: 0, z: 0 }, { x: -0.875, y: 0, z: 0 });
+
+    expect(distanceSquared(positions, 0, 1)).toBeCloseTo(1.75 ** 2);
   });
 
   it('is zero from a bat to itself', () => {
     const { positions } = flock({ x: 0.5, y: -0.25, z: 0.125 });
 
-    expect(distanceSquared(positions, 0, 0, OPEN_SKY)).toBe(0);
+    expect(distanceSquared(positions, 0, 0)).toBe(0);
   });
 });
 
@@ -82,32 +54,25 @@ describe('neighboursWithin', () => {
   );
 
   it('finds every other bat inside the radius, in flight order', () => {
-    expect(neighboursWithin(LINE, 0, 1.5, OPEN_SKY)).toEqual([1, 2]);
+    expect(neighboursWithin(LINE, 0, 1.5)).toEqual([1, 2]);
   });
 
   it('counts a bat exactly on the edge of the sphere', () => {
-    expect(neighboursWithin(LINE, 0, 1, OPEN_SKY)).toEqual([1, 2]);
+    expect(neighboursWithin(LINE, 0, 1)).toEqual([1, 2]);
   });
 
   it('never counts the bat itself', () => {
-    expect(neighboursWithin(LINE, 0, 1000, OPEN_SKY)).toEqual([1, 2, 3]);
+    expect(neighboursWithin(LINE, 0, 1000)).toEqual([1, 2, 3]);
   });
 
   it('counts a bat sitting exactly on top of it', () => {
     const stacked = flock({ x: 0.25, y: 0, z: 0 }, { x: 0.25, y: 0, z: 0 });
 
-    expect(neighboursWithin(stacked, 0, 0.1, OPEN_SKY)).toEqual([1]);
+    expect(neighboursWithin(stacked, 0, 0.1)).toEqual([1]);
   });
 
   it('sees nobody with a radius of zero unless they share its position', () => {
-    expect(neighboursWithin(LINE, 0, 0, OPEN_SKY)).toEqual([]);
-  });
-
-  it('sees a bat on the far side of a face it is close to', () => {
-    const across = flock({ x: 0.9, y: 0, z: 0 }, { x: -0.9, y: 0, z: 0 });
-
-    expect(neighboursWithin(across, 0, 0.25, UNIT)).toEqual([1]);
-    expect(neighboursWithin(across, 1, 0.25, UNIT)).toEqual([0]);
+    expect(neighboursWithin(LINE, 0, 0)).toEqual([]);
   });
 
   it('is symmetric: if i sees j, j sees i', () => {
@@ -118,8 +83,8 @@ describe('neighboursWithin', () => {
       { x: 0.3, y: -0.1, z: 0.6 }
     );
     for (let i = 0; i < 4; i++) {
-      for (const j of neighboursWithin(scattered, i, 0.9, UNIT)) {
-        expect(neighboursWithin(scattered, j, 0.9, UNIT)).toContain(i);
+      for (const j of neighboursWithin(scattered, i, 0.9)) {
+        expect(neighboursWithin(scattered, j, 0.9)).toContain(i);
       }
     }
   });
@@ -127,15 +92,15 @@ describe('neighboursWithin', () => {
   it('empties and refills the array it is given rather than appending to it', () => {
     const into = [99, 98, 97];
 
-    const result = neighboursWithin(LINE, 0, 0.75, OPEN_SKY, into);
+    const result = neighboursWithin(LINE, 0, 0.75, into);
 
     expect(result).toBe(into);
     expect(into).toEqual([1]);
   });
 
   it('finds nobody in a flock of one, or of none', () => {
-    expect(neighboursWithin(flock({ x: 0, y: 0, z: 0 }), 0, 10, OPEN_SKY)).toEqual([]);
-    expect(neighboursWithin(flock(), 0, 10, OPEN_SKY)).toEqual([]);
+    expect(neighboursWithin(flock({ x: 0, y: 0, z: 0 }), 0, 10)).toEqual([]);
+    expect(neighboursWithin(flock(), 0, 10)).toEqual([]);
   });
 });
 
@@ -151,7 +116,7 @@ describe('perceive', () => {
   );
 
   it('sorts each bat into every sphere that contains it', () => {
-    expect(perceive(SHELLS, 0, AWARENESS, OPEN_SKY)).toEqual({
+    expect(perceive(SHELLS, 0, AWARENESS)).toEqual({
       separation: [1],
       alignment: [1, 2],
       cohesion: [1, 2, 3],
@@ -160,37 +125,29 @@ describe('perceive', () => {
 
   it('agrees with neighboursWithin at each of the three radii', () => {
     for (let self = 0; self < 5; self++) {
-      const seen = perceive(SHELLS, self, AWARENESS, OPEN_SKY);
+      const seen = perceive(SHELLS, self, AWARENESS);
 
-      expect(seen.separation).toEqual(
-        neighboursWithin(SHELLS, self, AWARENESS.separation, OPEN_SKY)
-      );
-      expect(seen.alignment).toEqual(neighboursWithin(SHELLS, self, AWARENESS.alignment, OPEN_SKY));
-      expect(seen.cohesion).toEqual(neighboursWithin(SHELLS, self, AWARENESS.cohesion, OPEN_SKY));
+      expect(seen.separation).toEqual(neighboursWithin(SHELLS, self, AWARENESS.separation));
+      expect(seen.alignment).toEqual(neighboursWithin(SHELLS, self, AWARENESS.alignment));
+      expect(seen.cohesion).toEqual(neighboursWithin(SHELLS, self, AWARENESS.cohesion));
     }
   });
 
   it('does not assume the spheres are nested', () => {
     const inverted: IAwareness = { separation: 2, alignment: 0.5, cohesion: 1 };
 
-    expect(perceive(SHELLS, 0, inverted, OPEN_SKY)).toEqual({
+    expect(perceive(SHELLS, 0, inverted)).toEqual({
       separation: [1, 2, 3],
       alignment: [1],
       cohesion: [1, 2],
     });
   });
 
-  it('wraps through the faces as neighboursWithin does', () => {
-    const across = flock({ x: 0.9, y: 0, z: 0 }, { x: -0.9, y: 0, z: 0 });
-
-    expect(perceive(across, 0, AWARENESS, UNIT).separation).toEqual([1]);
-  });
-
   it('empties and reuses the neighbourhood it is given', () => {
     const into: INeighbourhood = { separation: [7], alignment: [7, 8], cohesion: [7, 8, 9] };
     const { separation, alignment, cohesion } = into;
 
-    const result = perceive(SHELLS, 3, AWARENESS, OPEN_SKY, into);
+    const result = perceive(SHELLS, 3, AWARENESS, into);
 
     expect(result).toBe(into);
     expect(result.separation).toBe(separation);

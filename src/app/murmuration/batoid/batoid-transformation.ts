@@ -40,19 +40,13 @@ export function writeThreeTuple(array: Float32Array, offset: number, tuple: IThr
   array[offset + 2] = tuple.z;
 }
 
-/** one tick's worth of position change applied to each bat in the flight according to the velocity */
-export function flightStep(flight: IFlight, seconds: number, radii: IThreeTuple): void {
+/** one tick's worth of position change applied to each bat in the flight according to the velocity.
+ *  nothing bounds it: homing in batoid-behavior turns a bat back toward the cauldron, which a box that carried bats
+ *  off one face and onto the opposite did in full view of the camera */
+export function flightStep(flight: IFlight, seconds: number): void {
   // this logic is completely dependent on a correct 'ordering', if ordered we do not need to pair components
   const { positions, velocities } = flight;
-  const termina = [radii.x, radii.y, radii.z];
   for (let i = 0; i < positions.length; i++) {
-    let destination = positions[i] + velocities[i] * seconds;
-    const radius = termina[i % 3];
-    if (destination > radius) {
-      destination -= 2 * radius;
-    } else if (destination < -radius) {
-      destination += 2 * radius;
-    }
-    positions[i] = destination;
+    positions[i] += velocities[i] * seconds;
   }
 }

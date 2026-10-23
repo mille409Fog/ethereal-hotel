@@ -5,15 +5,20 @@ import {
   cohesion,
   createSteeringScratch,
   cruise,
+  homing,
   IBehaviourWeights,
   separation,
   steerFlight,
 } from './batoid-behavior';
-import { BEHAVIOUR_WEIGHTS, FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
+import { FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
+import { flightStep, launchInitialState } from './batoid-transformation';
 
-/** a box no bat below is near the faces of, so nothing here wraps unless a test means it to */
+/** a cauldron so wide that no bat below feels homing, unless a test means it to */
 const OPEN_SKY: IThreeTuple = { x: 100, y: 100, z: 100 };
 const UNIT: IThreeTuple = { x: 1, y: 1, z: 1 };
+
+/** fixed here rather than read from calibration, so retuning the flock does not change what these tests mean */
+const EQUAL: IBehaviourWeights = { separation: 1, alignment: 1, cohesion: 1, homing: 1 };
 
 interface IBat {
   at: IThreeTuple;
@@ -38,7 +43,7 @@ describe('separation', () => {
   it('points away from a single neighbour with strength 1/distance', () => {
     const pair = flock({ at: { x: 0, y: 0, z: 0 } }, { at: { x: 0.5, y: 0, z: 0 } });
 
-    expect(separation(pair, 0, seeing(1), OPEN_SKY)).toEqual({ x: -2, y: 0, z: 0 });
+    expect(separation(pair, 0, seeing(1))).toEqual({ x: -2, y: 0, z: 0 });
   });
 
   it('is pushed harder by the nearer of two neighbours', () => {
@@ -49,7 +54,7 @@ describe('separation', () => {
     );
 
     // 1/0.25 left, 1/0.5 right
-    expect(separation(line, 0, seeing(1, 2), OPEN_SKY)).toEqual({ x: -2, y: 0, z: 0 });
+    expect(separation(line, 0, seeing(1, 2))).toEqual({ x: -2, y: 0, z: 0 });
   });
 
   it('cancels between two neighbours equally far either side', () => {
@@ -59,27 +64,20 @@ describe('separation', () => {
       { at: { x: 0, y: -0.5, z: 0 } }
     );
 
-    expect(separation(between, 0, seeing(1, 2), OPEN_SKY)).toEqual({ x: 0, y: 0, z: 0 });
+    expect(separation(between, 0, seeing(1, 2))).toEqual({ x: 0, y: 0, z: 0 });
   });
 
   it('skips a neighbour sitting exactly on top of it rather than dividing by zero', () => {
     const stacked = flock({ at: { x: 0.25, y: 0, z: 0 } }, { at: { x: 0.25, y: 0, z: 0 } });
 
-    expect(separation(stacked, 0, seeing(1), OPEN_SKY)).toEqual({ x: 0, y: 0, z: 0 });
-  });
-
-  it('pushes back through a face from a neighbour on the far side of it', () => {
-    const across = flock({ at: { x: 0.875, y: 0, z: 0 } }, { at: { x: -0.875, y: 0, z: 0 } });
-
-    // 0.25 apart through +1, so bat 0 is pushed towards -x
-    expect(separation(across, 0, seeing(1), UNIT).x).toBeCloseTo(-4);
+    expect(separation(stacked, 0, seeing(1))).toEqual({ x: 0, y: 0, z: 0 });
   });
 
   it('reads only the separation sphere', () => {
     const pair = flock({ at: { x: 0, y: 0, z: 0 } }, { at: { x: 0.5, y: 0, z: 0 } });
     const elsewhere: INeighbourhood = { separation: [], alignment: [1], cohesion: [1] };
 
-    expect(separation(pair, 0, elsewhere, OPEN_SKY)).toEqual({ x: 0, y: 0, z: 0 });
+    expect(separation(pair, 0, elsewhere)).toEqual({ x: 0, y: 0, z: 0 });
   });
 });
 
@@ -128,7 +126,7 @@ describe('cohesion', () => {
       { at: { x: 0, y: 1, z: 0 } }
     );
 
-    expect(cohesion(triangle, 0, seeing(1, 2), OPEN_SKY)).toEqual({ x: 0.5, y: 0.5, z: 0 });
+    expect(cohesion(triangle, 0, seeing(1, 2))).toEqual({ x: 0.5, y: 0.5, z: 0 });
   });
 
   it('is zero for a bat already at the centre', () => {
@@ -138,32 +136,75 @@ describe('cohesion', () => {
       { at: { x: -0.5, y: 0, z: 0 } }
     );
 
-    expect(cohesion(centred, 0, seeing(1, 2), OPEN_SKY)).toEqual({ x: 0, y: 0, z: 0 });
+    expect(cohesion(centred, 0, seeing(1, 2))).toEqual({ x: 0, y: 0, z: 0 });
   });
 
   it('asks nothing of a bat that sees nobody', () => {
     const alone = flock({ at: { x: 0.5, y: 0, z: 0 } });
 
-    expect(cohesion(alone, 0, emptyNeighbourhood(), OPEN_SKY)).toEqual({ x: 0, y: 0, z: 0 });
-  });
-
-  it('finds the centre through a face rather than in the middle of the box', () => {
-    // both neighbours sit just across +1; a naive mean of positions would pull bat 0 back across the box
-    const across = flock(
-      { at: { x: 0.875, y: 0, z: 0 } },
-      { at: { x: -0.875, y: 0, z: 0 } },
-      { at: { x: -0.625, y: 0, z: 0 } }
-    );
-
-    // offsets of 0.25 and 0.5 through the face
-    expect(cohesion(across, 0, seeing(1, 2), UNIT).x).toBeCloseTo(0.375);
+    expect(cohesion(alone, 0, emptyNeighbourhood())).toEqual({ x: 0, y: 0, z: 0 });
   });
 
   it('reads only the cohesion sphere', () => {
     const pair = flock({ at: { x: 0, y: 0, z: 0 } }, { at: { x: 1, y: 0, z: 0 } });
     const elsewhere: INeighbourhood = { separation: [1], alignment: [1], cohesion: [] };
 
-    expect(cohesion(pair, 0, elsewhere, OPEN_SKY)).toEqual({ x: 0, y: 0, z: 0 });
+    expect(cohesion(pair, 0, elsewhere)).toEqual({ x: 0, y: 0, z: 0 });
+  });
+});
+
+describe('homing', () => {
+  const STRETCHED: IThreeTuple = { x: 2, y: 1, z: 0.5 };
+
+  it('asks nothing of a bat at the centre of the cauldron', () => {
+    const centred = flock({ at: { x: 0, y: 0, z: 0 } });
+    const { x, y, z } = homing(centred, 0, STRETCHED);
+
+    expect(Math.hypot(x, y, z)).toBe(0);
+  });
+
+  it('pulls a bat on the surface back toward the centre with a strength of one', () => {
+    const edge = flock({ at: { x: 2, y: 0, z: 0 } });
+
+    expect(homing(edge, 0, STRETCHED).x).toBeCloseTo(-1);
+  });
+
+  it('measures against each axis of the ellipsoid, so every point of its surface pulls alike', () => {
+    const surface = flock(
+      { at: { x: 2, y: 0, z: 0 } },
+      { at: { x: 0, y: 1, z: 0 } },
+      { at: { x: 0, y: 0, z: -0.5 } }
+    );
+    const strength = (i: number): number => {
+      const { x, y, z } = homing(surface, i, STRETCHED);
+      return Math.hypot(x, y, z);
+    };
+
+    expect(strength(0)).toBeCloseTo(1);
+    expect(strength(1)).toBeCloseTo(1);
+    expect(strength(2)).toBeCloseTo(1);
+    expect(homing(surface, 2, STRETCHED).z).toBeGreaterThan(0);
+  });
+
+  it('is barely there inside and grows fast outside: the cube of how far out the bat is', () => {
+    const line = flock({ at: { x: 1, y: 0, z: 0 } }, { at: { x: 4, y: 0, z: 0 } });
+
+    expect(homing(line, 0, STRETCHED).x).toBeCloseTo(-0.125);
+    expect(homing(line, 1, STRETCHED).x).toBeCloseTo(-8);
+  });
+
+  it('always points back toward the centre', () => {
+    const scattered = flock(
+      { at: { x: 0.3, y: -0.7, z: 0.2 } },
+      { at: { x: -2.5, y: 0.4, z: -0.9 } },
+      { at: { x: 1.1, y: 1.6, z: 0.05 } }
+    );
+    for (let i = 0; i < 3; i++) {
+      const home = homing(scattered, i, STRETCHED);
+      const at = scattered.positions.slice(i * 3, i * 3 + 3);
+
+      expect(home.x * at[0] + home.y * at[1] + home.z * at[2]).toBeLessThan(0);
+    }
   });
 });
 
@@ -216,7 +257,7 @@ describe('cruise', () => {
 });
 
 describe('steerFlight', () => {
-  const NONE: IBehaviourWeights = { separation: 0, alignment: 0, cohesion: 0 };
+  const NONE: IBehaviourWeights = { separation: 0, alignment: 0, cohesion: 0, homing: 0 };
   const TICK = 1 / 60;
   // fixed here rather than read from calibration, so retuning the flock does not move these bats between spheres
   const SPHERES = { separation: 0.15, alignment: 0.4, cohesion: 0.8 };
@@ -227,7 +268,7 @@ describe('steerFlight', () => {
       { at: { x: 0, y: 0, z: 0 }, heading: STILL }
     );
 
-    steerFlight(together, TICK, SPHERES, BEHAVIOUR_WEIGHTS, OPEN_SKY);
+    steerFlight(together, TICK, SPHERES, EQUAL, OPEN_SKY);
 
     expect(velocityOf(together, 0).x).toBeCloseTo(FLIGHT_SPEED);
     expect(velocityOf(together, 1).x).toBeCloseTo(FLIGHT_SPEED);
@@ -258,7 +299,6 @@ describe('steerFlight', () => {
   });
 
   describe('separation takes priority', () => {
-    const EQUAL: IBehaviourWeights = { separation: 1, alignment: 1, cohesion: 1 };
     const ACROSS: IThreeTuple = { x: 0, y: 0, z: FLIGHT_SPEED };
 
     it('deafens a crowded bat to alignment and cohesion', () => {
@@ -286,6 +326,56 @@ describe('steerFlight', () => {
 
       expect(velocityOf(near, 0).z).toBeGreaterThan(0);
     });
+
+    it('still lets a crowded bat hear homing, so a crowd cannot push itself out of the cauldron', () => {
+      // the stacked pair again, now out past the surface: separation has no direction and alignment is deafened
+      const stacked = flock(
+        { at: { x: 1.5, y: 0, z: 0 }, heading: ACROSS },
+        { at: { x: 1.5, y: 0, z: 0 }, heading: STILL }
+      );
+
+      steerFlight(stacked, TICK, SPHERES, EQUAL, UNIT);
+
+      expect(velocityOf(stacked, 0).x).toBeLessThan(0);
+    });
+  });
+
+  describe('homing', () => {
+    it('turns a lone bat flying outward back toward the centre', () => {
+      // out past the surface and heading further out, a little off the radius
+      const straying = flock({
+        at: { x: 1.5, y: 0, z: 0 },
+        heading: { x: FLIGHT_SPEED * Math.cos(0.3), y: 0, z: FLIGHT_SPEED * Math.sin(0.3) },
+      });
+
+      for (let tick = 0; tick < 30; tick++) {
+        steerFlight(straying, TICK, SPHERES, EQUAL, UNIT);
+      }
+
+      expect(velocityOf(straying, 0).x).toBeLessThan(0);
+    });
+
+    it('keeps a launched flock near the cauldron for a long flight, with nothing to wrap it', () => {
+      // a minute of ticks: long enough for every bat to cross the cauldron several times
+      const quantity = 60;
+      const ticks = 3600;
+      const state = launchInitialState(Math.random, UNIT, quantity);
+      const scratch = createSteeringScratch(quantity);
+      let furthest = 0;
+
+      for (let tick = 0; tick < ticks; tick++) {
+        steerFlight(state, TICK, SPHERES, EQUAL, UNIT, scratch);
+        flightStep(state, TICK);
+        for (let i = 0; i < quantity * 3; i += 3) {
+          const p = state.positions;
+          furthest = Math.max(furthest, Math.hypot(p[i], p[i + 1], p[i + 2]));
+        }
+      }
+
+      // a pull rather than a wall, so a launch corner already sits at √3 and bats overshoot the surface;
+      // at twice its radius the pull is eight, and that is a ceiling no bat should reach
+      expect(furthest).toBeLessThan(2);
+    }, 30_000);
   });
 
   it('steers every bat from the flight as it stood, not as the bats before it were steered', () => {
@@ -297,7 +387,7 @@ describe('steerFlight', () => {
       { at: { x: 0.25, y: 0, z: 0 }, heading: { x: -a, y: 0, z: b } }
     );
 
-    steerFlight(mirrored, TICK, SPHERES, BEHAVIOUR_WEIGHTS, OPEN_SKY);
+    steerFlight(mirrored, TICK, SPHERES, EQUAL, OPEN_SKY);
 
     expect(velocityOf(mirrored, 0).x).toBeCloseTo(-velocityOf(mirrored, 1).x, 6);
     expect(velocityOf(mirrored, 0).z).toBeCloseTo(velocityOf(mirrored, 1).z, 6);
@@ -313,7 +403,7 @@ describe('steerFlight', () => {
     const scratch = createSteeringScratch(4);
 
     for (let tick = 0; tick < 30; tick++) {
-      steerFlight(tangle, TICK, SPHERES, BEHAVIOUR_WEIGHTS, OPEN_SKY, scratch);
+      steerFlight(tangle, TICK, SPHERES, EQUAL, OPEN_SKY, scratch);
     }
 
     for (let i = 0; i < 4; i++) {

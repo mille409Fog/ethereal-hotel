@@ -251,26 +251,15 @@ describe('flightStep', () => {
   const POSITIONS = [0, 1, -2, 0.5, 0, 4];
   const VELOCITIES = [1, -2, 0.5, 0, 4, -0.25];
 
-  /** a box no bat in POSITIONS can reach in these steps, so the motion tests never wrap */
-  const OPEN_SKY: IThreeTuple = { x: 100, y: 100, z: 100 };
-
   /** two bats, built fresh for each test because flightStep writes in place */
   function flight(): IFlight {
     return { positions: new Float32Array(POSITIONS), velocities: new Float32Array(VELOCITIES) };
   }
 
-  /** a single bat, for the wrapping tests, where which component crosses which edge is the point */
-  function bat(position: IThreeTuple, velocity: IThreeTuple): IFlight {
-    return {
-      positions: new Float32Array([position.x, position.y, position.z]),
-      velocities: new Float32Array([velocity.x, velocity.y, velocity.z]),
-    };
-  }
-
   it('moves every component of every bat by its own velocity times the step', () => {
     const state = flight();
 
-    flightStep(state, 0.5, OPEN_SKY);
+    flightStep(state, 0.5);
 
     expect([...state.positions]).toEqual([0.5, 0, -1.75, 0.5, 2, 3.875]);
   });
@@ -279,7 +268,7 @@ describe('flightStep', () => {
     const state = flight();
     const positions = state.positions;
 
-    flightStep(state, 0.5, OPEN_SKY);
+    flightStep(state, 0.5);
 
     expect(state.positions).toBe(positions);
   });
@@ -287,7 +276,7 @@ describe('flightStep', () => {
   it('leaves the velocities alone: straight-line flight does not steer', () => {
     const state = flight();
 
-    flightStep(state, 0.5, OPEN_SKY);
+    flightStep(state, 0.5);
 
     expect([...state.velocities]).toEqual(VELOCITIES);
   });
@@ -295,7 +284,7 @@ describe('flightStep', () => {
   it('moves nothing for a step of zero seconds', () => {
     const state = flight();
 
-    flightStep(state, 0, OPEN_SKY);
+    flightStep(state, 0);
 
     expect([...state.positions]).toEqual(POSITIONS);
   });
@@ -304,9 +293,9 @@ describe('flightStep', () => {
     const halves = flight();
     const whole = flight();
 
-    flightStep(halves, 0.25, OPEN_SKY);
-    flightStep(halves, 0.25, OPEN_SKY);
-    flightStep(whole, 0.5, OPEN_SKY);
+    flightStep(halves, 0.25);
+    flightStep(halves, 0.25);
+    flightStep(whole, 0.5);
 
     expect([...halves.positions]).toEqual([...whole.positions]);
   });
@@ -314,71 +303,18 @@ describe('flightStep', () => {
   it('does nothing, and does not throw, for an empty flight', () => {
     const empty: IFlight = { positions: new Float32Array(0), velocities: new Float32Array(0) };
 
-    expect(() => flightStep(empty, 1, OPEN_SKY)).not.toThrow();
+    expect(() => flightStep(empty, 1)).not.toThrow();
   });
 
-  describe('wrapping', () => {
-    const UNIT: IThreeTuple = { x: 1, y: 1, z: 1 };
+  it('carries a bat as far as it flies: there is no box to wrap it round, homing turns it back instead', () => {
+    // past where the old box's +1 face stood, and still going
+    const state: IFlight = {
+      positions: new Float32Array([0.75, 0, 0]),
+      velocities: new Float32Array([1, 0, 0]),
+    };
 
-    it('carries a bat past +radius round to the far side, keeping its overshoot', () => {
-      // 0.75 + 1 × 0.5 = 1.25, a quarter past the edge, so a quarter inside the other one
-      const state = bat({ x: 0.75, y: 0, z: 0 }, { x: 1, y: 0, z: 0 });
+    flightStep(state, 0.5);
 
-      flightStep(state, 0.5, UNIT);
-
-      expect(state.positions[0]).toBe(-0.75);
-    });
-
-    it('carries a bat past -radius round to the far side as well', () => {
-      const state = bat({ x: -0.75, y: 0, z: 0 }, { x: -1, y: 0, z: 0 });
-
-      flightStep(state, 0.5, UNIT);
-
-      expect(state.positions[0]).toBe(0.75);
-    });
-
-    it('wraps y and z too, at both edges', () => {
-      const rising = bat({ x: 0, y: 0.75, z: -0.75 }, { x: 0, y: 1, z: -1 });
-
-      flightStep(rising, 0.5, UNIT);
-
-      expect([...rising.positions]).toEqual([0, -0.75, 0.75]);
-    });
-
-    it('wraps each axis against its own radius, not one shared bound', () => {
-      const radii: IThreeTuple = { x: 1, y: 2, z: 4 };
-      // every component lands at 1.25: past x's edge, inside y's and z's
-      const state = bat({ x: 0.75, y: 0.75, z: 0.75 }, { x: 1, y: 1, z: 1 });
-
-      flightStep(state, 0.5, radii);
-
-      expect([...state.positions]).toEqual([-0.75, 1.25, 1.25]);
-    });
-
-    it('leaves a bat that is still inside the box exactly where flight put it', () => {
-      const state = bat({ x: 0.25, y: -0.25, z: 0 }, { x: 1, y: -1, z: 1 });
-
-      flightStep(state, 0.5, UNIT);
-
-      expect([...state.positions]).toEqual([0.75, -0.75, 0.5]);
-    });
-
-    it('keeps a whole launched flock inside the box for a long flight', () => {
-      // ten minutes of ticks: long enough for every bat to cross the box many times
-      const quantity = 200;
-      const ticks = 36_000;
-      const state = launchInitialState(Math.random, RADII, quantity);
-
-      for (let t = 0; t < ticks; t++) {
-        flightStep(state, 1 / 60, RADII);
-      }
-
-      const radius = [RADII.x, RADII.y, RADII.z];
-      state.positions.forEach((p, i) => {
-        // fround: the edge itself is only as exact as single precision makes it
-        expect(Math.abs(p)).toBeLessThanOrEqual(Math.fround(radius[i % 3]));
-      });
-      // well under a second alone, but it brushed the 5s default once while the full suite shared the box
-    }, 30_000);
+    expect(state.positions[0]).toBe(1.25);
   });
 });

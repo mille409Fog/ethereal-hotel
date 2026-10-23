@@ -118,7 +118,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
               scratch
             );
             bankFlight(flight, banking, CALIBRATION.TICK_SECONDS);
-            flightStep(flight, CALIBRATION.TICK_SECONDS, CALIBRATION.INITIAL_DIMENSIONS);
+            flightStep(flight, CALIBRATION.TICK_SECONDS);
           }
           if (advanced.ticks > 0) {
             poseCauldron(flight, bats, pose, banking.rolls);
