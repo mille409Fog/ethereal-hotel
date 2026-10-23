@@ -25,8 +25,8 @@ import { bankFlight, createBanking } from './batoid/batoid-banking';
 import { createSteeringScratch, steerFlight } from './batoid/batoid-behavior';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { flightStep, launchInitialState } from './batoid/batoid-transformation';
-import { CAMERA_FAR, CAMERA_NEAR, CAMERA_VERTICAL_FOV } from './camera/camera-calibration';
-import { orbitCamera } from './camera/camera-orbit';
+import { CAMERA_FAR, CAMERA_NEAR } from './camera/camera-calibration';
+import { orbitCamera, verticalFovFor } from './camera/camera-orbit';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { beatWings, createCauldron, poseCauldron } from './cauldron/cauldron-creation';
 import { GRADE } from './grade/grade-calibration';
@@ -47,8 +47,6 @@ import {
   MURMURATION_RENDERER,
 } from './murmuration.tokens';
 import { PIXEL_RATIO_FLOOR, TONE_MAPPING_EXPOSURE } from './renderer/renderer-calibration';
-import { TRAIL_SECONDS } from './trails/trail-calibration';
-import { TrailPass } from './trails/trail-pass';
 @Component({
   imports: [],
   selector: 'app-murmuration',
@@ -181,6 +179,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       renderer.setSize(width, height, false);
       composer.setSize(width, height);
       camera.aspect = width / height;
+      camera.fov = verticalFovFor(camera.aspect);
       camera.updateProjectionMatrix();
       if (redraw) {
         composer.render();
@@ -195,7 +194,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
 
   private createCamera(widthToHeightRatio: number): THREE.PerspectiveCamera {
     return new THREE.PerspectiveCamera(
-      CAMERA_VERTICAL_FOV,
+      verticalFovFor(widthToHeightRatio),
       widthToHeightRatio,
       CAMERA_NEAR,
       CAMERA_FAR
@@ -225,7 +224,6 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   ): void {
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(new GodRaysPass(camera, sunDirection, GOD_RAYS));
-    composer.addPass(new TrailPass(TRAIL_SECONDS));
     composer.addPass(bloomPass);
     composer.addPass(this.generateVignettePass());
     composer.addPass(new OutputPass());

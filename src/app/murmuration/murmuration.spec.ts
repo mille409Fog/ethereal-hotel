@@ -9,12 +9,11 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
 import { CAMERA_POSITION } from './camera/camera-calibration';
-import { orbitCamera } from './camera/camera-orbit';
+import { orbitCamera, verticalFovFor } from './camera/camera-orbit';
 import { GradePass } from './grade/grade-pass';
 import { GrainPass } from './grain/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';
 import { Murmuration } from './murmuration';
-import { TrailPass } from './trails/trail-pass';
 import {
   MURMURATION_COMPOSER,
   MURMURATION_RANDOM,
@@ -294,12 +293,10 @@ describe('Murmuration', () => {
   });
 
   describe('post-processing', () => {
-    it('draws the scene, lights it, trails it, blooms it, vignettes it, tone-maps it, grades it, and only then grains it', async () => {
+    it('draws the scene, lights it, blooms it, vignettes it, tone-maps it, grades it, and only then grains it', async () => {
       // OutputPass applies the renderer's tone mapping and colour space; before it,
       // the bloom would be added to a picture that is already finished.
       // The shafts come before the bloom, so their brightest light blooms like the rest.
-      // The trails follow the shafts, which read the depth the render pass left behind,
-      // and precede the bloom, so a wake is light like any other.
       // The vignette follows the bloom, so the bloom cannot light the corners back up,
       // and precedes the tone mapping, so it darkens linear light as a lens does
       // rather than gamma-encoded values, where halving a corner leaves a fifth of its light.
@@ -312,7 +309,6 @@ describe('Murmuration', () => {
       expect(kinds).toEqual([
         RenderPass,
         GodRaysPass,
-        TrailPass,
         UnrealBloomPass,
         ShaderPass,
         OutputPass,
@@ -534,6 +530,18 @@ describe('Murmuration', () => {
       expect(renderer.setSize).toHaveBeenLastCalledWith(1600, 900, false);
       expect(composer.setSize).toHaveBeenLastCalledWith(1600, 900);
       expect(camera.aspect).toBeCloseTo(16 / 9, 10);
+      expect(camera.fov).toBe(verticalFovFor(16 / 9));
+    });
+
+    it('opens the lens when the canvas turns portrait, so the flock still fits across', async () => {
+      const fixture = await mount();
+      const camera = cameraOf(onlyComposer());
+
+      sizeCanvas(fixture, 900, 1600);
+      watcher().report();
+
+      expect(camera.fov).toBe(verticalFovFor(9 / 16));
+      expect(camera.fov).toBeGreaterThan(verticalFovFor(16 / 9));
     });
 
     it('ignores a report that changes nothing, and a canvas measuring zero', async () => {
@@ -597,7 +605,7 @@ describe('Murmuration', () => {
 
     fixture.destroy();
 
-    expect(passes).toHaveLength(8);
+    expect(passes).toHaveLength(7);
     for (const pass of passes) {
       expect(pass).toHaveBeenCalledTimes(1);
     }

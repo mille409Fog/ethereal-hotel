@@ -7,9 +7,24 @@ import * as THREE from 'three';
 import {
   CAMERA_BREATH,
   CAMERA_LOOK_AT_POINT,
+  CAMERA_MIN_HORIZONTAL_FOV,
   CAMERA_ORBIT_PERIOD_SECONDS,
   CAMERA_POSITION,
+  CAMERA_VERTICAL_FOV,
 } from './camera-calibration';
+
+const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
+const toDegrees = (radians: number): number => (radians * 180) / Math.PI;
+
+/** the vertical field of view, in degrees, for a frame of this width over height: CAMERA_VERTICAL_FOV, opened just
+ *  enough that the view is never narrower across than CAMERA_MIN_HORIZONTAL_FOV */
+export function verticalFovFor(aspect: number): number {
+  if (!(aspect > 0)) {
+    return CAMERA_VERTICAL_FOV;
+  }
+  const needed = 2 * Math.atan(Math.tan(toRadians(CAMERA_MIN_HORIZONTAL_FOV) / 2) / aspect);
+  return Math.max(CAMERA_VERTICAL_FOV, toDegrees(needed));
+}
 
 const [lookX, lookY, lookZ] = CAMERA_LOOK_AT_POINT;
 const [startX, startY, startZ] = CAMERA_POSITION;

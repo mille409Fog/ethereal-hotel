@@ -1,9 +1,10 @@
 /** generates constants used to calibrate the atmosphere */
 
-// measured from the camera, so they follow its distance: clear to a unit short of the flock's centre, gone two past it
-export const FOG_NEAR = 3;
+// measured from the camera, so they follow its distance: clear to the flock's near edge, about 6.6 to its centre,
+// and gone a little past its far edge, so the far side of the mass recedes rather than vanishing
+export const FOG_NEAR = 5;
 
-export const FOG_FAR = 6;
+export const FOG_FAR = 9.5;
 
 export const SKY_DOME_RADIUS = 50;
 

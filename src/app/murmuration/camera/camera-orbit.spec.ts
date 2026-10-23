@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import {
   CAMERA_BREATH,
   CAMERA_LOOK_AT_POINT,
+  CAMERA_MIN_HORIZONTAL_FOV,
+  CAMERA_VERTICAL_FOV,
   CAMERA_ORBIT_PERIOD_SECONDS,
   CAMERA_POSITION,
 } from './camera-calibration';
-import { orbitCamera } from './camera-orbit';
+import { orbitCamera, verticalFovFor } from './camera-orbit';
 
 const DIGITS = 10;
 const lookAt = new THREE.Vector3(...CAMERA_LOOK_AT_POINT);
@@ -26,6 +28,39 @@ const expectVectorCloseTo = (actual: THREE.Vector3, expected: THREE.Vector3): vo
   expect(actual.y).toBeCloseTo(expected.y, DIGITS);
   expect(actual.z).toBeCloseTo(expected.z, DIGITS);
 };
+
+describe('verticalFovFor', () => {
+  /** the horizontal field of view a vertical one gives at this aspect, in degrees */
+  const horizontalOf = (vertical: number, aspect: number): number =>
+    (2 * Math.atan(Math.tan((vertical * Math.PI) / 360) * aspect) * 180) / Math.PI;
+
+  it('keeps the calibrated lens on a landscape frame, which is wide enough already', () => {
+    expect(verticalFovFor(16 / 9)).toBe(CAMERA_VERTICAL_FOV);
+    expect(verticalFovFor(21 / 9)).toBe(CAMERA_VERTICAL_FOV);
+  });
+
+  it('opens on a portrait frame until the view is exactly the minimum across', () => {
+    for (const aspect of [9 / 16, 0.5, 1]) {
+      const vertical = verticalFovFor(aspect);
+
+      expect(vertical).toBeGreaterThan(CAMERA_VERTICAL_FOV);
+      expect(horizontalOf(vertical, aspect)).toBeCloseTo(CAMERA_MIN_HORIZONTAL_FOV, 10);
+    }
+  });
+
+  it('is never narrower across than the minimum, at any shape', () => {
+    for (const aspect of [0.3, 0.6, 1, 1.3, 2, 4]) {
+      expect(horizontalOf(verticalFovFor(aspect), aspect)).toBeGreaterThanOrEqual(
+        CAMERA_MIN_HORIZONTAL_FOV - 1e-9
+      );
+    }
+  });
+
+  it('falls back to the calibrated lens for a frame with no shape yet', () => {
+    expect(verticalFovFor(0)).toBe(CAMERA_VERTICAL_FOV);
+    expect(verticalFovFor(Number.NaN)).toBe(CAMERA_VERTICAL_FOV);
+  });
+});
 
 describe('orbitCamera', () => {
   it('starts exactly where the camera is calibrated to stand', () => {
