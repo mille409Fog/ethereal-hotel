@@ -10,9 +10,11 @@ import * as CALIBRATION from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
 import { CAMERA_POSITION } from './camera/camera-calibration';
 import { orbitCamera } from './camera/camera-orbit';
+import { GradePass } from './grade/grade-pass';
 import { GrainPass } from './grain/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';
 import { Murmuration } from './murmuration';
+import { TrailPass } from './trails/trail-pass';
 import {
   MURMURATION_COMPOSER,
   MURMURATION_RANDOM,
@@ -291,24 +293,29 @@ describe('Murmuration', () => {
   });
 
   describe('post-processing', () => {
-    it('draws the scene, lights it, blooms it, vignettes it, tone-maps it, and only then grains it', async () => {
+    it('draws the scene, lights it, trails it, blooms it, vignettes it, tone-maps it, grades it, and only then grains it', async () => {
       // OutputPass applies the renderer's tone mapping and colour space; before it,
       // the bloom would be added to a picture that is already finished.
       // The shafts come before the bloom, so their brightest light blooms like the rest.
+      // The trails follow the shafts, which read the depth the render pass left behind,
+      // and precede the bloom, so a wake is light like any other.
       // The vignette follows the bloom, so the bloom cannot light the corners back up,
       // and precedes the tone mapping, so it darkens linear light as a lens does
       // rather than gamma-encoded values, where halving a corner leaves a fifth of its light.
-      // The grain is the one pass after it: it belongs to the print, not the light, so
-      // it must not bloom, and it is sized in the display values a viewer sees.
+      // The grade and the grain come after it: both are decisions about the picture a
+      // viewer sees, sized in display values. The grain is last because it belongs to the
+      // print, so the grade must not tint it.
       await mount();
       const kinds = onlyComposer().passes.map((pass) => pass.constructor);
 
       expect(kinds).toEqual([
         RenderPass,
         GodRaysPass,
+        TrailPass,
         UnrealBloomPass,
         ShaderPass,
         OutputPass,
+        GradePass,
         GrainPass,
       ]);
     });
@@ -483,7 +490,7 @@ describe('Murmuration', () => {
 
     fixture.destroy();
 
-    expect(passes).toHaveLength(6);
+    expect(passes).toHaveLength(8);
     for (const pass of passes) {
       expect(pass).toHaveBeenCalledTimes(1);
     }

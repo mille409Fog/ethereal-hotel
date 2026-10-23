@@ -29,6 +29,8 @@ import { CAMERA_FAR, CAMERA_NEAR, CAMERA_VERTICAL_FOV } from './camera/camera-ca
 import { orbitCamera } from './camera/camera-orbit';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
 import { beatWings, createCauldron, poseCauldron } from './cauldron/cauldron-creation';
+import { GRADE } from './grade/grade-calibration';
+import { GradePass } from './grade/grade-pass';
 import { GRAIN_INTENSITY } from './grain/grain-calibration';
 import { GrainPass } from './grain/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';
@@ -45,6 +47,8 @@ import {
   MURMURATION_RENDERER,
 } from './murmuration.tokens';
 import { PIXEL_RATIO_FLOOR, TONE_MAPPING_EXPOSURE } from './renderer/renderer-calibration';
+import { TRAIL_SECONDS } from './trails/trail-calibration';
+import { TrailPass } from './trails/trail-pass';
 @Component({
   imports: [],
   selector: 'app-murmuration',
@@ -180,9 +184,11 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   ): void {
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(new GodRaysPass(camera, sunDirection, GOD_RAYS));
+    composer.addPass(new TrailPass(TRAIL_SECONDS));
     composer.addPass(bloomPass);
     composer.addPass(this.generateVignettePass());
     composer.addPass(new OutputPass());
+    composer.addPass(new GradePass(GRADE));
     composer.addPass(new GrainPass(GRAIN_INTENSITY));
   }
 
