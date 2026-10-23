@@ -29,6 +29,22 @@ export const BEHAVIOUR_WEIGHTS: Readonly<IBehaviourWeights> = {
   cohesion: 1,
 };
 
+/** the wingbeat, bent into the mesh on the GPU; a real bat beats nearer 10Hz, slowed here so the stroke reads */
+export const WING_BEAT = {
+  hertz: 3,
+  /** how far a wingtip rises and falls, in the unscaled geometry's units, against a half-span of about 0.62 */
+  tipLift: 0.25,
+} as const;
+
+/** banking into a turn as a coordinated flier does, tan(roll) = speed × turn rate / gravity.
+ *  gravity is a dial rather than 9.81: scene units are not metres, and a smaller one banks harder */
+export const BANKING = {
+  gravity: 0.5,
+  maxRoll: Math.PI / 4,
+  /** the time constant a roll eases toward its target with, so a jittery steer does not shake the wings */
+  easeSeconds: 0.25,
+} as const;
+
 export const TICK_SECONDS = 1 / 60;
 export const CLAMP_SECONDS = 0.25;
 

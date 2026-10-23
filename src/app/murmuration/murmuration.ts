@@ -21,13 +21,14 @@ import {
 } from './atmosphere/atmospheric-calibration';
 import { createFog } from './atmosphere/fog';
 import { createSkyDome } from './atmosphere/sky-dome';
+import { bankFlight, createBanking } from './batoid/batoid-banking';
 import { createSteeringScratch, steerFlight } from './batoid/batoid-behavior';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { flightStep, launchInitialState } from './batoid/batoid-transformation';
 import { CAMERA_FAR, CAMERA_NEAR, CAMERA_VERTICAL_FOV } from './camera/camera-calibration';
 import { orbitCamera } from './camera/camera-orbit';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock';
-import { createCauldron, poseCauldron } from './cauldron/cauldron-creation';
+import { beatWings, createCauldron, poseCauldron } from './cauldron/cauldron-creation';
 import { GRAIN_INTENSITY } from './grain/grain-calibration';
 import { GrainPass } from './grain/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';
@@ -102,11 +103,12 @@ export class Murmuration implements AfterViewInit, OnDestroy {
         let clock = STOPPED_CLOCK;
         let flownSeconds = 0;
         const scratch = createSteeringScratch(CALIBRATION.CAULDRON.count);
+        const banking = createBanking(flight);
         renderer.setAnimationLoop((nowMs) => {
           const advanced = advance(clock, nowMs);
           clock = advanced.state;
           for (let i = 0; i < advanced.ticks; i++) {
-            // turn first, then fly the new heading, so each tick's position follows from that tick's steer
+            // turn first, lean into the turn, then fly the new heading, so each tick's position follows from that tick's steer
             steerFlight(
               flight,
               CALIBRATION.TICK_SECONDS,
@@ -115,14 +117,18 @@ export class Murmuration implements AfterViewInit, OnDestroy {
               CALIBRATION.INITIAL_DIMENSIONS,
               scratch
             );
+            bankFlight(flight, banking, CALIBRATION.TICK_SECONDS);
             flightStep(flight, CALIBRATION.TICK_SECONDS, CALIBRATION.INITIAL_DIMENSIONS);
           }
           if (advanced.ticks > 0) {
-            poseCauldron(flight, bats, pose);
+            poseCauldron(flight, bats, pose, banking.rolls);
           }
           flownSeconds += advanced.ticks * CALIBRATION.TICK_SECONDS;
-          // the flock's clock, so a hidden tab does not swing the camera round; the carried remainder keeps it gliding between ticks
-          orbitCamera(camera, flownSeconds + clock.carriedSeconds);
+          // the flock's clock, so a hidden tab does not swing the camera round or race the wings;
+          // the carried remainder keeps both gliding between ticks
+          const seconds = flownSeconds + clock.carriedSeconds;
+          orbitCamera(camera, seconds);
+          beatWings(bats, seconds);
           composer.render();
         });
       }

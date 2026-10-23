@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as CALIBRATION from '../batoid/batoid-calibration';
 import { writeThreeTuple } from '../batoid/batoid-transformation';
-import { createCauldron, poseCauldron } from './cauldron-creation';
+import { beatWings, createCauldron, poseCauldron, wingBeatChunk } from './cauldron-creation';
 import { IFlight, IThreeTuple } from './cauldron-flight';
 
 type Triple = readonly [number, number, number];
@@ -127,6 +127,67 @@ describe('cauldron', () => {
       expect(material.flatShading).toBe(true);
     });
 
+    describe('the wingbeat', () => {
+      /** what three would hand onBeforeCompile for this material: its uniforms and the standard vertex source */
+      const compiled = (flock: Flock): THREE.WebGLProgramParametersWithUniforms => {
+        const shader = {
+          uniforms: {},
+          vertexShader: THREE.ShaderLib.physical.vertexShader,
+          fragmentShader: THREE.ShaderLib.physical.fragmentShader,
+        } as unknown as THREE.WebGLProgramParametersWithUniforms;
+        flock.material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+        return shader;
+      };
+
+      it('is spliced into the vertex shader, after the vertex is read and before it is moved', () => {
+        // jsdom cannot compile GLSL, so this reads the source; `npm run build` and a browser are what compile it
+        const { vertexShader } = compiled(cauldron());
+        // the chunk that declares `transformed` from the vertex's position; three expands it at compile time
+        const read = vertexShader.indexOf('#include <begin_vertex>');
+        const beat = vertexShader.indexOf('transformed.y +=');
+        const moved = vertexShader.indexOf('#include <project_vertex>');
+
+        expect(vertexShader).toContain('uniform float uWingSeconds;');
+        expect(read).toBeGreaterThan(-1);
+        expect(beat).toBeGreaterThan(read);
+        expect(moved).toBeGreaterThan(beat);
+      });
+
+      it('gives each bat its own phase, so the cauldron does not flap in unison', () => {
+        expect(wingBeatChunk(0.62)).toContain('gl_InstanceID');
+      });
+
+      it('scales the reach by the real half-span, not a guess at it', () => {
+        const flock = cauldron();
+        flock.geometry.computeBoundingBox();
+        const halfSpan = flock.geometry.boundingBox?.max.x ?? 0;
+
+        expect(halfSpan).toBeGreaterThan(0);
+        expect(compiled(flock).vertexShader).toContain(`/ ${halfSpan.toFixed(6)}`);
+      });
+
+      it('beats to the second it is handed, through the uniform the shader reads', () => {
+        const flock = cauldron();
+        const { uniforms } = compiled(flock);
+
+        beatWings(flock, 2.5);
+
+        expect(uniforms['uWingSeconds'].value).toBe(2.5);
+      });
+
+      it('keeps each cauldron on its own clock', () => {
+        const first = cauldron();
+        const second = cauldron();
+        const a = compiled(first).uniforms;
+        const b = compiled(second).uniforms;
+
+        beatWings(first, 1);
+
+        expect(a['uWingSeconds'].value).toBe(1);
+        expect(b['uWingSeconds'].value).toBe(0);
+      });
+    });
+
     it('poses nothing: every bat is left at the identity until the flight is known', () => {
       const flock = cauldron();
       const identity = new THREE.Matrix4().toArray();
@@ -189,6 +250,35 @@ describe('cauldron', () => {
       PITCHED.forEach((_, i) => {
         expect(flock.instanceMatrix.array[i * 16 + 1]).toBeCloseTo(0, DIGITS);
       });
+    });
+
+    it('banks each bat by its roll about its own nose, without turning where it faces', () => {
+      const flock = cauldron();
+      const flight = flightOf(
+        ...PITCHED.map((velocity) => ({ position: { x: 0, y: 0, z: 0 }, velocity }))
+      );
+      const rolls = new Float32Array(CALIBRATION.CAULDRON.count).fill(-Math.PI / 6);
+
+      poseCauldron(flight, flock, new THREE.Object3D(), rolls);
+
+      PITCHED.forEach((velocity, i) => {
+        expectNear(poseOf(flock, i).facing, along(velocity));
+        // column 0 is the +x wing; a negative roll lowers it by sin(π/6) of the bat's scale
+        const lift = flock.instanceMatrix.array[i * 16 + 1] / CALIBRATION.CAULDRON.batScale;
+        expect(lift).toBeLessThan(0);
+      });
+    });
+
+    it('banks a level bat by exactly its roll', () => {
+      const flock = cauldron();
+      const flight = flightOf({ position: { x: 0, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 1 } });
+      const rolls = new Float32Array(CALIBRATION.CAULDRON.count);
+      rolls[0] = -Math.PI / 6;
+
+      poseCauldron(flight, flock, new THREE.Object3D(), rolls);
+
+      const lift = flock.instanceMatrix.array[1] / CALIBRATION.CAULDRON.batScale;
+      expect(lift).toBeCloseTo(-0.5, DIGITS);
     });
 
     it('faces by direction alone, so a faster bat on the same heading faces the same way', () => {

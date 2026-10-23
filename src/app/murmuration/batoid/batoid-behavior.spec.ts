@@ -9,7 +9,7 @@ import {
   separation,
   steerFlight,
 } from './batoid-behavior';
-import { AWARENESS, BEHAVIOUR_WEIGHTS, FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
+import { BEHAVIOUR_WEIGHTS, FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
 
 /** a box no bat below is near the faces of, so nothing here wraps unless a test means it to */
 const OPEN_SKY: IThreeTuple = { x: 100, y: 100, z: 100 };
@@ -218,6 +218,8 @@ describe('cruise', () => {
 describe('steerFlight', () => {
   const NONE: IBehaviourWeights = { separation: 0, alignment: 0, cohesion: 0 };
   const TICK = 1 / 60;
+  // fixed here rather than read from calibration, so retuning the flock does not move these bats between spheres
+  const SPHERES = { separation: 0.15, alignment: 0.4, cohesion: 0.8 };
 
   it('leaves a flock flying as one exactly as it was', () => {
     const together = flock(
@@ -225,7 +227,7 @@ describe('steerFlight', () => {
       { at: { x: 0, y: 0, z: 0 }, heading: STILL }
     );
 
-    steerFlight(together, TICK, AWARENESS, BEHAVIOUR_WEIGHTS, OPEN_SKY);
+    steerFlight(together, TICK, SPHERES, BEHAVIOUR_WEIGHTS, OPEN_SKY);
 
     expect(velocityOf(together, 0).x).toBeCloseTo(FLIGHT_SPEED);
     expect(velocityOf(together, 1).x).toBeCloseTo(FLIGHT_SPEED);
@@ -238,7 +240,7 @@ describe('steerFlight', () => {
     );
     const before = Array.from(apart.velocities);
 
-    steerFlight(apart, TICK, AWARENESS, NONE, OPEN_SKY);
+    steerFlight(apart, TICK, SPHERES, NONE, OPEN_SKY);
 
     Array.from(apart.velocities).forEach((value, i) => expect(value).toBeCloseTo(before[i], 6));
   });
@@ -249,15 +251,13 @@ describe('steerFlight', () => {
       { at: { x: 0.05, y: 0, z: 0 }, heading: { x: 0, y: 0, z: FLIGHT_SPEED } }
     );
 
-    steerFlight(close, TICK, AWARENESS, { ...NONE, separation: 1 }, OPEN_SKY);
+    steerFlight(close, TICK, SPHERES, { ...NONE, separation: 1 }, OPEN_SKY);
 
     expect(velocityOf(close, 0).x).toBeLessThan(0);
     expect(velocityOf(close, 1).x).toBeGreaterThan(0);
   });
 
   describe('separation takes priority', () => {
-    // fixed here rather than read from calibration, so retuning the flock does not move these bats between spheres
-    const SPHERES = { separation: 0.15, alignment: 0.4, cohesion: 0.8 };
     const EQUAL: IBehaviourWeights = { separation: 1, alignment: 1, cohesion: 1 };
     const ACROSS: IThreeTuple = { x: 0, y: 0, z: FLIGHT_SPEED };
 
@@ -297,7 +297,7 @@ describe('steerFlight', () => {
       { at: { x: 0.25, y: 0, z: 0 }, heading: { x: -a, y: 0, z: b } }
     );
 
-    steerFlight(mirrored, TICK, AWARENESS, BEHAVIOUR_WEIGHTS, OPEN_SKY);
+    steerFlight(mirrored, TICK, SPHERES, BEHAVIOUR_WEIGHTS, OPEN_SKY);
 
     expect(velocityOf(mirrored, 0).x).toBeCloseTo(-velocityOf(mirrored, 1).x, 6);
     expect(velocityOf(mirrored, 0).z).toBeCloseTo(velocityOf(mirrored, 1).z, 6);
@@ -313,7 +313,7 @@ describe('steerFlight', () => {
     const scratch = createSteeringScratch(4);
 
     for (let tick = 0; tick < 30; tick++) {
-      steerFlight(tangle, TICK, AWARENESS, BEHAVIOUR_WEIGHTS, OPEN_SKY, scratch);
+      steerFlight(tangle, TICK, SPHERES, BEHAVIOUR_WEIGHTS, OPEN_SKY, scratch);
     }
 
     for (let i = 0; i < 4; i++) {
