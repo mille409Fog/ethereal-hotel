@@ -5,8 +5,8 @@
  */
 import * as THREE from 'three';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { GRAIN_SEED_STEP } from './grain-calibration';
-import { GrainShader } from './grain-shader';
+import { GRAIN_SEED_STEP } from '../grain-calibration';
+import { GrainShader } from '../grain-shader';
 
 export class GrainPass extends ShaderPass {
   constructor(intensity: number) {

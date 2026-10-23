@@ -1,5 +1,5 @@
 import { IFlight, IThreeTuple } from '../../cauldron/cauldron-flight';
-import { createGrid, fillGrid } from '../batoid-grid';
+import { createGrid, fillGrid } from '../batoid-grid/batoid-grid';
 import {
   createNearest,
   distanceSquared,

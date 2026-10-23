@@ -1,7 +1,7 @@
 import { IFlight, IThreeTuple } from '../../cauldron/cauldron-flight';
 import { emptyNeighbourhood, INeighbourhood } from '../batoid-awareness/batoid-awareness';
 import { FLIGHT_SPEED, MAX_PITCH } from '../batoid-calibration';
-import { flightStep, launchInitialState } from '../batoid-transformation';
+import { flightStep, launchInitialState } from '../batoid-transformation/batoid-transformation';
 import {
   alignment,
   cohesion,

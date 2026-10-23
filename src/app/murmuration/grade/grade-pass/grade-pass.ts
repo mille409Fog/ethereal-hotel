@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { GradeShader } from './grade-shader';
+import { GradeShader } from '../grade-shader';
 
 export interface IGrade {
   readonly shadowTint: number;

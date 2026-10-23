@@ -12,8 +12,8 @@ import {
   perceiveNearby,
 } from '../batoid-awareness/batoid-awareness';
 import { FLIGHT_SPEED, GRID_CELL_SIZE, MAX_PITCH } from '../batoid-calibration';
-import { createGrid, fillGrid, ISpatialGrid } from '../batoid-grid';
-import { writeThreeTuple } from '../batoid-transformation';
+import { createGrid, fillGrid, ISpatialGrid } from '../batoid-grid/batoid-grid';
+import { writeThreeTuple } from '../batoid-transformation/batoid-transformation';
 
 /** how much of each steer a bat obeys when the four are summed */
 export interface IBehaviourWeights {

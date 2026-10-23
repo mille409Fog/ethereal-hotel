@@ -1,6 +1,6 @@
-import { IFlight, IPositionAndVelocity, IThreeTuple } from '../cauldron/cauldron-flight';
-import { FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
-import { Random } from './batoid-types';
+import { IFlight, IPositionAndVelocity, IThreeTuple } from '../../cauldron/cauldron-flight';
+import { FLIGHT_SPEED, MAX_PITCH } from '../batoid-calibration';
+import { Random } from '../batoid-types';
 
 /** given some mapping function that produces a random number derived from an injection token we produce a random response from an equally distributed region of a given radius length about 0*/
 export function spread(random: Random, radius: number): number {

@@ -24,7 +24,10 @@ import { createSkyDome } from './atmosphere/sky-dome';
 import { bankFlight, createBanking } from './batoid/batoid-banking/batoid-banking';
 import { createSteeringScratch, steerFlight } from './batoid/batoid-behavior/batoid-behavior';
 import * as CALIBRATION from './batoid/batoid-calibration';
-import { flightStep, launchInitialState } from './batoid/batoid-transformation';
+import {
+  flightStep,
+  launchInitialState,
+} from './batoid/batoid-transformation/batoid-transformation';
 import { CAMERA_FAR, CAMERA_NEAR } from './camera/camera-calibration';
 import { orbitCamera, verticalFovFor } from './camera/camera-orbit/camera-orbit';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock/cauldron-clock';
@@ -34,9 +37,9 @@ import {
   poseCauldron,
 } from './cauldron/cauldron-creation/cauldron-creation';
 import { GRADE } from './grade/grade-calibration';
-import { GradePass } from './grade/grade-pass';
+import { GradePass } from './grade/grade-pass/grade-pass';
 import { GRAIN_INTENSITY } from './grain/grain-calibration';
-import { GrainPass } from './grain/grain-pass';
+import { GrainPass } from './grain/grain-pass/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';
 import {
   GOD_RAYS,

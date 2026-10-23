@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import * as CALIBRATION from '../../batoid/batoid-calibration';
-import { writeThreeTuple } from '../../batoid/batoid-transformation';
+import { writeThreeTuple } from '../../batoid/batoid-transformation/batoid-transformation';
 import { IFlight, IThreeTuple } from '../cauldron-flight';
 import { beatWings, createCauldron, poseCauldron, wingBeatChunk } from './cauldron-creation';
 

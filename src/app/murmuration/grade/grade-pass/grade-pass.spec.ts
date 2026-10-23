@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { PALETTE } from '../batoid/batoid-calibration';
-import { GRADE } from './grade-calibration';
+import { PALETTE } from '../../batoid/batoid-calibration';
+import { GRADE } from '../grade-calibration';
 import { displayRgbOf, gainOf, GradePass, IGrade, liftOf } from './grade-pass';
 
 /** the shader's arithmetic, in TypeScript, so a test can say what a colour becomes; jsdom cannot run GLSL */

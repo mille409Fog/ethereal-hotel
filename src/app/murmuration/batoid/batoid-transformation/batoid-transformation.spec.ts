@@ -1,5 +1,6 @@
-import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
-import { FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
+import { IFlight, IThreeTuple } from '../../cauldron/cauldron-flight';
+import { FLIGHT_SPEED, MAX_PITCH } from '../batoid-calibration';
+import { Random } from '../batoid-types';
 import {
   flightStep,
   launchInitialState,
@@ -7,7 +8,6 @@ import {
   spread,
   writeThreeTuple,
 } from './batoid-transformation';
-import { Random } from './batoid-types';
 
 const RADII: IThreeTuple = { x: 1.2, y: 0.6, z: 0.2 };
 

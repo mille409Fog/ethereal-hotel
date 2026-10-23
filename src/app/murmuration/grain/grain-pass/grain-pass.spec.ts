@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GRAIN_INTENSITY, GRAIN_SEED_STEP } from './grain-calibration';
+import { GRAIN_INTENSITY, GRAIN_SEED_STEP } from '../grain-calibration';
 import { GrainPass } from './grain-pass';
 
 /**

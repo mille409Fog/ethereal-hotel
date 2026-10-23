@@ -4,11 +4,12 @@ import { PALETTE } from '../batoid/batoid-calibration';
 
 export const KEY_LIGHT_POSITION = [-3, 0.6, -4] as const;
 
-export const KEY_LIGHT_INTENSITY = 4;
+/** the sun-coloured lights carry 1/0.82 of their orange-sun values, so the rose sun changes the hue and not the light */
+export const KEY_LIGHT_INTENSITY = 4.9;
 
 export const RIM_LIGHT_POSITION = [3, 1, -3] as const;
 
-export const RIM_LIGHT_INTENSITY = 1;
+export const RIM_LIGHT_INTENSITY = 1.22;
 
 export const HEMISPHERE_LIGHT_INTENSITY = 0.3;
 
@@ -56,7 +57,7 @@ export const GOD_RAYS: IGodRaysCalibration = {
   density: 0.9,
   decay: 0.96,
   weight: 0.4,
-  exposure: 0.19,
+  exposure: 0.23, // sun-coloured, so compensated as the lights are
   colour: PALETTE.sun,
   // the same distances as the fog, so a bat stops casting a shadow exactly as it stops being seen
   occlusionNear: FOG_NEAR,

@@ -10,8 +10,8 @@ import * as CALIBRATION from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
 import { CAMERA_POSITION } from './camera/camera-calibration';
 import { orbitCamera, verticalFovFor } from './camera/camera-orbit/camera-orbit';
-import { GradePass } from './grade/grade-pass';
-import { GrainPass } from './grain/grain-pass';
+import { GradePass } from './grade/grade-pass/grade-pass';
+import { GrainPass } from './grain/grain-pass/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';
 import { Murmuration } from './murmuration';
 import {

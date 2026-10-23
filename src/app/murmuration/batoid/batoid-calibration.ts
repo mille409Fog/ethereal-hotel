@@ -3,9 +3,9 @@ import type { IAwareness } from './batoid-awareness/batoid-awareness';
 import type { IBehaviourWeights } from './batoid-behavior/batoid-behavior';
 
 export const PALETTE = {
-  sky: 0xe8a06a, // warmer sky value
+  sky: 0xe4968a, // a dusty rose, so the horizon, the fog and the sun's glow belong to the same sunset as the sun
   ground: 0x1a1410, // altering ground to account for dusk
-  sun: 0xffa860, //moving towards dusk
+  sun: 0xff8a7a, // a rose-coral dusk, marginally more gothic; about 0.82 of the old orange's luminance
   batoid: 0x2b2b30,
   zenith: 0x2b0071, // using a deep indigo
   fill: 0x6a7fa8,
