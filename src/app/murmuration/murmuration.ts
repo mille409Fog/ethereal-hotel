@@ -21,8 +21,8 @@ import {
 } from './atmosphere/atmospheric-calibration';
 import { createFog } from './atmosphere/fog';
 import { createSkyDome } from './atmosphere/sky-dome';
-import { bankFlight, createBanking } from './batoid/batoid-banking';
-import { createSteeringScratch, steerFlight } from './batoid/batoid-behavior';
+import { bankFlight, createBanking } from './batoid/batoid-banking/batoid-banking';
+import { createSteeringScratch, steerFlight } from './batoid/batoid-behavior/batoid-behavior';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { flightStep, launchInitialState } from './batoid/batoid-transformation';
 import { CAMERA_FAR, CAMERA_NEAR } from './camera/camera-calibration';
@@ -47,6 +47,7 @@ import {
 import { createHemisphereLight, createKeyLight, createRimLight } from './light/light-initiation';
 import {
   MURMURATION_COMPOSER,
+  MURMURATION_FLOCK_SIZE,
   MURMURATION_RANDOM,
   MURMURATION_RENDERER,
 } from './murmuration.tokens';
@@ -59,6 +60,7 @@ import { PIXEL_RATIO_FLOOR, TONE_MAPPING_EXPOSURE } from './renderer/renderer-ca
 })
 export class Murmuration implements AfterViewInit, OnDestroy {
   private readonly random = inject(MURMURATION_RANDOM);
+  private readonly flockSize = inject(MURMURATION_FLOCK_SIZE);
   private readonly createRenderer = inject(MURMURATION_RENDERER);
   private readonly createComposer = inject(MURMURATION_COMPOSER);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('stage');
@@ -84,12 +86,8 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     const camera = this.createCamera(canvas.clientWidth / canvas.clientHeight);
     orbitCamera(camera, 0);
 
-    const bats = createCauldron();
-    const flight = launchInitialState(
-      this.random,
-      CALIBRATION.INITIAL_DIMENSIONS,
-      CALIBRATION.CAULDRON.count
-    );
+    const bats = createCauldron(this.flockSize);
+    const flight = launchInitialState(this.random, CALIBRATION.INITIAL_DIMENSIONS, this.flockSize);
     const pose = new THREE.Object3D();
     poseCauldron(flight, bats, pose);
     this.bats = bats;
@@ -111,7 +109,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       } else {
         let clock = STOPPED_CLOCK;
         let flownSeconds = 0;
-        const scratch = createSteeringScratch(CALIBRATION.CAULDRON.count);
+        const scratch = createSteeringScratch(this.flockSize);
         const banking = createBanking(flight);
         renderer.setAnimationLoop((nowMs) => {
           const advanced = advance(clock, nowMs);

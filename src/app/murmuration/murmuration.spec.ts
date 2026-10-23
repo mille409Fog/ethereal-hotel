@@ -16,6 +16,7 @@ import { GodRaysPass } from './light/god-rays/god-rays-pass';
 import { Murmuration } from './murmuration';
 import {
   MURMURATION_COMPOSER,
+  MURMURATION_FLOCK_SIZE,
   MURMURATION_RANDOM,
   MURMURATION_RENDERER,
 } from './murmuration.tokens';
@@ -89,6 +90,8 @@ interface IMountOptions {
   readonly random?: Random;
   /** Leave the real `WebGLRenderer` in place, which jsdom cannot give a context. */
   readonly realRenderer?: boolean;
+  /** Leave the calibrated flock size in place rather than `SPEC_FLOCK_SIZE`. */
+  readonly calibratedFlock?: boolean;
 }
 
 const mount = async (options: IMountOptions = {}): Promise<ComponentFixture<Murmuration>> => {
@@ -98,6 +101,9 @@ const mount = async (options: IMountOptions = {}): Promise<ComponentFixture<Murm
   }
   if (!options.realRenderer) {
     providers.push({ provide: MURMURATION_RENDERER, useValue: fakeRendererFactory });
+  }
+  if (!options.calibratedFlock) {
+    providers.push({ provide: MURMURATION_FLOCK_SIZE, useValue: SPEC_FLOCK_SIZE });
   }
   providers.push({ provide: MURMURATION_COMPOSER, useValue: fakeComposerFactory });
   await TestBed.configureTestingModule({ imports: [Murmuration], providers }).compileComponents();
@@ -220,6 +226,14 @@ const STEP_PER_TICK = CALIBRATION.FLIGHT_SPEED * CALIBRATION.TICK_SECONDS;
  * few dozen ticks drift in the seventh digit; five decimal places is well clear.
  */
 const DIGITS = 5;
+
+/**
+ * `LEVEL` launches the whole flock from one point, so every bat shares one grid
+ * cell and each tick's neighbour search is every pair of them. At the calibrated
+ * thousand, fifteen such ticks took two seconds here and timed out on CI; what
+ * these tests prove holds for any flock, so they fly a handful.
+ */
+const SPEC_FLOCK_SIZE = 12;
 
 describe('Murmuration', () => {
   beforeEach(() => {
@@ -370,14 +384,28 @@ describe('Murmuration', () => {
     const random = vi.fn(() => 0);
     stubReducedMotion(true);
     await mount({ random });
-    const { count, halfWidth, halfHeight, halfDepth } = CALIBRATION.CAULDRON;
+    const { halfWidth, halfHeight, halfDepth } = CALIBRATION.CAULDRON;
     // A 4×4 matrix is column-major; its translation is elements 12, 13, 14.
     const [x, y, z] = flockIn(onlyComposer()).instanceMatrix.array.slice(12, 15);
 
-    expect(random).toHaveBeenCalledTimes(5 * count);
+    expect(random).toHaveBeenCalledTimes(5 * SPEC_FLOCK_SIZE);
     expect(x).toBeCloseTo(-halfWidth, 5);
     expect(y).toBeCloseTo(-halfHeight, 5);
     expect(z).toBeCloseTo(-halfDepth, 5);
+  });
+
+  it('holds the calibrated flock unless told otherwise', async () => {
+    stubReducedMotion(true);
+    await mount({ calibratedFlock: true });
+
+    expect(flockIn(onlyComposer()).count).toBe(CALIBRATION.CAULDRON.count);
+  });
+
+  it('holds as many bats as the flock size it is given', async () => {
+    stubReducedMotion(true);
+    await mount();
+
+    expect(flockIn(onlyComposer()).count).toBe(SPEC_FLOCK_SIZE);
   });
 
   it('draws every frame of the loop through the composer, including those worth no tick', async () => {

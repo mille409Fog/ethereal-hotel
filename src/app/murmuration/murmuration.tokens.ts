@@ -2,10 +2,19 @@
 import { InjectionToken } from '@angular/core';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { CAULDRON } from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
 
 export const MURMURATION_RANDOM = new InjectionToken<Random>('MURMURATION_RANDOM', {
   factory: () => Math.random,
+});
+
+/**
+ * how many bats the cauldron holds. a spec that launches the flock from one point puts every bat in one grid
+ * cell, where a tick costs every pair of them, so the spec asks for a handful rather than the calibrated count.
+ */
+export const MURMURATION_FLOCK_SIZE = new InjectionToken<number>('MURMURATION_FLOCK_SIZE', {
+  factory: () => CAULDRON.count,
 });
 
 /**

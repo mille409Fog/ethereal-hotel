@@ -1,6 +1,6 @@
-import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
+import { IFlight, IThreeTuple } from '../../cauldron/cauldron-flight';
+import { BANKING, FLIGHT_SPEED } from '../batoid-calibration';
 import { bankFlight, createBanking, headingOf, rollFor, turnBetween } from './batoid-banking';
-import { BANKING, FLIGHT_SPEED } from './batoid-calibration';
 
 const TICK = 1 / 60;
 

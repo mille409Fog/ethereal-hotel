@@ -154,8 +154,9 @@ describe('winnow', () => {
   });
 
   // Two more full passes over the wheel, each about a second uninstrumented;
-  // coverage slows them several times over, past the default 5s.
-  it('does not hang on the exact figure weight', { timeout: 30_000 }, () => {
+  // coverage slows them several times over, past the default 5s. The pair took
+  // 11s here under coverage and passed 30s on CI, which runs several times slower.
+  it('does not hang on the exact figure weight', { timeout: 60_000 }, () => {
     for (const figureWeight of [0.5, 0.8]) {
       const same = CELLS.filter((cell, i) => {
         const other = aestheticFor(cell, { figureWeight });

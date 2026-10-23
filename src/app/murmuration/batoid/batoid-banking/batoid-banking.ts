@@ -1,8 +1,8 @@
 /** a bat leans into a turn. the flight carries only velocity, so the turn rate is read as the change in heading
  *  since the last tick, and each bat's last heading and current roll are the only state the flock keeps beyond it */
 
-import { IFlight } from '../cauldron/cauldron-flight';
-import { BANKING } from './batoid-calibration';
+import { IFlight } from '../../cauldron/cauldron-flight';
+import { BANKING } from '../batoid-calibration';
 
 export interface IBanking {
   /** each bat's heading about the vertical at the last tick, as poseCauldron measures it.

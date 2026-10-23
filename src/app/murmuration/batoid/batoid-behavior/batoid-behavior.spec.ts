@@ -1,5 +1,7 @@
-import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
-import { emptyNeighbourhood, INeighbourhood } from './batoid-awareness/batoid-awareness';
+import { IFlight, IThreeTuple } from '../../cauldron/cauldron-flight';
+import { emptyNeighbourhood, INeighbourhood } from '../batoid-awareness/batoid-awareness';
+import { FLIGHT_SPEED, MAX_PITCH } from '../batoid-calibration';
+import { flightStep, launchInitialState } from '../batoid-transformation';
 import {
   alignment,
   cohesion,
@@ -10,8 +12,6 @@ import {
   separation,
   steerFlight,
 } from './batoid-behavior';
-import { FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
-import { flightStep, launchInitialState } from './batoid-transformation';
 
 /** a cauldron so wide that no bat below feels homing, unless a test means it to */
 const OPEN_SKY: IThreeTuple = { x: 100, y: 100, z: 100 };

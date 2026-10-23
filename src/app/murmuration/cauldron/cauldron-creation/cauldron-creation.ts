@@ -19,10 +19,9 @@ export function wingBeatChunk(halfSpan: number): string {
 }
 
 /** creates a new cauldron of bats in the form of an instanced mesh , no positioning or posing */
-export function createCauldron(): THREE.InstancedMesh<
-  THREE.BufferGeometry,
-  THREE.MeshStandardMaterial
-> {
+export function createCauldron(
+  count: number = CALIBRATION.CAULDRON.count
+): THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> {
   const geometry = createBatoidGeometry();
   geometry.computeBoundingBox();
   const halfSpan = geometry.boundingBox?.max.x ?? 1;
@@ -38,7 +37,7 @@ export function createCauldron(): THREE.InstancedMesh<
       .replace('void main() {', 'uniform float uWingSeconds;\nvoid main() {')
       .replace('#include <begin_vertex>', wingBeatChunk(halfSpan));
   };
-  const bats = new THREE.InstancedMesh(geometry, material, CALIBRATION.CAULDRON.count);
+  const bats = new THREE.InstancedMesh(geometry, material, count);
   return bats;
 }
 

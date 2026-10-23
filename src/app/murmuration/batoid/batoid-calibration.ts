@@ -1,6 +1,6 @@
 import type { IThreeTuple } from '../cauldron/cauldron-flight';
 import type { IAwareness } from './batoid-awareness/batoid-awareness';
-import type { IBehaviourWeights } from './batoid-behavior';
+import type { IBehaviourWeights } from './batoid-behavior/batoid-behavior';
 
 export const PALETTE = {
   sky: 0xe8a06a, // warmer sky value

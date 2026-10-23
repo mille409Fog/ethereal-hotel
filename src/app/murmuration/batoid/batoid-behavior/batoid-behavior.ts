@@ -2,7 +2,7 @@
  *  fourth steer that keeps the flock over the cauldron now that nothing wraps it round.
  *  each returns an unweighted steer; how much of each a bat obeys is decided where they are summed */
 
-import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
+import { IFlight, IThreeTuple } from '../../cauldron/cauldron-flight';
 import {
   createNearest,
   emptyNeighbourhood,
@@ -10,10 +10,10 @@ import {
   INearest,
   INeighbourhood,
   perceiveNearby,
-} from './batoid-awareness/batoid-awareness';
-import { FLIGHT_SPEED, GRID_CELL_SIZE, MAX_PITCH } from './batoid-calibration';
-import { createGrid, fillGrid, ISpatialGrid } from './batoid-grid';
-import { writeThreeTuple } from './batoid-transformation';
+} from '../batoid-awareness/batoid-awareness';
+import { FLIGHT_SPEED, GRID_CELL_SIZE, MAX_PITCH } from '../batoid-calibration';
+import { createGrid, fillGrid, ISpatialGrid } from '../batoid-grid';
+import { writeThreeTuple } from '../batoid-transformation';
 
 /** how much of each steer a bat obeys when the four are summed */
 export interface IBehaviourWeights {
