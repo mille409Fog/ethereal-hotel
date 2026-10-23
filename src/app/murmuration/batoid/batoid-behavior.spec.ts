@@ -1,5 +1,5 @@
 import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
-import { emptyNeighbourhood, INeighbourhood } from './batoid-awareness';
+import { emptyNeighbourhood, INeighbourhood } from './batoid-awareness/batoid-awareness';
 import {
   alignment,
   cohesion,

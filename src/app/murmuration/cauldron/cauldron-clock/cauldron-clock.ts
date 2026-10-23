@@ -1,4 +1,4 @@
-import { CLAMP_SECONDS, TICK_SECONDS } from '../batoid/batoid-calibration';
+import { CLAMP_SECONDS, TICK_SECONDS } from '../../batoid/batoid-calibration';
 
 /** the elements which define the current conception of time */
 export interface IClockState {

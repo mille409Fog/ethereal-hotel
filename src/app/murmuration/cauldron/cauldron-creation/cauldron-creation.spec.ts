@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import * as CALIBRATION from '../batoid/batoid-calibration';
-import { writeThreeTuple } from '../batoid/batoid-transformation';
+import * as CALIBRATION from '../../batoid/batoid-calibration';
+import { writeThreeTuple } from '../../batoid/batoid-transformation';
+import { IFlight, IThreeTuple } from '../cauldron-flight';
 import { beatWings, createCauldron, poseCauldron, wingBeatChunk } from './cauldron-creation';
-import { IFlight, IThreeTuple } from './cauldron-flight';
 
 type Triple = readonly [number, number, number];
 

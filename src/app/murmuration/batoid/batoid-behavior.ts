@@ -10,7 +10,7 @@ import {
   INearest,
   INeighbourhood,
   perceiveNearby,
-} from './batoid-awareness';
+} from './batoid-awareness/batoid-awareness';
 import { FLIGHT_SPEED, GRID_CELL_SIZE, MAX_PITCH } from './batoid-calibration';
 import { createGrid, fillGrid, ISpatialGrid } from './batoid-grid';
 import { writeThreeTuple } from './batoid-transformation';

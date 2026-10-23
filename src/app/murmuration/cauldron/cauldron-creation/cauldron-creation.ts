@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import * as CALIBRATION from '../batoid/batoid-calibration';
-import { createBatoidGeometry } from '../batoid/batoid-geometry';
-import { IFlight } from './cauldron-flight';
+import * as CALIBRATION from '../../batoid/batoid-calibration';
+import { createBatoidGeometry } from '../../batoid/batoid-geometry';
+import { IFlight } from '../cauldron-flight';
 /** the clock each cauldron's wings beat to, kept beside its material rather than in userData so it stays typed */
 const wingClocks = new WeakMap<THREE.Material, THREE.IUniform<number>>();
 

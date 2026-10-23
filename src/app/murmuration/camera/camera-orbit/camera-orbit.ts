@@ -11,7 +11,7 @@ import {
   CAMERA_ORBIT_PERIOD_SECONDS,
   CAMERA_POSITION,
   CAMERA_VERTICAL_FOV,
-} from './camera-calibration';
+} from '../camera-calibration';
 
 const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
 const toDegrees = (radians: number): number => (radians * 180) / Math.PI;

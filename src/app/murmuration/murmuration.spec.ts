@@ -9,7 +9,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { Random } from './batoid/batoid-types';
 import { CAMERA_POSITION } from './camera/camera-calibration';
-import { orbitCamera, verticalFovFor } from './camera/camera-orbit';
+import { orbitCamera, verticalFovFor } from './camera/camera-orbit/camera-orbit';
 import { GradePass } from './grade/grade-pass';
 import { GrainPass } from './grain/grain-pass';
 import { GodRaysPass } from './light/god-rays/god-rays-pass';

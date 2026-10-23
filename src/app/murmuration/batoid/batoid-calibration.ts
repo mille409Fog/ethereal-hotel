@@ -1,5 +1,5 @@
 import type { IThreeTuple } from '../cauldron/cauldron-flight';
-import type { IAwareness } from './batoid-awareness';
+import type { IAwareness } from './batoid-awareness/batoid-awareness';
 import type { IBehaviourWeights } from './batoid-behavior';
 
 export const PALETTE = {

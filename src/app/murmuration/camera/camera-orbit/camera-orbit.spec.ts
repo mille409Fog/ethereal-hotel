@@ -3,10 +3,10 @@ import {
   CAMERA_BREATH,
   CAMERA_LOOK_AT_POINT,
   CAMERA_MIN_HORIZONTAL_FOV,
-  CAMERA_VERTICAL_FOV,
   CAMERA_ORBIT_PERIOD_SECONDS,
   CAMERA_POSITION,
-} from './camera-calibration';
+  CAMERA_VERTICAL_FOV,
+} from '../camera-calibration';
 import { orbitCamera, verticalFovFor } from './camera-orbit';
 
 const DIGITS = 10;

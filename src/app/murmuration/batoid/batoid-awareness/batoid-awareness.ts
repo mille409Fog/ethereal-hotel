@@ -1,5 +1,5 @@
-import { IFlight } from '../cauldron/cauldron-flight';
-import { bucketOfCell, cellOf, ISpatialGrid } from './batoid-grid';
+import { IFlight } from '../../cauldron/cauldron-flight';
+import { bucketOfCell, cellOf, ISpatialGrid } from '../batoid-grid';
 
 /** what a bat attends to. separation is metric, a radius, because it answers to a collision; alignment and cohesion are
  *  topological, a count of nearest neighbours, after Ballerini et al. (2008), who found starlings answer to about

@@ -1,4 +1,5 @@
-import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
+import { IFlight, IThreeTuple } from '../../cauldron/cauldron-flight';
+import { createGrid, fillGrid } from '../batoid-grid';
 import {
   createNearest,
   distanceSquared,
@@ -11,7 +12,6 @@ import {
   perceiveNearby,
   SEARCH_REACH,
 } from './batoid-awareness';
-import { createGrid, fillGrid } from './batoid-grid';
 
 /** a flight standing still at the given positions; awareness never reads velocity */
 function flock(...positions: IThreeTuple[]): IFlight {
