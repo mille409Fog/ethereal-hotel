@@ -14,11 +14,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js';
-import {
-  BLOOM_RADIUS,
-  BLOOM_STRENGTH,
-  BLOOM_THRESHOLD,
-} from './atmosphere/atmospheric-calibration';
+import { createBloomPass } from './atmosphere/bloom';
 import { createFog } from './atmosphere/fog';
 import { createSkyDome } from './atmosphere/sky-dome';
 import { bankFlight, createBanking } from './batoid/batoid-banking/batoid-banking';
@@ -28,8 +24,8 @@ import {
   flightStep,
   launchInitialState,
 } from './batoid/batoid-transformation/batoid-transformation';
-import { CAMERA_FAR, CAMERA_NEAR } from './camera/camera-calibration';
 import { orbitCamera, verticalFovFor } from './camera/camera-orbit/camera-orbit';
+import { createCamera } from './camera/create-camera';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock/cauldron-clock';
 import {
   beatWings,
@@ -90,7 +86,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     this.skyDome = skyDome;
     scene.add(skyDome);
 
-    const camera = this.createCamera(canvas.clientWidth / canvas.clientHeight);
+    const camera = createCamera(canvas.clientWidth / canvas.clientHeight);
     orbitCamera(camera, 0);
 
     const bats = createCauldron(this.flockSize);
@@ -104,7 +100,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       const renderer = this.createRenderer(canvas);
       this.renderer = renderer;
       const canvasResolution = new THREE.Vector2(canvas.clientWidth, canvas.clientHeight);
-      const bloomPass = this.createBloomPass(canvasResolution);
+      const bloomPass = createBloomPass(canvasResolution);
       this.calibrateRenderer(renderer, canvas.clientWidth, canvas.clientHeight);
       const composer = this.createComposer(renderer);
       this.composer = composer;
@@ -195,19 +191,6 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       }
     });
     this.resizeObserver.observe(canvas);
-  }
-
-  private createBloomPass(canvasResolution: THREE.Vector2): UnrealBloomPass {
-    return new UnrealBloomPass(canvasResolution, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD);
-  }
-
-  private createCamera(widthToHeightRatio: number): THREE.PerspectiveCamera {
-    return new THREE.PerspectiveCamera(
-      verticalFovFor(widthToHeightRatio),
-      widthToHeightRatio,
-      CAMERA_NEAR,
-      CAMERA_FAR
-    );
   }
 
   private initializeScene(scene: THREE.Scene): void {
