@@ -21,6 +21,7 @@ import {
 } from './atmosphere/atmospheric-calibration';
 import { createFog } from './atmosphere/fog';
 import { createSkyDome } from './atmosphere/sky-dome';
+import { createSteeringScratch, steerFlight } from './batoid/batoid-behavior';
 import * as CALIBRATION from './batoid/batoid-calibration';
 import { flightStep, launchInitialState } from './batoid/batoid-transformation';
 import { CAMERA_FAR, CAMERA_NEAR, CAMERA_VERTICAL_FOV } from './camera/camera-calibration';
@@ -100,10 +101,20 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       } else {
         let clock = STOPPED_CLOCK;
         let flownSeconds = 0;
+        const scratch = createSteeringScratch(CALIBRATION.CAULDRON.count);
         renderer.setAnimationLoop((nowMs) => {
           const advanced = advance(clock, nowMs);
           clock = advanced.state;
           for (let i = 0; i < advanced.ticks; i++) {
+            // turn first, then fly the new heading, so each tick's position follows from that tick's steer
+            steerFlight(
+              flight,
+              CALIBRATION.TICK_SECONDS,
+              CALIBRATION.AWARENESS,
+              CALIBRATION.BEHAVIOUR_WEIGHTS,
+              CALIBRATION.INITIAL_DIMENSIONS,
+              scratch
+            );
             flightStep(flight, CALIBRATION.TICK_SECONDS, CALIBRATION.INITIAL_DIMENSIONS);
           }
           if (advanced.ticks > 0) {

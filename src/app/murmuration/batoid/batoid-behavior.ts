@@ -2,7 +2,32 @@
  *  each returns an unweighted steer; how much of each a bat obeys is decided where they are summed */
 
 import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
-import { INeighbourhood, wrappedOffset } from './batoid-awareness';
+import {
+  emptyNeighbourhood,
+  IAwareness,
+  INeighbourhood,
+  perceive,
+  wrappedOffset,
+} from './batoid-awareness';
+import { FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
+import { writeThreeTuple } from './batoid-transformation';
+
+/** how much of each steer a bat obeys when the three are summed */
+export interface IBehaviourWeights {
+  separation: number;
+  alignment: number;
+  cohesion: number;
+}
+
+/** what a tick of steering writes into besides the flight, so the animation loop allocates no arrays per tick */
+export interface ISteeringScratch {
+  neighbourhood: INeighbourhood;
+  velocities: Float32Array;
+}
+
+export function createSteeringScratch(quantity: number): ISteeringScratch {
+  return { neighbourhood: emptyNeighbourhood(), velocities: new Float32Array(quantity * 3) };
+}
 
 /** given some set of bats indicated by the awareness radius, we find the decomposed velocity vector that points away from them.
  *  each neighbour pushes along the line from it to self with a strength of 1/distance, so the nearest bat dominates;
@@ -88,4 +113,52 @@ export function cohesion(
     z += wrappedOffset(positions[a + 2], positions[b + 2], radii.z);
   }
   return { x: x / seen.length, y: y / seen.length, z: z / seen.length };
+}
+
+/** a steered velocity put back at FLIGHT_SPEED with its pitch held inside MAX_PITCH, the two things launch promises of every bat,
+ *  so the three behaviours can only turn a bat and never speed it up, stop it or stand it on its tail.
+ *  a steer with no horizontal part has no heading to keep, so the bat carries on as it was */
+export function cruise(steered: IThreeTuple, previous: IThreeTuple): IThreeTuple {
+  const horizontal = Math.hypot(steered.x, steered.z);
+  if (horizontal === 0) {
+    return { ...previous };
+  }
+  const climb = FLIGHT_SPEED * Math.sin(MAX_PITCH);
+  const speed = Math.hypot(horizontal, steered.y);
+  const y = Math.min(Math.max((steered.y / speed) * FLIGHT_SPEED, -climb), climb);
+  const remainder = Math.sqrt(FLIGHT_SPEED ** 2 - y ** 2);
+  return { x: (steered.x / horizontal) * remainder, y, z: (steered.z / horizontal) * remainder };
+}
+
+/** one tick of the three behaviours across the flight, summed by weight and applied as an acceleration over seconds.
+ *  every bat reads the flight as it stood at the start of the tick, so the new velocities are gathered in scratch
+ *  and written back together; steering bat 0 first must not change what bat 1 sees */
+export function steerFlight(
+  flight: IFlight,
+  seconds: number,
+  awareness: IAwareness,
+  weights: IBehaviourWeights,
+  radii: IThreeTuple,
+  scratch: ISteeringScratch = createSteeringScratch(flight.positions.length / 3)
+): void {
+  const { velocities } = flight;
+  const { neighbourhood } = scratch;
+  const quantity = flight.positions.length / 3;
+  for (let i = 0; i < quantity; i++) {
+    perceive(flight, i, awareness, radii, neighbourhood);
+    const apart = separation(flight, i, neighbourhood, radii);
+    const along = alignment(flight, i, neighbourhood);
+    const toward = cohesion(flight, i, neighbourhood, radii);
+    const o = i * 3;
+    const previous = { x: velocities[o], y: velocities[o + 1], z: velocities[o + 2] };
+    const steer = (axis: keyof IThreeTuple): number =>
+      previous[axis] +
+      (weights.separation * apart[axis] +
+        weights.alignment * along[axis] +
+        weights.cohesion * toward[axis]) *
+        seconds;
+    const steered = { x: steer('x'), y: steer('y'), z: steer('z') };
+    writeThreeTuple(scratch.velocities, o, cruise(steered, previous));
+  }
+  velocities.set(scratch.velocities.subarray(0, quantity * 3));
 }
