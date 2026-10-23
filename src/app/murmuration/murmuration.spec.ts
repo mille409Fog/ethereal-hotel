@@ -20,6 +20,7 @@ import {
   MURMURATION_RANDOM,
   MURMURATION_RENDERER,
 } from './murmuration.tokens';
+import { REDUCED_MOTION_QUERY } from './renderer/renderer-calibration';
 
 /**
  * jsdom has no WebGL, so a real `WebGLRenderer` always throws here and only the
@@ -82,7 +83,7 @@ const fakeComposerFactory = (renderer: THREE.WebGLRenderer): EffectComposer => {
 
 const stubReducedMotion = (reduce: boolean): void => {
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: reduce && query === '(prefers-reduced-motion: reduce)',
+    matches: reduce && query === REDUCED_MOTION_QUERY,
   }));
 };
 

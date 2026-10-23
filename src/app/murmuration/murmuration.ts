@@ -54,7 +54,11 @@ import {
   MURMURATION_RANDOM,
   MURMURATION_RENDERER,
 } from './murmuration.tokens';
-import { PIXEL_RATIO_FLOOR, TONE_MAPPING_EXPOSURE } from './renderer/renderer-calibration';
+import {
+  PIXEL_RATIO_FLOOR,
+  REDUCED_MOTION_QUERY,
+  TONE_MAPPING_EXPOSURE,
+} from './renderer/renderer-calibration';
 @Component({
   imports: [],
   selector: 'app-murmuration',
@@ -105,7 +109,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       const composer = this.createComposer(renderer);
       this.composer = composer;
       this.orchestrateComposerPasses(composer, bloomPass, scene, camera, sunDirection);
-      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY).matches;
       this.followCanvasSize(canvas, renderer, composer, camera, reducedMotion);
       if (reducedMotion) {
         composer.render();
