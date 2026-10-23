@@ -9,13 +9,8 @@ import {
 } from '@angular/core';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js';
 import { createBloomPass } from './atmosphere/bloom';
-import { createSkyDome } from './atmosphere/sky-dome';
+import { createSkyDome, disposeSkyDome } from './atmosphere/sky-dome';
 import { bankFlight, createBanking } from './batoid/batoid-banking/batoid-banking';
 import { createSteeringScratch, steerFlight } from './batoid/batoid-behavior/batoid-behavior';
 import * as CALIBRATION from './batoid/batoid-calibration';
@@ -23,31 +18,25 @@ import {
   flightStep,
   launchInitialState,
 } from './batoid/batoid-transformation/batoid-transformation';
-import { orbitCamera, verticalFovFor } from './camera/camera-orbit/camera-orbit';
+import { followCanvasSize } from './canvas/follow-canvas-size';
+import { orbitCamera } from './camera/camera-orbit/camera-orbit';
 import { createCamera } from './camera/create-camera';
 import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock/cauldron-clock';
 import {
   beatWings,
   createCauldron,
+  disposeCauldron,
   poseCauldron,
 } from './cauldron/cauldron-creation/cauldron-creation';
-import { GRADE } from './grade/grade-calibration';
-import { GradePass } from './grade/grade-pass/grade-pass';
-import { GRAIN_INTENSITY } from './grain/grain-calibration';
-import { GrainPass } from './grain/grain-pass/grain-pass';
-import { GodRaysPass } from './light/god-rays/god-rays-pass';
-import {
-  GOD_RAYS,
-  KEY_LIGHT_POSITION,
-  VIGNETTE_OFFSET,
-  VIGNETTER_DARKNESS,
-} from './light/light-calibration';
+import { disposeComposer, orchestrateComposerPasses } from './composer/orchestrate-composer-passes';
+import { KEY_LIGHT_POSITION } from './light/light-calibration';
 import {
   MURMURATION_COMPOSER,
   MURMURATION_FLOCK_SIZE,
   MURMURATION_RANDOM,
   MURMURATION_RENDERER,
 } from './murmuration.tokens';
+import { disposeRenderer } from './renderer/dispose-renderer';
 import { calibrateRenderer, REDUCED_MOTION_QUERY } from './renderer/renderer-calibration';
 import { initializeScene } from './scene/initialize-scene';
 @Component({
@@ -99,9 +88,9 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       calibrateRenderer(renderer, canvas.clientWidth, canvas.clientHeight);
       const composer = this.createComposer(renderer);
       this.composer = composer;
-      this.orchestrateComposerPasses(composer, bloomPass, scene, camera, sunDirection);
+      orchestrateComposerPasses(composer, bloomPass, scene, camera, sunDirection);
       const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY).matches;
-      this.followCanvasSize(canvas, renderer, composer, camera, reducedMotion);
+      this.resizeObserver = followCanvasSize(canvas, renderer, composer, camera, reducedMotion);
       if (reducedMotion) {
         composer.render();
       } else {
@@ -144,97 +133,17 @@ export class Murmuration implements AfterViewInit, OnDestroy {
 
   public ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
-    this.destroyBats();
-    this.destroySkyDome();
-    this.destroyComposer();
-    this.destroyRenderer();
-  }
-
-  /** the canvas fills the viewport, so it changes size whenever the window does, a phone turns, or its address bar
-   *  slides away; without this the first frame's buffers are stretched over the new shape. the composer hands the
-   *  size on to every pass. a still frame under reduced motion has no loop to pick the change up, so it is redrawn */
-  private followCanvasSize(
-    canvas: HTMLCanvasElement,
-    renderer: THREE.WebGLRenderer,
-    composer: EffectComposer,
-    camera: THREE.PerspectiveCamera,
-    redraw: boolean
-  ): void {
-    if (typeof ResizeObserver === 'undefined') {
-      return;
+    if (this.bats) {
+      disposeCauldron(this.bats);
     }
-    let width = canvas.clientWidth;
-    let height = canvas.clientHeight;
-    this.resizeObserver = new ResizeObserver(() => {
-      // an observer reports once on observe, and a hidden canvas measures zero; neither is a new shape
-      if (
-        canvas.clientWidth === 0 ||
-        canvas.clientHeight === 0 ||
-        (canvas.clientWidth === width && canvas.clientHeight === height)
-      ) {
-        return;
-      }
-      width = canvas.clientWidth;
-      height = canvas.clientHeight;
-      renderer.setSize(width, height, false);
-      composer.setSize(width, height);
-      camera.aspect = width / height;
-      camera.fov = verticalFovFor(camera.aspect);
-      camera.updateProjectionMatrix();
-      if (redraw) {
-        composer.render();
-      }
-    });
-    this.resizeObserver.observe(canvas);
-  }
-
-  private orchestrateComposerPasses(
-    composer: EffectComposer,
-    bloomPass: UnrealBloomPass,
-    scene: THREE.Scene,
-    camera: THREE.PerspectiveCamera,
-    sunDirection: THREE.Vector3
-  ): void {
-    composer.addPass(new RenderPass(scene, camera));
-    composer.addPass(new GodRaysPass(camera, sunDirection, GOD_RAYS));
-    composer.addPass(bloomPass);
-    composer.addPass(this.generateVignettePass());
-    composer.addPass(new OutputPass());
-    composer.addPass(new GradePass(GRADE));
-    composer.addPass(new GrainPass(GRAIN_INTENSITY));
-  }
-
-  private generateVignettePass(): ShaderPass {
-    const vignettePass = new ShaderPass(VignetteShader);
-    vignettePass.uniforms['offset'].value = VIGNETTE_OFFSET;
-    vignettePass.uniforms['darkness'].value = VIGNETTER_DARKNESS;
-    return vignettePass;
-  }
-
-  private destroyBats(): void {
-    this.bats?.geometry.dispose();
-    this.bats?.material.dispose();
-    this.bats?.dispose();
-  }
-
-  private destroySkyDome(): void {
-    this.skyDome?.material.dispose();
-    this.skyDome?.geometry.dispose();
-    this.skyDome?.dispose();
-  }
-
-  private destroyComposer(): void {
-    if (!this.composer) {
-      return;
+    if (this.skyDome) {
+      disposeSkyDome(this.skyDome);
     }
-    for (const pass of this.composer.passes) {
-      pass.dispose();
+    if (this.composer) {
+      disposeComposer(this.composer);
     }
-    this.composer.dispose();
-  }
-
-  private destroyRenderer(): void {
-    this.renderer?.setAnimationLoop(null);
-    this.renderer?.dispose();
+    if (this.renderer) {
+      disposeRenderer(this.renderer);
+    }
   }
 }

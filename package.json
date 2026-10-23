@@ -100,7 +100,7 @@
     "@playwright/test": "^1.62.1",
     "@typescript-eslint/eslint-plugin": "^8.66.0",
     "@typescript-eslint/parser": "^8.66.0",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "angular-eslint": "^22.2.0",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
@@ -110,7 +110,7 @@
     "lint-staged": "^17.3.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "vite": "8.3.5"

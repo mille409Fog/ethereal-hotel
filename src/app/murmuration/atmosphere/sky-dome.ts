@@ -26,3 +26,12 @@ export function createSkyDome(
     })
   );
 }
+
+/** frees what createSkyDome allocated: its shader material and its sphere */
+export function disposeSkyDome(
+  skyDome: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>
+): void {
+  skyDome.material.dispose();
+  skyDome.geometry.dispose();
+  skyDome.dispose();
+}

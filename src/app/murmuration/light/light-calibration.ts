@@ -13,7 +13,7 @@ export const RIM_LIGHT_INTENSITY = 1.22;
 
 export const HEMISPHERE_LIGHT_INTENSITY = 0.3;
 
-export const VIGNETTER_DARKNESS = 1;
+export const VIGNETTE_DARKNESS = 1;
 
 export const VIGNETTE_OFFSET = 0.8;
 

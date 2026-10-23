@@ -41,6 +41,15 @@ export function createCauldron(
   return bats;
 }
 
+/** frees what createCauldron allocated: the shared geometry, the material, and the instance buffers */
+export function disposeCauldron(
+  bats: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>
+): void {
+  bats.geometry.dispose();
+  bats.material.dispose();
+  bats.dispose();
+}
+
 /** sets the cauldron's wings to the given second of their beat; the beat itself is drawn on the GPU */
 export function beatWings(
   bats: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>,
