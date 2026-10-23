@@ -64,6 +64,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   private composer?: EffectComposer;
   private bats?: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   private skyDome?: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
+  private resizeObserver?: ResizeObserver;
   protected readonly webGLfailure = signal(false);
 
   public ngAfterViewInit(): void {
@@ -101,7 +102,9 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       const composer = this.createComposer(renderer);
       this.composer = composer;
       this.orchestrateComposerPasses(composer, bloomPass, scene, camera, sunDirection);
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.followCanvasSize(canvas, renderer, composer, camera, reducedMotion);
+      if (reducedMotion) {
         composer.render();
       } else {
         let clock = STOPPED_CLOCK;
@@ -142,10 +145,48 @@ export class Murmuration implements AfterViewInit, OnDestroy {
   }
 
   public ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
     this.destroyBats();
     this.destroySkyDome();
     this.destroyComposer();
     this.destroyRenderer();
+  }
+
+  /** the canvas fills the viewport, so it changes size whenever the window does, a phone turns, or its address bar
+   *  slides away; without this the first frame's buffers are stretched over the new shape. the composer hands the
+   *  size on to every pass. a still frame under reduced motion has no loop to pick the change up, so it is redrawn */
+  private followCanvasSize(
+    canvas: HTMLCanvasElement,
+    renderer: THREE.WebGLRenderer,
+    composer: EffectComposer,
+    camera: THREE.PerspectiveCamera,
+    redraw: boolean
+  ): void {
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    let width = canvas.clientWidth;
+    let height = canvas.clientHeight;
+    this.resizeObserver = new ResizeObserver(() => {
+      // an observer reports once on observe, and a hidden canvas measures zero; neither is a new shape
+      if (
+        canvas.clientWidth === 0 ||
+        canvas.clientHeight === 0 ||
+        (canvas.clientWidth === width && canvas.clientHeight === height)
+      ) {
+        return;
+      }
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
+      renderer.setSize(width, height, false);
+      composer.setSize(width, height);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      if (redraw) {
+        composer.render();
+      }
+    });
+    this.resizeObserver.observe(canvas);
   }
 
   private createBloomPass(canvasResolution: THREE.Vector2): UnrealBloomPass {

@@ -47,6 +47,7 @@ class FakeComposer {
     this.passes.push(pass);
   });
   public readonly render = vi.fn();
+  public readonly setSize = vi.fn();
   public readonly dispose = vi.fn();
   /** A real composer sizes its targets from the renderer once, when it is built. */
   public readonly builtOnSizedRenderer: boolean;
@@ -470,6 +471,112 @@ describe('Murmuration', () => {
     loop(1_005); // 5ms: no tick
 
     expect(flockIn(composer).instanceMatrix.version).toBe(before);
+  });
+
+  describe('following the canvas size', () => {
+    /** jsdom has no ResizeObserver; this one records what it watches and lets a test report a resize */
+    class FakeResizeObserver {
+      public static last?: FakeResizeObserver;
+      public readonly observed: Element[] = [];
+      public readonly disconnect = vi.fn();
+      constructor(public readonly report: () => void) {
+        FakeResizeObserver.last = this;
+      }
+      public observe(target: Element): void {
+        this.observed.push(target);
+      }
+    }
+
+    /** gives the canvas a layout size, which jsdom never computes */
+    const sizeCanvas = (
+      fixture: ComponentFixture<Murmuration>,
+      width: number,
+      height: number
+    ): void => {
+      const canvas = (fixture.nativeElement as HTMLElement).querySelector('canvas');
+      if (!canvas) {
+        throw new Error('no canvas');
+      }
+      Object.defineProperty(canvas, 'clientWidth', { value: width, configurable: true });
+      Object.defineProperty(canvas, 'clientHeight', { value: height, configurable: true });
+    };
+
+    const watcher = (): FakeResizeObserver => {
+      const observer = FakeResizeObserver.last;
+      if (!observer) {
+        throw new Error('nothing is watching the canvas');
+      }
+      return observer;
+    };
+
+    beforeEach(() => {
+      FakeResizeObserver.last = undefined;
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    });
+
+    it('watches the canvas it draws into', async () => {
+      const fixture = await mount();
+
+      expect(watcher().observed).toEqual([
+        (fixture.nativeElement as HTMLElement).querySelector('canvas'),
+      ]);
+    });
+
+    it('resizes the renderer, the composer and the camera together when the canvas changes shape', async () => {
+      const fixture = await mount();
+      const renderer = onlyRenderer();
+      const composer = onlyComposer();
+      const camera = cameraOf(composer);
+
+      sizeCanvas(fixture, 1600, 900);
+      watcher().report();
+
+      expect(renderer.setSize).toHaveBeenLastCalledWith(1600, 900, false);
+      expect(composer.setSize).toHaveBeenLastCalledWith(1600, 900);
+      expect(camera.aspect).toBeCloseTo(16 / 9, 10);
+    });
+
+    it('ignores a report that changes nothing, and a canvas measuring zero', async () => {
+      const fixture = await mount();
+      const composer = onlyComposer();
+
+      sizeCanvas(fixture, 1600, 900);
+      watcher().report();
+      watcher().report();
+      sizeCanvas(fixture, 0, 900);
+      watcher().report();
+
+      expect(composer.setSize).toHaveBeenCalledTimes(1);
+    });
+
+    it('redraws the still frame under reduced motion, which has no loop to pick the change up', async () => {
+      stubReducedMotion(true);
+      const fixture = await mount();
+      const composer = onlyComposer();
+
+      sizeCanvas(fixture, 800, 1200);
+      watcher().report();
+
+      expect(composer.render).toHaveBeenCalledTimes(2);
+    });
+
+    it('leaves the drawing to the loop when there is one', async () => {
+      const fixture = await mount();
+      const composer = onlyComposer();
+
+      sizeCanvas(fixture, 800, 1200);
+      watcher().report();
+
+      expect(composer.render).not.toHaveBeenCalled();
+    });
+
+    it('stops watching on destroy', async () => {
+      const fixture = await mount();
+
+      fixture.destroy();
+
+      expect(watcher().disconnect).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('stops the loop and releases the GPU on destroy', async () => {
