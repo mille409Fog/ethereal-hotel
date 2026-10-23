@@ -78,7 +78,7 @@ export const PROJECTS: readonly IProject[] = [
     category: 'Live Demo',
     tech: ['Angular 22', 'RxJS', 'Chart.js', 'FastAPI', 'SQLAlchemy'],
     link: '/dashboard',
-    linkLabel: 'View Live Demo (WIP)',
+    linkLabel: 'View Live Demo',
     frame: {
       src: '/projects/dashboard.webp',
       alt: 'The dashboard polling the API: 85.0% occupancy, an ADR of $317, RevPAR of $270 and $16,176 of room revenue today, under a badge that says where the figures came from.',
