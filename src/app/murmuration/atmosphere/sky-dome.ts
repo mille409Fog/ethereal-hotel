@@ -6,6 +6,7 @@ import {
   SKY_DOME_RADIUS,
   SKY_DOME_WIDTH_SEGMENTS,
 } from './atmospheric-calibration';
+import { SKY_DOME_FRAGMENT, SKY_DOME_VERTEX } from './sky-dome-shaders';
 
 export function createSkyDome(
   sunDirection: THREE.Vector3
@@ -20,24 +21,8 @@ export function createSkyDome(
         zenith: { value: new THREE.Color(CALIBRATION.PALETTE.zenith) },
         sunDirection: { value: sunDirection },
       },
-      vertexShader: /* glsl */ `
-      varying vec3 vDirection;
-      void main() {
-        vDirection = normalize(position);
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-      }`,
-      fragmentShader: /* glsl */ `
-      uniform vec3 horizon, zenith, sunDirection;
-      varying vec3 vDirection;
-      void main() {
-        vec3 d = normalize(vDirection);
-        float h = clamp(d.y, 0.0, 1.0);
-        vec3 colour = mix(horizon, zenith, pow(h,0.6));
-        float glow = pow(max(dot(d,sunDirection),0.0),8.0);
-        gl_FragColor = vec4(colour + glow * horizon * 0.6, 1.0);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }`,
+      vertexShader: SKY_DOME_VERTEX,
+      fragmentShader: SKY_DOME_FRAGMENT,
     })
   );
 }
