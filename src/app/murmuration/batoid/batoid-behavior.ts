@@ -130,7 +130,13 @@ export function cruise(steered: IThreeTuple, previous: IThreeTuple): IThreeTuple
   return { x: (steered.x / horizontal) * remainder, y, z: (steered.z / horizontal) * remainder };
 }
 
+/** the steer of a behaviour that was not consulted this tick */
+const UNHEARD: Readonly<IThreeTuple> = { x: 0, y: 0, z: 0 };
+
 /** one tick of the three behaviours across the flight, summed by weight and applied as an acceleration over seconds.
+ *  separation takes absolute priority, after Couzin et al. (2002): a bat with anyone inside its separation sphere
+ *  steers by separation alone that tick, and only an uncrowded bat listens to alignment and cohesion.
+ *  so the radii decide when each behaviour speaks, and the weights only how loudly.
  *  every bat reads the flight as it stood at the start of the tick, so the new velocities are gathered in scratch
  *  and written back together; steering bat 0 first must not change what bat 1 sees */
 export function steerFlight(
@@ -146,9 +152,10 @@ export function steerFlight(
   const quantity = flight.positions.length / 3;
   for (let i = 0; i < quantity; i++) {
     perceive(flight, i, awareness, radii, neighbourhood);
-    const apart = separation(flight, i, neighbourhood, radii);
-    const along = alignment(flight, i, neighbourhood);
-    const toward = cohesion(flight, i, neighbourhood, radii);
+    const crowded = neighbourhood.separation.length > 0;
+    const apart = crowded ? separation(flight, i, neighbourhood, radii) : UNHEARD;
+    const along = crowded ? UNHEARD : alignment(flight, i, neighbourhood);
+    const toward = crowded ? UNHEARD : cohesion(flight, i, neighbourhood, radii);
     const o = i * 3;
     const previous = { x: velocities[o], y: velocities[o + 1], z: velocities[o + 2] };
     const steer = (axis: keyof IThreeTuple): number =>

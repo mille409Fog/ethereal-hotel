@@ -255,6 +255,39 @@ describe('steerFlight', () => {
     expect(velocityOf(close, 1).x).toBeGreaterThan(0);
   });
 
+  describe('separation takes priority', () => {
+    // fixed here rather than read from calibration, so retuning the flock does not move these bats between spheres
+    const SPHERES = { separation: 0.15, alignment: 0.4, cohesion: 0.8 };
+    const EQUAL: IBehaviourWeights = { separation: 1, alignment: 1, cohesion: 1 };
+    const ACROSS: IThreeTuple = { x: 0, y: 0, z: FLIGHT_SPEED };
+
+    it('deafens a crowded bat to alignment and cohesion', () => {
+      // a neighbour stacked on top crowds bat 0 but gives separation no direction, so any turn would be alignment's
+      const stacked = flock(
+        { at: { x: 0, y: 0, z: 0 }, heading: STILL },
+        { at: { x: 0, y: 0, z: 0 }, heading: ACROSS }
+      );
+
+      steerFlight(stacked, TICK, SPHERES, EQUAL, OPEN_SKY);
+
+      // exact: alignment alone would turn it by about 0.005 a tick, inside any loose tolerance
+      expect(velocityOf(stacked, 0).x).toBeCloseTo(FLIGHT_SPEED);
+      expect(velocityOf(stacked, 0).z).toBe(0);
+    });
+
+    it('lets an uncrowded bat listen to alignment and cohesion', () => {
+      // the same neighbour moved out past the separation sphere, still inside alignment's
+      const near = flock(
+        { at: { x: 0, y: 0, z: 0 }, heading: STILL },
+        { at: { x: 0.3, y: 0, z: 0 }, heading: ACROSS }
+      );
+
+      steerFlight(near, TICK, SPHERES, EQUAL, OPEN_SKY);
+
+      expect(velocityOf(near, 0).z).toBeGreaterThan(0);
+    });
+  });
+
   it('steers every bat from the flight as it stood, not as the bats before it were steered', () => {
     // mirror images in x: synchronous steering must keep them mirrored, sequential steering would not
     const a = FLIGHT_SPEED * Math.cos(1);

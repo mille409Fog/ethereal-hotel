@@ -22,7 +22,7 @@ export const CAULDRON = {
 export const FLIGHT_SPEED = 0.314; // measured in units per second, we use a simpler formulation for now
 export const MAX_PITCH = Math.PI / 12; // we set bounds on the pitch to model bat behavior, pi/2 pitch angles are unrealistic
 
-export const AWARENESS: Readonly<IAwareness> = { separation: 0.15, alignment: 0.4, cohesion: 0.8 };
+export const AWARENESS: Readonly<IAwareness> = { separation: 0.1, alignment: 0.4, cohesion: 0.8 };
 export const BEHAVIOUR_WEIGHTS: Readonly<IBehaviourWeights> = {
   separation: 1,
   alignment: 1,
