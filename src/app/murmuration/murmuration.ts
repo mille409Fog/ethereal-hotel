@@ -48,11 +48,7 @@ import {
   MURMURATION_RANDOM,
   MURMURATION_RENDERER,
 } from './murmuration.tokens';
-import {
-  PIXEL_RATIO_FLOOR,
-  REDUCED_MOTION_QUERY,
-  TONE_MAPPING_EXPOSURE,
-} from './renderer/renderer-calibration';
+import { calibrateRenderer, REDUCED_MOTION_QUERY } from './renderer/renderer-calibration';
 import { initializeScene } from './scene/initialize-scene';
 @Component({
   imports: [],
@@ -100,7 +96,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       this.renderer = renderer;
       const canvasResolution = new THREE.Vector2(canvas.clientWidth, canvas.clientHeight);
       const bloomPass = createBloomPass(canvasResolution);
-      this.calibrateRenderer(renderer, canvas.clientWidth, canvas.clientHeight);
+      calibrateRenderer(renderer, canvas.clientWidth, canvas.clientHeight);
       const composer = this.createComposer(renderer);
       this.composer = composer;
       this.orchestrateComposerPasses(composer, bloomPass, scene, camera, sunDirection);
@@ -190,13 +186,6 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       }
     });
     this.resizeObserver.observe(canvas);
-  }
-
-  private calibrateRenderer(renderer: THREE.WebGLRenderer, width: number, height: number): void {
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, PIXEL_RATIO_FLOOR));
-    renderer.setSize(width, height, false);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = TONE_MAPPING_EXPOSURE;
   }
 
   private orchestrateComposerPasses(
