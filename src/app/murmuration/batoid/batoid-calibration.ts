@@ -12,17 +12,22 @@ export const PALETTE = {
 } as const;
 
 export const CAULDRON = {
-  count: 200,
-  halfWidth: 1.44,
-  halfHeight: 0.8,
-  halfDepth: 0.6,
+  // the grid makes a tick cost about linear in this: roughly 2.3ms at 1000 on a desktop, so a phone keeps up too
+  count: 1000,
+  halfWidth: 2,
+  halfHeight: 1,
+  halfDepth: 1,
   batScale: 0.1,
 } as const;
 
 export const FLIGHT_SPEED = 0.314; // measured in units per second, we use a simpler formulation for now
 export const MAX_PITCH = Math.PI / 12; // we set bounds on the pitch to model bat behavior, pi/2 pitch angles are unrealistic
 
-export const AWARENESS: Readonly<IAwareness> = { separation: 0.2, alignment: 0.6, cohesion: 0.8 };
+// separation is a radius; alignment and cohesion are counts of nearest neighbours, seven being the starling figure
+export const AWARENESS: Readonly<IAwareness> = { separation: 0.2, alignment: 7, cohesion: 7 };
+/** the spatial grid's cells; about the distance to a bat's seventh neighbour in a settled flock, so a search visits
+ *  few cells. any positive size gives the same neighbours, only faster or slower: 0.1 measured twice as slow */
+export const GRID_CELL_SIZE = 0.2;
 export const BEHAVIOUR_WEIGHTS: Readonly<IBehaviourWeights> = {
   separation: 1,
   alignment: 1,

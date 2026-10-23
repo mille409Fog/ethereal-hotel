@@ -1,12 +1,17 @@
 import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
 import {
+  createNearest,
   distanceSquared,
   emptyNeighbourhood,
   IAwareness,
   INeighbourhood,
   neighboursWithin,
+  offerNearest,
   perceive,
+  perceiveNearby,
+  SEARCH_REACH,
 } from './batoid-awareness';
+import { createGrid, fillGrid } from './batoid-grid';
 
 /** a flight standing still at the given positions; awareness never reads velocity */
 function flock(...positions: IThreeTuple[]): IFlight {
@@ -104,10 +109,53 @@ describe('neighboursWithin', () => {
   });
 });
 
+describe('offerNearest', () => {
+  it('keeps the nearest it is offered, nearest first, whatever order they come in', () => {
+    const nearest = createNearest(3);
+    nearest.wanted = 3;
+
+    for (const [distance, index] of [
+      [0.5, 4],
+      [0.1, 9],
+      [0.9, 1],
+      [0.3, 2],
+      [0.2, 7],
+    ]) {
+      offerNearest(nearest, distance, index);
+    }
+
+    expect(nearest.count).toBe(3);
+    expect(Array.from(nearest.indices)).toEqual([9, 7, 2]);
+    expect(Array.from(nearest.distances)).toEqual([0.1, 0.2, 0.3]);
+  });
+
+  it('breaks a tie by index, so the answer does not depend on the order bats are met', () => {
+    const forward = createNearest(2);
+    const backward = createNearest(2);
+    forward.wanted = 2;
+    backward.wanted = 2;
+
+    [5, 3, 8].forEach((index) => offerNearest(forward, 0.25, index));
+    [8, 3, 5].forEach((index) => offerNearest(backward, 0.25, index));
+
+    expect(Array.from(forward.indices)).toEqual([3, 5]);
+    expect(Array.from(backward.indices)).toEqual([3, 5]);
+  });
+
+  it('keeps nothing when nothing is wanted', () => {
+    const nearest = createNearest(2);
+
+    offerNearest(nearest, 0.1, 1);
+
+    expect(nearest.count).toBe(0);
+  });
+});
+
 describe('perceive', () => {
-  const AWARENESS: IAwareness = { separation: 0.5, alignment: 1, cohesion: 2 };
-  // the origin, then one bat in each shell: inside separation, inside alignment, inside cohesion, beyond all three
-  const SHELLS = flock(
+  // separation by radius; alignment from the two nearest, cohesion from the three nearest
+  const AWARENESS: IAwareness = { separation: 0.5, alignment: 2, cohesion: 3 };
+  // the origin, then bats ever further out: 0.25, 0.75, 1.5 and 3 away
+  const LADDER = flock(
     { x: 0, y: 0, z: 0 },
     { x: 0.25, y: 0, z: 0 },
     { x: 0, y: 0.75, z: 0 },
@@ -115,29 +163,38 @@ describe('perceive', () => {
     { x: 3, y: 0, z: 0 }
   );
 
-  it('sorts each bat into every sphere that contains it', () => {
-    expect(perceive(SHELLS, 0, AWARENESS)).toEqual({
+  it('finds separation by radius and the other two by count, nearest first', () => {
+    expect(perceive(LADDER, 0, AWARENESS)).toEqual({
       separation: [1],
       alignment: [1, 2],
       cohesion: [1, 2, 3],
     });
   });
 
-  it('agrees with neighboursWithin at each of the three radii', () => {
+  it('agrees with neighboursWithin on the separation sphere', () => {
     for (let self = 0; self < 5; self++) {
-      const seen = perceive(SHELLS, self, AWARENESS);
-
-      expect(seen.separation).toEqual(neighboursWithin(SHELLS, self, AWARENESS.separation));
-      expect(seen.alignment).toEqual(neighboursWithin(SHELLS, self, AWARENESS.alignment));
-      expect(seen.cohesion).toEqual(neighboursWithin(SHELLS, self, AWARENESS.cohesion));
+      expect(perceive(LADDER, self, AWARENESS).separation).toEqual(
+        neighboursWithin(LADDER, self, AWARENESS.separation)
+      );
     }
   });
 
-  it('does not assume the spheres are nested', () => {
-    const inverted: IAwareness = { separation: 2, alignment: 0.5, cohesion: 1 };
+  it('counts neighbours however far away they are: a straggler still sees the flock', () => {
+    // bat 4 stands 3 from the origin, far outside any sphere the old radii drew
+    expect(perceive(LADDER, 4, AWARENESS).cohesion).toEqual([1, 0, 2]);
+  });
 
-    expect(perceive(SHELLS, 0, inverted)).toEqual({
-      separation: [1, 2, 3],
+  it('hands out what there is when the flock is smaller than the count', () => {
+    const pair = flock({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 });
+
+    expect(perceive(pair, 0, AWARENESS)).toEqual({ separation: [], alignment: [1], cohesion: [1] });
+  });
+
+  it('reads a fractional count as the whole number below it', () => {
+    const fractional: IAwareness = { separation: 0, alignment: 1.9, cohesion: 2.5 };
+
+    expect(perceive(LADDER, 0, fractional)).toEqual({
+      separation: [],
       alignment: [1],
       cohesion: [1, 2],
     });
@@ -147,17 +204,97 @@ describe('perceive', () => {
     const into: INeighbourhood = { separation: [7], alignment: [7, 8], cohesion: [7, 8, 9] };
     const { separation, alignment, cohesion } = into;
 
-    const result = perceive(SHELLS, 3, AWARENESS, into);
+    const result = perceive(LADDER, 3, AWARENESS, into);
 
     expect(result).toBe(into);
     expect(result.separation).toBe(separation);
     expect(result.alignment).toBe(alignment);
     expect(result.cohesion).toBe(cohesion);
-    // bat 3 stands between 1.5 and 1.7 from bats 0 to 2, and over 3 from bat 4
-    expect(result).toEqual({ separation: [], alignment: [], cohesion: [0, 1, 2] });
+    // bat 3 stands 1.5, 1.52 and 1.68 from bats 0, 1 and 2, and over 3 from bat 4
+    expect(result).toEqual({ separation: [], alignment: [0, 1], cohesion: [0, 1, 2] });
   });
 
   it('starts from three empty arrays when given nothing to reuse', () => {
     expect(emptyNeighbourhood()).toEqual({ separation: [], alignment: [], cohesion: [] });
+  });
+});
+
+describe('perceiveNearby', () => {
+  const AWARENESS: IAwareness = { separation: 0.2, alignment: 7, cohesion: 5 };
+
+  /** a random flock, but the same one every run */
+  function scattered(quantity: number, spread: IThreeTuple, seed: number): IFlight {
+    let state = seed;
+    const next = (): number => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state / 4294967296;
+    };
+    const positions = new Float32Array(quantity * 3);
+    for (let i = 0; i < quantity; i++) {
+      positions[i * 3] = (next() * 2 - 1) * spread.x;
+      positions[i * 3 + 1] = (next() * 2 - 1) * spread.y;
+      positions[i * 3 + 2] = (next() * 2 - 1) * spread.z;
+    }
+    return { positions, velocities: new Float32Array(quantity * 3) };
+  }
+
+  /** every bat's neighbourhood through the grid, checked against the brute-force one */
+  function expectAgreement(flight: IFlight, cellSize: number, awareness = AWARENESS): void {
+    const quantity = flight.positions.length / 3;
+    const grid = createGrid(quantity, cellSize);
+    fillGrid(grid, flight.positions);
+    const nearest = createNearest(0);
+    for (let i = 0; i < quantity; i++) {
+      const found = perceiveNearby(grid, flight, i, awareness, emptyNeighbourhood(), nearest);
+
+      expect(found).toEqual(perceive(flight, i, awareness));
+    }
+  }
+
+  it('finds exactly what measuring everyone finds, at the size the flock flies', () => {
+    expectAgreement(scattered(400, { x: 2, y: 1, z: 1 }, 1), 0.2);
+  });
+
+  it('finds the same at any cell size, small or large', () => {
+    const flight = scattered(150, { x: 1, y: 1, z: 1 }, 2);
+
+    for (const cellSize of [0.05, 0.13, 0.5, 3]) {
+      expectAgreement(flight, cellSize);
+    }
+  });
+
+  it('finds the same in a dense clump and around the origin, where cells go negative', () => {
+    expectAgreement(scattered(300, { x: 0.2, y: 0.2, z: 0.2 }, 3), 0.2);
+  });
+
+  it('finds the same for a separation sphere wider than a cell', () => {
+    expectAgreement(scattered(200, { x: 1, y: 1, z: 1 }, 4), 0.1, {
+      separation: 0.45,
+      alignment: 3,
+      cohesion: 3,
+    });
+  });
+
+  it('finds a straggler its neighbours from beyond the reach of its search', () => {
+    // a flock at the origin and one bat far past SEARCH_REACH cells from it
+    const flight = scattered(40, { x: 0.3, y: 0.3, z: 0.3 }, 5);
+    const positions = new Float32Array(flight.positions.length + 3);
+    positions.set(flight.positions);
+    positions.set([0, 0, (SEARCH_REACH + 4) * 0.2], flight.positions.length);
+    const withStraggler: IFlight = { positions, velocities: new Float32Array(positions.length) };
+
+    expectAgreement(withStraggler, 0.2);
+  });
+
+  it('finds the same when bats share a position exactly', () => {
+    const stacked = flock(...Array.from({ length: 12 }, () => ({ x: 0.1, y: 0.1, z: 0.1 })));
+
+    expectAgreement(stacked, 0.2);
+  });
+
+  it('hands a flock no bigger than the count every other bat', () => {
+    const small = scattered(6, { x: 1, y: 1, z: 1 }, 6);
+
+    expectAgreement(small, 0.2);
   });
 });

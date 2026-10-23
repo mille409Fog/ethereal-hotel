@@ -259,8 +259,8 @@ describe('cruise', () => {
 describe('steerFlight', () => {
   const NONE: IBehaviourWeights = { separation: 0, alignment: 0, cohesion: 0, homing: 0 };
   const TICK = 1 / 60;
-  // fixed here rather than read from calibration, so retuning the flock does not move these bats between spheres
-  const SPHERES = { separation: 0.15, alignment: 0.4, cohesion: 0.8 };
+  // fixed here rather than read from calibration, so retuning the flock does not change who these bats can see
+  const SPHERES = { separation: 0.15, alignment: 7, cohesion: 7 };
 
   it('leaves a flock flying as one exactly as it was', () => {
     const together = flock(
@@ -316,7 +316,7 @@ describe('steerFlight', () => {
     });
 
     it('lets an uncrowded bat listen to alignment and cohesion', () => {
-      // the same neighbour moved out past the separation sphere, still inside alignment's
+      // the same neighbour moved out past the separation sphere, still among bat 0's nearest
       const near = flock(
         { at: { x: 0, y: 0, z: 0 }, heading: STILL },
         { at: { x: 0.3, y: 0, z: 0 }, heading: ACROSS }

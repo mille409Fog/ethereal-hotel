@@ -3,8 +3,16 @@
  *  each returns an unweighted steer; how much of each a bat obeys is decided where they are summed */
 
 import { IFlight, IThreeTuple } from '../cauldron/cauldron-flight';
-import { emptyNeighbourhood, IAwareness, INeighbourhood, perceive } from './batoid-awareness';
-import { FLIGHT_SPEED, MAX_PITCH } from './batoid-calibration';
+import {
+  createNearest,
+  emptyNeighbourhood,
+  IAwareness,
+  INearest,
+  INeighbourhood,
+  perceiveNearby,
+} from './batoid-awareness';
+import { FLIGHT_SPEED, GRID_CELL_SIZE, MAX_PITCH } from './batoid-calibration';
+import { createGrid, fillGrid, ISpatialGrid } from './batoid-grid';
 import { writeThreeTuple } from './batoid-transformation';
 
 /** how much of each steer a bat obeys when the four are summed */
@@ -18,11 +26,21 @@ export interface IBehaviourWeights {
 /** what a tick of steering writes into besides the flight, so the animation loop allocates no arrays per tick */
 export interface ISteeringScratch {
   neighbourhood: INeighbourhood;
+  nearest: INearest;
+  grid: ISpatialGrid;
   velocities: Float32Array;
 }
 
-export function createSteeringScratch(quantity: number): ISteeringScratch {
-  return { neighbourhood: emptyNeighbourhood(), velocities: new Float32Array(quantity * 3) };
+export function createSteeringScratch(
+  quantity: number,
+  cellSize: number = GRID_CELL_SIZE
+): ISteeringScratch {
+  return {
+    neighbourhood: emptyNeighbourhood(),
+    nearest: createNearest(0),
+    grid: createGrid(quantity, cellSize),
+    velocities: new Float32Array(quantity * 3),
+  };
 }
 
 /** given some set of bats indicated by the awareness radius, we find the decomposed velocity vector that points away from them.
@@ -154,10 +172,11 @@ export function steerFlight(
   scratch: ISteeringScratch = createSteeringScratch(flight.positions.length / 3)
 ): void {
   const { velocities } = flight;
-  const { neighbourhood } = scratch;
+  const { neighbourhood, nearest, grid } = scratch;
   const quantity = flight.positions.length / 3;
+  fillGrid(grid, flight.positions);
   for (let i = 0; i < quantity; i++) {
-    perceive(flight, i, awareness, neighbourhood);
+    perceiveNearby(grid, flight, i, awareness, neighbourhood, nearest);
     const crowded = neighbourhood.separation.length > 0;
     const apart = crowded ? separation(flight, i, neighbourhood) : UNHEARD;
     const along = crowded ? UNHEARD : alignment(flight, i, neighbourhood);
