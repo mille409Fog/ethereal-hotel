@@ -15,7 +15,6 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js';
 import { createBloomPass } from './atmosphere/bloom';
-import { createFog } from './atmosphere/fog';
 import { createSkyDome } from './atmosphere/sky-dome';
 import { bankFlight, createBanking } from './batoid/batoid-banking/batoid-banking';
 import { createSteeringScratch, steerFlight } from './batoid/batoid-behavior/batoid-behavior';
@@ -43,7 +42,6 @@ import {
   VIGNETTE_OFFSET,
   VIGNETTER_DARKNESS,
 } from './light/light-calibration';
-import { createHemisphereLight, createKeyLight, createRimLight } from './light/light-initiation';
 import {
   MURMURATION_COMPOSER,
   MURMURATION_FLOCK_SIZE,
@@ -55,6 +53,7 @@ import {
   REDUCED_MOTION_QUERY,
   TONE_MAPPING_EXPOSURE,
 } from './renderer/renderer-calibration';
+import { initializeScene } from './scene/initialize-scene';
 @Component({
   imports: [],
   selector: 'app-murmuration',
@@ -78,7 +77,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
     const canvas = this.canvas().nativeElement;
     const scene = new THREE.Scene();
 
-    this.initializeScene(scene);
+    initializeScene(scene);
 
     // one vector for the sky's glow and the light shafts, so the two cannot aim at different suns
     const sunDirection = new THREE.Vector3(...KEY_LIGHT_POSITION).normalize();
@@ -191,13 +190,6 @@ export class Murmuration implements AfterViewInit, OnDestroy {
       }
     });
     this.resizeObserver.observe(canvas);
-  }
-
-  private initializeScene(scene: THREE.Scene): void {
-    scene.add(createHemisphereLight());
-    scene.add(createKeyLight());
-    scene.add(createRimLight());
-    scene.fog = createFog();
   }
 
   private calibrateRenderer(renderer: THREE.WebGLRenderer, width: number, height: number): void {
