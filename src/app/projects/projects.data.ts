@@ -60,6 +60,13 @@ export interface IProject {
 
 export const PROJECTS: readonly IProject[] = [
   {
+    name: 'wander-quest',
+    description:
+      'log what places you have been to, can you do all states, countries, and continents?',
+    category: 'interactive',
+    tech: ['Angular 22', 'three.js'],
+  },
+  {
     name: 'murmuration',
     description: 'watch bats dance in the sky, experience wonder',
     category: 'Live Demo',
@@ -68,7 +75,7 @@ export const PROJECTS: readonly IProject[] = [
     linkLabel: 'watch the murmuration',
     frame: {
       src: '/projects/murmuration.webp',
-      alt: 'an entire cauldron of batoids held still against the sky, lit from above and to its right.',
+      alt: 'an entire cauldron of batoids flies wildly lit up against the sky, see what shapes the make.',
     },
   },
   {
