@@ -6,9 +6,11 @@ export interface IClockState {
   readonly lastMs: number | undefined;
   /** some unit of time less than the amount of time required to generate a whole tick, measured in seconds. similar to the remainder after division, we are measuring modulo tick */
   readonly carriedSeconds: number;
+  /** every whole tick the flock has flown so far, in seconds; only ever grows by whole ticks */
+  readonly flownSeconds: number;
 }
 
-export const STOPPED_CLOCK: IClockState = { lastMs: undefined, carriedSeconds: 0 };
+export const STOPPED_CLOCK: IClockState = { lastMs: undefined, carriedSeconds: 0, flownSeconds: 0 };
 
 export interface IClockAdvance {
   readonly state: IClockState;
@@ -23,7 +25,17 @@ export function advance(state: IClockState, nowMs: number): IClockAdvance {
   const ticks = Math.floor(pool / TICK_SECONDS);
 
   return {
-    state: { lastMs: nowMs, carriedSeconds: pool - ticks * TICK_SECONDS },
+    state: {
+      lastMs: nowMs,
+      carriedSeconds: pool - ticks * TICK_SECONDS,
+      flownSeconds: state.flownSeconds + ticks * TICK_SECONDS,
+    },
     ticks,
   };
+}
+
+/** the flock's own time, for anything that moves with it. it is built from clamped ticks, so a hidden tab does not
+ *  swing the camera round or race the wings when it returns; the carried remainder keeps both gliding between ticks */
+export function clockSeconds(state: IClockState): number {
+  return state.flownSeconds + state.carriedSeconds;
 }

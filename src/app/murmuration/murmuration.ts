@@ -18,7 +18,7 @@ import { launchInitialState } from './batoid/batoid-transformation/batoid-transf
 import { followCanvasSize } from './canvas/follow-canvas-size';
 import { orbitCamera } from './camera/camera-orbit/camera-orbit';
 import { createCamera } from './camera/create-camera';
-import { advance, STOPPED_CLOCK } from './cauldron/cauldron-clock/cauldron-clock';
+import { advance, clockSeconds, STOPPED_CLOCK } from './cauldron/cauldron-clock/cauldron-clock';
 import {
   beatWings,
   createCauldron,
@@ -93,7 +93,6 @@ export class Murmuration implements AfterViewInit, OnDestroy {
         composer.render();
       } else {
         let clock = STOPPED_CLOCK;
-        let flownSeconds = 0;
         const scratch = createSteeringScratch(this.flockSize);
         const banking = createBanking(flight);
         renderer.setAnimationLoop((nowMs) => {
@@ -103,10 +102,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
           if (advanced.ticks > 0) {
             poseCauldron(flight, bats, pose, banking.rolls);
           }
-          flownSeconds += advanced.ticks * CALIBRATION.TICK_SECONDS;
-          // the flock's clock, so a hidden tab does not swing the camera round or race the wings;
-          // the carried remainder keeps both gliding between ticks
-          const seconds = flownSeconds + clock.carriedSeconds;
+          const seconds = clockSeconds(clock);
           orbitCamera(camera, seconds);
           beatWings(bats, seconds);
           composer.render();

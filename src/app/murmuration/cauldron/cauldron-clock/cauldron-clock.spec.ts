@@ -1,8 +1,12 @@
 import { CLAMP_SECONDS, TICK_SECONDS } from '../../batoid/batoid-calibration';
-import { advance, IClockState, STOPPED_CLOCK } from './cauldron-clock';
+import { advance, clockSeconds, IClockState, STOPPED_CLOCK } from './cauldron-clock';
 
 /** A clock that last saw a frame at `lastMs` and is carrying nothing. */
-const runningAt = (lastMs: number): IClockState => ({ lastMs, carriedSeconds: 0 });
+const runningAt = (lastMs: number): IClockState => ({
+  lastMs,
+  carriedSeconds: 0,
+  flownSeconds: 0,
+});
 
 /** Feed `timestamps` through one clock in order; the ticks each frame was worth. */
 const ticksFor = (timestamps: readonly number[]): number[] => {
@@ -23,7 +27,7 @@ describe('advance', () => {
       const advanced = advance(STOPPED_CLOCK, nowMs);
 
       expect(advanced.ticks).toBe(0);
-      expect(advanced.state).toEqual({ lastMs: nowMs, carriedSeconds: 0 });
+      expect(advanced.state).toEqual({ lastMs: nowMs, carriedSeconds: 0, flownSeconds: 0 });
     }
   });
 
@@ -72,17 +76,23 @@ describe('advance', () => {
     }
 
     expect(ticks * TICK_SECONDS + clock.carriedSeconds).toBeCloseTo(1, DUST);
+    expect(clockSeconds(clock)).toBeCloseTo(1, DUST);
     expect(ticks).toBeGreaterThanOrEqual(59);
   });
 
   it('is worth nothing for a repeated or backwards timestamp, and keeps what it carried', () => {
-    const carrying: IClockState = { lastMs: 1_000, carriedSeconds: TICK_SECONDS / 2 };
+    const carrying: IClockState = {
+      lastMs: 1_000,
+      carriedSeconds: TICK_SECONDS / 2,
+      flownSeconds: 3 * TICK_SECONDS,
+    };
 
     for (const nowMs of [1_000, 900]) {
       const advanced = advance(carrying, nowMs);
 
       expect(advanced.ticks).toBe(0);
       expect(advanced.state.carriedSeconds).toBe(TICK_SECONDS / 2);
+      expect(advanced.state.flownSeconds).toBe(3 * TICK_SECONDS);
     }
   });
 
@@ -123,5 +133,61 @@ describe('advance', () => {
     advance(state, 1_100);
 
     expect(state).toEqual(runningAt(1_000));
+  });
+
+  it('adds to what it has flown only in whole ticks, so the carried remainder is never counted twice', () => {
+    const first = advance(runningAt(0), 50);
+    const second = advance(first.state, 60);
+
+    expect(first.state.flownSeconds).toBeCloseTo(3 * TICK_SECONDS, DUST);
+    expect(second.ticks).toBe(0);
+    expect(second.state.flownSeconds).toBe(first.state.flownSeconds);
+  });
+});
+
+describe('clockSeconds', () => {
+  it('is what has been flown plus what is carried', () => {
+    const state: IClockState = {
+      lastMs: 0,
+      carriedSeconds: TICK_SECONDS / 4,
+      flownSeconds: 10 * TICK_SECONDS,
+    };
+
+    expect(clockSeconds(state)).toBe(10 * TICK_SECONDS + TICK_SECONDS / 4);
+  });
+
+  it('starts at zero', () => {
+    expect(clockSeconds(STOPPED_CLOCK)).toBe(0);
+  });
+
+  it('glides forward between ticks instead of jumping at each one', () => {
+    // 4ms frames are a quarter of a tick, so most of them bring no tick at all
+    let clock = advance(STOPPED_CLOCK, 0).state;
+    let previous = clockSeconds(clock);
+    for (let nowMs = 4; nowMs <= 200; nowMs += 4) {
+      clock = advance(clock, nowMs).state;
+      const seconds = clockSeconds(clock);
+
+      expect(seconds).toBeCloseTo(previous + 0.004, DUST);
+      previous = seconds;
+    }
+  });
+
+  it('moves on no more than the clamp when a hidden tab comes back, so the camera does not swing round', () => {
+    const running = advance(advance(STOPPED_CLOCK, 0).state, 1_000).state;
+    const returned = advance(running, 1_000 + 60_000).state;
+
+    expect(clockSeconds(returned) - clockSeconds(running)).toBeCloseTo(CLAMP_SECONDS, DUST);
+  });
+
+  it('never runs backwards, whatever the timestamps do', () => {
+    let clock = STOPPED_CLOCK;
+    let previous = clockSeconds(clock);
+    for (const nowMs of [1_000, 1_020, 900, Number.NaN, 1_050, 1_050, 5_000]) {
+      clock = advance(clock, nowMs).state;
+
+      expect(clockSeconds(clock)).toBeGreaterThanOrEqual(previous);
+      previous = clockSeconds(clock);
+    }
   });
 });
