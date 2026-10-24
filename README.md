@@ -17,9 +17,10 @@ pretending.
   fixture, and a badge names which one you're looking at.
 - **[`/booking`](https://jacobmiller.dev/booking)**: a reactive form that writes to the database
   the dashboard reads. Server-side validation renders on the field that caused it.
-- **[`/murmuration`](https://jacobmiller.dev/murmuration)**: _in progress._ A cauldron of batoids
-  in three.js, written slowly and by hand on purpose. Each commit is logged at
-  [`/writing`](https://jacobmiller.dev/writing).
+- **[`/murmuration`](https://jacobmiller.dev/murmuration)**: a cauldron of batoids
+  in three.js, uses dynamic flock algorithms to model murmuration behavior.
+- **[`/wanderquest`](https://jacobmiller.dev/wanderquest)**: _in progress._ A simulation of three travel
+  quests: every state, every continent, every country.
 - **[`/gallery`](https://jacobmiller.dev/gallery)**: choose a colour and a painting is hung for
   it, from 24 public-domain works in 7 colour groups. Every label is checked against a source.
 - **[`/aesthetic`](https://jacobmiller.dev/aesthetic)**: a wheel of 480 colours computed in OKLCH.

@@ -74,4 +74,9 @@ export const routes: Routes = [
     loadComponent: () => import('./murmuration/murmuration').then((m) => m.Murmuration),
     title: meta.murmuration.title,
   },
+  {
+    path: meta.wanderquest.path,
+    loadComponent: () => import('./wanderquest/wanderquest').then((m) => m.Wanderquest),
+    title: meta.wanderquest.title,
+  },
 ];

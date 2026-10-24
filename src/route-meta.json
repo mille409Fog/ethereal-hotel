@@ -52,6 +52,11 @@
       "path": "murmuration",
       "title": "murmuration - Jacob Miller",
       "description": "a generator that models a biological murmuration pattern by creating bat droids or batoids"
+    },
+    "wanderquest": {
+      "path": "wanderquest",
+      "title": "wanderquest - Jacob Miller",
+      "description": "a simulation of three travel quests: every state, every continent, every country"
     }
   }
 }
