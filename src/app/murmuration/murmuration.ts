@@ -11,13 +11,10 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { createBloomPass } from './atmosphere/bloom';
 import { createSkyDome, disposeSkyDome } from './atmosphere/sky-dome';
-import { bankFlight, createBanking } from './batoid/batoid-banking/batoid-banking';
-import { createSteeringScratch, steerFlight } from './batoid/batoid-behavior/batoid-behavior';
+import { createBanking } from './batoid/batoid-banking/batoid-banking';
+import { createSteeringScratch } from './batoid/batoid-behavior/batoid-behavior';
 import * as CALIBRATION from './batoid/batoid-calibration';
-import {
-  flightStep,
-  launchInitialState,
-} from './batoid/batoid-transformation/batoid-transformation';
+import { launchInitialState } from './batoid/batoid-transformation/batoid-transformation';
 import { followCanvasSize } from './canvas/follow-canvas-size';
 import { orbitCamera } from './camera/camera-orbit/camera-orbit';
 import { createCamera } from './camera/create-camera';
@@ -28,6 +25,7 @@ import {
   disposeCauldron,
   poseCauldron,
 } from './cauldron/cauldron-creation/cauldron-creation';
+import { flyTicks } from './cauldron/cauldron-ticks/cauldron-ticks';
 import { disposeComposer, orchestrateComposerPasses } from './composer/orchestrate-composer-passes';
 import { KEY_LIGHT_POSITION } from './light/light-calibration';
 import {
@@ -101,19 +99,7 @@ export class Murmuration implements AfterViewInit, OnDestroy {
         renderer.setAnimationLoop((nowMs) => {
           const advanced = advance(clock, nowMs);
           clock = advanced.state;
-          for (let i = 0; i < advanced.ticks; i++) {
-            // turn first, lean into the turn, then fly the new heading, so each tick's position follows from that tick's steer
-            steerFlight(
-              flight,
-              CALIBRATION.TICK_SECONDS,
-              CALIBRATION.AWARENESS,
-              CALIBRATION.BEHAVIOUR_WEIGHTS,
-              CALIBRATION.INITIAL_DIMENSIONS,
-              scratch
-            );
-            bankFlight(flight, banking, CALIBRATION.TICK_SECONDS);
-            flightStep(flight, CALIBRATION.TICK_SECONDS);
-          }
+          flyTicks(flight, banking, scratch, advanced.ticks);
           if (advanced.ticks > 0) {
             poseCauldron(flight, bats, pose, banking.rolls);
           }
