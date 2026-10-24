@@ -25,53 +25,77 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 1. CI triage agent (`triage/`)
+Items 1 to 3 begin `/wanderquest`, a simulation of three travel quests: the 50 states (with DC
+and the five inhabited territories as an unrequired bonus), the seven continents, and the 195
+countries the UN lists as members or observers. The lists and their reasoning already live in
+`src/app/wanderquest/places.data.ts`, and the owner's progress in `progress.data.ts`. These items
+are visual only: where a guest's progress is stored is deliberately not decided yet, and nothing
+here should write to the browser or the backend. They go in order — a selector that works, then
+one that looks right, then a palette that gives each view its own identity.
 
-An agent that explains why this repository's own CI failed. It is a separate tree under
-`triage/`, beside the site rather than in it, the way `/aubade` is.
-[`triage/docs/PROJECT_BRIEF.md`](triage/docs/PROJECT_BRIEF.md) is its spec and
-[`triage/docs/ARCHITECTURE.md`](triage/docs/ARCHITECTURE.md) says which parts exist. It
-is built in stages, each ending with the maintainer's sign-off: baseline, single LLM
-calls, agent loop, durability, guardrails, evaluation, observability, deployment.
+## 1. A button selector for the quest view
 
-**The constraint every stage assumes:** it costs $0 beyond the existing Claude Pro
-subscription. Model access is `claude -p`, never the API, and every `claude` process
-passes the billing guard first (ADR 0004 in `triage/docs/decisions/`).
-
-**DoD:**
-
-- On the held-out set, category accuracy is ≥ 85% and the suggested fix names a file
-  the real fix touched in ≥ 60% of cases. Both beat the rule-based baseline, by margins
-  stated in `triage/docs/`.
-- A failure in Actions produces a triage record on the run within 2 minutes.
-- Nothing is published outside the run without human approval.
-- No path can bill anything beyond the subscription.
-
-Effort: weeks, in stages.
-
-Item 2 came from comparing the home page with the portfolios engineers themselves cite
-(Brittany Chiang, Lee Robinson, Emil Kowalski, Rauno Freiberg, Sam Rose, Julia Evans, Josh
-Comeau, Bruno Simon). What they share: one specific claim on the first screen, evidence over
-assertion, writing as the proof of judgment, the most distinctive work first, restraint, and one
-human line. The repo already does the hard part; the home page does not show it.
-
-## 2. A hero that makes one checkable claim
-
-`hero.html` says "scalable, high-performance… Let's build something exceptional together" — the
-copy every portfolio above avoids, on a site whose bar is that every claim is executable. The
-repo's actual idea (every number on screen is derived from real rows; when the app can't do
-something it says so) is a better first sentence than any adjective. Same family:
-`experience.html`'s "serve millions of users" is the one claim on the page with nothing behind it.
+The route needs one control before it needs a map: which of the three quests is on screen. Start
+plain, and get the semantics right while there is nothing to get in the way.
 
 **DoD:**
 
-- The hero's first sentence is specific enough to disagree with, and nothing in it is an
-  adjective the reader has to take on trust.
-- "Let's build something exceptional together" and "serve millions of users" are gone, or the
-  second is replaced by a figure the owner can source.
-- No other section description on `/` makes a claim the page cannot back.
+- Three buttons — states, continents, countries — choose the view, and exactly one is selected
+  at a time. The bonus category belongs to the states view, not a fourth button.
+- The pattern is a named one and fully implemented: WAI-ARIA tabs (`tablist`/`tab`/`tabpanel`,
+  arrow keys move between tabs, Home/End jump to the ends) or toggle buttons with `aria-pressed`.
+  Whichever it is, the spec tests the keyboard behaviour, not only the click.
+- Each panel shows its quest's real count from `places.data.ts` (50, 7, 195) and the owner's
+  progress against it from `progress.data.ts`, even while both read 0. No figure is typed into
+  the template.
+- `/wanderquest` is added to the route list in `e2e/a11y.spec.ts` and passes axe.
+- The current view is a signal; nothing is persisted.
 
-Effort: an hour of writing, minutes of code.
+Effort: an afternoon.
+
+## 2. A selector that looks deliberate
+
+Once the selector works, make it look like it belongs on the site. The house rules apply in full
+here, because this is interface rather than spectacle: no glow, one accent ("Fern"), no decorative
+motion, and a focus ring that is an outline.
+
+**DoD:**
+
+- The selector uses only existing tokens from `styles.css`. It adds no new accent colour, and
+  `check:docs` passes without a new exemption.
+- The selected state is distinguishable without colour: a weight, underline, fill or border
+  change that survives greyscale and Windows High Contrast (`forced-colors: active`).
+- Any transition between states is short, plays once per change, and is removed under
+  `prefers-reduced-motion`. Nothing loops.
+- It reads correctly at 320px wide with no horizontal scroll, and the touch targets are at least
+  44×44 CSS px.
+- The owner signs off on how it looks. This item has no other measure of done, so that one is
+  stated.
+
+Effort: an afternoon, plus iteration.
+
+## 3. A palette per quest view
+
+Each quest gets a small palette of its own: at minimum unvisited, visited and a highlight, plus a
+colour for the states view's bonus category. These are data colours, the way the dashboard's chart
+colours are, not a second interface accent. The selector and the page's own controls stay Fern.
+
+**DoD:**
+
+- Three palettes are defined as CSS custom properties in six-digit hex (the charts' convention,
+  so a canvas or SVG map can read them at runtime), with their derivation written above them the
+  way `styles.css` writes Fern's — computed in OKLCH, as `/aesthetic` does, rather than picked by
+  eye.
+- Each palette's visited colour has at least 3:1 contrast against the page background and against
+  its own unvisited colour (WCAG 1.4.11, non-text contrast). A unit test computes these ratios from
+  the token values, so a later tweak cannot quietly fail them.
+- The three palettes stay distinguishable under deuteranopia and protanopia simulation, and the
+  views never rely on colour alone to show visited against unvisited.
+- The selected quest's palette is applied to the panel, and switching views switches it, so the
+  palette shows on screen before there is a map to fill.
+- Nothing outside `src/app/wanderquest/` reads these tokens.
+
+Effort: a day, most of it choosing.
 
 ## Deliberately not doing
 
