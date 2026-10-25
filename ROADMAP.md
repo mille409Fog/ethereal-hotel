@@ -25,59 +25,6 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-Items 1 and 2 continue `/wanderquest`, a simulation of three travel quests: the 50 states (with DC
-and the five inhabited territories as an unrequired bonus), the seven continents, and the 195
-countries the UN lists as members or observers. The lists and their reasoning already live in
-`src/app/wanderquest/places.data.ts`, and the owner's progress in `progress.data.ts`. The quest
-selector already works: a WAI-ARIA tablist in `src/app/wanderquest/`, scanned by axe. These items
-are visual only: where a guest's progress is stored is deliberately not decided yet, and nothing
-here should write to the browser or the backend. They go in order — a selector that looks right,
-then a palette that gives each view its own identity.
-
-## 1. A selector that looks deliberate
-
-Once the selector works, make it look like it belongs on the site. The house rules apply in full
-here, because this is interface rather than spectacle: no glow, one accent ("Fern"), no decorative
-motion, and a focus ring that is an outline.
-
-**DoD:**
-
-- The selector uses only existing tokens from `styles.css`. It adds no new accent colour, and
-  `check:docs` passes without a new exemption.
-- The selected state is distinguishable without colour: a weight, underline, fill or border
-  change that survives greyscale and Windows High Contrast (`forced-colors: active`).
-- Any transition between states is short, plays once per change, and is removed under
-  `prefers-reduced-motion`. Nothing loops.
-- It reads correctly at 320px wide with no horizontal scroll, and the touch targets are at least
-  44×44 CSS px.
-- The owner signs off on how it looks. This item has no other measure of done, so that one is
-  stated.
-
-Effort: an afternoon, plus iteration.
-
-## 2. A palette per quest view
-
-Each quest gets a small palette of its own: at minimum unvisited, visited and a highlight, plus a
-colour for the states view's bonus category. These are data colours, the way the dashboard's chart
-colours are, not a second interface accent. The selector and the page's own controls stay Fern.
-
-**DoD:**
-
-- Three palettes are defined as CSS custom properties in six-digit hex (the charts' convention,
-  so a canvas or SVG map can read them at runtime), with their derivation written above them the
-  way `styles.css` writes Fern's — computed in OKLCH, as `/aesthetic` does, rather than picked by
-  eye.
-- Each palette's visited colour has at least 3:1 contrast against the page background and against
-  its own unvisited colour (WCAG 1.4.11, non-text contrast). A unit test computes these ratios from
-  the token values, so a later tweak cannot quietly fail them.
-- The three palettes stay distinguishable under deuteranopia and protanopia simulation, and the
-  views never rely on colour alone to show visited against unvisited.
-- The selected quest's palette is applied to the panel, and switching views switches it, so the
-  palette shows on screen before there is a map to fill.
-- Nothing outside `src/app/wanderquest/` reads these tokens.
-
-Effort: a day, most of it choosing.
-
 ## Deliberately not doing
 
 Recorded so the next instance does not helpfully add them:

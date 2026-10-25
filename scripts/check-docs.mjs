@@ -83,7 +83,7 @@ check('files CLAUDE.md points at still exist', () => {
 // the nearest kilobyte with a kilobyte of slack either side. That is wide enough
 // that ordinary edits do not fail the build and narrow enough to catch a
 // document that has doubled, which is the only thing the column is for.
-check('the doc map states each document\'s real size', () => {
+check("the doc map states each document's real size", () => {
   const ROW = /^\|\s*`([\w./-]+\.md)`\s*\|\s*(\d+)K\s*\|/gm;
   const problems = [];
 
@@ -163,7 +163,9 @@ check('the résumé still has a single source', () => {
 
     for (const [, file] of renderer.matchAll(/'([\w-]+\.woff2)'/g)) {
       if (!exists(path.join('scripts', 'resume-fonts', file))) {
-        problems.push(`scripts/render-resume.mjs embeds ${file}, which is not in scripts/resume-fonts/.`);
+        problems.push(
+          `scripts/render-resume.mjs embeds ${file}, which is not in scripts/resume-fonts/.`
+        );
       }
     }
     // OFL 1.1 requires the licence travel with the font.
@@ -378,13 +380,19 @@ check('every floor is lit by the clock, at every hour', () => {
       problems.push(`DESK_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
     }
     if (!new RegExp(`CORRIDOR_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
-      problems.push(`CORRIDOR_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
+      problems.push(
+        `CORRIDOR_COPY has no line for '${state}'; the plate would render \`undefined\`.`
+      );
     }
     if (!new RegExp(`LIBRARY_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
-      problems.push(`LIBRARY_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
+      problems.push(
+        `LIBRARY_COPY has no line for '${state}'; the plate would render \`undefined\`.`
+      );
     }
     if (!new RegExp(`CELLAR_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
-      problems.push(`CELLAR_COPY has no line for '${state}'; the plate would render \`undefined\`.`);
+      problems.push(
+        `CELLAR_COPY has no line for '${state}'; the plate would render \`undefined\`.`
+      );
     }
     if (!new RegExp(`PROJECTION_COPY[\\s\\S]*?^\\s{2}${state}:\\s*\\{`, 'm').test(copy)) {
       problems.push(
@@ -1083,7 +1091,9 @@ check('the Box keeps its light and loses its room', () => {
 
   for (const file of [rig, clock, shader, credits]) {
     if (!exists(file)) {
-      return [`${file} is gone; CLAUDE.md says Floor −5 answers the sun with the size of the room.`];
+      return [
+        `${file} is gone; CLAUDE.md says Floor −5 answers the sun with the size of the room.`,
+      ];
     }
   }
 
@@ -1185,7 +1195,9 @@ check('the Box keeps its light and loses its room', () => {
   }
   for (const uniform of ['uVoiceLow', 'uVoiceHigh', 'uVoicePower', 'uHouse']) {
     if (!new RegExp(`uniform\\s+\\w+\\s+${uniform};`).test(shaderSource)) {
-      problems.push(`${shader} no longer declares ${uniform}; Floor −5 would render unlit or unmoved.`);
+      problems.push(
+        `${shader} no longer declares ${uniform}; Floor −5 would render unlit or unmoved.`
+      );
     }
   }
 
@@ -1367,9 +1379,13 @@ check('the footer counts the gates CLAUDE.md lists', () => {
     problems.push(`CLAUDE.md's heading says "${section[1]} gates" but its block lists ${listed}.`);
   }
   if (!footer) {
-    problems.push('footer.html no longer says how many gates run on every push. Remove this check.');
+    problems.push(
+      'footer.html no longer says how many gates run on every push. Remove this check.'
+    );
   } else if (words.indexOf(footer[1]) !== listed) {
-    problems.push(`footer.html says "${footer[1]} gates run on every push"; CLAUDE.md lists ${listed}.`);
+    problems.push(
+      `footer.html says "${footer[1]} gates run on every push"; CLAUDE.md lists ${listed}.`
+    );
   }
   return problems;
 });
@@ -1649,7 +1665,9 @@ check('the social preview set is intact', () => {
 // checked against the files that would have to change for them to stop holding.
 check('the analytics doc lists exactly the events the code sends', () => {
   if (!exists('docs/analytics.md') || !exists('src/app/services/analytics.service.ts')) {
-    return ['docs/analytics.md or the analytics service is missing; the analytics item shipped both.'];
+    return [
+      'docs/analytics.md or the analytics service is missing; the analytics item shipped both.',
+    ];
   }
 
   const problems = [];
@@ -1892,9 +1910,8 @@ check('the performance numbers the README states are the ones enforced', () => {
   }
 
   const { assertions } = JSON.parse(read('lighthouserc.json')).ci.assert;
-  const { budgets } =
-    JSON.parse(read('angular.json')).projects['ethereal-hotel'].architect.build.configurations
-      .production;
+  const { budgets } = JSON.parse(read('angular.json')).projects['ethereal-hotel'].architect.build
+    .configurations.production;
 
   return unenforcedBudgetClaims(read('README.md'), assertions, budgets);
 });
@@ -2016,9 +2033,7 @@ const unjustifiedSuppressions = (workflow) => {
     // The pattern above already guarantees the shape, so this is the only thing
     // left to be wrong about a date: 2026-13-40 is well-formed and not a day.
     if (Number.isNaN(new Date(date).valueOf())) {
-      problems.push(
-        `The EXCEPTION note for ${token} is dated ${date}, which is not a real date.`
-      );
+      problems.push(`The EXCEPTION note for ${token} is dated ${date}, which is not a real date.`);
     }
     if (reason.trim().length < MINIMUM_REASON) {
       problems.push(
@@ -2100,9 +2115,7 @@ const missingNpmScripts = (docs, scripts) => {
     // Deduped per file: a command documented in three places is one broken
     // instruction, not three, and three copies of the same message would bury
     // whatever else this run found.
-    const asked = new Set(
-      [...text.matchAll(/npm run ([a-z0-9][\w:-]*)/g)].map(([, name]) => name)
-    );
+    const asked = new Set([...text.matchAll(/npm run ([a-z0-9][\w:-]*)/g)].map(([, name]) => name));
 
     for (const name of asked) {
       if (!(name in scripts)) {
@@ -2237,7 +2250,9 @@ check('the portfolio stays serene', () => {
         problems.push(`${at} brings back the old blood-red accent. Use --color-accent.`);
       }
       if (/^\s*text-shadow\s*:(?!\s*none\s*;)/.test(line)) {
-        problems.push(`${at} adds a text-shadow. CLAUDE.md: the portfolio's type carries no effects.`);
+        problems.push(
+          `${at} adds a text-shadow. CLAUDE.md: the portfolio's type carries no effects.`
+        );
       }
     });
   }
@@ -2250,6 +2265,42 @@ check('the portfolio stays serene', () => {
     problems.push(
       `aesthetic.css registers --glow with initial-value ${glow ?? '(none)'}, but --color-border ` +
         `is ${border ?? '(none)'}. @property cannot read a variable, so the copy must match.`
+    );
+  }
+  return problems;
+});
+
+// Wanderquest's palettes are data colours, and they stay inside its folder: a
+// `--quest-*` read anywhere else is a second accent arriving by the back door.
+// The spec holds every visited colour at 3:1 on the page, but the unit tests
+// load no global stylesheet, so it carries its own copy of the ground, and
+// this is what keeps the copy honest.
+check("wanderquest's palettes stay its own", () => {
+  const files = readdirSync(path.join(repoRoot, 'src'), { recursive: true })
+    .map((file) => `src/${String(file).replace(/\\/g, '/')}`)
+    .filter((file) => /\.(css|ts|html)$/.test(file) && !file.startsWith('src/app/wanderquest/'));
+
+  const problems = [];
+  for (const file of files) {
+    read(file)
+      .split('\n')
+      .forEach((line, index) => {
+        if (/--quest-/.test(line)) {
+          problems.push(
+            `${file}:${index + 1} reads a wanderquest palette token outside src/app/wanderquest/.`
+          );
+        }
+      });
+  }
+
+  const ground = /--color-bg:\s*(#[0-9a-f]{6})/i.exec(read('src/styles.css'))?.[1];
+  const copy = /const PAGE_BACKGROUND = '(#[0-9a-f]{6})'/i.exec(
+    read('src/app/wanderquest/wanderquest.spec.ts')
+  )?.[1];
+  if (!ground || !copy || ground.toLowerCase() !== copy.toLowerCase()) {
+    problems.push(
+      `wanderquest.spec.ts measures the palettes on ${copy ?? '(no PAGE_BACKGROUND)'}, but ` +
+        `--color-bg is ${ground ?? '(none)'}. The contrast test is only as true as that copy.`
     );
   }
   return problems;
@@ -2271,7 +2322,9 @@ check('every file names the site by its one address', () => {
 
   const problems = [];
   if (!CLAUDE_MD.includes(`deployed at ${siteUrl}/`)) {
-    problems.push(`CLAUDE.md no longer says the site is deployed at ${siteUrl}/, which route-meta.json does.`);
+    problems.push(
+      `CLAUDE.md no longer says the site is deployed at ${siteUrl}/, which route-meta.json does.`
+    );
   }
   for (const file of tracked) {
     for (const stray of strayHosts(read(file), siteUrl)) {
@@ -2285,7 +2338,7 @@ check('every file names the site by its one address', () => {
 
 // ---------------------------------------------------------------------------
 
-const failures =checks.flatMap(([name, fn]) => fn().map((problem) => ({ name, problem })));
+const failures = checks.flatMap(([name, fn]) => fn().map((problem) => ({ name, problem })));
 
 if (failures.length === 0) {
   process.stdout.write(`CLAUDE.md: ${checks.length} checks passed.\n`);

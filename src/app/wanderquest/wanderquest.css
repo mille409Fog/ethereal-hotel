@@ -79,6 +79,62 @@
   outline-offset: 2px;
 }
 
+/* ----- The palettes ----- */
+
+/* Data colours, one palette per quest, in the role the dashboard's chart
+   colours play: they fill places, never controls, so the selector above
+   stays Fern. Each panel carries its own, under the same four names, so
+   whatever draws a map reads `--quest-visited` from the panel it sits in
+   and never needs to know which quest that is. Six-digit hex because a
+   canvas cannot resolve `var()` or `oklch()`.
+
+   Computed in OKLCH with `/aesthetic`'s `maxChroma`, not picked by eye. A
+   role is a lightness L and a share of the most chroma sRGB holds at that
+   L and the quest's hue:
+
+                 hue   unvisited    visited      highlight
+     states      255°  0.39 × 0.55  0.74 × 0.90  0.89 × 0.75   blue
+     continents   25°  0.34 × 0.60  0.68 × 0.80  0.84 × 0.70   red
+     countries   145°  0.45 × 0.50  0.84 × 0.70  0.95 × 0.75   green
+     bonus        85°               0.82 × 0.85                gold
+
+   The lightnesses are staggered, red darkest and green lightest, because
+   red and green are one colour to a protanope or a deuteranope: at equal L
+   the two unvisited fills sat 0.008 apart in OKLab under deuteranopia. The
+   bonus is the states palette's one foreign hue for the same reason. A
+   violet bonus at the visited L came within 0.017 of the visited blue under
+   deuteranopia, and moved darker to escape it, it fell to 2.17:1 on the
+   unvisited fill. Gold sits on the blue–yellow axis that both red–green
+   deficiencies keep.
+
+   Contrast, WCAG 2, visited on --color-bg / on its own unvisited:
+     states      6.52 / 4.19     (bonus 8.50 / 5.46)
+     continents  4.82 / 3.93
+     countries   9.74 / 4.67
+   `wanderquest.spec.ts` recomputes these from this file, holds them at 3:1
+   (WCAG 1.4.11), and holds the CVD distances above. Visited is always the
+   lighter fill by at least 3:1, so the difference survives greyscale; the
+   key below names every colour, so it never rests on hue alone. */
+
+.quest-panel[data-quest='states'] {
+  --quest-unvisited: #2a466a;
+  --quest-visited: #74aef7;
+  --quest-highlight: #c9ddf6;
+  --quest-bonus: #eebc46;
+}
+
+.quest-panel[data-quest='continents'] {
+  --quest-unvisited: #5b2421;
+  --quest-visited: #ed6862;
+  --quest-highlight: #f0bcb6;
+}
+
+.quest-panel[data-quest='countries'] {
+  --quest-unvisited: #3b603c;
+  --quest-visited: #72e97a;
+  --quest-highlight: #d4fbd4;
+}
+
 /* ----- The panel ----- */
 
 .quest-panel {
@@ -99,6 +155,50 @@
   color: var(--color-text-muted);
   font-size: 0.95rem;
   margin: 0;
+}
+
+/* The key: the palette on screen before there is a map to fill, each
+   colour beside the word for what it means. */
+.quest-key {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+  margin: 1.5rem 0 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.quest-key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quest-swatch {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 3px;
+  /* The swatch is the data, and the key would be a list of words without
+     it, so High Contrast keeps its colour as it would keep a map's. */
+  forced-color-adjust: none;
+}
+
+.quest-swatch-unvisited {
+  background: var(--quest-unvisited);
+}
+
+.quest-swatch-visited {
+  background: var(--quest-visited);
+}
+
+.quest-swatch-highlight {
+  background: var(--quest-highlight);
+}
+
+.quest-swatch-bonus {
+  background: var(--quest-bonus);
 }
 
 @media (max-width: 480px) {

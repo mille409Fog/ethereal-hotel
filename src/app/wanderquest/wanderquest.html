@@ -33,6 +33,7 @@
       tabindex="0"
       [id]="'quest-panel-' + quest.id"
       [attr.aria-labelledby]="'quest-tab-' + quest.id"
+      [attr.data-quest]="quest.id"
       [hidden]="quest.id !== current().id"
     >
       <p class="quest-tally">
@@ -44,6 +45,26 @@
           territories
         </p>
       }
+      <ul class="quest-key" aria-label="Key">
+        <li class="quest-key-item">
+          <span class="quest-swatch quest-swatch-unvisited" aria-hidden="true"></span>
+          Not yet visited
+        </li>
+        <li class="quest-key-item">
+          <span class="quest-swatch quest-swatch-visited" aria-hidden="true"></span>
+          Visited
+        </li>
+        <li class="quest-key-item">
+          <span class="quest-swatch quest-swatch-highlight" aria-hidden="true"></span>
+          Highlighted
+        </li>
+        @if (quest.bonus) {
+          <li class="quest-key-item">
+            <span class="quest-swatch quest-swatch-bonus" aria-hidden="true"></span>
+            Bonus, visited
+          </li>
+        }
+      </ul>
     </section>
   }
 </main>
