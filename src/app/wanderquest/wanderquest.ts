@@ -35,8 +35,13 @@ export class Wanderquest {
     this.quest.set(selection);
   }
 
-  public onKeydown(event: KeyboardEvent): void {
-    const to = stepQuest(this.quest(), event.key);
+  /**
+   * Steps from the tab the key was pressed on, not from the selection: the two
+   * differ whenever focus reaches a tab without selecting it, and an arrow key
+   * must move from where the user is.
+   */
+  public onKeydown(event: KeyboardEvent, from: QUEST_STATE): void {
+    const to = stepQuest(from, event.key);
     if (!to) {
       return;
     }

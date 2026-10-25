@@ -1,5 +1,7 @@
 <main class="wanderquest-page">
-  <h1>Wanderquest</h1>
+  <header class="wanderquest-header">
+    <h1 class="wanderquest-title">Wanderquest</h1>
+  </header>
 
   <!-- Roving tabindex: only the selected tab is in the Tab order, and the arrow
        keys move between the three. Home and End jump to the ends. -->
@@ -15,7 +17,7 @@
         [attr.aria-controls]="'quest-panel-' + quest.id"
         [tabIndex]="quest.id === current().id ? 0 : -1"
         (click)="onSelection(quest.id)"
-        (keydown)="onKeydown($event)"
+        (keydown)="onKeydown($event, quest.id)"
       >
         {{ quest.label }}
       </button>
@@ -34,7 +36,7 @@
       [hidden]="quest.id !== current().id"
     >
       <p class="quest-tally">
-        {{ quest.tally.visited }} of {{ quest.tally.total }} {{ quest.label }} visited
+        {{ quest.tally.visited }} of {{ quest.tally.total }} {{ quest.noun }} visited
       </p>
       @if (quest.bonus; as bonus) {
         <p class="quest-bonus">

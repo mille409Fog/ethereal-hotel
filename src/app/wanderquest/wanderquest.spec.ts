@@ -75,7 +75,7 @@ describe('Wanderquest', () => {
   });
 
   it('starts on the states quest with exactly one tab selected', () => {
-    expect(selected()).toEqual(['states']);
+    expect(selected()).toEqual(['States']);
     expect(tabs().map((tab) => tab.tabIndex)).toEqual([0, -1, -1]);
   });
 
@@ -91,7 +91,7 @@ describe('Wanderquest', () => {
     tabs()[2].click();
     await fixture.whenStable();
 
-    expect(selected()).toEqual(['countries']);
+    expect(selected()).toEqual(['Countries']);
     expect(visiblePanels().map((panel) => panel.id)).toEqual(['quest-panel-countries']);
   });
 
@@ -100,23 +100,32 @@ describe('Wanderquest', () => {
 
     const event = await press('ArrowRight');
     expect(event.defaultPrevented).toBe(true);
-    expect(selected()).toEqual(['continents']);
+    expect(selected()).toEqual(['Continents']);
     expect(document.activeElement).toBe(tabs()[1]);
     expect(tabs().map((tab) => tab.tabIndex)).toEqual([-1, 0, -1]);
 
     await press('End');
-    expect(selected()).toEqual(['countries']);
+    expect(selected()).toEqual(['Countries']);
     expect(document.activeElement).toBe(tabs()[2]);
 
     await press('ArrowRight');
-    expect(selected()).toEqual(['states']);
+    expect(selected()).toEqual(['States']);
     expect(document.activeElement).toBe(tabs()[0]);
 
     await press('ArrowLeft');
-    expect(selected()).toEqual(['countries']);
+    expect(selected()).toEqual(['Countries']);
 
     await press('Home');
-    expect(selected()).toEqual(['states']);
+    expect(selected()).toEqual(['States']);
+    expect(document.activeElement).toBe(tabs()[0]);
+  });
+
+  it('steps from the focused tab, not from the selected one', async () => {
+    // Focus reaches "continents" while "states" is still selected.
+    tabs()[1].focus();
+
+    await press('ArrowLeft');
+    expect(selected()).toEqual(['States']);
     expect(document.activeElement).toBe(tabs()[0]);
   });
 
@@ -124,7 +133,7 @@ describe('Wanderquest', () => {
     tabs()[0].focus();
     const event = await press('ArrowDown');
     expect(event.defaultPrevented).toBe(false);
-    expect(selected()).toEqual(['states']);
+    expect(selected()).toEqual(['States']);
   });
 
   it("shows each quest's count and the owner's progress against it", async () => {

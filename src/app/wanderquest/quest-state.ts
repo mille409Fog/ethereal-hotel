@@ -25,8 +25,10 @@ export interface ITally {
 /** One quest as its tab and panel show it. */
 export interface IQuest {
   readonly id: QUEST_STATE;
-  /** The tab's text, and the noun after the count. */
+  /** The tab's text, title-cased as a label. */
   readonly label: string;
+  /** The noun after the count, lower-case mid-sentence: "0 of 50 states visited". */
+  readonly noun: string;
   readonly tally: ITally;
   /** DC and the territories; only the states quest has a bonus, and it is not required. */
   readonly bonus: ITally | null;
@@ -36,19 +38,22 @@ export interface IQuest {
 export const QUESTS: readonly IQuest[] = [
   {
     id: QUEST_STATE.STATES,
-    label: 'states',
+    label: 'States',
+    noun: 'states',
     tally: { visited: OWNER_PROGRESS.states.length, total: STATES.length },
     bonus: { visited: OWNER_PROGRESS.bonus.length, total: BONUS.length },
   },
   {
     id: QUEST_STATE.CONTINENTS,
-    label: 'continents',
+    label: 'Continents',
+    noun: 'continents',
     tally: { visited: OWNER_PROGRESS.continents.length, total: CONTINENTS.length },
     bonus: null,
   },
   {
     id: QUEST_STATE.COUNTRIES,
-    label: 'countries',
+    label: 'Countries',
+    noun: 'countries',
     tally: { visited: OWNER_PROGRESS.countries.length, total: COUNTRIES.length },
     bonus: null,
   },

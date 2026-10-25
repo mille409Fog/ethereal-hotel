@@ -1,35 +1,127 @@
-/* Deliberately plain: this is the selector's semantics, not its look. The
-   selected tab differs by weight and an underline as well as colour, so the
-   state survives greyscale before anyone styles it properly. */
+/* The quest selector is interface, so the house rules apply in full: Fern's
+   tokens only, one accent, no glow, a focus ring that is the global outline.
+
+   The selected tab differs four ways at once — fill, border, weight and the
+   accent tint — so that taking colour away leaves two of them standing: the
+   border and the weight survive greyscale, and under forced colours, where
+   fills are discarded, the border is redrawn in `Highlight`. */
+
 .wanderquest-page {
-  max-width: 48rem;
-  margin: 0 auto;
-  padding: 4rem 1rem;
+  min-height: 100vh;
+  padding: 4rem 2rem;
 }
 
+.wanderquest-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.wanderquest-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3rem);
+  color: var(--color-text);
+  margin: 0;
+}
+
+/* ----- The selector ----- */
+
+/* Three equal columns rather than three widths of word, so the tabs do not
+   shift when the selected label gains weight. The track fits its content, so
+   every column is as wide as the longest label, and `max-width` lets it divide
+   320px evenly instead of overflowing it. */
 .quest-tabs {
-  display: flex;
-  gap: 0.5rem;
-  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
 }
 
 .quest-tab {
   min-height: 44px;
-  padding: 0.5rem 1rem;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
+  min-width: 0;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
   color: var(--color-text-secondary);
-  font: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.2;
   cursor: pointer;
+  /* Plays once per change of selection or hover; nothing here loops. Under
+     reduced motion the global block in `styles.css` collapses it to one frame,
+     with `!important`, so a local `transition: none` would never apply. */
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.quest-tab:hover {
+  color: var(--color-text);
 }
 
 .quest-tab[aria-selected='true'] {
-  border-bottom-color: currentColor;
-  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-accent-text);
   font-weight: 600;
+  cursor: default;
 }
 
+.quest-tab:focus-visible {
+  outline-offset: 2px;
+}
+
+/* ----- The panel ----- */
+
 .quest-panel {
-  padding: 1.5rem 0;
+  max-width: 30rem;
+  margin: 0 auto;
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.quest-tally {
+  font-family: var(--font-serif);
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  color: var(--color-text);
+  margin: 0 0 0.5rem;
+}
+
+.quest-bonus {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .wanderquest-page {
+    padding: 3rem 1rem;
+  }
+
+  .quest-tab {
+    /* The most "Continents" can carry at 320px and stay on one line. */
+    padding: 0.5rem 0.375rem;
+  }
+}
+
+/* Windows High Contrast discards fills and may keep a transparent border
+   transparent, so the selected tab is drawn with a system colour of its own
+   and the rest with the canvas they sit on. */
+@media (forced-colors: active) {
+  .quest-tab {
+    border-color: Canvas;
+  }
+
+  .quest-tab[aria-selected='true'] {
+    border-color: Highlight;
+    color: CanvasText;
+  }
 }
