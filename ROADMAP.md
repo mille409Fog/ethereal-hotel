@@ -25,41 +25,18 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 1. An outline of the states map
+## 1. An outline of the continents map
 
-The first of three outlines: the roughest contours of what each quest's map will look like, drawn
-inside its panel. An outline is not a map yet. Nothing in it is selectable, focusable, hoverable or
-filled by progress, and it does not have to look good — it has to be recognisably the United States
-and cost almost nothing. Its job is to settle where shapes come from and how they reach the page,
-so the two world outlines after it are mostly data.
-
-**DoD:**
-
-- The shapes come from public-domain data — the US Census Bureau's cartographic boundary files,
-  at the coarsest scale it publishes — and the source, scale and date are written beside the
-  generated file, the way `places.data.ts` cites its lists.
-- A committed script fetches, simplifies and projects them once, and its output is committed as
-  SVG path data, so the build fetches nothing and the bundle carries no projection library. The
-  script follows `gallery:fetch` and the sentence atlas: runnable again, never run by CI.
-- Albers equal-area with Alaska and Hawaii inset, the convention a reader expects, so the outline
-  is not mostly ocean.
-- Each of the fifty states is one path keyed by its `STATES` id — the join a later fill needs, not
-  interaction — and a unit test fails if an id has no path or a path has no id. DC and the
-  territories are not drawn, and the spec says so rather than leaving it to be noticed.
-- Every path is filled with the panel's `--quest-unvisited` and stroked so the borders show. The
-  SVG is `role="img"` with a label naming what it outlines, and nothing in it takes focus.
-- The generated file stays under a size ceiling the spec asserts, low enough that "roughest" is a
-  number and not an intention.
-
-Effort: half a day, most of it the script.
-
-## 2. An outline of the continents map
-
-The seven continents, at the same rough fidelity, through the script the states outline added.
+The roughest contours of what the continents quest's map will look like, drawn inside its panel,
+the way the states panel already draws its own. An outline is not a map yet: nothing in it is
+selectable, focusable, hoverable or filled by progress, and it does not have to look good. The
+pipeline exists — `npm run outline:build`, its arithmetic in `scripts/outline.mjs`, and an
+`outline` on each quest that the panel renders when it is not null — so this item is mostly data.
 
 **DoD:**
 
-- Natural Earth's 1:110m land and admin-0 data, which is public domain, cited the same way.
+- Natural Earth's 1:110m land and admin-0 data, which is public domain, cited in the generated
+  file's header the way `states.outline.ts` cites the Census.
 - Equal Earth projection, chosen once here for both world outlines so they read as one atlas, and
   equal-area so Africa is not drawn smaller than Greenland.
 - Seven paths keyed by `CONTINENTS` id, Antarctica included. There is no authoritative boundary set
@@ -67,11 +44,12 @@ The seven continents, at the same rough fidelity, through the script the states 
   continent field, and the transcontinental countries (Russia, Türkiye, Egypt, Kazakhstan) are each
   drawn wholly on one side. That compromise is written beside the data: it is a drawing choice, and
   `places.data.ts` is right that progress is never derived from countries.
-- The same fill, stroke, labelling, no-focus and size-ceiling rules as the states outline.
+- The same fill, stroke, labelling, no-focus and size-ceiling rules `states.outline.spec.ts` and
+  the panel spec hold the states outline to.
 
 Effort: a couple of hours.
 
-## 3. An outline of the countries map
+## 2. An outline of the countries map
 
 The 195, at the same rough fidelity and in the continents outline's projection.
 
@@ -85,6 +63,7 @@ The 195, at the same rough fidelity and in the continents outline's projection.
   not claim to draw what it cannot.
 - Shapes Natural Earth carries that are not among the 195 — Antarctica, Greenland, Western Sahara,
   Taiwan and the rest — are drawn unkeyed, so the coastline is whole without the count changing.
+  `IOutlineShape` requires an id today, so this is where it learns to go without one.
 - The same fill, stroke, labelling, no-focus and size-ceiling rules as the other two outlines.
 
 Effort: half a day, most of it the join.

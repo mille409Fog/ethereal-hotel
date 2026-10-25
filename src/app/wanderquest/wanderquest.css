@@ -137,8 +137,10 @@
 
 /* ----- The panel ----- */
 
+/* Wide enough for an outline to show its borders; the text in it is short
+   enough not to need a measure of its own. */
 .quest-panel {
-  max-width: 30rem;
+  max-width: 48rem;
   margin: 0 auto;
   padding: 2rem 0;
   text-align: center;
@@ -155,6 +157,24 @@
   color: var(--color-text-muted);
   font-size: 0.95rem;
   margin: 0;
+}
+
+/* The outline: every place unvisited, with the ground drawn between them so
+   the borders show. The stroke does not scale with the drawing, so a border
+   is one pixel at 320px and at 1440px alike. */
+.quest-outline {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 1.5rem 0 0;
+  fill: var(--quest-unvisited);
+  stroke: var(--color-bg);
+  stroke-width: 1px;
+  stroke-linejoin: round;
+}
+
+.quest-outline path {
+  vector-effect: non-scaling-stroke;
 }
 
 /* The key: the palette on screen before there is a map to fill, each
@@ -223,5 +243,12 @@
   .quest-tab[aria-selected='true'] {
     border-color: Highlight;
     color: CanvasText;
+  }
+
+  /* The fills are forced to one system colour, so the borders are all that
+     is left to draw the states apart. */
+  .quest-outline {
+    fill: Canvas;
+    stroke: CanvasText;
   }
 }

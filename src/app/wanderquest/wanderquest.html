@@ -45,6 +45,21 @@
           territories
         </p>
       }
+      @if (quest.outline; as outline) {
+        <!-- An outline, not a map: one image with one name, and nothing in it
+             takes focus or answers a pointer. `data-id` is the join a later
+             fill needs. -->
+        <svg
+          class="quest-outline"
+          role="img"
+          [attr.aria-label]="outline.label"
+          [attr.viewBox]="outline.viewBox"
+        >
+          @for (shape of outline.shapes; track shape.id) {
+            <path [attr.d]="shape.d" [attr.data-id]="shape.id" />
+          }
+        </svg>
+      }
       <ul class="quest-key" aria-label="Key">
         <li class="quest-key-item">
           <span class="quest-swatch quest-swatch-unvisited" aria-hidden="true"></span>

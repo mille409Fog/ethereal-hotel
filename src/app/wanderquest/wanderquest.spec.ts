@@ -233,6 +233,21 @@ describe('Wanderquest', () => {
     expect(visiblePanels()[0].querySelector('.quest-bonus')).toBeNull();
   });
 
+  it('outlines the states as one named image, keyed by state and with nothing to focus', () => {
+    const outlines = host.querySelectorAll('svg.quest-outline');
+    expect(outlines.length, 'only the states quest has an outline yet').toBe(1);
+
+    const svg = host.querySelector('#quest-panel-states svg.quest-outline');
+    expect(svg?.getAttribute('role')).toBe('img');
+    expect(svg?.getAttribute('aria-label')).toBe('Outline map of the fifty states');
+
+    const keyed = Array.from(svg?.querySelectorAll('path') ?? []).map((path) =>
+      path.getAttribute('data-id')
+    );
+    expect(keyed).toEqual(STATES.map((state) => state.id));
+    expect(svg?.querySelectorAll('[tabindex], a, [focusable="true"]').length).toBe(0);
+  });
+
   it('gives each panel its own palette in six-digit hex, and the bonus to states only', () => {
     const hex = /^#[0-9a-f]{6}$/;
     for (const quest of QUESTS) {

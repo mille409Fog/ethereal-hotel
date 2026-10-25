@@ -6,8 +6,10 @@
  * list holds 194. No Angular imports: the keyboard rule is a pure function so
  * the spec can walk it without a fixture.
  */
+import type { IOutline } from './outline';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
+import { STATES_OUTLINE } from './states.outline';
 
 /** used to store the selected quest mode */
 export enum QUEST_STATE {
@@ -32,6 +34,8 @@ export interface IQuest {
   readonly tally: ITally;
   /** DC and the territories; only the states quest has a bonus, and it is not required. */
   readonly bonus: ITally | null;
+  /** The rough contours of the quest's map, or null until its outline is built. */
+  readonly outline: IOutline | null;
 }
 
 /** The quests in tab order. Arrow keys walk this order and wrap. */
@@ -42,6 +46,7 @@ export const QUESTS: readonly IQuest[] = [
     noun: 'states',
     tally: { visited: OWNER_PROGRESS.states.length, total: STATES.length },
     bonus: { visited: OWNER_PROGRESS.bonus.length, total: BONUS.length },
+    outline: STATES_OUTLINE,
   },
   {
     id: QUEST_STATE.CONTINENTS,
@@ -49,6 +54,7 @@ export const QUESTS: readonly IQuest[] = [
     noun: 'continents',
     tally: { visited: OWNER_PROGRESS.continents.length, total: CONTINENTS.length },
     bonus: null,
+    outline: null,
   },
   {
     id: QUEST_STATE.COUNTRIES,
@@ -56,6 +62,7 @@ export const QUESTS: readonly IQuest[] = [
     noun: 'countries',
     tally: { visited: OWNER_PROGRESS.countries.length, total: COUNTRIES.length },
     bonus: null,
+    outline: null,
   },
 ];
 

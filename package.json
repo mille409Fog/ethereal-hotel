@@ -16,6 +16,7 @@
     "build:sentence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-sentence-atlas.mjs",
     "check:sentence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-sentence-atlas.mjs --check",
     "gallery:fetch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fetch-gallery.mjs",
+    "outline:build": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-outline.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:backend": "node scripts/py-tool.mjs pytest backend/",
