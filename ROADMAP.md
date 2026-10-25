@@ -25,46 +25,31 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 1. An outline of the continents map
+## 1. An outline of the countries map
 
-The roughest contours of what the continents quest's map will look like, drawn inside its panel,
-the way the states panel already draws its own. An outline is not a map yet: nothing in it is
-selectable, focusable, hoverable or filled by progress, and it does not have to look good. The
-pipeline exists — `npm run outline:build`, its arithmetic in `scripts/outline.mjs`, and an
-`outline` on each quest that the panel renders when it is not null — so this item is mostly data.
-
-**DoD:**
-
-- Natural Earth's 1:110m land and admin-0 data, which is public domain, cited in the generated
-  file's header the way `states.outline.ts` cites the Census.
-- Equal Earth projection, chosen once here for both world outlines so they read as one atlas, and
-  equal-area so Africa is not drawn smaller than Greenland.
-- Seven paths keyed by `CONTINENTS` id, Antarctica included. There is no authoritative boundary set
-  for the seven-continent model, so the shapes are Natural Earth's countries dissolved by its
-  continent field, and the transcontinental countries (Russia, Türkiye, Egypt, Kazakhstan) are each
-  drawn wholly on one side. That compromise is written beside the data: it is a drawing choice, and
-  `places.data.ts` is right that progress is never derived from countries.
-- The same fill, stroke, labelling, no-focus and size-ceiling rules `states.outline.spec.ts` and
-  the panel spec hold the states outline to.
-
-Effort: a couple of hours.
-
-## 2. An outline of the countries map
-
-The 195, at the same rough fidelity and in the continents outline's projection.
+The roughest contours of what the countries quest's map will look like, drawn inside its panel the
+way the states and continents panels already draw theirs. An outline is not a map yet: nothing in
+it is selectable, focusable, hoverable or filled by progress, and it does not have to look good.
+The pipeline exists — this adds a `countries` target beside `states` and `continents` in
+`scripts/build-outline.mjs`, and sets the quest's `outline` — and the continents target already
+fetches the file this one needs and projects it in `equalEarthWorld()`, so the two world outlines
+read as one atlas.
 
 **DoD:**
 
-- Natural Earth's 1:110m admin-0 shapes, joined on the ISO alpha-2 code `places.data.ts` already
-  chose for that reason.
+- Natural Earth's 1:110m admin-0 shapes, cited in the header as `continents.outline.ts` cites
+  them, and joined on the ISO alpha-2 code `places.data.ts` already chose for that reason — from
+  `ISO_A2_EH`, not `ISO_A2`, which is `-99` for France and Norway in version 5.1.1.
 - One path per `COUNTRIES` id that has a shape at this scale. 1:110m drops the smallest states (the
   Holy See, Monaco and many island nations among them), so the spec holds the list of ids with no
   path, and fails if that list grows or if a path carries an id outside the 195. The outline does
   not claim to draw what it cannot.
 - Shapes Natural Earth carries that are not among the 195 — Antarctica, Greenland, Western Sahara,
-  Taiwan and the rest — are drawn unkeyed, so the coastline is whole without the count changing.
-  `IOutlineShape` requires an id today, so this is where it learns to go without one.
-- The same fill, stroke, labelling, no-focus and size-ceiling rules as the other two outlines.
+  Taiwan, Northern Cyprus, Somaliland and the rest — are drawn unkeyed, so the coastline is whole
+  without the count changing. `IOutlineShape` requires an id today, so this is where it learns to
+  go without one, and where `outline.spec.ts`'s "every place exactly once" learns to ignore them.
+- The outline joins `OUTLINES` in `outline.spec.ts` and the panel spec's list of drawn quests, so
+  it is held to the same fill, stroke, labelling, no-focus and size-ceiling rules as the others.
 
 Effort: half a day, most of it the join.
 

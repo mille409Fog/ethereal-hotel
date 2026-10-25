@@ -6,6 +6,7 @@
  * list holds 194. No Angular imports: the keyboard rule is a pure function so
  * the spec can walk it without a fixture.
  */
+import { CONTINENTS_OUTLINE } from './continents.outline';
 import type { IOutline } from './outline';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
@@ -54,7 +55,7 @@ export const QUESTS: readonly IQuest[] = [
     noun: 'continents',
     tally: { visited: OWNER_PROGRESS.continents.length, total: CONTINENTS.length },
     bonus: null,
-    outline: null,
+    outline: CONTINENTS_OUTLINE,
   },
   {
     id: QUEST_STATE.COUNTRIES,

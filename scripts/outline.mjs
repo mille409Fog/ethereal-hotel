@@ -92,7 +92,11 @@ export function readPolygons(shp) {
   return polygons;
 }
 
-/** A dBASE table's rows, as objects keyed by field name, values trimmed. */
+/**
+ * A dBASE table's rows, as objects keyed by field name, values trimmed. A
+ * field is padded with spaces by the Census and with NULs by Natural Earth;
+ * both are padding, so both go.
+ */
 export function readTable(dbf) {
   const rowCount = dbf.readUInt32LE(4);
   const headerLength = dbf.readUInt16LE(8);
@@ -110,7 +114,10 @@ export function readTable(dbf) {
     let at = headerLength + r * rowLength + 1;
     const row = {};
     for (const field of fields) {
-      row[field.name] = dbf.toString('latin1', at, at + field.length).trim();
+      row[field.name] = dbf
+        .toString('latin1', at, at + field.length)
+        .replace(/\0/g, '')
+        .trim();
       at += field.length;
     }
     rows.push(row);
@@ -183,6 +190,115 @@ export function albersUsa() {
     translate: [x - 0.205 * k, y + 0.212 * k],
   });
   return (id) => (id === 'AK' ? alaska : id === 'HI' ? hawaii : lower48);
+}
+
+/**
+ * Šavrič, Patterson & Jenny's Equal Earth (2018), centred on Greenwich, as d3's
+ * `geoEqualEarth`. Equal-area, so Africa is drawn fourteen times Greenland as
+ * it is, and its pole is a line rather than a point, so Antarctica reads as a
+ * continent rather than a smear. Returns `[x, y]` in screen space, y down,
+ * with `(0°, 0°)` at `translate`.
+ */
+export function equalEarth({ scale, translate }) {
+  const [A1, A2, A3, A4] = [1.340264, -0.081106, 0.000893, 0.003796];
+  const M = Math.sqrt(3) / 2;
+  return ([lon, lat]) => {
+    const theta = Math.asin(M * Math.sin(lat * RADIANS));
+    const t2 = theta * theta;
+    const t6 = t2 * t2 * t2;
+    const x =
+      (lon * RADIANS * Math.cos(theta)) / (M * (A1 + 3 * A2 * t2 + t6 * (7 * A3 + 9 * A4 * t2)));
+    const y = theta * (A1 + A2 * t2 + t6 * (A3 + A4 * t2));
+    return [translate[0] + scale * x, translate[1] - scale * y];
+  };
+}
+
+/**
+ * The world in Equal Earth, scaled so the whole globe is 960 units across: the
+ * width the states outline was drawn at, so the two read at one stroke weight.
+ */
+export const WORLD_FRAME = { width: 960 };
+
+export function equalEarthWorld() {
+  // The projected half-width at the equator, x(180°, 0°) before scaling.
+  const halfWidth = Math.PI / ((Math.sqrt(3) / 2) * 1.340264);
+  const scale = WORLD_FRAME.width / (2 * halfWidth);
+  // Drop the north pole onto y = 0.
+  const [, pole] = equalEarth({ scale, translate: [0, 0] })([0, 90]);
+  return equalEarth({ scale, translate: [WORLD_FRAME.width / 2, -pole] });
+}
+
+/* ---------------------------------------------------------------------------
+ * Dissolving
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The rings of several polygons merged into the rings of their union, by
+ * cancelling every border two of them share.
+ *
+ * This is not a general polygon union, and does not need to be: Natural Earth
+ * draws a shared border once and gives both neighbours the same vertices, so
+ * the border appears as an edge in each ring, once in each direction (outer
+ * rings run the same way round). An edge whose reverse is also present is
+ * interior; every other edge is on the outside of the union, and following
+ * them end to start walks its rings. Holes come out as rings of their own, run
+ * the other way, which is what a nonzero fill needs. Two borders that do not
+ * share vertices are not merged, and show as a line, which an outline can
+ * afford.
+ */
+export function dissolve(rings) {
+  const key = ([x, y]) => `${x},${y}`;
+  const edges = [];
+  const byDirection = new Map();
+  for (const ring of rings) {
+    for (let i = 0; i + 1 < ring.length; i += 1) {
+      const [from, to] = [key(ring[i]), key(ring[i + 1])];
+      if (from === to) continue;
+      const edge = { from, to, start: ring[i], used: false };
+      edges.push(edge);
+      const direction = `${from}>${to}`;
+      if (!byDirection.has(direction)) byDirection.set(direction, []);
+      byDirection.get(direction).push(edge);
+    }
+  }
+
+  // Cancel each edge against one running the other way, as many times as
+  // both directions have an edge to give.
+  for (const [direction, forward] of byDirection) {
+    const [from, to] = direction.split('>');
+    const backward = byDirection.get(`${to}>${from}`) ?? [];
+    const pairs = Math.min(
+      forward.filter((edge) => !edge.used).length,
+      backward.filter((edge) => !edge.used).length
+    );
+    for (const list of [forward, backward]) {
+      list
+        .filter((edge) => !edge.used)
+        .slice(0, pairs)
+        .forEach((edge) => (edge.used = true));
+    }
+  }
+
+  const outgoing = new Map();
+  for (const edge of edges) {
+    if (edge.used) continue;
+    if (!outgoing.has(edge.from)) outgoing.set(edge.from, []);
+    outgoing.get(edge.from).push(edge);
+  }
+
+  const merged = [];
+  for (const first of edges) {
+    if (first.used) continue;
+    const ring = [];
+    let edge = first;
+    while (edge && !edge.used) {
+      edge.used = true;
+      ring.push(edge.start);
+      edge = outgoing.get(edge.to)?.find((next) => !next.used);
+    }
+    if (ring.length >= 3) merged.push([...ring, ring[0]]);
+  }
+  return merged;
 }
 
 /* ---------------------------------------------------------------------------

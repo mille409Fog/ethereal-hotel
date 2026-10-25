@@ -233,19 +233,29 @@ describe('Wanderquest', () => {
     expect(visiblePanels()[0].querySelector('.quest-bonus')).toBeNull();
   });
 
-  it('outlines the states as one named image, keyed by state and with nothing to focus', () => {
+  it('outlines each quest that has one as one named image, keyed by place, with nothing to focus', () => {
+    const drawn = [
+      { quest: QUEST_STATE.STATES, label: 'Outline map of the fifty states', places: STATES },
+      {
+        quest: QUEST_STATE.CONTINENTS,
+        label: 'Outline map of the seven continents',
+        places: CONTINENTS,
+      },
+    ];
     const outlines = host.querySelectorAll('svg.quest-outline');
-    expect(outlines.length, 'only the states quest has an outline yet').toBe(1);
+    expect(outlines.length, 'the countries quest has no outline yet').toBe(drawn.length);
 
-    const svg = host.querySelector('#quest-panel-states svg.quest-outline');
-    expect(svg?.getAttribute('role')).toBe('img');
-    expect(svg?.getAttribute('aria-label')).toBe('Outline map of the fifty states');
+    for (const { quest, label, places } of drawn) {
+      const svg = host.querySelector(`#quest-panel-${quest} svg.quest-outline`);
+      expect(svg?.getAttribute('role'), quest).toBe('img');
+      expect(svg?.getAttribute('aria-label')).toBe(label);
 
-    const keyed = Array.from(svg?.querySelectorAll('path') ?? []).map((path) =>
-      path.getAttribute('data-id')
-    );
-    expect(keyed).toEqual(STATES.map((state) => state.id));
-    expect(svg?.querySelectorAll('[tabindex], a, [focusable="true"]').length).toBe(0);
+      const keyed = Array.from(svg?.querySelectorAll('path') ?? []).map((path) =>
+        path.getAttribute('data-id')
+      );
+      expect(keyed).toEqual(places.map((place) => place.id));
+      expect(svg?.querySelectorAll('[tabindex], a, [focusable="true"]').length).toBe(0);
+    }
   });
 
   it('gives each panel its own palette in six-digit hex, and the bonus to states only', () => {

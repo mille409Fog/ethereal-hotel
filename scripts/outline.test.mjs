@@ -14,6 +14,9 @@ import { deflateRawSync } from 'node:zlib';
 import {
   albersUsa,
   conicEqualArea,
+  dissolve,
+  equalEarth,
+  equalEarthWorld,
   pathData,
   readPolygons,
   readTable,
@@ -97,7 +100,7 @@ function shapefile(polygons) {
 }
 
 /** A dBASE table of character fields. */
-function table(fields, rows) {
+function table(fields, rows, pad = ' ') {
   const headerLength = 32 + 32 * fields.length + 1;
   const rowLength = 1 + fields.reduce((sum, field) => sum + field.length, 0);
   const header = Buffer.alloc(headerLength);
@@ -114,7 +117,7 @@ function table(fields, rows) {
     const bytes = Buffer.alloc(rowLength, ' ');
     let at = 1;
     for (const field of fields) {
-      bytes.write(String(row[field.name]).padEnd(field.length), at, 'latin1');
+      bytes.write(String(row[field.name]).padEnd(field.length, pad), at, 'latin1');
       at += field.length;
     }
     return bytes;
@@ -171,6 +174,13 @@ describe('readPolygons', () => {
 });
 
 describe('readTable', () => {
+  test('strips NUL padding as well as spaces: Natural Earth pads with NULs', () => {
+    const rows = readTable(
+      table([{ name: 'CONTINENT', length: 23 }], [{ CONTINENT: 'Asia' }], '\0')
+    );
+    assert.deepEqual(rows, [{ CONTINENT: 'Asia' }]);
+  });
+
   test('reads each row by field name, trimmed', () => {
     const rows = readTable(
       table(
@@ -248,6 +258,71 @@ describe('albersUsa', () => {
 /* ---------------------------------------------------------------------------
  * Roughening
  * ------------------------------------------------------------------------- */
+
+describe('equalEarth', () => {
+  const project = equalEarth({ scale: 100, translate: [0, 0] });
+
+  test('places the origin at its translation, north up and east right', () => {
+    assert.deepEqual(project([0, 0]), [0, 0]);
+    assert.ok(project([0, 45])[1] < 0);
+    assert.ok(project([90, 0])[0] > 0);
+  });
+
+  test('gives equal areas of the globe equal areas on the page', () => {
+    // A one-degree cell's share of the sphere goes as sin(top) − sin(bottom).
+    const cell = (lat) => ringArea(square(10, lat, 1).map(project));
+    const sphere = (lat) => Math.sin(((lat + 1) * Math.PI) / 180) - Math.sin((lat * Math.PI) / 180);
+    const ratio = cell(60) / cell(0) / (sphere(60) / sphere(0));
+    assert.ok(Math.abs(ratio - 1) < 1e-3, `ratio ${ratio}`);
+  });
+});
+
+describe('equalEarthWorld', () => {
+  const project = equalEarthWorld();
+
+  test('is 960 units from antimeridian to antimeridian, with the north pole on y = 0', () => {
+    assert.ok(Math.abs(project([180, 0])[0] - project([-180, 0])[0] - 960) < 1e-9);
+    assert.ok(Math.abs(project([0, 90])[1]) < 1e-9);
+  });
+});
+
+describe('dissolve', () => {
+  const sorted = (rings) => rings.map((ring) => ring.slice(0, -1).map(String).sort());
+
+  test('merges two squares that share an edge into one ring, the border gone', () => {
+    // Both run the same way round, so the shared edge appears once each way.
+    const merged = dissolve([square(0, 0, 1), square(1, 0, 1)]);
+    assert.equal(merged.length, 1);
+    assert.deepEqual(merged[0][0], merged[0].at(-1), 'the ring is closed');
+    assert.deepEqual(sorted(merged), [['0,0', '0,1', '1,0', '1,1', '2,0', '2,1'].sort()]);
+    assert.equal(ringArea(merged[0]), 2);
+  });
+
+  test('leaves polygons that share nothing as they were', () => {
+    const merged = dissolve([square(0, 0, 1), square(5, 5, 1)]);
+    assert.equal(merged.length, 2);
+    assert.deepEqual(merged.map(ringArea), [1, 1]);
+  });
+
+  test('turns a gap enclosed by its neighbours into a hole', () => {
+    // A 3 × 3 block of squares with the middle one missing.
+    const ring = [];
+    for (const [x, y] of [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [0, 1],
+      [2, 1],
+      [0, 2],
+      [1, 2],
+      [2, 2],
+    ]) {
+      ring.push(square(x, y, 1));
+    }
+    const merged = dissolve(ring);
+    assert.deepEqual(merged.map(ringArea).sort(), [1, 9]);
+  });
+});
 
 describe('simplify', () => {
   test('drops points that lie on the line, and keeps both ends', () => {

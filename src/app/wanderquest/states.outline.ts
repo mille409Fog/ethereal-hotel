@@ -3,14 +3,15 @@
  * (`scripts/build-outline.mjs`) — edit the script, not this file.
  *
  * Source: US Census Bureau, 2025 cartographic boundary file, states,
- * 1:20,000,000 (`cb_2025_us_state_20m`), a work of the US government and so in the
- * public domain. https://www2.census.gov/geo/tiger/GENZ2025/shp/cb_2025_us_state_20m.zip
+ * 1:20,000,000 (`cb_2025_us_state_20m`), a work of the US government and so in
+ * the public domain.
+ * https://www2.census.gov/geo/tiger/GENZ2025/shp/cb_2025_us_state_20m.zip
  * Fetched 2026-10-25.
  *
- * Projected as d3's `geoAlbersUsa` into a 960 × 600 frame, Alaska and
- * Hawaii inset, then cropped to the shapes; simplified to 1.5 units, rounded to
- * whole units, islands under 12 square units dropped. Left out because they are
- * not states: DC (District of Columbia), PR (Puerto Rico).
+ * Projected as d3's `geoAlbersUsa` into a 960 × 600 frame, Alaska and Hawaii
+ * inset, then cropped to the shapes; simplified to 1.5 units, rounded to whole
+ * units, islands under 12 square units dropped. Left out because they are not
+ * states: DC (District of Columbia), PR (Puerto Rico).
  */
 import type { StateId } from './places.data';
 import type { IOutline } from './outline';
