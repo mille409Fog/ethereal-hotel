@@ -1,1 +1,56 @@
-<p>wander quest</p>
+<main class="wanderquest-page">
+  <h1>Wanderquest</h1>
+
+  <!-- Roving tabindex: only the selected tab is in the Tab order, and the arrow
+       keys move between the three. Home and End jump to the ends. -->
+  <div class="quest-tabs" role="tablist" aria-label="Quest">
+    @for (quest of quests; track quest.id) {
+      <button
+        #tab
+        type="button"
+        role="tab"
+        class="quest-tab"
+        [id]="'quest-tab-' + quest.id"
+        [attr.aria-selected]="quest.id === current().id"
+        [attr.aria-controls]="'quest-panel-' + quest.id"
+        [tabIndex]="quest.id === current().id ? 0 : -1"
+        (click)="onSelection(quest.id)"
+        (keydown)="onKeydown($event)"
+      >
+        {{ quest.label }}
+      </button>
+    }
+  </div>
+
+  @for (quest of quests; track quest.id) {
+    <!-- tabindex="0" because a panel with nothing focusable in it would
+         otherwise leave Tab nowhere to go after the tablist. -->
+    <section
+      class="quest-panel"
+      role="tabpanel"
+      tabindex="0"
+      [id]="'quest-panel-' + quest.id"
+      [attr.aria-labelledby]="'quest-tab-' + quest.id"
+      [hidden]="quest.id !== current().id"
+    >
+      <p class="quest-tally">
+        {{ quest.tally.visited }} of {{ quest.tally.total }} {{ quest.label }} visited
+      </p>
+      @if (quest.bonus; as bonus) {
+        <p class="quest-bonus">
+          Bonus, not required: {{ bonus.visited }} of {{ bonus.total }} — DC and the inhabited
+          territories
+        </p>
+      }
+      @if (quest.sources.length > 0) {
+        <p class="quest-sources">
+          Counted from:
+          @for (source of quest.sources; track source.url; let last = $last) {
+            <a [href]="source.url" rel="noopener" target="_blank">{{ source.label }}</a
+            >{{ last ? '' : ', ' }}
+          }
+        </p>
+      }
+    </section>
+  }
+</main>

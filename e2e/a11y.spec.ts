@@ -6,10 +6,11 @@ import { stubBookingApi } from './support/backend';
 import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
 
 /**
- * The eight routes the app actually has. `/` is the portfolio page;
+ * Nine of the app's routes; `/murmuration` is not scanned. `/` is the portfolio page;
  * `/dashboard` and `/booking` are the live demos, `/work` is the case
- * studies, `/gallery` the colour-to-painting guide and `/aesthetic` the
- * aesthetic generator's colour wheel. The last two are the separate WebGL work.
+ * studies, `/gallery` the colour-to-painting guide, `/aesthetic` the
+ * aesthetic generator's colour wheel and `/wanderquest` the travel quests'
+ * tablist. The last two in the list are the separate WebGL work.
  *
  * `/gallery` is scanned with a painting hung, not at rest: the label is most
  * of what there is to audit on that page, and it does not exist until an orb
@@ -26,7 +27,7 @@ import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
  * the text version AUBADE requires — and a text version with a serious
  * violation in it is not serving the people it exists for.
  *
- * All eight are reached through the SPA fallback in `scripts/serve-dist.mjs`.
+ * All nine are reached through the SPA fallback in `scripts/serve-dist.mjs`.
  */
 const ROUTES = [
   { path: '/', name: 'landing page' },
@@ -35,6 +36,7 @@ const ROUTES = [
   { path: '/work', name: 'case studies' },
   { path: '/gallery', name: 'gallery' },
   { path: '/aesthetic', name: 'aesthetic' },
+  { path: '/wanderquest', name: 'wanderquest' },
   { path: '/aubade', name: 'aubade' },
   { path: '/aubade/reader', name: 'aubade reader' },
 ] as const;

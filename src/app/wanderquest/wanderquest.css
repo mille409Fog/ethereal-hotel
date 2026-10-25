@@ -1,0 +1,35 @@
+/* Deliberately plain: this is the selector's semantics, not its look. The
+   selected tab differs by weight and an underline as well as colour, so the
+   state survives greyscale before anyone styles it properly. */
+.wanderquest-page {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 4rem 1rem;
+}
+
+.quest-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.quest-tab {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.quest-tab[aria-selected='true'] {
+  border-bottom-color: currentColor;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.quest-panel {
+  padding: 1.5rem 0;
+}
