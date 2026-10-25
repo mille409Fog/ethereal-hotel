@@ -6,7 +6,7 @@
  * list holds 194. No Angular imports: the keyboard rule is a pure function so
  * the spec can walk it without a fixture.
  */
-import { BONUS, CONTINENTS, COUNTRIES, COUNTRY_SOURCES, STATES, type ISource } from './places.data';
+import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
 
 /** used to store the selected quest mode */
@@ -30,8 +30,6 @@ export interface IQuest {
   readonly tally: ITally;
   /** DC and the territories; only the states quest has a bonus, and it is not required. */
   readonly bonus: ITally | null;
-  /** Where the list's membership comes from, when there is an authority to cite. */
-  readonly sources: readonly ISource[];
 }
 
 /** The quests in tab order. Arrow keys walk this order and wrap. */
@@ -41,21 +39,18 @@ export const QUESTS: readonly IQuest[] = [
     label: 'states',
     tally: { visited: OWNER_PROGRESS.states.length, total: STATES.length },
     bonus: { visited: OWNER_PROGRESS.bonus.length, total: BONUS.length },
-    sources: [],
   },
   {
     id: QUEST_STATE.CONTINENTS,
     label: 'continents',
     tally: { visited: OWNER_PROGRESS.continents.length, total: CONTINENTS.length },
     bonus: null,
-    sources: [],
   },
   {
     id: QUEST_STATE.COUNTRIES,
     label: 'countries',
     tally: { visited: OWNER_PROGRESS.countries.length, total: COUNTRIES.length },
     bonus: null,
-    sources: COUNTRY_SOURCES,
   },
 ];
 

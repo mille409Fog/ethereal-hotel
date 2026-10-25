@@ -42,15 +42,6 @@
           territories
         </p>
       }
-      @if (quest.sources.length > 0) {
-        <p class="quest-sources">
-          Counted from:
-          @for (source of quest.sources; track source.url; let last = $last) {
-            <a [href]="source.url" rel="noopener" target="_blank">{{ source.label }}</a
-            >{{ last ? '' : ', ' }}
-          }
-        </p>
-      }
     </section>
   }
 </main>

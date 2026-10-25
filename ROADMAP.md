@@ -25,35 +25,16 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-Items 1 to 3 begin `/wanderquest`, a simulation of three travel quests: the 50 states (with DC
+Items 1 and 2 continue `/wanderquest`, a simulation of three travel quests: the 50 states (with DC
 and the five inhabited territories as an unrequired bonus), the seven continents, and the 195
 countries the UN lists as members or observers. The lists and their reasoning already live in
-`src/app/wanderquest/places.data.ts`, and the owner's progress in `progress.data.ts`. These items
+`src/app/wanderquest/places.data.ts`, and the owner's progress in `progress.data.ts`. The quest
+selector already works: a WAI-ARIA tablist in `src/app/wanderquest/`, scanned by axe. These items
 are visual only: where a guest's progress is stored is deliberately not decided yet, and nothing
-here should write to the browser or the backend. They go in order — a selector that works, then
-one that looks right, then a palette that gives each view its own identity.
+here should write to the browser or the backend. They go in order — a selector that looks right,
+then a palette that gives each view its own identity.
 
-## 1. A button selector for the quest view
-
-The route needs one control before it needs a map: which of the three quests is on screen. Start
-plain, and get the semantics right while there is nothing to get in the way.
-
-**DoD:**
-
-- Three buttons — states, continents, countries — choose the view, and exactly one is selected
-  at a time. The bonus category belongs to the states view, not a fourth button.
-- The pattern is a named one and fully implemented: WAI-ARIA tabs (`tablist`/`tab`/`tabpanel`,
-  arrow keys move between tabs, Home/End jump to the ends) or toggle buttons with `aria-pressed`.
-  Whichever it is, the spec tests the keyboard behaviour, not only the click.
-- Each panel shows its quest's real count from `places.data.ts` (50, 7, 195) and the owner's
-  progress against it from `progress.data.ts`, even while both read 0. No figure is typed into
-  the template.
-- `/wanderquest` is added to the route list in `e2e/a11y.spec.ts` and passes axe.
-- The current view is a signal; nothing is persisted.
-
-Effort: an afternoon.
-
-## 2. A selector that looks deliberate
+## 1. A selector that looks deliberate
 
 Once the selector works, make it look like it belongs on the site. The house rules apply in full
 here, because this is interface rather than spectacle: no glow, one accent ("Fern"), no decorative
@@ -74,7 +55,7 @@ motion, and a focus ring that is an outline.
 
 Effort: an afternoon, plus iteration.
 
-## 3. A palette per quest view
+## 2. A palette per quest view
 
 Each quest gets a small palette of its own: at minimum unvisited, visited and a highlight, plus a
 colour for the states view's bonus category. These are data colours, the way the dashboard's chart
