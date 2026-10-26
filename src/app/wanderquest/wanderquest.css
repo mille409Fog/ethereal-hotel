@@ -177,6 +177,21 @@
   vector-effect: non-scaling-stroke;
 }
 
+/* Land that is none of the places: Antarctica, Taiwan. It is drawn so the
+   coastline is whole, in a Fern grey rather than a palette colour, because a
+   palette colour would say it can be visited and counted. */
+.quest-outline .quest-outline-unkeyed,
+.quest-swatch-unkeyed {
+  fill: var(--color-border);
+  background: var(--color-border);
+}
+
+.quest-undrawn {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  margin: 0.75rem 0 0;
+}
+
 /* The key: the palette on screen before there is a map to fill, each
    colour beside the word for what it means. */
 .quest-key {
@@ -250,5 +265,9 @@
   .quest-outline {
     fill: Canvas;
     stroke: CanvasText;
+  }
+
+  .quest-outline .quest-outline-unkeyed {
+    fill: GrayText;
   }
 }

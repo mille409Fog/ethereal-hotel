@@ -55,10 +55,22 @@
           [attr.aria-label]="outline.label"
           [attr.viewBox]="outline.viewBox"
         >
+          @if (outline.unkeyed; as unkeyed) {
+            <path class="quest-outline-unkeyed" [attr.d]="unkeyed" />
+          }
           @for (shape of outline.shapes; track shape.id) {
             <path [attr.d]="shape.d" [attr.data-id]="shape.id" />
           }
         </svg>
+        <!-- The outline cannot draw what is too small for its scale, so it
+             says so rather than letting the count and the picture disagree. -->
+        @let undrawn = quest.tally.total - outline.shapes.length;
+        @if (undrawn > 0) {
+          <p class="quest-undrawn">
+            {{ undrawn }} of the {{ quest.tally.total }} {{ quest.noun }} are too small to draw at
+            this scale, and count all the same.
+          </p>
+        }
       }
       <ul class="quest-key" aria-label="Key">
         <li class="quest-key-item">
@@ -77,6 +89,12 @@
           <li class="quest-key-item">
             <span class="quest-swatch quest-swatch-bonus" aria-hidden="true"></span>
             Bonus, visited
+          </li>
+        }
+        @if (quest.outline?.unkeyed) {
+          <li class="quest-key-item">
+            <span class="quest-swatch quest-swatch-unkeyed" aria-hidden="true"></span>
+            Not counted
           </li>
         }
       </ul>

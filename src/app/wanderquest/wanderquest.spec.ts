@@ -233,29 +233,51 @@ describe('Wanderquest', () => {
     expect(visiblePanels()[0].querySelector('.quest-bonus')).toBeNull();
   });
 
-  it('outlines each quest that has one as one named image, keyed by place, with nothing to focus', () => {
-    const drawn = [
-      { quest: QUEST_STATE.STATES, label: 'Outline map of the fifty states', places: STATES },
-      {
-        quest: QUEST_STATE.CONTINENTS,
-        label: 'Outline map of the seven continents',
-        places: CONTINENTS,
-      },
-    ];
-    const outlines = host.querySelectorAll('svg.quest-outline');
-    expect(outlines.length, 'the countries quest has no outline yet').toBe(drawn.length);
+  it('outlines every quest as one named image, keyed by place, with nothing to focus', () => {
+    const labels = {
+      [QUEST_STATE.STATES]: 'Outline map of the fifty states',
+      [QUEST_STATE.CONTINENTS]: 'Outline map of the seven continents',
+      [QUEST_STATE.COUNTRIES]: 'Outline map of the countries of the world',
+    };
+    expect(host.querySelectorAll('svg.quest-outline').length).toBe(QUESTS.length);
 
-    for (const { quest, label, places } of drawn) {
-      const svg = host.querySelector(`#quest-panel-${quest} svg.quest-outline`);
-      expect(svg?.getAttribute('role'), quest).toBe('img');
-      expect(svg?.getAttribute('aria-label')).toBe(label);
+    for (const quest of QUESTS) {
+      const svg = host.querySelector(`#quest-panel-${quest.id} svg.quest-outline`);
+      expect(svg?.getAttribute('role'), quest.id).toBe('img');
+      expect(svg?.getAttribute('aria-label')).toBe(labels[quest.id]);
 
-      const keyed = Array.from(svg?.querySelectorAll('path') ?? []).map((path) =>
+      const keyed = Array.from(svg?.querySelectorAll('path[data-id]') ?? []).map((path) =>
         path.getAttribute('data-id')
       );
-      expect(keyed).toEqual(places.map((place) => place.id));
+      expect(keyed).toEqual(quest.outline?.shapes.map((shape) => shape.id));
       expect(svg?.querySelectorAll('[tabindex], a, [focusable="true"]').length).toBe(0);
     }
+  });
+
+  it('draws the land that is none of the countries apart, and keys it as not counted', async () => {
+    const unkeyed = host.querySelectorAll('path.quest-outline-unkeyed');
+    expect(unkeyed.length, 'only the countries map has land outside its count').toBe(1);
+    expect(unkeyed[0].closest('section')?.id).toBe('quest-panel-countries');
+    expect(unkeyed[0].hasAttribute('data-id')).toBe(false);
+
+    tabs()[2].click();
+    await fixture.whenStable();
+    const key = Array.from(visiblePanels()[0].querySelectorAll('.quest-key-item')).map(
+      (item) => item.textContent?.trim() ?? ''
+    );
+    expect(key).toContain('Not counted');
+  });
+
+  it('says how many places are too small to draw, and only where there are some', () => {
+    const notes = Array.from(host.querySelectorAll<HTMLElement>('.quest-undrawn'));
+    expect(notes.map((note) => note.closest('section')?.id)).toEqual(['quest-panel-countries']);
+
+    const drawn = QUESTS.find((quest) => quest.id === QUEST_STATE.COUNTRIES)?.outline?.shapes
+      .length;
+    expect(notes[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      `${COUNTRIES.length - (drawn ?? 0)} of the ${COUNTRIES.length} countries are too small to ` +
+        'draw at this scale, and count all the same.'
+    );
   });
 
   it('gives each panel its own palette in six-digit hex, and the bonus to states only', () => {

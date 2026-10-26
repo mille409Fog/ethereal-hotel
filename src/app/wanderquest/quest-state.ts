@@ -7,6 +7,7 @@
  * the spec can walk it without a fixture.
  */
 import { CONTINENTS_OUTLINE } from './continents.outline';
+import { COUNTRIES_OUTLINE } from './countries.outline';
 import type { IOutline } from './outline';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
@@ -63,7 +64,7 @@ export const QUESTS: readonly IQuest[] = [
     noun: 'countries',
     tally: { visited: OWNER_PROGRESS.countries.length, total: COUNTRIES.length },
     bonus: null,
-    outline: null,
+    outline: COUNTRIES_OUTLINE,
   },
 ];
 

@@ -17,5 +17,12 @@ export interface IOutline<Id extends string = string> {
   /** What the outline shows, for the SVG's accessible name. */
   readonly label: string;
   readonly viewBox: string;
+  /** One per place the source can draw; a place too small for it has none. */
   readonly shapes: ReadonlyArray<IOutlineShape<Id>>;
+  /**
+   * Land drawn for context that is none of the places — Antarctica and
+   * Taiwan on the countries map — as one path, so the coastline is whole
+   * without the count changing. Never filled by progress.
+   */
+  readonly unkeyed?: string;
 }
