@@ -32,12 +32,12 @@ name = "ethereal-hotel"
 version = "0.0.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-  "fastapi==0.141.1",
-  "uvicorn[standard]==0.32.0",
-  "pydantic==2.9.2",
+  "fastapi==0.162.0",
+  "uvicorn[standard]==0.54.0",
+  "pydantic==2.14.1",
   "websockets==13.1",
-  "SQLAlchemy==2.0.35",
-  "alembic==1.13.3",
+  "SQLAlchemy==2.1.6",
+  "alembic==1.20.1",
   "Faker==30.3.0",
 ]
 
