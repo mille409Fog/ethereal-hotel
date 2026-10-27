@@ -9,7 +9,7 @@
  *
  * A guest's progress never comes here; it lives in their own browser. Each id
  * is typed against `places.data.ts`, so a place that does not exist cannot be
- * listed. Empty until filled in by hand — nothing here is guessed.
+ * listed. Filled in by hand — nothing here is guessed.
  */
 import type { BonusId, ContinentId, CountryId, StateId } from './places.data';
 
@@ -22,7 +22,59 @@ export interface IProgress {
 }
 
 export const OWNER_PROGRESS: IProgress = {
-  states: [],
+  // All fifty.
+  states: [
+    'AL',
+    'AK',
+    'AZ',
+    'AR',
+    'CA',
+    'CO',
+    'CT',
+    'DE',
+    'FL',
+    'GA',
+    'HI',
+    'ID',
+    'IL',
+    'IN',
+    'IA',
+    'KS',
+    'KY',
+    'LA',
+    'ME',
+    'MD',
+    'MA',
+    'MI',
+    'MN',
+    'MS',
+    'MO',
+    'MT',
+    'NE',
+    'NV',
+    'NH',
+    'NJ',
+    'NM',
+    'NY',
+    'NC',
+    'ND',
+    'OH',
+    'OK',
+    'OR',
+    'PA',
+    'RI',
+    'SC',
+    'SD',
+    'TN',
+    'TX',
+    'UT',
+    'VT',
+    'VA',
+    'WA',
+    'WV',
+    'WI',
+    'WY',
+  ],
   bonus: [],
   continents: [],
   countries: [],

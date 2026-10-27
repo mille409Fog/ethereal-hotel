@@ -99,6 +99,12 @@ describe('QUESTS', () => {
     ]);
   });
 
+  it("lists each of the owner's places once, so a count can never pass its total", () => {
+    for (const [list, ids] of Object.entries(OWNER_PROGRESS)) {
+      expect(new Set(ids).size, list).toBe(ids.length);
+    }
+  });
+
   it("takes the owner's figures from the committed record", () => {
     expect(QUESTS.map((quest) => quest.owner)).toEqual([
       { visited: OWNER_PROGRESS.states.length, total: STATES.length },
