@@ -44,8 +44,8 @@ export interface IQuest {
   readonly owner: ITally;
   readonly ownerBonus: ITally | null;
   /**
-   * Whether a guest can mark this quest's places yet. The continents and
-   * countries follow the states through the same mechanism.
+   * Whether a guest can mark this quest's places yet. The countries follow
+   * the states and continents through the same mechanism.
    */
   readonly selectable: boolean;
   /** The rough contours of the quest's map, or null until its outline is built. */
@@ -75,7 +75,7 @@ export const QUESTS: readonly IQuest[] = [
     bonusPlaces: null,
     owner: { visited: OWNER_PROGRESS.continents.length, total: CONTINENTS.length },
     ownerBonus: null,
-    selectable: false,
+    selectable: true,
     outline: CONTINENTS_OUTLINE,
   },
   {

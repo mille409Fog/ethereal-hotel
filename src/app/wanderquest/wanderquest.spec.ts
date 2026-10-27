@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LinearRgb, linearToOklab } from '../aesthetic/colour';
 import { Deficiency, simulateLinear } from '../aesthetic/cvd';
 import { contrastRatio } from '../aesthetic/winnow';
-import { GUEST_PROGRESS_KEY, GUEST_STORAGE } from './guest-progress';
+import { GUEST_PROGRESS_KEY, GUEST_STORAGE, GuestProgressStore } from './guest-progress';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
 import { QUEST_STATE, QUESTS, stepQuest } from './quest-state';
@@ -481,8 +481,12 @@ describe('Wanderquest', () => {
     expect(statesPanel().querySelectorAll('input[type="checkbox"]').length).toBe(
       STATES.length + BONUS.length
     );
-    // Only the states quest is selectable yet.
-    expect(host.querySelectorAll('app-quest-checklist').length).toBe(1);
+    // The countries quest is not selectable yet.
+    expect(
+      Array.from(host.querySelectorAll('app-quest-checklist')).map(
+        (list) => list.closest('section')?.id
+      )
+    ).toEqual(['quest-panel-states', 'quest-panel-continents']);
   });
 
   it('fills the bonus tally from the list, never the states tally', async () => {
@@ -617,6 +621,129 @@ describe('Wanderquest', () => {
     expect(text(statesPanel(), '.quest-clear-question')).toBe(
       'Clear the 1 place you have marked? This cannot be undone.'
     );
+  });
+
+  describe('the continents', () => {
+    const continents = (): HTMLElement =>
+      host.querySelector<HTMLElement>(`#quest-panel-${QUEST_STATE.CONTINENTS}`) ?? host;
+    const tally = (): string => text(continents(), '.quest-tally');
+    const filled = (id: string): boolean =>
+      continents()
+        .querySelector(`svg.quest-outline path[data-id="${id}"]`)
+        ?.classList.contains('quest-visited') ?? false;
+    const checkbox = (name: string): HTMLInputElement | null => {
+      const label = Array.from(continents().querySelectorAll('label')).find(
+        (candidate) => candidate.textContent?.trim() === name
+      );
+      return label ? continents().querySelector<HTMLInputElement>(`#${label.htmlFor}`) : null;
+    };
+    const clickContinent = async (id: string): Promise<void> => {
+      continents()
+        .querySelector(`svg.quest-outline path[data-id="${id}"]`)
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await fixture.whenStable();
+    };
+    const tick = async (name: string): Promise<void> => {
+      checkbox(name)?.click();
+      await fixture.whenStable();
+    };
+
+    beforeEach(async () => {
+      tabs()[1].click();
+      await fixture.whenStable();
+    });
+
+    it('offers one checkbox per continent, and no bonus', () => {
+      expect(
+        Array.from(continents().querySelectorAll('label')).map((label) => label.textContent?.trim())
+      ).toEqual(CONTINENTS.map((place) => place.name));
+      expect(continents().querySelectorAll('input[type="checkbox"]').length).toBe(7);
+      expect(continents().querySelector('.quest-bonus')).toBeNull();
+    });
+
+    it('toggles one continent from the map and its checkbox, and the tally follows both', async () => {
+      await clickContinent('AS');
+      expect([filled('AS'), checkbox('Asia')?.checked, tally()]).toEqual([
+        true,
+        true,
+        '1 of 7 continents visited',
+      ]);
+
+      await tick('Asia');
+      await tick('Antarctica');
+      expect([filled('AS'), filled('AN'), tally()]).toEqual([
+        false,
+        true,
+        '1 of 7 continents visited',
+      ]);
+      expect(text(continents(), '.quest-owner')).toBe(
+        `Jacob's own record: ${OWNER_PROGRESS.continents.length} of 7 continents`
+      );
+    });
+
+    it('restores the continents on reload, apart from the states', async () => {
+      await clickContinent('OC');
+      await clickShape('TX');
+      await reload();
+
+      expect(checkbox('Oceania')?.checked).toBe(true);
+      expect(filled('OC')).toBe(true);
+      expect(tally()).toBe('1 of 7 continents visited');
+      expect(text(statesPanel(), '.quest-tally')).toBe('1 of 50 states visited');
+    });
+
+    it('clears only the continents, and asks first', async () => {
+      await clickShape('TX');
+      await clickContinent('EU');
+      await clickContinent('AF');
+      const button = (label: string): HTMLButtonElement | undefined =>
+        Array.from(continents().querySelectorAll<HTMLButtonElement>('button.quest-clear')).find(
+          (candidate) => candidate.textContent?.trim() === label
+        );
+
+      button('Clear my continents')?.click();
+      await fixture.whenStable();
+      expect(text(continents(), '.quest-clear-question')).toBe(
+        'Clear the 2 places you have marked? This cannot be undone.'
+      );
+      button('Clear them')?.click();
+      await fixture.whenStable();
+
+      expect(tally()).toBe('0 of 7 continents visited');
+      expect(text(statesPanel(), '.quest-tally')).toBe('1 of 50 states visited');
+    });
+
+    it('says the marks will not be kept when there is no storage', async () => {
+      await openWith(null);
+      tabs()[1].click();
+      await fixture.whenStable();
+      await tick('Europe');
+
+      expect(checkbox('Europe')?.checked).toBe(true);
+      expect(text(continents(), '.quest-storage')).toContain('last only until you leave');
+    });
+
+    // `places.data.ts`: a continent is marked on its own and never derived
+    // from countries. The outline dissolves countries into continents, but
+    // that is a drawing choice, not a rule, so neither list moves the other.
+    it('never marks a continent for a country, or a country for a continent', async () => {
+      const store = fixture.debugElement.injector.get(GuestProgressStore);
+
+      store.toggle('countries', 'FR');
+      await fixture.whenStable();
+      expect(tally()).toBe('0 of 7 continents visited');
+      expect(filled('EU')).toBe(false);
+
+      await clickContinent('SA');
+      expect(store.visited('countries')).toEqual(new Set(['FR']));
+
+      store.toggle('countries', 'FR');
+      await fixture.whenStable();
+      expect(store.visited('continents')).toEqual(new Set(['SA']));
+      expect(text(host.querySelector('#quest-panel-countries') ?? host, '.quest-tally')).toBe(
+        '0 of 195 countries visited'
+      );
+    });
   });
 
   it('writes one versioned key and nothing else', async () => {

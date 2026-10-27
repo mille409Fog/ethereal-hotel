@@ -25,25 +25,10 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 1. Selectable continents
+## 1. Selectable countries
 
-The seven continents, through the mechanism the states built: `GuestProgressStore` in
-`guest-progress.ts` already stores and restores all four lists, so this is flipping `selectable`
-in `quest-state.ts` and passing the map's fill and the checklist through.
-
-**DoD:**
-
-- The map and a seven-checkbox list toggle the guest's continents, saved and restored as the states
-  are, with the same clear control and storage failure message.
-- Marking a country never marks its continent, and the reverse: `places.data.ts` says a continent
-  is marked on its own, and the dissolved shapes are a drawing choice, not a rule. The spec says so.
-- The same tally, fill, hover and read-only-owner rules as the states.
-
-Effort: an hour or two.
-
-## 2. Selectable countries
-
-The 195, through the same mechanism. The list is the hard part: 195 checkboxes are a wall, so this
+The 195, through the mechanism the states and continents already use (`GuestProgressStore` in
+`guest-progress.ts`, switched on by `selectable` in `quest-state.ts`). The list is the hard part: 195 checkboxes are a wall, so this
 is where the list learns to be searched.
 
 **DoD:**
