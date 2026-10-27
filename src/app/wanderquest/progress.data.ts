@@ -76,6 +76,6 @@ export const OWNER_PROGRESS: IProgress = {
     'WY',
   ],
   bonus: [],
-  continents: [],
+  continents: ['AS', 'EU', 'NA', 'OC'],
   countries: [],
 };
