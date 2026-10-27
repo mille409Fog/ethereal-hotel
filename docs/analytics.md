@@ -40,9 +40,11 @@ Two honest caveats on what the numbers mean:
 
 ## What is not collected
 
-- **No cookies, and no `localStorage`.** Nothing is written to the visitor's machine, which is why
-  there is no consent banner: there is no consent to collect. This is the reason for the provider
-  choice, not a happy side effect of it.
+- **No cookies, and nothing stored for measurement.** Analytics writes nothing to the visitor's
+  machine, which is why there is no consent banner: there is no consent to collect. This is the
+  reason for the provider choice, not a happy side effect of it. The one thing the site does store
+  is described under [What the site keeps for you](#what-the-site-keeps-for-you), and it is not
+  measurement.
 - **No cross-site identifier, and no ad network.** Nothing here is shared with an advertising
   platform or joined to a profile from another site. Vercel derives a per-day visitor hash from
   request-level data and discards it every twenty-four hours, so a visitor cannot be followed across
@@ -54,6 +56,23 @@ Two honest caveats on what the numbers mean:
   form field, a search string, or a URL with a query on it.
 - **Nothing from the booking demo.** `/booking` writes to a database and none of it is reported
   here. What a visitor typed into a demo booking form is between them and the demo.
+
+## What the site keeps for you
+
+`/wanderquest` lets a visitor mark the places they have been. Those marks are saved in the
+browser's `localStorage`, under the single key `wanderquest.guest.v1`, as four lists of place
+codes — `{"states":["CA","OR"],"bonus":[],…}` and nothing more. They are written only when the visitor ticks or unticks a place,
+read back only by that page, and never leave the browser: no backend call carries them, no analytics
+event reports them, and the owner's own progress is a committed file that a visitor's marks never
+touch.
+
+That is why it needs no consent either. The ePrivacy rule that drives cookie banners exempts storage
+that is strictly necessary for a service the visitor explicitly asked for, and a record of places
+the visitor ticked, kept so it is still there when they come back, is exactly that service. It is
+not used to recognise anyone, it holds nothing the visitor did not put there, and the page's clear
+control (or clearing site data) removes it. Where the browser refuses storage, the page still works
+and says the marks will not be kept. See
+[`guest-progress.ts`](../src/app/wanderquest/guest-progress.ts).
 
 ## Turning it off
 

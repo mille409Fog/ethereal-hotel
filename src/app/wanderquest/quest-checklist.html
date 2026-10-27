@@ -1,0 +1,57 @@
+@let current = quest();
+<fieldset class="quest-checklist">
+  <legend class="quest-checklist-legend">The {{ current.noun }} you have visited</legend>
+  <ul class="quest-checklist-items">
+    @for (place of current.places; track place.id) {
+      <li class="quest-checklist-item">
+        <input
+          type="checkbox"
+          [id]="'quest-place-' + current.list + '-' + place.id"
+          [checked]="isVisited(current.list, place.id)"
+          (change)="onToggle(current.list, place.id)"
+        />
+        <label [attr.for]="'quest-place-' + current.list + '-' + place.id">{{ place.name }}</label>
+      </li>
+    }
+  </ul>
+</fieldset>
+@if (current.bonusPlaces; as bonus) {
+  <!-- Not drawn on the outline, so this is the only way to mark them. -->
+  <fieldset class="quest-checklist">
+    <legend class="quest-checklist-legend">Bonus, not required</legend>
+    <ul class="quest-checklist-items">
+      @for (place of bonus; track place.id) {
+        <li class="quest-checklist-item">
+          <input
+            type="checkbox"
+            [id]="'quest-place-bonus-' + place.id"
+            [checked]="isVisited('bonus', place.id)"
+            (change)="onToggle('bonus', place.id)"
+          />
+          <label [attr.for]="'quest-place-bonus-' + place.id">{{ place.name }}</label>
+        </li>
+      }
+    </ul>
+  </fieldset>
+}
+<!-- Asks in the page rather than in a dialog: the question sits where the
+     button was, and focus moves to the answer that loses nothing. -->
+@if (asking()) {
+  <div class="quest-clear-ask" role="group" [attr.aria-labelledby]="'quest-clear-' + current.list">
+    <p class="quest-clear-question" [id]="'quest-clear-' + current.list">{{ question() }}</p>
+    <button type="button" class="quest-clear" (click)="onAnswer(true)">Clear them</button>
+    <button #keep type="button" class="quest-clear" (click)="onAnswer(false)">Keep them</button>
+  </div>
+} @else {
+  <!-- aria-disabled rather than disabled, so focus can come back here after
+       a clear has left nothing to clear. -->
+  <button
+    #clear
+    type="button"
+    class="quest-clear"
+    [attr.aria-disabled]="marked() === 0"
+    (click)="onAsk()"
+  >
+    Clear my {{ current.noun }}
+  </button>
+}

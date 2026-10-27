@@ -1757,6 +1757,25 @@ check('the analytics claims that are structural still hold', () => {
     );
   }
 
+  // The note names the one key the site writes to a visitor's browser. A key
+  // renamed in code and not in the note leaves the note describing storage the
+  // site no longer does and silent about the storage it does.
+  const guest = 'src/app/wanderquest/guest-progress.ts';
+  const key = exists(guest)
+    ? read(guest).match(/GUEST_PROGRESS_KEY\s*=\s*'([^']+)'/)?.[1]
+    : undefined;
+  if (!key) {
+    problems.push(
+      `Could not read GUEST_PROGRESS_KEY out of ${guest}. docs/analytics.md names the key ` +
+        `wanderquest stores a guest's marks under; if the storage moved, move the note with it.`
+    );
+  } else if (!read('docs/analytics.md').includes(`\`${key}\``)) {
+    problems.push(
+      `wanderquest stores a guest's marks under \`${key}\`, which docs/analytics.md does not ` +
+        `name. The note is the reason the site needs no consent banner; it has to say what it keeps.`
+    );
+  }
+
   return problems;
 });
 

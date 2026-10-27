@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LinearRgb, linearToOklab } from '../aesthetic/colour';
 import { Deficiency, simulateLinear } from '../aesthetic/cvd';
 import { contrastRatio } from '../aesthetic/winnow';
+import { GUEST_PROGRESS_KEY, GUEST_STORAGE } from './guest-progress';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
 import { QUEST_STATE, QUESTS, stepQuest } from './quest-state';
@@ -76,7 +77,7 @@ describe('stepQuest', () => {
 
 describe('QUESTS', () => {
   it('counts the real lists, not typed figures', () => {
-    const totals = Object.fromEntries(QUESTS.map((quest) => [quest.id, quest.tally.total]));
+    const totals = Object.fromEntries(QUESTS.map((quest) => [quest.id, quest.places.length]));
     expect(totals).toEqual({
       [QUEST_STATE.STATES]: STATES.length,
       [QUEST_STATE.CONTINENTS]: CONTINENTS.length,
@@ -86,7 +87,24 @@ describe('QUESTS', () => {
   });
 
   it('gives the bonus category to the states quest only', () => {
-    expect(QUESTS.map((quest) => quest.bonus?.total ?? null)).toEqual([BONUS.length, null, null]);
+    expect(QUESTS.map((quest) => quest.bonusPlaces?.length ?? null)).toEqual([
+      BONUS.length,
+      null,
+      null,
+    ]);
+    expect(QUESTS.map((quest) => quest.ownerBonus?.total ?? null)).toEqual([
+      BONUS.length,
+      null,
+      null,
+    ]);
+  });
+
+  it("takes the owner's figures from the committed record", () => {
+    expect(QUESTS.map((quest) => quest.owner)).toEqual([
+      { visited: OWNER_PROGRESS.states.length, total: STATES.length },
+      { visited: OWNER_PROGRESS.continents.length, total: CONTINENTS.length },
+      { visited: OWNER_PROGRESS.countries.length, total: COUNTRIES.length },
+    ]);
   });
 });
 
@@ -131,19 +149,67 @@ describe('Wanderquest', () => {
     return event;
   };
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [Wanderquest],
-    }).compileComponents();
-
+  const open = async (): Promise<void> => {
     fixture = TestBed.createComponent(Wanderquest);
     host = fixture.nativeElement as HTMLElement;
     document.body.appendChild(host);
     await fixture.whenStable();
+  };
+
+  /** A fresh page on the same storage: what a reload looks like to the store. */
+  const reload = async (): Promise<void> => {
+    fixture.destroy();
+    host.remove();
+    await open();
+  };
+
+  /** Opens the page on storage of the test's choosing, or on none at all. */
+  const openWith = async (chosen: Storage | null): Promise<void> => {
+    fixture.destroy();
+    host.remove();
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [Wanderquest],
+      providers: [{ provide: GUEST_STORAGE, useValue: chosen }],
+    }).compileComponents();
+    await open();
+  };
+
+  const statesPanel = (): HTMLElement =>
+    host.querySelector<HTMLElement>(`#quest-panel-${QUEST_STATE.STATES}`) ?? host;
+  const text = (within: Element, selector: string): string =>
+    within.querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  const shape = (id: string): SVGPathElement | null =>
+    statesPanel().querySelector(`svg.quest-outline path[data-id="${id}"]`);
+  const box = (name: string): HTMLInputElement | null => {
+    const label = Array.from(statesPanel().querySelectorAll('label')).find(
+      (candidate) => candidate.textContent?.trim() === name
+    );
+    return label ? statesPanel().querySelector<HTMLInputElement>(`#${label.htmlFor}`) : null;
+  };
+  const clickShape = async (id: string): Promise<void> => {
+    shape(id)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await fixture.whenStable();
+  };
+  const clickBox = async (name: string): Promise<void> => {
+    box(name)?.click();
+    await fixture.whenStable();
+  };
+
+  let storage: Storage;
+
+  beforeEach(async () => {
+    storage = memoryStorage();
+    await TestBed.configureTestingModule({
+      imports: [Wanderquest],
+      providers: [{ provide: GUEST_STORAGE, useValue: storage }],
+    }).compileComponents();
+    await open();
   });
 
   afterEach(() => {
     host.remove();
+    vi.restoreAllMocks();
   });
 
   it('starts on the states quest with exactly one tab selected', () => {
@@ -208,25 +274,36 @@ describe('Wanderquest', () => {
     expect(selected()).toEqual(['States']);
   });
 
-  it("shows each quest's count and the owner's progress against it", async () => {
-    const tallies: string[] = [];
+  it("counts the guest, from empty, and gives the owner's figures a line of their own", async () => {
+    const lines: Array<[string, string]> = [];
     for (const tab of tabs()) {
       tab.click();
       await fixture.whenStable();
-      tallies.push(visiblePanels()[0].querySelector('.quest-tally')?.textContent?.trim() ?? '');
+      lines.push([
+        text(visiblePanels()[0], '.quest-tally'),
+        text(visiblePanels()[0], '.quest-owner'),
+      ]);
     }
 
-    expect(tallies).toEqual([
-      `${OWNER_PROGRESS.states.length} of 50 states visited`,
-      `${OWNER_PROGRESS.continents.length} of 7 continents visited`,
-      `${OWNER_PROGRESS.countries.length} of 195 countries visited`,
+    expect(lines).toEqual([
+      [
+        '0 of 50 states visited',
+        `Jacob's own record: ${OWNER_PROGRESS.states.length} of 50 states, and ` +
+          `${OWNER_PROGRESS.bonus.length} of 6 bonus`,
+      ],
+      [
+        '0 of 7 continents visited',
+        `Jacob's own record: ${OWNER_PROGRESS.continents.length} of 7 continents`,
+      ],
+      [
+        '0 of 195 countries visited',
+        `Jacob's own record: ${OWNER_PROGRESS.countries.length} of 195 countries`,
+      ],
     ]);
   });
 
   it('shows the bonus category on the states panel only', async () => {
-    expect(visiblePanels()[0].querySelector('.quest-bonus')?.textContent).toContain(
-      `${OWNER_PROGRESS.bonus.length} of 6`
-    );
+    expect(text(visiblePanels()[0], '.quest-bonus')).toContain('0 of 6');
 
     tabs()[1].click();
     await fixture.whenStable();
@@ -285,7 +362,7 @@ describe('Wanderquest', () => {
     for (const quest of QUESTS) {
       const palette = palettes()[quest.id];
       for (const role of ROLES) {
-        if (role === 'bonus' && !quest.bonus) {
+        if (role === 'bonus' && !quest.bonusPlaces) {
           expect(palette.bonus, `${quest.id} has a bonus colour`).toBe('');
         } else {
           expect(palette[role], `${quest.id} ${role}`).toMatch(hex);
@@ -299,7 +376,7 @@ describe('Wanderquest', () => {
   it('holds every visited colour at 3:1 on the page and on its own unvisited', () => {
     for (const quest of QUESTS) {
       const palette = palettes()[quest.id];
-      const marks = quest.bonus ? [palette.visited, palette.bonus] : [palette.visited];
+      const marks = quest.bonusPlaces ? [palette.visited, palette.bonus] : [palette.visited];
       for (const mark of marks) {
         expect(
           contrast(mark, PAGE_BACKGROUND),
@@ -368,4 +445,208 @@ describe('Wanderquest', () => {
     expect(states.key).toEqual(['Not yet visited', 'Visited', 'Highlighted', 'Bonus, visited']);
     expect(continents.key).toEqual(['Not yet visited', 'Visited', 'Highlighted']);
   });
+
+  it('toggles one state from the map and from its checkbox, and the tally follows both', async () => {
+    const tally = (): string => text(statesPanel(), '.quest-tally');
+    const filled = (): boolean => shape('CA')?.classList.contains('quest-visited') ?? false;
+
+    await clickShape('CA');
+    expect([filled(), box('California')?.checked, tally()]).toEqual([
+      true,
+      true,
+      '1 of 50 states visited',
+    ]);
+
+    await clickBox('California');
+    expect([filled(), box('California')?.checked, tally()]).toEqual([
+      false,
+      false,
+      '0 of 50 states visited',
+    ]);
+
+    await clickBox('California');
+    await clickShape('CA');
+    expect([filled(), box('California')?.checked, tally()]).toEqual([
+      false,
+      false,
+      '0 of 50 states visited',
+    ]);
+  });
+
+  it('offers a native checkbox for every state and every bonus place, and nothing else', () => {
+    const names = Array.from(statesPanel().querySelectorAll('label')).map(
+      (label) => label.textContent?.trim() ?? ''
+    );
+    expect(names).toEqual([...STATES, ...BONUS].map((place) => place.name));
+    expect(statesPanel().querySelectorAll('input[type="checkbox"]').length).toBe(
+      STATES.length + BONUS.length
+    );
+    // Only the states quest is selectable yet.
+    expect(host.querySelectorAll('app-quest-checklist').length).toBe(1);
+  });
+
+  it('fills the bonus tally from the list, never the states tally', async () => {
+    await clickBox('Puerto Rico');
+    await clickBox('Guam');
+
+    expect(text(statesPanel(), '.quest-bonus')).toContain('2 of 6');
+    expect(text(statesPanel(), '.quest-tally')).toBe('0 of 50 states visited');
+    expect(statesPanel().querySelectorAll('path.quest-visited').length).toBe(0);
+  });
+
+  it('ignores a click on the ground between places, and on a quest not yet selectable', async () => {
+    statesPanel()
+      .querySelector('svg.quest-outline')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const country = host.querySelector('#quest-panel-countries path[data-id]');
+    country?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await fixture.whenStable();
+
+    expect(host.querySelectorAll('path.quest-visited').length).toBe(0);
+    expect(storage.getItem(GUEST_PROGRESS_KEY)).toBeNull();
+  });
+
+  it('restores the selection on reload, and keeps the owner out of it', async () => {
+    await clickShape('RI');
+    await clickBox('Delaware');
+    await clickBox('District of Columbia');
+    await reload();
+
+    expect(box('Rhode Island')?.checked).toBe(true);
+    expect(box('Delaware')?.checked).toBe(true);
+    expect(box('District of Columbia')?.checked).toBe(true);
+    expect(shape('DE')?.classList.contains('quest-visited')).toBe(true);
+    expect(text(statesPanel(), '.quest-tally')).toBe('2 of 50 states visited');
+    expect(text(statesPanel(), '.quest-owner')).toContain(
+      `${OWNER_PROGRESS.states.length} of 50 states`
+    );
+  });
+
+  it('drops ids from storage that are not places, rather than counting them', async () => {
+    await openWith(
+      memoryStorage({
+        [GUEST_PROGRESS_KEY]: JSON.stringify({ states: ['TX', 'ZZ', 'DC', 7], bonus: ['XX'] }),
+      })
+    );
+
+    expect(text(statesPanel(), '.quest-tally')).toBe('1 of 50 states visited');
+    expect(text(statesPanel(), '.quest-bonus')).toContain('0 of 6');
+    expect(statesPanel().querySelector('.quest-storage')).toBeNull();
+  });
+
+  it('works for the visit and says so when storage throws', async () => {
+    const refusing = memoryStorage();
+    vi.spyOn(refusing, 'getItem').mockImplementation(() => {
+      throw new DOMException('denied', 'SecurityError');
+    });
+    vi.spyOn(refusing, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError');
+    });
+    await openWith(refusing);
+
+    expect(text(statesPanel(), '.quest-storage')).toContain('last only until you leave');
+    await clickShape('OR');
+    expect(text(statesPanel(), '.quest-tally')).toBe('1 of 50 states visited');
+  });
+
+  it('says marks will not be kept when a write is the first thing refused', async () => {
+    const full = memoryStorage();
+    vi.spyOn(full, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError');
+    });
+    await openWith(full);
+    expect(statesPanel().querySelector('.quest-storage')).toBeNull();
+
+    await clickBox('Ohio');
+    expect(box('Ohio')?.checked).toBe(true);
+    expect(statesPanel().querySelector('.quest-storage')?.getAttribute('role')).toBe('status');
+  });
+
+  it('works for the visit when there is no storage to reach at all', async () => {
+    await openWith(null);
+    await clickBox('Maine');
+
+    expect(box('Maine')?.checked).toBe(true);
+    expect(statesPanel().querySelector('.quest-storage')).not.toBeNull();
+  });
+
+  it('asks before clearing, and keeps everything when the answer is no', async () => {
+    const button = (label: string): HTMLButtonElement | undefined =>
+      Array.from(statesPanel().querySelectorAll<HTMLButtonElement>('button.quest-clear')).find(
+        (candidate) => candidate.textContent?.trim() === label
+      );
+    const press = async (label: string): Promise<void> => {
+      button(label)?.click();
+      await fixture.whenStable();
+    };
+
+    // Nothing to clear: the control stays focusable and does nothing.
+    expect(button('Clear my states')?.getAttribute('aria-disabled')).toBe('true');
+    await press('Clear my states');
+    expect(statesPanel().querySelector('.quest-clear-question')).toBeNull();
+
+    await clickShape('NV');
+    await clickBox('Guam');
+    await press('Clear my states');
+
+    expect(text(statesPanel(), '.quest-clear-question')).toBe(
+      'Clear the 2 places you have marked? This cannot be undone.'
+    );
+    expect(document.activeElement).toBe(button('Keep them'));
+
+    await press('Keep them');
+    expect(text(statesPanel(), '.quest-tally')).toBe('1 of 50 states visited');
+    expect(document.activeElement).toBe(button('Clear my states'));
+
+    await press('Clear my states');
+    await press('Clear them');
+
+    expect(text(statesPanel(), '.quest-tally')).toBe('0 of 50 states visited');
+    expect(text(statesPanel(), '.quest-bonus')).toContain('0 of 6');
+    expect(button('Clear my states')?.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(button('Clear my states'));
+    await reload();
+    expect(box('Nevada')?.checked).toBe(false);
+  });
+
+  it('asks about one place in the singular', async () => {
+    await clickBox('Utah');
+    statesPanel().querySelector<HTMLButtonElement>('button.quest-clear')?.click();
+    await fixture.whenStable();
+
+    expect(text(statesPanel(), '.quest-clear-question')).toBe(
+      'Clear the 1 place you have marked? This cannot be undone.'
+    );
+  });
+
+  it('writes one versioned key and nothing else', async () => {
+    await clickShape('WA');
+
+    expect(storage.length).toBe(1);
+    expect(JSON.parse(storage.getItem(GUEST_PROGRESS_KEY) ?? '{}')).toEqual({
+      states: ['WA'],
+      bonus: [],
+      continents: [],
+      countries: [],
+    });
+  });
 });
+
+/** In-memory `Storage`, so each test starts from an empty browser. */
+function memoryStorage(seed: Record<string, string> = {}): Storage {
+  const items = new Map(Object.entries(seed));
+  return {
+    get length(): number {
+      return items.size;
+    },
+    clear: (): void => items.clear(),
+    getItem: (key: string): string | null => items.get(key) ?? null,
+    key: (index: number): string | null => [...items.keys()][index] ?? null,
+    removeItem: (key: string): void => {
+      items.delete(key);
+    },
+    setItem: (key: string, value: string): void => {
+      items.set(key, value);
+    },
+  };
+}

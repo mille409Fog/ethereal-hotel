@@ -36,38 +36,39 @@
       [attr.data-quest]="quest.id"
       [hidden]="quest.id !== current().id"
     >
-      <p class="quest-tally">
-        {{ quest.tally.visited }} of {{ quest.tally.total }} {{ quest.noun }} visited
-      </p>
-      @if (quest.bonus; as bonus) {
-        <p class="quest-bonus">
-          Bonus, not required: {{ bonus.visited }} of {{ bonus.total }} — DC and the inhabited
-          territories
-        </p>
-      }
+      <app-quest-tally [quest]="quest" />
       @if (quest.outline; as outline) {
-        <!-- An outline, not a map: one image with one name, and nothing in it
-             takes focus or answers a pointer. `data-id` is the join a later
-             fill needs. -->
+        <!-- One image with one name, and nothing in it takes focus: the map is
+             a picture of the checklist below, not a second control. A click
+             on a place is a shortcut for its checkbox and nothing more, so
+             the keyboard route is the list, which is why the rule that
+             expects a key handler beside a click is off for this element. -->
+        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events -->
         <svg
           class="quest-outline"
           role="img"
+          [class.quest-outline-selectable]="quest.selectable"
           [attr.aria-label]="outline.label"
           [attr.viewBox]="outline.viewBox"
+          (click)="onMapClick($event, quest)"
         >
           @if (outline.unkeyed; as unkeyed) {
             <path class="quest-outline-unkeyed" [attr.d]="unkeyed" />
           }
           @for (shape of outline.shapes; track shape.id) {
-            <path [attr.d]="shape.d" [attr.data-id]="shape.id" />
+            <path
+              [attr.d]="shape.d"
+              [attr.data-id]="shape.id"
+              [class.quest-visited]="guest.has(quest.list, shape.id)"
+            />
           }
         </svg>
         <!-- The outline cannot draw what is too small for its scale, so it
              says so rather than letting the count and the picture disagree. -->
-        @let undrawn = quest.tally.total - outline.shapes.length;
+        @let undrawn = quest.places.length - outline.shapes.length;
         @if (undrawn > 0) {
           <p class="quest-undrawn">
-            {{ undrawn }} of the {{ quest.tally.total }} {{ quest.noun }} are too small to draw at
+            {{ undrawn }} of the {{ quest.places.length }} {{ quest.noun }} are too small to draw at
             this scale, and count all the same.
           </p>
         }
@@ -85,7 +86,7 @@
           <span class="quest-swatch quest-swatch-highlight" aria-hidden="true"></span>
           Highlighted
         </li>
-        @if (quest.bonus) {
+        @if (quest.bonusPlaces) {
           <li class="quest-key-item">
             <span class="quest-swatch quest-swatch-bonus" aria-hidden="true"></span>
             Bonus, visited
@@ -98,6 +99,9 @@
           </li>
         }
       </ul>
+      @if (quest.selectable) {
+        <app-quest-checklist [quest]="quest" />
+      }
     </section>
   }
 </main>

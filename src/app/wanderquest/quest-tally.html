@@ -1,0 +1,15 @@
+<p class="quest-tally">{{ visited() }} of {{ quest().places.length }} {{ quest().noun }} visited</p>
+@if (quest().bonusPlaces; as bonus) {
+  <p class="quest-bonus">
+    Bonus, not required: {{ bonusVisited() }} of {{ bonus.length }} — DC and the inhabited
+    territories
+  </p>
+}
+<!-- The owner's committed record, read-only. A guest's marks never reach it
+     and it never seeds them. -->
+<p class="quest-owner">Jacob's own record: {{ owner() }}</p>
+@if (!persistent()) {
+  <p class="quest-storage" role="status">
+    This browser is not letting the page keep anything, so your marks last only until you leave.
+  </p>
+}

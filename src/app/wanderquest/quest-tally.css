@@ -1,0 +1,27 @@
+/* The guest's count is the panel's headline; the owner's sits beneath it in
+   the muted text, a reference rather than a score to beat. */
+
+.quest-tally {
+  font-family: var(--font-serif);
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  color: var(--color-text);
+  margin: 0 0 0.5rem;
+}
+
+.quest-bonus,
+.quest-owner {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.quest-owner {
+  margin-top: 0.25rem;
+}
+
+/* A state, not an error: the page still works, it just will not remember. */
+.quest-storage {
+  color: var(--color-caution);
+  font-size: 0.95rem;
+  margin: 0.75rem 0 0;
+}

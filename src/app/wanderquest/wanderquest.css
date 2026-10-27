@@ -146,22 +146,9 @@
   text-align: center;
 }
 
-.quest-tally {
-  font-family: var(--font-serif);
-  font-size: clamp(1.25rem, 3vw, 1.5rem);
-  color: var(--color-text);
-  margin: 0 0 0.5rem;
-}
-
-.quest-bonus {
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-  margin: 0;
-}
-
-/* The outline: every place unvisited, with the ground drawn between them so
-   the borders show. The stroke does not scale with the drawing, so a border
-   is one pixel at 320px and at 1440px alike. */
+/* The outline: every place unvisited until the guest marks it, with the
+   ground drawn between them so the borders show. The stroke does not scale
+   with the drawing, so a border is one pixel at 320px and at 1440px alike. */
 .quest-outline {
   display: block;
   width: 100%;
@@ -175,6 +162,22 @@
 
 .quest-outline path {
   vector-effect: non-scaling-stroke;
+}
+
+.quest-outline .quest-visited {
+  fill: var(--quest-visited);
+}
+
+.quest-outline-selectable path[data-id] {
+  cursor: pointer;
+}
+
+/* Only where a pointer can hover: on a touch screen the highlight would stick
+   to the last place tapped and read as a third state. */
+@media (hover: hover) {
+  .quest-outline-selectable path[data-id]:hover {
+    fill: var(--quest-highlight);
+  }
 }
 
 /* Land that is none of the places: Antarctica, Taiwan. It is drawn so the
@@ -269,5 +272,9 @@
 
   .quest-outline .quest-outline-unkeyed {
     fill: GrayText;
+  }
+
+  .quest-outline .quest-visited {
+    fill: Highlight;
   }
 }

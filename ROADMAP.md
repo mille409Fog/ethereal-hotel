@@ -25,42 +25,11 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 1. Selectable states
+## 1. Selectable continents
 
-The first of three items that turn an outline into a map a guest can use: selecting a state marks
-it visited, selecting it again unmarks it. This one builds the mechanism, so the continents and
-countries items after it are mostly wiring. A guest's progress is theirs alone — `progress.data.ts`
-already says it "lives in their own browser" — and the owner's committed progress stays read-only.
-
-**DoD:**
-
-- A guest's visited places are held in a signal per quest and saved to `localStorage` under one
-  versioned key, read back on load. Ids that are not in `places.data.ts` (a stale or hand-edited
-  key) are dropped on read rather than counted. Every storage call is wrapped: when storage is
-  unavailable the page still works for the visit, and says on screen that it will not be kept.
-- The panel's tally counts the guest, and the owner's figures become a separate read-only line, so
-  the page never mixes the two counts. Guest progress starts empty; it is never seeded from the
-  owner's.
-- Clicking a state on the map toggles it, and its fill moves between `--quest-unvisited` and
-  `--quest-visited`; a hovered state takes `--quest-highlight`. The map stays one `role="img"` and
-  takes no focus: the keyboard and screen-reader route is a list of native checkboxes, one per
-  state and one per bonus place, bound to the same signal. The map is a picture of the list, not a
-  second control, so the two cannot disagree. Small states (Rhode Island, Delaware) are hard to hit
-  on a phone, and the list is the answer to that too.
-- The bonus places, which the outline does not draw, are selectable in the list only, and fill the
-  bonus tally.
-- One control clears the guest's progress for the quest, and asks before it does.
-- Nothing leaves the browser: no backend call, no analytics event. `docs/analytics.md` says what the
-  page stores and why it needs no consent — it is the visitor's own record, kept because they asked
-  — so the "nothing to consent to" claim stays true rather than quietly stretched.
-- Specs cover a click and a checkbox toggling the same state, the tally following both, a reload
-  restoring the selection, a bad key being ignored, and storage that throws.
-
-Effort: a day, most of it the storage edge cases and the list.
-
-## 2. Selectable continents
-
-The seven continents, through the mechanism the states item built.
+The seven continents, through the mechanism the states built: `GuestProgressStore` in
+`guest-progress.ts` already stores and restores all four lists, so this is flipping `selectable`
+in `quest-state.ts` and passing the map's fill and the checklist through.
 
 **DoD:**
 
@@ -72,7 +41,7 @@ The seven continents, through the mechanism the states item built.
 
 Effort: an hour or two.
 
-## 3. Selectable countries
+## 2. Selectable countries
 
 The 195, through the same mechanism. The list is the hard part: 195 checkboxes are a wall, so this
 is where the list learns to be searched.

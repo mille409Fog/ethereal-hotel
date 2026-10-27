@@ -8,8 +8,9 @@
  */
 import { CONTINENTS_OUTLINE } from './continents.outline';
 import { COUNTRIES_OUTLINE } from './countries.outline';
+import type { GuestList } from './guest-progress';
 import type { IOutline } from './outline';
-import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
+import { BONUS, CONTINENTS, COUNTRIES, STATES, type IPlace } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
 import { STATES_OUTLINE } from './states.outline';
 
@@ -33,9 +34,20 @@ export interface IQuest {
   readonly label: string;
   /** The noun after the count, lower-case mid-sentence: "0 of 50 states visited". */
   readonly noun: string;
-  readonly tally: ITally;
+  /** The list a guest's marks for this quest are stored under. */
+  readonly list: Exclude<GuestList, 'bonus'>;
+  /** The places the quest counts; the guest's tally is out of these. */
+  readonly places: readonly IPlace[];
   /** DC and the territories; only the states quest has a bonus, and it is not required. */
-  readonly bonus: ITally | null;
+  readonly bonusPlaces: readonly IPlace[] | null;
+  /** The owner's committed figures, shown on a line of their own and never mixed with a guest's. */
+  readonly owner: ITally;
+  readonly ownerBonus: ITally | null;
+  /**
+   * Whether a guest can mark this quest's places yet. The continents and
+   * countries follow the states through the same mechanism.
+   */
+  readonly selectable: boolean;
   /** The rough contours of the quest's map, or null until its outline is built. */
   readonly outline: IOutline | null;
 }
@@ -46,24 +58,36 @@ export const QUESTS: readonly IQuest[] = [
     id: QUEST_STATE.STATES,
     label: 'States',
     noun: 'states',
-    tally: { visited: OWNER_PROGRESS.states.length, total: STATES.length },
-    bonus: { visited: OWNER_PROGRESS.bonus.length, total: BONUS.length },
+    list: 'states',
+    places: STATES,
+    bonusPlaces: BONUS,
+    owner: { visited: OWNER_PROGRESS.states.length, total: STATES.length },
+    ownerBonus: { visited: OWNER_PROGRESS.bonus.length, total: BONUS.length },
+    selectable: true,
     outline: STATES_OUTLINE,
   },
   {
     id: QUEST_STATE.CONTINENTS,
     label: 'Continents',
     noun: 'continents',
-    tally: { visited: OWNER_PROGRESS.continents.length, total: CONTINENTS.length },
-    bonus: null,
+    list: 'continents',
+    places: CONTINENTS,
+    bonusPlaces: null,
+    owner: { visited: OWNER_PROGRESS.continents.length, total: CONTINENTS.length },
+    ownerBonus: null,
+    selectable: false,
     outline: CONTINENTS_OUTLINE,
   },
   {
     id: QUEST_STATE.COUNTRIES,
     label: 'Countries',
     noun: 'countries',
-    tally: { visited: OWNER_PROGRESS.countries.length, total: COUNTRIES.length },
-    bonus: null,
+    list: 'countries',
+    places: COUNTRIES,
+    bonusPlaces: null,
+    owner: { visited: OWNER_PROGRESS.countries.length, total: COUNTRIES.length },
+    ownerBonus: null,
+    selectable: false,
     outline: COUNTRIES_OUTLINE,
   },
 ];
