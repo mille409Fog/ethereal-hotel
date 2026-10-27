@@ -481,12 +481,13 @@ describe('Wanderquest', () => {
     expect(statesPanel().querySelectorAll('input[type="checkbox"]').length).toBe(
       STATES.length + BONUS.length
     );
-    // The countries quest is not selectable yet.
     expect(
       Array.from(host.querySelectorAll('app-quest-checklist')).map(
         (list) => list.closest('section')?.id
       )
-    ).toEqual(['quest-panel-states', 'quest-panel-continents']);
+    ).toEqual(QUESTS.map((quest) => `quest-panel-${quest.id}`));
+    // Only the 195 are long enough to need searching.
+    expect(statesPanel().querySelector('input[type="search"]')).toBeNull();
   });
 
   it('fills the bonus tally from the list, never the states tally', async () => {
@@ -498,13 +499,16 @@ describe('Wanderquest', () => {
     expect(statesPanel().querySelectorAll('path.quest-visited').length).toBe(0);
   });
 
-  it('ignores a click on the ground between places, and on a quest not yet selectable', async () => {
+  it('ignores a click on the ground between places, and on land that is none of them', async () => {
     statesPanel()
       .querySelector('svg.quest-outline')
       ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    const country = host.querySelector('#quest-panel-countries path[data-id]');
-    country?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const unkeyed = host.querySelector('#quest-panel-countries path.quest-outline-unkeyed');
+    expect(unkeyed).not.toBeNull();
+    unkeyed?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await fixture.whenStable();
+
+    expect(unkeyed?.classList.contains('quest-visited')).toBe(false);
 
     expect(host.querySelectorAll('path.quest-visited').length).toBe(0);
     expect(storage.getItem(GUEST_PROGRESS_KEY)).toBeNull();
@@ -743,6 +747,162 @@ describe('Wanderquest', () => {
       expect(text(host.querySelector('#quest-panel-countries') ?? host, '.quest-tally')).toBe(
         '0 of 195 countries visited'
       );
+    });
+  });
+
+  describe('the countries', () => {
+    const countries = (): HTMLElement =>
+      host.querySelector<HTMLElement>(`#quest-panel-${QUEST_STATE.COUNTRIES}`) ?? host;
+    const tally = (): string => text(countries(), '.quest-tally');
+    const path = (id: string): Element | null =>
+      countries().querySelector(`svg.quest-outline path[data-id="${id}"]`);
+    const listed = (): string[] =>
+      Array.from(countries().querySelectorAll('.quest-checklist-item label')).map(
+        (label) => label.textContent?.trim() ?? ''
+      );
+    const checkbox = (name: string): HTMLInputElement | null => {
+      const label = Array.from(countries().querySelectorAll('label')).find(
+        (candidate) => candidate.textContent?.trim() === name
+      );
+      return label ? countries().querySelector<HTMLInputElement>(`#${label.htmlFor}`) : null;
+    };
+    const tick = async (name: string): Promise<void> => {
+      checkbox(name)?.click();
+      await fixture.whenStable();
+    };
+    const filter = (): HTMLInputElement | null =>
+      countries().querySelector<HTMLInputElement>('input[type="search"]');
+    const type = async (query: string): Promise<void> => {
+      const input = filter();
+      if (input) {
+        input.value = query;
+        input.dispatchEvent(new Event('input'));
+      }
+      await fixture.whenStable();
+    };
+    const count = (): string => text(countries(), '.quest-filter-count');
+
+    beforeEach(async () => {
+      tabs()[2].click();
+      await fixture.whenStable();
+    });
+
+    it('lists all 195, labelled, with a filter above them', () => {
+      expect(listed()).toEqual(COUNTRIES.map((place) => place.name));
+      const id = filter()?.id ?? '';
+      expect(countries().querySelector(`label[for="${id}"]`)?.textContent?.trim()).toBe(
+        'Find a country'
+      );
+      expect(countries().querySelector('.quest-filter-count')?.getAttribute('role')).toBe('status');
+      expect(count()).toBe('All 195 countries');
+    });
+
+    it('narrows by name as the guest types, ignoring case and accents', async () => {
+      await type('GUINEA');
+      expect(listed()).toEqual(
+        COUNTRIES.filter((place) => place.name.toLowerCase().includes('guinea')).map(
+          (place) => place.name
+        )
+      );
+      expect(count()).toBe(`${listed().length} of 195 countries`);
+
+      await type('turkiye');
+      expect(listed()).toEqual(['Türkiye']);
+      expect(count()).toBe('1 of 195 countries');
+    });
+
+    it('says when nothing matches, and restores the whole list when cleared', async () => {
+      await type('Atlantis');
+      expect(listed()).toEqual([]);
+      expect(count()).toBe('No country matches “Atlantis”');
+
+      await type('');
+      expect(listed().length).toBe(195);
+      expect(count()).toBe('All 195 countries');
+    });
+
+    it('keeps a selection through filtering', async () => {
+      await type('japan');
+      await tick('Japan');
+      await type('kenya');
+      await tick('Kenya');
+      expect(tally()).toBe('2 of 195 countries visited');
+
+      await type('');
+      expect(checkbox('Japan')?.checked).toBe(true);
+      expect(checkbox('Kenya')?.checked).toBe(true);
+      expect(path('JP')?.classList.contains('quest-visited')).toBe(true);
+    });
+
+    it('toggles a country from the map and its checkbox, and the tally follows both', async () => {
+      path('BR')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await fixture.whenStable();
+      expect([checkbox('Brazil')?.checked, tally()]).toEqual([true, '1 of 195 countries visited']);
+
+      await tick('Brazil');
+      expect([path('BR')?.classList.contains('quest-visited'), tally()]).toEqual([
+        false,
+        '0 of 195 countries visited',
+      ]);
+      expect(text(countries(), '.quest-owner')).toBe(
+        `Jacob's own record: ${OWNER_PROGRESS.countries.length} of 195 countries`
+      );
+    });
+
+    it('lets a guest mark and count the countries too small to draw', async () => {
+      const drawn = new Set(
+        QUESTS.find((quest) => quest.id === QUEST_STATE.COUNTRIES)?.outline?.shapes.map(
+          (shape) => shape.id
+        )
+      );
+      const undrawn = COUNTRIES.filter((place) => !drawn.has(place.id));
+      expect(undrawn.length).toBe(33);
+
+      for (const place of undrawn) {
+        await tick(place.name);
+      }
+      expect(tally()).toBe('33 of 195 countries visited');
+      expect(countries().querySelectorAll('path.quest-visited').length).toBe(0);
+    });
+
+    it('never colours the unkeyed land, whatever is marked', async () => {
+      for (const place of COUNTRIES.slice(0, 20)) {
+        await tick(place.name);
+      }
+      const unkeyed = countries().querySelector('path.quest-outline-unkeyed');
+      expect(unkeyed?.hasAttribute('data-id')).toBe(false);
+      expect(unkeyed?.classList.contains('quest-visited')).toBe(false);
+    });
+
+    it('restores the countries on reload and clears only them', async () => {
+      await tick('Chile');
+      await clickShape('TX');
+      await reload();
+      tabs()[2].click();
+      await fixture.whenStable();
+      expect(checkbox('Chile')?.checked).toBe(true);
+
+      const clear = (label: string): void =>
+        Array.from(countries().querySelectorAll<HTMLButtonElement>('button.quest-clear'))
+          .find((candidate) => candidate.textContent?.trim() === label)
+          ?.click();
+      clear('Clear my countries');
+      await fixture.whenStable();
+      clear('Clear them');
+      await fixture.whenStable();
+
+      expect(tally()).toBe('0 of 195 countries visited');
+      expect(text(statesPanel(), '.quest-tally')).toBe('1 of 50 states visited');
+    });
+
+    it('says the marks will not be kept when there is no storage', async () => {
+      await openWith(null);
+      tabs()[2].click();
+      await fixture.whenStable();
+      await tick('Peru');
+
+      expect(checkbox('Peru')?.checked).toBe(true);
+      expect(text(countries(), '.quest-storage')).toContain('last only until you leave');
     });
   });
 

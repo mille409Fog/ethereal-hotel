@@ -47,7 +47,6 @@
         <svg
           class="quest-outline"
           role="img"
-          [class.quest-outline-selectable]="quest.selectable"
           [attr.aria-label]="outline.label"
           [attr.viewBox]="outline.viewBox"
           (click)="onMapClick($event, quest)"
@@ -99,9 +98,7 @@
           </li>
         }
       </ul>
-      @if (quest.selectable) {
-        <app-quest-checklist [quest]="quest" />
-      }
+      <app-quest-checklist [quest]="quest" />
     </section>
   }
 </main>

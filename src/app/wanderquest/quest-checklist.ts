@@ -11,7 +11,16 @@ import {
   viewChild,
 } from '@angular/core';
 import { GuestProgressStore, type GuestList } from './guest-progress';
+import type { IPlace } from './places.data';
 import type { IQuest } from './quest-state';
+
+/**
+ * A name as the filter compares it: case and accents dropped, so "turkiye"
+ * finds Türkiye, and surrounding space ignored.
+ */
+export function fold(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
+}
 
 /**
  * The control a guest marks places with: one native checkbox per place and
@@ -36,6 +45,34 @@ export class QuestChecklist {
   /** True while the clear control is waiting for an answer. */
   public readonly asking = signal(false);
 
+  /** What the guest has typed into the filter, as typed. */
+  public readonly query = signal('');
+
+  /** The quest's places whose names match the filter, in their usual order. */
+  public readonly shown = computed((): readonly IPlace[] => {
+    const needle = fold(this.query());
+    const places = this.quest().places;
+    return needle ? places.filter((place) => fold(place.name).includes(needle)) : places;
+  });
+
+  /** "countries" → "country", "states" → "state": every quest's noun is a regular plural. */
+  public readonly singular = computed((): string => {
+    const noun = this.quest().noun;
+    return noun.endsWith('ies') ? `${noun.slice(0, -3)}y` : noun.replace(/s$/, '');
+  });
+
+  /** The live count beside the filter; says plainly when nothing matches. */
+  public readonly shownCount = computed((): string => {
+    const { places, noun } = this.quest();
+    const count = this.shown().length;
+    if (count === places.length) {
+      return `All ${places.length} ${noun}`;
+    }
+    return count === 0
+      ? `No ${this.singular()} matches “${this.query().trim()}”`
+      : `${count} of ${places.length} ${noun}`;
+  });
+
   /** The lists the clear control empties: the quest's own, and its bonus if it has one. */
   private readonly lists = computed((): readonly GuestList[] => {
     const quest = this.quest();
@@ -57,6 +94,12 @@ export class QuestChecklist {
 
   public onToggle(list: GuestList, id: string): void {
     this.guest.toggle(list, id);
+  }
+
+  public onFilter(event: Event): void {
+    if (event.target instanceof HTMLInputElement) {
+      this.query.set(event.target.value);
+    }
   }
 
   /** Asks first: a guest's marks exist nowhere else, so a slip would lose them. */

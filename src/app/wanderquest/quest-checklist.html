@@ -1,8 +1,27 @@
 @let current = quest();
 <fieldset class="quest-checklist">
   <legend class="quest-checklist-legend">The {{ current.noun }} you have visited</legend>
+  @if (current.filterable) {
+    <!-- Filtering hides rows, never marks: every checkbox reads the store, so
+         a place ticked and then filtered away is still ticked when it returns. -->
+    <div class="quest-filter">
+      <label class="quest-filter-label" [attr.for]="'quest-filter-' + current.list">
+        Find a {{ singular() }}
+      </label>
+      <input
+        type="search"
+        class="quest-filter-input"
+        autocomplete="off"
+        spellcheck="false"
+        [id]="'quest-filter-' + current.list"
+        [value]="query()"
+        (input)="onFilter($event)"
+      />
+      <p class="quest-filter-count" role="status">{{ shownCount() }}</p>
+    </div>
+  }
   <ul class="quest-checklist-items">
-    @for (place of current.places; track place.id) {
+    @for (place of shown(); track place.id) {
       <li class="quest-checklist-item">
         <input
           type="checkbox"

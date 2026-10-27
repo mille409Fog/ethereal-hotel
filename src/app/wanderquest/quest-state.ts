@@ -44,10 +44,10 @@ export interface IQuest {
   readonly owner: ITally;
   readonly ownerBonus: ITally | null;
   /**
-   * Whether a guest can mark this quest's places yet. The countries follow
-   * the states and continents through the same mechanism.
+   * Whether the checklist gets a filter. Fifty states scan as a block; 195
+   * countries are a wall, so only that list is searched.
    */
-  readonly selectable: boolean;
+  readonly filterable: boolean;
   /** The rough contours of the quest's map, or null until its outline is built. */
   readonly outline: IOutline | null;
 }
@@ -63,7 +63,7 @@ export const QUESTS: readonly IQuest[] = [
     bonusPlaces: BONUS,
     owner: { visited: OWNER_PROGRESS.states.length, total: STATES.length },
     ownerBonus: { visited: OWNER_PROGRESS.bonus.length, total: BONUS.length },
-    selectable: true,
+    filterable: false,
     outline: STATES_OUTLINE,
   },
   {
@@ -75,7 +75,7 @@ export const QUESTS: readonly IQuest[] = [
     bonusPlaces: null,
     owner: { visited: OWNER_PROGRESS.continents.length, total: CONTINENTS.length },
     ownerBonus: null,
-    selectable: true,
+    filterable: false,
     outline: CONTINENTS_OUTLINE,
   },
   {
@@ -87,7 +87,7 @@ export const QUESTS: readonly IQuest[] = [
     bonusPlaces: null,
     owner: { visited: OWNER_PROGRESS.countries.length, total: COUNTRIES.length },
     ownerBonus: null,
-    selectable: false,
+    filterable: true,
     outline: COUNTRIES_OUTLINE,
   },
 ];

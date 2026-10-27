@@ -25,24 +25,8 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 1. Selectable countries
-
-The 195, through the mechanism the states and continents already use (`GuestProgressStore` in
-`guest-progress.ts`, switched on by `selectable` in `quest-state.ts`). The list is the hard part: 195 checkboxes are a wall, so this
-is where the list learns to be searched.
-
-**DoD:**
-
-- A text filter above the list narrows it by name as the guest types, with the number shown as a
-  live count, and clearing the filter restores the whole list. Selection survives filtering.
-- The 33 countries the outline cannot draw are selectable in the list like any other, and count;
-  the panel's "too small to draw" line already promises that, and this is where it becomes true of
-  a guest's tally too.
-- The unkeyed land (Antarctica, Greenland, Taiwan and the rest) is never selectable and never
-  changes colour: it is not one of the 195.
-- The same storage, clear, tally, fill, hover and read-only-owner rules as the other two.
-
-Effort: half a day, most of it the filter.
+_No items are open._ The last three made `/wanderquest`'s outlines selectable; add the next one
+here, numbered from 1, with its Definition of Done.
 
 ## Deliberately not doing
 

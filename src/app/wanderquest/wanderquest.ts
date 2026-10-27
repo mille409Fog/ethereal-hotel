@@ -49,10 +49,11 @@ export class Wanderquest {
    * A click on a drawn place toggles it, exactly as its checkbox would. The
    * listener is on the outline rather than on each path, so it reads the place
    * from the `data-id` the paths already carry; a click on the ground between
-   * them, or on unkeyed land, finds none and does nothing.
+   * them, or on unkeyed land, finds none and does nothing: unkeyed land is
+   * none of the places, so it is never selectable.
    */
   public onMapClick(event: MouseEvent, quest: IQuest): void {
-    if (!quest.selectable || !(event.target instanceof Element)) {
+    if (!(event.target instanceof Element)) {
       return;
     }
     const id = event.target.closest('path[data-id]')?.getAttribute('data-id');

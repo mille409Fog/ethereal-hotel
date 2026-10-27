@@ -168,14 +168,15 @@
   fill: var(--quest-visited);
 }
 
-.quest-outline-selectable path[data-id] {
+/* Keyed paths only: the unkeyed land answers no click and takes no hover. */
+.quest-outline path[data-id] {
   cursor: pointer;
 }
 
 /* Only where a pointer can hover: on a touch screen the highlight would stick
    to the last place tapped and read as a third state. */
 @media (hover: hover) {
-  .quest-outline-selectable path[data-id]:hover {
+  .quest-outline path[data-id]:hover {
     fill: var(--quest-highlight);
   }
 }
