@@ -75,7 +75,8 @@ export const OWNER_PROGRESS: IProgress = {
     'WI',
     'WY',
   ],
-  bonus: [],
+  // DC, and none of the five territories.
+  bonus: ['DC'],
   continents: ['AS', 'EU', 'NA', 'OC'],
   // Vatican City is the Holy See, the UN observer, under `VA`.
   countries: [
