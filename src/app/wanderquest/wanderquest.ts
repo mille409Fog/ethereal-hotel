@@ -8,6 +8,7 @@ import {
   viewChildren,
 } from '@angular/core';
 import { GuestProgressStore } from './guest-progress';
+import { QuestBonusMap } from './quest-bonus-map';
 import { QuestChecklist } from './quest-checklist';
 import { QUEST_STATE, QUESTS, stepQuest, type IQuest } from './quest-state';
 import { QuestTally } from './quest-tally';
@@ -21,7 +22,7 @@ import { QuestTally } from './quest-tally';
  */
 @Component({
   selector: 'app-wanderquest',
-  imports: [QuestChecklist, QuestTally],
+  imports: [QuestBonusMap, QuestChecklist, QuestTally],
   providers: [GuestProgressStore],
   styleUrl: './wanderquest.css',
   templateUrl: './wanderquest.html',

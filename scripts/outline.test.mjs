@@ -17,6 +17,8 @@ import {
   dissolve,
   equalEarth,
   equalEarthWorld,
+  fitTile,
+  localEqualArea,
   pathData,
   readPolygons,
   readTable,
@@ -134,6 +136,14 @@ const square = (x, y, side) => [
 ];
 
 const identity = (point) => point;
+
+/** `[left, top, right, bottom]` of some points. */
+const boundsAt = (points) => [
+  Math.min(...points.map(([x]) => x)),
+  Math.min(...points.map(([, y]) => y)),
+  Math.max(...points.map(([x]) => x)),
+  Math.max(...points.map(([, y]) => y)),
+];
 
 /* ---------------------------------------------------------------------------
  * Reading
@@ -283,6 +293,53 @@ describe('equalEarthWorld', () => {
   test('is 960 units from antimeridian to antimeridian, with the north pole on y = 0', () => {
     assert.ok(Math.abs(project([180, 0])[0] - project([-180, 0])[0] - 960) < 1e-9);
     assert.ok(Math.abs(project([0, 90])[1]) < 1e-9);
+  });
+});
+
+describe('fitTile', () => {
+  const tile = { x: 100, y: 200, size: 50, padding: 5 };
+
+  test('fills the tile inside its padding, centred on the short side', () => {
+    const fit = fitTile([square(0, 0, 4).map(([x, y]) => [x, y / 2])], identity, tile, 0);
+    const points = fit.rings[0].map(fit.project);
+    assert.deepEqual(boundsAt(points), [105, 215, 145, 235]);
+  });
+
+  test('drops a speck that would set the scale, then fits what is left', () => {
+    // Fitted to both, the island is 4 units of a 40-unit square, area 16,
+    // and the speck far off is 0.16 of a square unit. Refitted, the island
+    // fills the square.
+    const island = square(0, 0, 10);
+    const speck = square(99, 99, 1);
+    const fit = fitTile([island, speck], identity, tile, 2);
+    assert.deepEqual(fit.rings, [island]);
+    assert.deepEqual(boundsAt(island.map(fit.project)), [105, 205, 145, 245]);
+  });
+
+  test('reconsiders an islet once the scale has grown, if it is still inside', () => {
+    // Fitted to all four, the islet between the two islands is a hundredth
+    // of a square unit; once the far speck has gone, it is nearly two.
+    const fit = fitTile(
+      [square(0, 0, 10), square(14, 4, 1), square(20, 0, 10), square(400, 400, 1)],
+      identity,
+      tile,
+      0.5
+    );
+    assert.equal(fit.rings.length, 3);
+  });
+
+  test('never drops the largest piece, however small the place', () => {
+    const fit = fitTile([square(0, 0, 0.001)], identity, tile, 1e9);
+    assert.equal(fit.rings.length, 1);
+  });
+});
+
+describe('localEqualArea', () => {
+  test('puts the middle of the place at the origin, north up', () => {
+    const project = localEqualArea([square(-171, -15, 2)]);
+    const [x, y] = project([-170, -14]);
+    assert.ok(Math.abs(x) < 1e-9 && Math.abs(y) < 1e-9, `${x}, ${y}`);
+    assert.ok(project([-170, -13.5])[1] < project([-170, -14.5])[1]);
   });
 });
 

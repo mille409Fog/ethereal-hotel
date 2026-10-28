@@ -228,6 +228,96 @@ export function equalEarthWorld() {
   return equalEarth({ scale, translate: [WORLD_FRAME.width / 2, -pole] });
 }
 
+/**
+ * A projection for one place drawn on its own: Albers' equal-area conic
+ * centred on the place, with its standard parallels a sixth of the way in from
+ * the edges of its latitude, the usual rule for a region. Unit scale, centre at
+ * the origin; `fitTile` sizes it. None of the places it is used for crosses
+ * the antimeridian, so the centre is a plain midpoint.
+ */
+export function localEqualArea(rings) {
+  const points = rings.flat();
+  const lons = points.map(([lon]) => lon);
+  const lats = points.map(([, lat]) => lat);
+  const [south, north] = [Math.min(...lats), Math.max(...lats)];
+  const sixth = (north - south) / 6;
+  return conicEqualArea({
+    parallels: [south + sixth, north - sixth],
+    rotate: -(Math.min(...lons) + Math.max(...lons)) / 2,
+    center: [0, (south + north) / 2],
+    scale: 1,
+    translate: [0, 0],
+  });
+}
+
+function boundsOf(points) {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  return {
+    left: Math.min(...xs),
+    top: Math.min(...ys),
+    right: Math.max(...xs),
+    bottom: Math.max(...ys),
+  };
+}
+
+/**
+ * `project` scaled and shifted so a place fills `tile`, a square `size` across
+ * at `x, y` less `padding` on each side, and the rings that are drawn there.
+ *
+ * Fitting to every ring would let a speck decide the scale: American Samoa's
+ * extent is set by Rose Atoll and Swains Island, 280 and 360 km from Tutuila,
+ * and fitted to them Tutuila is a dot in an empty tile. So the fit repeats.
+ * Each pass keeps the rings that lie inside the current extent and are at
+ * least `minArea` at its scale, then fits to those. The extent can only
+ * shrink, so the scale only grows and it settles; a ring dropped for its size
+ * is reconsidered at the larger scale if it is still inside. The largest ring
+ * is always kept, so a place can lose an islet but never itself.
+ */
+export function fitTile(rings, project, { x, y, size, padding }, minArea) {
+  const projected = rings.map((ring) => ring.map(project));
+  const largest = projected.reduce((best, ring) => (ringArea(ring) > ringArea(best) ? ring : best));
+  const inner = size - 2 * padding;
+
+  let kept = projected;
+  let bounds = boundsOf(kept.flat());
+  for (;;) {
+    const scale = inner / Math.max(bounds.right - bounds.left, bounds.bottom - bounds.top);
+    const inside = (ring) => {
+      const b = boundsOf(ring);
+      return (
+        b.left >= bounds.left &&
+        b.right <= bounds.right &&
+        b.top >= bounds.top &&
+        b.bottom <= bounds.bottom
+      );
+    };
+    const next = projected.filter(
+      (ring) => ring === largest || (inside(ring) && ringArea(ring) * scale * scale >= minArea)
+    );
+    const nextBounds = boundsOf(next.flat());
+    const settled = ['left', 'top', 'right', 'bottom'].every(
+      (side) => nextBounds[side] === bounds[side]
+    );
+    kept = next;
+    bounds = nextBounds;
+    if (settled) break;
+  }
+
+  const scale = inner / Math.max(bounds.right - bounds.left, bounds.bottom - bounds.top);
+  const offsetX = x + (size - scale * (bounds.right - bounds.left)) / 2 - scale * bounds.left;
+  const offsetY = y + (size - scale * (bounds.bottom - bounds.top)) / 2 - scale * bounds.top;
+  return {
+    project: (point) => {
+      const [px, py] = project(point);
+      return [offsetX + scale * px, offsetY + scale * py];
+    },
+    rings: rings.filter((_, i) => kept.includes(projected[i])),
+    /** Frame units per unit of the unscaled projection: on a unit sphere, per Earth radius. */
+    scale,
+  };
+}
+
 /* ---------------------------------------------------------------------------
  * Dissolving
  * ------------------------------------------------------------------------- */

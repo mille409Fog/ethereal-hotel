@@ -13,6 +13,22 @@ export interface IOutlineShape<Id extends string = string> {
   readonly d: string;
 }
 
+/**
+ * One square of a small-multiples outline, where a single place is drawn
+ * filling the square at a scale of its own.
+ */
+export interface IOutlineTile<Id extends string = string> {
+  readonly id: Id;
+  /** The square's top-left corner and side, in the outline's `viewBox` units. */
+  readonly x: number;
+  readonly y: number;
+  readonly size: number;
+  /** Where the place's name is anchored: the middle of its first line's baseline. */
+  readonly name: { readonly x: number; readonly y: number };
+  /** What of the place the tile leaves out, when it draws only part: said on the panel. */
+  readonly partial?: string;
+}
+
 export interface IOutline<Id extends string = string> {
   /** What the outline shows, for the SVG's accessible name. */
   readonly label: string;
@@ -25,4 +41,10 @@ export interface IOutline<Id extends string = string> {
    * without the count changing. Never filled by progress.
    */
   readonly unkeyed?: string;
+  /**
+   * Present when the outline is small multiples rather than one map: one
+   * square per shape, in the same order. Each is drawn to its own scale, so
+   * two shapes' sizes say nothing about the two places'.
+   */
+  readonly tiles?: ReadonlyArray<IOutlineTile<Id>>;
 }

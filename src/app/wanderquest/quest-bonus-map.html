@@ -1,0 +1,33 @@
+@if (quest().bonusOutline; as outline) {
+  <!-- One image with one name, and nothing in it takes focus, as the states
+       outline above: a picture of the bonus checkboxes below. The names are
+       drawn text, read as part of the image's name rather than on their own. -->
+  <svg
+    class="quest-bonus-map"
+    role="img"
+    [attr.aria-label]="outline.label"
+    [attr.viewBox]="outline.viewBox"
+  >
+    @for (tile of tiles(); track tile.id) {
+      <rect
+        class="quest-bonus-tile"
+        [attr.x]="tile.x"
+        [attr.y]="tile.y"
+        [attr.width]="tile.size"
+        [attr.height]="tile.size"
+      />
+      <path class="quest-bonus-land" [attr.d]="tile.d" [attr.data-id]="tile.id" />
+      <text class="quest-bonus-name" [attr.x]="tile.name.x" [attr.y]="tile.name.y">
+        @for (line of tile.lines; track $index) {
+          <tspan [attr.x]="tile.name.x" [attr.dy]="$first ? 0 : '1.2em'">{{ line }}</tspan>
+        }
+      </text>
+    }
+  </svg>
+  <p class="quest-bonus-scale">
+    Each bonus place is drawn to fill its own tile, so the tiles are not to a common scale.
+    @for (tile of partial(); track tile.id) {
+      {{ tile.name }}: {{ tile.partial }}.
+    }
+  </p>
+}

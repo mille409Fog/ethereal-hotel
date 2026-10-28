@@ -337,6 +337,50 @@ describe('Wanderquest', () => {
     }
   });
 
+  it('draws the bonus on the states panel, below the states, as one named image', () => {
+    const maps = Array.from(host.querySelectorAll('svg.quest-bonus-map'));
+    expect(maps.map((map) => map.closest('section')?.id)).toEqual(['quest-panel-states']);
+
+    const [map] = maps;
+    expect(map.getAttribute('role')).toBe('img');
+    expect(map.getAttribute('aria-label')).toBe(
+      'Outline maps of the District of Columbia and the five inhabited territories'
+    );
+    expect(map.querySelectorAll('[tabindex], a, [focusable="true"]').length).toBe(0);
+    const states = statesPanel().querySelector('svg.quest-outline');
+    expect(
+      states && states.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('keys one shape per bonus place in BONUS order, names each tile, and fills none yet', () => {
+    const map = statesPanel().querySelector('svg.quest-bonus-map');
+    const keyed = Array.from(map?.querySelectorAll('path[data-id]') ?? []);
+    expect(keyed.map((path) => path.getAttribute('data-id'))).toEqual(
+      BONUS.map((place) => place.id)
+    );
+    expect(keyed.every((path) => (path.getAttribute('d') ?? '').length > 0)).toBe(true);
+    expect(map?.querySelectorAll('rect.quest-bonus-tile').length).toBe(BONUS.length);
+
+    const names = Array.from(map?.querySelectorAll('text.quest-bonus-name') ?? []).map((name) =>
+      Array.from(name.querySelectorAll('tspan'))
+        .map((line) => line.textContent?.trim())
+        .join(' ')
+    );
+    expect(names).toEqual(BONUS.map((place) => place.name));
+    expect(map?.querySelectorAll('.quest-visited').length).toBe(0);
+  });
+
+  it('says in text that the bonus tiles are not to a common scale, and what one leaves out', () => {
+    const notes = Array.from(host.querySelectorAll('.quest-bonus-scale'));
+    expect(notes.map((note) => note.closest('section')?.id)).toEqual(['quest-panel-states']);
+    expect(notes[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Each bonus place is drawn to fill its own tile, so the tiles are not to a common scale. ' +
+        'Northern Mariana Islands: drawn as its southern islands, Saipan, Tinian and Rota, ' +
+        'without the Northern Islands beyond them.'
+    );
+  });
+
   it('draws the land that is none of the countries apart, and keys it as not counted', async () => {
     const unkeyed = host.querySelectorAll('path.quest-outline-unkeyed');
     expect(unkeyed.length, 'only the countries map has land outside its count').toBe(1);

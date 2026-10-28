@@ -1,0 +1,63 @@
+/* The bonus map draws in the panel's palette, which it inherits as custom
+   properties from the section it sits in, so it fills as the states outline
+   does without knowing which quest it belongs to.
+
+   Narrower than the panel on purpose. The frame is 840 units across with names
+   40 units high, so at this width a name is 16px, and at the 288px a 320px
+   screen leaves it is still nearly 14px. Wider, the tiles would be taller
+   than the states outline above them. */
+.quest-bonus-map {
+  display: block;
+  width: 100%;
+  max-width: 21rem;
+  height: auto;
+  margin: 1.5rem auto 0;
+}
+
+.quest-bonus-map rect {
+  vector-effect: non-scaling-stroke;
+}
+
+/* The square frames the tile, so six scales read as six pictures rather
+   than one map with strange gaps in it. */
+.quest-bonus-tile {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 1px;
+}
+
+/* No ground stroke, unlike the states: a tile holds one place, so there is
+   no border inside it to draw, and on an island a few pixels across the
+   stroke would eat a pixel from every side. */
+.quest-bonus-land {
+  fill: var(--quest-unvisited);
+}
+
+/* In frame units: 40 of them, which the width above turns into pixels. */
+.quest-bonus-name {
+  fill: var(--color-text-secondary);
+  font-size: 40px;
+  text-anchor: middle;
+}
+
+.quest-bonus-scale {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  margin: 0.75rem 0 0;
+}
+
+@media (forced-colors: active) {
+  .quest-bonus-tile {
+    stroke: CanvasText;
+  }
+
+  /* Fills are forced, so the land is drawn in the text colour: with no
+     borders inside a tile, an outline alone would lose the smaller islands. */
+  .quest-bonus-land {
+    fill: CanvasText;
+  }
+
+  .quest-bonus-name {
+    fill: CanvasText;
+  }
+}

@@ -25,50 +25,12 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 1. The bonus map
+## 1. Selecting the bonus map
 
-**Effort:** half a day. **Why:** the states panel counts six bonus places, which are DC and the five
-inhabited territories, and draws none of them. The outline's own header says so: "Left out because
-they are not states: DC, PR". The checklist is the only place a guest can see the bonus, and the
-"Bonus, visited" swatch in the key has nothing on the map to describe.
-
-The bonus can't be added to the states outline. `geoAlbersUsa` has no frame for Guam, the
-Northern Marianas, American Samoa or the Virgin Islands. DC would also be about one unit across in
-a 960-unit frame, below `MIN_AREA`, so it would be dropped like any other island. The places are
-scattered across two oceans and differ in size by orders of magnitude, so one shared scale can't
-draw them all.
-
-The honest shape is **small multiples**: six tiles in one SVG, each place projected to fill its
-own tile, and each tile named. Drawing each tile at its own scale is what makes a bad comparison
-possible: Guam drawn the same size as DC is a picture that lies. So the map says it isn't to one
-scale, in the same way the countries panel says what it couldn't draw.
-
-**Definition of Done:**
-
-- `npm run outline:build -- bonus` writes `src/app/wanderquest/bonus.outline.ts`, an
-  `IOutline<BonusId>` read from `BONUS` in `places.data.ts`, so there is no second list to drift.
-- **Source:** the coarsest public-domain Census cartographic boundary file that carries all six.
-  The 1:20m file used for the states carries DC and PR only, so check which file has the other
-  four before choosing one.
-- The generated file's header names the source and URL, the date it was fetched, the projection,
-  and the tile frame, the same way `states.outline.ts` does.
-- **All six are drawn; none falls under the undrawn rule.** Every tile is filled at its own scale,
-  so the island filter can drop an islet but never a whole place. A test fails if any of the six
-  has no shape, or if American Samoa loses the Manu'a group, its largest piece after Tutuila.
-- The map sits on the states panel, below the states outline: one `role="img"` SVG named for what
-  it shows, with nothing focusable. Each tile carries the place's name, and the panel states in
-  text that the tiles are not drawn to a common scale.
-- Its shapes are keyed by `data-id` in `BONUS` order. Nothing fills them yet; that is the next
-  item.
-- `outline.spec.ts` holds the new file under a size ceiling, like the other three. The continents
-  and countries panels stay unchanged, the build stays inside the `angular.json` budgets, and
-  `npm run e2e` passes, including axe on `/wanderquest`.
-
-## 2. Selecting the bonus map
-
-**Effort:** two hours. **Why:** the three main maps fill as a guest marks places. The bonus map,
-once it exists, would be the one map that can't be marked. The storage, the checklist, the tally
-and the clear control already handle the `bonus` list. Only the map is missing.
+**Effort:** two hours. **Why:** the three main maps fill as a guest marks places. The bonus map
+under the states outline (`QuestBonusMap`, drawn from `bonus.outline.ts`) is the one map that
+can't be marked. The storage, the checklist, the tally and the clear control already handle the
+`bonus` list. Only the map is missing.
 
 **Definition of Done:**
 

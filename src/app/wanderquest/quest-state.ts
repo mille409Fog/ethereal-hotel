@@ -6,6 +6,7 @@
  * list holds 194. No Angular imports: the keyboard rule is a pure function so
  * the spec can walk it without a fixture.
  */
+import { BONUS_OUTLINE } from './bonus.outline';
 import { CONTINENTS_OUTLINE } from './continents.outline';
 import { COUNTRIES_OUTLINE } from './countries.outline';
 import type { GuestList } from './guest-progress';
@@ -50,6 +51,8 @@ export interface IQuest {
   readonly filterable: boolean;
   /** The rough contours of the quest's map, or null until its outline is built. */
   readonly outline: IOutline | null;
+  /** The bonus places as small multiples, one tile each; only the states quest has them. */
+  readonly bonusOutline: IOutline | null;
 }
 
 /** The quests in tab order. Arrow keys walk this order and wrap. */
@@ -65,6 +68,7 @@ export const QUESTS: readonly IQuest[] = [
     ownerBonus: { visited: OWNER_PROGRESS.bonus.length, total: BONUS.length },
     filterable: false,
     outline: STATES_OUTLINE,
+    bonusOutline: BONUS_OUTLINE,
   },
   {
     id: QUEST_STATE.CONTINENTS,
@@ -77,6 +81,7 @@ export const QUESTS: readonly IQuest[] = [
     ownerBonus: null,
     filterable: false,
     outline: CONTINENTS_OUTLINE,
+    bonusOutline: null,
   },
   {
     id: QUEST_STATE.COUNTRIES,
@@ -89,6 +94,7 @@ export const QUESTS: readonly IQuest[] = [
     ownerBonus: null,
     filterable: true,
     outline: COUNTRIES_OUTLINE,
+    bonusOutline: null,
   },
 ];
 

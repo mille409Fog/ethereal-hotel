@@ -4,6 +4,8 @@
  *     npm run outline:build                    # every outline
  *     npm run outline:build -- continents      # just the named ones
  *
+ * The targets are `states`, `bonus`, `continents` and `countries`.
+ *
  * Like `fetch-gallery.mjs`, this writes a build *input*: each output is a
  * committed TypeScript module of SVG path data, so the build fetches nothing,
  * a visitor's browser contacts no map host, and the bundle carries no
@@ -14,7 +16,9 @@
  * place. Each source is the coarsest scale its publisher offers, and it is
  * roughened further on the way: simplified to `TOLERANCE`, rounded to whole
  * units, and stripped of every island smaller than `MIN_AREA`, all in frames
- * 960 units across so the outlines share a stroke weight. The spec holds each
+ * 960 units across so the outlines share a stroke weight. The bonus is the
+ * exception: six places an ocean apart cannot share a frame, so it is six
+ * tiles, each fitted to its place (see `buildBonus`). The spec holds each
  * result under a size ceiling, so a tolerance nudged down for looks has to
  * raise that number in plain sight.
  *
@@ -28,11 +32,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as prettier from 'prettier';
 
-import { CONTINENTS, COUNTRIES, STATES } from '../src/app/wanderquest/places.data.ts';
+import { BONUS, CONTINENTS, COUNTRIES, STATES } from '../src/app/wanderquest/places.data.ts';
 import {
   albersUsa,
   dissolve,
   equalEarthWorld,
+  fitTile,
+  localEqualArea,
   pathData,
   readPolygons,
   readTable,
@@ -112,14 +118,31 @@ function commentBody(text) {
 /**
  * Writes one outline module, formatted as the repo formats it. A place in
  * `list` with no shape is left out of `shapes` rather than written empty, and
- * `unkeyed` is land drawn for context that is none of the places.
+ * `unkeyed` is land drawn for context that is none of the places. `viewBox`
+ * replaces the crop to the shapes, for a frame laid out in advance, and
+ * `tiles` is that layout.
  */
-async function writeOutline({ file, header, typeName, constName, label, list, shapes, unkeyed }) {
+async function writeOutline({
+  file,
+  header,
+  typeName,
+  constName,
+  label,
+  list,
+  shapes,
+  unkeyed,
+  viewBox,
+  tiles,
+}) {
   const output = path.join(outputDirectory, file);
   const entries = list
     .filter((place) => shapes.get(place.id))
     .map((place) => `  { id: '${place.id}', d: '${shapes.get(place.id)}' },`);
   const drawn = [...shapes.values(), ...(unkeyed ? [unkeyed] : [])].filter(Boolean);
+  const tileEntries = (tiles ?? []).map(
+    (tile) =>
+      `  { id: '${tile.id}', x: ${tile.x}, y: ${tile.y}, size: ${tile.size}, name: { x: ${tile.name.x}, y: ${tile.name.y} }${tile.partial ? `, partial: '${tile.partial}'` : ''} },`
+  );
   const source = `/**
 ${commentBody(header)}
  */
@@ -128,10 +151,10 @@ import type { IOutline } from './outline';
 
 export const ${constName}: IOutline<${typeName}> = {
   label: '${label}',
-  viewBox: '${viewBoxOf(drawn, MARGIN)}',
+  viewBox: '${viewBox ?? viewBoxOf(drawn, MARGIN)}',
   shapes: [
 ${entries.join('\n')}
-  ],${unkeyed ? `\n  unkeyed: '${unkeyed}',` : ''}
+  ],${unkeyed ? `\n  unkeyed: '${unkeyed}',` : ''}${tiles ? `\n  tiles: [\n${tileEntries.join('\n')}\n  ],` : ''}
 };
 `;
   const options = (await prettier.resolveConfig(output)) ?? {};
@@ -195,6 +218,136 @@ not states: ${skipped.join(', ')}.`,
     label: 'Outline map of the fifty states',
     list: STATES,
     shapes,
+  });
+}
+
+/* ---------------------------------------------------------------------------
+ * The bonus: DC and the five inhabited territories
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The coarser Census scale that carries all six. The 1:20,000,000 file the
+ * states use carries DC and Puerto Rico and none of the other four; the
+ * 1:5,000,000 carries every one.
+ */
+const BONUS_SCALE = '5m';
+
+/**
+ * The tile frame, in units. Six squares in `BONUS` order, two to a row, so a
+ * name fits on a line at a size that still reads at 320px; under each square
+ * a band for its name, two lines at most. The squares are large in units only
+ * so whole-unit rounding is fine enough for an island a few kilometres
+ * across: the stroke does not scale, and the panel sets the size on screen.
+ */
+const TILE = { size: 400, padding: 20, nameBand: 110, nameBaseline: 45, gap: 40, columns: 2 };
+
+/** Mean Earth radius in km, to state each tile's scale in the header. */
+const EARTH_RADIUS_KM = 6371;
+
+/**
+ * Places a tile draws only part of, and why. The repeated fit cannot help the
+ * Northern Marianas: the chain runs 500 km from Rota to Agrihan with no piece
+ * much larger than another, so fitted whole, Saipan is five pixels across and
+ * the tile reads as empty. It is drawn as its three southern islands, where
+ * nearly all its people live, with the islets beside them that survive the
+ * fit, and the panel says what is missing. A ring is
+ * left out when every point of it is north of `northOf`.
+ */
+const PARTIAL = [
+  {
+    place: 'MP',
+    northOf: 15.5,
+    note: 'drawn as its southern islands, Saipan, Tinian and Rota, without the Northern Islands beyond them',
+  },
+];
+
+async function buildBonus() {
+  const name = `cb_${CENSUS_VINTAGE}_us_state_${BONUS_SCALE}`;
+  const source = `https://www2.census.gov/geo/tiger/GENZ${CENSUS_VINTAGE}/shp/${name}.zip`;
+  const { polygons, rows } = await fetchShapefile(source, name);
+
+  const cell = TILE.size + TILE.nameBand;
+  const rowCount = Math.ceil(BONUS.length / TILE.columns);
+  const frame = {
+    width: TILE.columns * TILE.size + (TILE.columns - 1) * TILE.gap,
+    height: rowCount * cell + (rowCount - 1) * TILE.gap,
+  };
+
+  const shapes = new Map();
+  const tiles = [];
+  const notes = [];
+  BONUS.forEach((place, i) => {
+    const row = rows.findIndex((candidate) => candidate.STUSPS === place.id);
+    if (row === -1) throw new Error(`${name} has no ${place.id} (${place.name})`);
+    const partial = PARTIAL.find((candidate) => candidate.place === place.id);
+    const rings = polygons[row].filter(
+      (ring) => !partial || !ring.every(([, lat]) => lat > partial.northOf)
+    );
+    const cut = polygons[row].length - rings.length;
+
+    const x = (i % TILE.columns) * (TILE.size + TILE.gap);
+    const y = Math.floor(i / TILE.columns) * (cell + TILE.gap);
+    const fit = fitTile(
+      rings,
+      localEqualArea(rings),
+      { x, y, size: TILE.size, padding: TILE.padding },
+      MIN_AREA
+    );
+    const d = pathData(fit.rings, fit.project, ROUGHENING);
+    if (!d) throw new Error(`${place.id} has no drawable shape even filling its own tile`);
+    shapes.set(place.id, d);
+    tiles.push({
+      id: place.id,
+      x,
+      y,
+      size: TILE.size,
+      name: { x: x + TILE.size / 2, y: y + TILE.size + TILE.nameBaseline },
+      ...(partial ? { partial: partial.note } : {}),
+    });
+
+    const drawn = d.split('M').length - 1;
+    const total = polygons[row].length;
+    const across = (TILE.size * EARTH_RADIUS_KM) / fit.scale;
+    notes.push(
+      `${place.id} ${across < 100 ? across.toFixed(1) : Math.round(across)} km, ` +
+        `${drawn} of ${total} piece${total === 1 ? '' : 's'} drawn` +
+        (partial ? ` (${cut} north of ${partial.northOf}° left out first: ${partial.note})` : '')
+    );
+  });
+
+  await writeOutline({
+    file: 'bonus.outline.ts',
+    header: `
+DC and the five inhabited territories, one tile each. GENERATED by \`npm run outline:build\`
+(\`scripts/build-outline.mjs\`) — edit the script, not this file.
+
+Source: US Census Bureau, ${CENSUS_VINTAGE} cartographic boundary file, states,
+1:5,000,000 (\`${name}\`), a work of the US government and so in the
+public domain. ${source}
+Fetched ${today()}. The 1:20,000,000 file the states are drawn from carries
+DC and PR only; this is the coarsest scale that carries all six.
+
+Small multiples, not one map: each place is projected in its own Albers
+equal-area conic, standard parallels a sixth in from the edges of its
+latitude, and scaled to fill its tile. The tiles are NOT drawn to a common
+scale, and the panel says so. Fitted to every piece, a speck sets the scale,
+so the fit repeats: pieces under ${MIN_AREA} square units at the current scale are dropped
+and the tile refitted to what is left, until nothing changes. The largest
+piece always stays. Then simplified to ${TOLERANCE} units and rounded to whole units, as
+the states are. Drawn in part, because no fit could show the whole and still
+show anything: ${PARTIAL.map((p) => `${p.place}, ${p.note}`).join('; ')}. The panel says so.
+
+Tile frame: ${frame.width} × ${frame.height} units, ${BONUS.length} squares of ${TILE.size} in \`BONUS\` order,
+${TILE.columns} to a row, ${TILE.gap} apart, the land inset ${TILE.padding} from each edge, and a band of
+${TILE.nameBand} under each square for its name. Each tile's width on the ground, and how
+much of its place it draws: ${notes.join('; ')}.`,
+    typeName: 'BonusId',
+    constName: 'BONUS_OUTLINE',
+    label: 'Outline maps of the District of Columbia and the five inhabited territories',
+    list: BONUS,
+    shapes,
+    viewBox: `0 0 ${frame.width} ${frame.height}`,
+    tiles,
   });
 }
 
@@ -374,7 +527,12 @@ to whole units, islands under ${COUNTRY_MIN_AREA} square unit dropped.`,
  * Running
  * ------------------------------------------------------------------------- */
 
-const TARGETS = { states: buildStates, continents: buildContinents, countries: buildCountries };
+const TARGETS = {
+  states: buildStates,
+  bonus: buildBonus,
+  continents: buildContinents,
+  countries: buildCountries,
+};
 
 async function main() {
   const asked = process.argv.slice(2);

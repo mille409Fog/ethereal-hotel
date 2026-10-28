@@ -1,3 +1,4 @@
+import { BONUS_OUTLINE } from './bonus.outline';
 import { CONTINENTS_OUTLINE } from './continents.outline';
 import { COUNTRIES_OUTLINE } from './countries.outline';
 import type { IOutline } from './outline';
@@ -44,6 +45,8 @@ interface IOutlineCase {
 
 const OUTLINES: readonly IOutlineCase[] = [
   { name: 'STATES_OUTLINE', outline: STATES_OUTLINE, places: STATES, undrawn: [], ceiling: 12_000 },
+  // About 2.5KB: six places, most of them a single island.
+  { name: 'BONUS_OUTLINE', outline: BONUS_OUTLINE, places: BONUS, undrawn: [], ceiling: 4_000 },
   {
     name: 'CONTINENTS_OUTLINE',
     outline: CONTINENTS_OUTLINE,
@@ -94,11 +97,72 @@ for (const { name, outline, places, undrawn, ceiling } of OUTLINES) {
 
 describe('STATES_OUTLINE', () => {
   it('leaves DC and the territories out, because they are not states', () => {
-    // The bonus category is counted on the panel and not drawn: at this scale
+    // The bonus is drawn on a map of its own, `BONUS_OUTLINE`: at this scale
     // DC is a speck, and the territories are an ocean away from any inset.
     const drawn = new Set<string>(STATES_OUTLINE.shapes.map((shape) => shape.id));
     expect(BONUS.filter((place) => drawn.has(place.id))).toEqual([]);
     expect(STATES_OUTLINE.unkeyed).toBeUndefined();
+  });
+});
+
+/** Each closed ring of some path data, as its points. */
+function rings(d: string): Array<Array<[number, number]>> {
+  return d
+    .split('Z')
+    .filter(Boolean)
+    .map((ring) =>
+      ring
+        .slice(1)
+        .split('L')
+        .map((point): [number, number] => {
+          const [x, y] = point.split(' ').map(Number);
+          return [x, y];
+        })
+    );
+}
+
+describe('BONUS_OUTLINE', () => {
+  const shape = (id: string): string =>
+    BONUS_OUTLINE.shapes.find((candidate) => candidate.id === id)?.d ?? '';
+
+  it('draws all six, in BONUS order, each in a tile of its own', () => {
+    // The undrawn rule does not reach the bonus: every tile is fitted to its
+    // place, so an islet can go but a place cannot.
+    expect(BONUS_OUTLINE.shapes.map((candidate) => candidate.id)).toEqual(
+      BONUS.map((place) => place.id)
+    );
+    expect(BONUS_OUTLINE.tiles?.map((tile) => tile.id)).toEqual(BONUS.map((place) => place.id));
+  });
+
+  it('keeps every shape inside its own tile, so no two places overlap', () => {
+    for (const tile of BONUS_OUTLINE.tiles ?? []) {
+      const points = rings(shape(tile.id)).flat();
+      expect(points.length, tile.id).toBeGreaterThan(0);
+      for (const [x, y] of points) {
+        expect(x >= tile.x && x <= tile.x + tile.size, `${tile.id} x ${x}`).toBe(true);
+        expect(y >= tile.y && y <= tile.y + tile.size, `${tile.id} y ${y}`).toBe(true);
+      }
+    }
+  });
+
+  it('draws only the Northern Marianas in part, and says what it leaves out', () => {
+    // The one exception to fitting the whole place, named in the generator's
+    // `PARTIAL`. A second would be a decision, and should fail here first.
+    expect(BONUS_OUTLINE.tiles?.filter((tile) => tile.partial).map((tile) => tile.id)).toEqual([
+      'MP',
+    ]);
+  });
+
+  it("keeps American Samoa's Manu'a group, not just Tutuila", () => {
+    // Manu'a lies a hundred kilometres east of Tutuila, the largest piece. A
+    // fit set by Rose Atoll and Swains Island shrank it below the island
+    // filter, which is the failure this holds against.
+    const pieces = rings(shape('AS'));
+    const width = (ring: Array<[number, number]>): number =>
+      Math.max(...ring.map(([x]) => x)) - Math.min(...ring.map(([x]) => x));
+    const tutuila = pieces.reduce((widest, ring) => (width(ring) > width(widest) ? ring : widest));
+    const east = Math.max(...tutuila.map(([x]) => x));
+    expect(pieces.filter((ring) => ring.every(([x]) => x > east)).length).toBeGreaterThan(0);
   });
 });
 
