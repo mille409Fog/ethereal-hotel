@@ -49,7 +49,7 @@
           role="img"
           [attr.aria-label]="outline.label"
           [attr.viewBox]="outline.viewBox"
-          (click)="onMapClick($event, quest)"
+          (click)="onMapClick($event, quest.list)"
         >
           @if (outline.unkeyed; as unkeyed) {
             <path class="quest-outline-unkeyed" [attr.d]="unkeyed" />
@@ -72,7 +72,7 @@
           </p>
         }
       }
-      <app-quest-bonus-map [quest]="quest" />
+      <app-quest-bonus-map [quest]="quest" (mapClick)="onMapClick($event, 'bonus')" />
       <ul class="quest-key" aria-label="Key">
         <li class="quest-key-item">
           <span class="quest-swatch quest-swatch-unvisited" aria-hidden="true"></span>

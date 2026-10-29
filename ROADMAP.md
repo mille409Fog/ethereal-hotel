@@ -25,42 +25,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## 1. Selecting the bonus map
-
-**Effort:** two hours. **Why:** the three main maps fill as a guest marks places. The bonus map
-under the states outline (`QuestBonusMap`, drawn from `bonus.outline.ts`) is the one map that
-can't be marked. The storage, the checklist, the tally and the clear control already handle the
-`bonus` list. Only the map is missing.
-
-**Definition of Done:**
-
-- **Clicking a tile marks or unmarks that place**, exactly like ticking its bonus checkbox. The
-  map and the checkbox stay in step whichever one is used, and the tally's "N of 6 bonus" line
-  moves with them.
-- **The hit target is the whole tile, not the land.** American Samoa's land and DC are each only
-  a few units across, too small to click reliably. Each tile is at least 24 × 24 CSS pixels at
-  the narrowest supported width, which is WCAG 2.5.8's minimum target size.
-- **The map stays a picture of the checklist**, as the other three are: one `role="img"`, nothing
-  in it takes focus, and the keyboard route is the bonus checkboxes. Its click-handler lint
-  suppression carries the same reason as the states map's.
-- `onMapClick` toggles the list the map draws rather than the quest's own list. A click on the
-  bonus map must never write to `states`, and a click on the states map must never write to
-  `bonus`; a test asserts both.
-- **A marked place is filled with the panel's `bonus` colour**, not `visited`, so the key's
-  existing "Bonus, visited" swatch describes something on screen. The swatch keeps its contrast
-  against the unvisited fill, and forced colours show the fill as `Highlight`, as the other maps do.
-- **It survives reload and clearing.** Marks persist under the existing `wanderquest.guest.v1`
-  key, with no second key; a test already asserts there is only one. "Clear my states" empties
-  the bonus map along with the checkboxes.
-- Unit tests cover:
-  - a click on a tile;
-  - a click on the tile's water;
-  - the checkbox and the map staying in step;
-  - reload;
-  - clear;
-  - storage that throws.
-
-  `npm run e2e` passes, including axe on `/wanderquest`.
+No items are open. Ask the owner before inventing one.
 
 ## Deliberately not doing
 
@@ -74,6 +39,3 @@ Recorded so the next instance does not helpfully add them:
   screens here read as padding.
 - **Rewriting the frontend in another framework.** The Angular is fine and the time is better
   spent on `AUBADE.md`.
-
-See **[AUBADE.md](AUBADE.md)** for the separate, deliberately un-boring project — this file is
-about making the competent thing credible; that one is about making something nobody else has.

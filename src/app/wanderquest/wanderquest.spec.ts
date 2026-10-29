@@ -546,7 +546,129 @@ describe('Wanderquest', () => {
 
     expect(text(statesPanel(), '.quest-bonus')).toContain('2 of 6');
     expect(text(statesPanel(), '.quest-tally')).toBe('0 of 50 states visited');
-    expect(statesPanel().querySelectorAll('path.quest-visited').length).toBe(0);
+    expect(statesPanel().querySelectorAll('svg.quest-outline path.quest-visited').length).toBe(0);
+  });
+
+  describe('the bonus map', () => {
+    const map = (): SVGSVGElement | null =>
+      statesPanel().querySelector<SVGSVGElement>('svg.quest-bonus-map');
+    const land = (id: string): SVGPathElement | null =>
+      map()?.querySelector<SVGPathElement>(`path[data-id="${id}"]`) ?? null;
+    const water = (id: string): Element | null =>
+      map()?.querySelector(`g[data-id="${id}"] rect.quest-bonus-tile`) ?? null;
+    const name = (id: string): Element | null =>
+      map()?.querySelector(`g[data-id="${id}"] text.quest-bonus-name tspan`) ?? null;
+    const click = async (target: Element | null | undefined): Promise<void> => {
+      target?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await fixture.whenStable();
+    };
+    const filled = (id: string): boolean => land(id)?.classList.contains('quest-visited') ?? false;
+    const bonus = (): string => text(statesPanel(), '.quest-bonus');
+    const stored = (): Record<string, string[]> =>
+      JSON.parse(storage.getItem(GUEST_PROGRESS_KEY) ?? '{}') as Record<string, string[]>;
+
+    it('marks a place from a click on its land, and the checkbox and tally follow', async () => {
+      await click(land('GU'));
+      expect([filled('GU'), box('Guam')?.checked]).toEqual([true, true]);
+      expect(bonus()).toContain('1 of 6');
+
+      await click(land('GU'));
+      expect([filled('GU'), box('Guam')?.checked]).toEqual([false, false]);
+      expect(bonus()).toContain('0 of 6');
+    });
+
+    it('takes a click anywhere on the tile, its water and its name, not only the land', async () => {
+      // DC's land fills its tile; American Samoa's is a few specks in water.
+      await click(water('AS'));
+      expect([filled('AS'), box('American Samoa')?.checked]).toEqual([true, true]);
+
+      await click(name('AS'));
+      expect(filled('AS')).toBe(false);
+    });
+
+    it('ignores a click on the ground between the tiles', async () => {
+      await click(map());
+      expect(map()?.querySelectorAll('.quest-visited').length).toBe(0);
+      expect(storage.getItem(GUEST_PROGRESS_KEY)).toBeNull();
+    });
+
+    it('stays in step with the checkboxes, whichever is used', async () => {
+      await clickBox('Puerto Rico');
+      expect(filled('PR')).toBe(true);
+
+      await click(water('PR'));
+      expect([filled('PR'), box('Puerto Rico')?.checked]).toEqual([false, false]);
+
+      await click(water('VI'));
+      await clickBox('U.S. Virgin Islands');
+      expect([filled('VI'), box('U.S. Virgin Islands')?.checked]).toEqual([false, false]);
+      expect(bonus()).toContain('0 of 6');
+    });
+
+    it('fills a mark with the bonus colour, which the key names', async () => {
+      await click(water('DC'));
+      const path = land('DC');
+      const fill = path ? window.getComputedStyle(path).fill : '';
+      // jsdom resolves the rule but not the custom property, so the rule is
+      // what is held here; the colour's contrast is held above.
+      expect(fill).toBe('var(--quest-bonus)');
+      expect(path?.classList.contains('quest-visited')).toBe(true);
+    });
+
+    it('never writes the bonus to the states, or the states to the bonus', async () => {
+      await click(water('MP'));
+      expect(stored()).toEqual(expect.objectContaining({ states: [], bonus: ['MP'] }));
+      expect(text(statesPanel(), '.quest-tally')).toBe('0 of 50 states visited');
+
+      await clickShape('CA');
+      expect(stored()).toEqual(expect.objectContaining({ states: ['CA'], bonus: ['MP'] }));
+      expect(filled('MP')).toBe(true);
+      expect(shape('CA')?.classList.contains('quest-visited')).toBe(true);
+      expect(map()?.querySelectorAll('.quest-visited').length).toBe(1);
+    });
+
+    it('keeps its marks through a reload, under the one key', async () => {
+      await click(water('DC'));
+      await click(land('VI'));
+      await reload();
+
+      expect([filled('DC'), filled('VI'), filled('PR')]).toEqual([true, true, false]);
+      expect(box('District of Columbia')?.checked).toBe(true);
+      expect(storage.length).toBe(1);
+    });
+
+    it('empties with "Clear my states", along with the checkboxes', async () => {
+      await click(water('GU'));
+      await clickShape('NV');
+      const clear = async (label: string): Promise<void> => {
+        Array.from(statesPanel().querySelectorAll<HTMLButtonElement>('button.quest-clear'))
+          .find((candidate) => candidate.textContent?.trim() === label)
+          ?.click();
+        await fixture.whenStable();
+      };
+      await clear('Clear my states');
+      await clear('Clear them');
+
+      expect(map()?.querySelectorAll('.quest-visited').length).toBe(0);
+      expect(box('Guam')?.checked).toBe(false);
+      expect(bonus()).toContain('0 of 6');
+    });
+
+    it('works for the visit, and says so, when storage throws', async () => {
+      const refusing = memoryStorage();
+      vi.spyOn(refusing, 'getItem').mockImplementation(() => {
+        throw new DOMException('denied', 'SecurityError');
+      });
+      vi.spyOn(refusing, 'setItem').mockImplementation(() => {
+        throw new DOMException('full', 'QuotaExceededError');
+      });
+      await openWith(refusing);
+
+      await click(water('AS'));
+      expect([filled('AS'), box('American Samoa')?.checked]).toEqual([true, true]);
+      expect(bonus()).toContain('1 of 6');
+      expect(text(statesPanel(), '.quest-storage')).toContain('last only until you leave');
+    });
   });
 
   it('ignores a click on the ground between places, and on land that is none of them', async () => {

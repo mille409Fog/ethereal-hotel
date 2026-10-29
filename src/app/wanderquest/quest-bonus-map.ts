@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { GuestProgressStore } from './guest-progress';
 import type { IOutlineTile } from './outline';
 import type { IQuest } from './quest-state';
 
@@ -32,7 +33,9 @@ export function nameLines(name: string): string[] {
  * DC and the five inhabited territories as small multiples, under the states
  * outline. No one scale can hold them: they are scattered across two oceans
  * and differ in size by orders of magnitude, so each tile is fitted to its own
- * place and the panel says so beneath. Its own component because the page
+ * place and the panel says so beneath. A marked place is filled in the
+ * panel's bonus colour, not its visited one, so the key's "Bonus, visited"
+ * swatch describes what is on screen. Its own component because the page
  * template sits at the cyclomatic cap.
  */
 @Component({
@@ -42,7 +45,16 @@ export function nameLines(name: string): string[] {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuestBonusMap {
+  public readonly guest = inject(GuestProgressStore);
+
   public readonly quest = input.required<IQuest>();
+
+  /**
+   * A click anywhere on the map, handed up rather than handled here, so the
+   * page's one `onMapClick` decides what a click on any map means and this
+   * component only says which list it draws.
+   */
+  public readonly mapClick = output<MouseEvent>();
 
   public readonly tiles = computed((): IBonusTile[] => {
     const { bonusOutline, bonusPlaces } = this.quest();

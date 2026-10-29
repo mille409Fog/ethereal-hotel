@@ -1,27 +1,41 @@
 @if (quest().bonusOutline; as outline) {
   <!-- One image with one name, and nothing in it takes focus, as the states
        outline above: a picture of the bonus checkboxes below. The names are
-       drawn text, read as part of the image's name rather than on their own. -->
+       drawn text, read as part of the image's name rather than on their own.
+       A click on a tile is a shortcut for its checkbox and nothing more, so
+       the keyboard route is the list, which is why the rule that expects a
+       key handler beside a click is off for this element. -->
+  <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events -->
   <svg
     class="quest-bonus-map"
     role="img"
     [attr.aria-label]="outline.label"
     [attr.viewBox]="outline.viewBox"
+    (click)="mapClick.emit($event)"
   >
     @for (tile of tiles(); track tile.id) {
-      <rect
-        class="quest-bonus-tile"
-        [attr.x]="tile.x"
-        [attr.y]="tile.y"
-        [attr.width]="tile.size"
-        [attr.height]="tile.size"
-      />
-      <path class="quest-bonus-land" [attr.d]="tile.d" [attr.data-id]="tile.id" />
-      <text class="quest-bonus-name" [attr.x]="tile.name.x" [attr.y]="tile.name.y">
-        @for (line of tile.lines; track $index) {
-          <tspan [attr.x]="tile.name.x" [attr.dy]="$first ? 0 : '1.2em'">{{ line }}</tspan>
-        }
-      </text>
+      <!-- The group is the hit target: the whole square and the name under
+           it, because DC's land and American Samoa's are too small to aim at. -->
+      <g class="quest-bonus-cell" [attr.data-id]="tile.id">
+        <rect
+          class="quest-bonus-tile"
+          [attr.x]="tile.x"
+          [attr.y]="tile.y"
+          [attr.width]="tile.size"
+          [attr.height]="tile.size"
+        />
+        <path
+          class="quest-bonus-land"
+          [attr.d]="tile.d"
+          [attr.data-id]="tile.id"
+          [class.quest-visited]="guest.has('bonus', tile.id)"
+        />
+        <text class="quest-bonus-name" [attr.x]="tile.name.x" [attr.y]="tile.name.y">
+          @for (line of tile.lines; track $index) {
+            <tspan [attr.x]="tile.name.x" [attr.dy]="$first ? 0 : '1.2em'">{{ line }}</tspan>
+          }
+        </text>
+      </g>
     }
   </svg>
   <p class="quest-bonus-scale">

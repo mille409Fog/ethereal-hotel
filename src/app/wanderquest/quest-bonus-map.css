@@ -19,11 +19,18 @@
 }
 
 /* The square frames the tile, so six scales read as six pictures rather
-   than one map with strange gaps in it. */
+   than one map with strange gaps in it. Transparent rather than `none`,
+   because an unpainted fill takes no clicks, and the water is the larger
+   part of the hit target: about 137px a side at 320px, far over WCAG
+   2.5.8's 24. */
 .quest-bonus-tile {
-  fill: none;
+  fill: transparent;
   stroke: var(--color-border);
   stroke-width: 1px;
+}
+
+.quest-bonus-cell {
+  cursor: pointer;
 }
 
 /* No ground stroke, unlike the states: a tile holds one place, so there is
@@ -31,6 +38,20 @@
    stroke would eat a pixel from every side. */
 .quest-bonus-land {
   fill: var(--quest-unvisited);
+}
+
+/* The bonus colour, not the visited one, so the key's "Bonus, visited"
+   swatch is the colour on the map. */
+.quest-bonus-land.quest-visited {
+  fill: var(--quest-bonus);
+}
+
+/* Anywhere on the tile lights its land, since anywhere on it is the target.
+   Only where a pointer can hover, as on the states outline. */
+@media (hover: hover) {
+  .quest-bonus-cell:hover .quest-bonus-land {
+    fill: var(--quest-highlight);
+  }
 }
 
 /* In frame units: 40 of them, which the width above turns into pixels. */
@@ -55,6 +76,10 @@
      borders inside a tile, an outline alone would lose the smaller islands. */
   .quest-bonus-land {
     fill: CanvasText;
+  }
+
+  .quest-bonus-land.quest-visited {
+    fill: Highlight;
   }
 
   .quest-bonus-name {

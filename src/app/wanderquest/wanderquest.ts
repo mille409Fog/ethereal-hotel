@@ -7,7 +7,7 @@ import {
   signal,
   viewChildren,
 } from '@angular/core';
-import { GuestProgressStore } from './guest-progress';
+import { GuestProgressStore, type GuestList } from './guest-progress';
 import { QuestBonusMap } from './quest-bonus-map';
 import { QuestChecklist } from './quest-checklist';
 import { QUEST_STATE, QUESTS, stepQuest, type IQuest } from './quest-state';
@@ -47,19 +47,24 @@ export class Wanderquest {
   }
 
   /**
-   * A click on a drawn place toggles it, exactly as its checkbox would. The
-   * listener is on the outline rather than on each path, so it reads the place
-   * from the `data-id` the paths already carry; a click on the ground between
-   * them, or on unkeyed land, finds none and does nothing: unkeyed land is
-   * none of the places, so it is never selectable.
+   * A click on a drawn place toggles it in `list`, exactly as its checkbox
+   * would. `list` is the one the clicked map draws, not the quest's: the
+   * states panel holds two maps, and the bonus map's clicks are `bonus`.
+   *
+   * The listener is on the map rather than on each place, so it reads the
+   * place from the nearest `data-id`: a path's on the outlines, a whole tile's
+   * on the bonus map. A click on the ground between them, or on unkeyed land,
+   * finds none and does nothing: unkeyed land is none of the places, so it is
+   * never selectable. The store ignores an id that is not in `list`, so one
+   * map can never write to another's.
    */
-  public onMapClick(event: MouseEvent, quest: IQuest): void {
+  public onMapClick(event: MouseEvent, list: GuestList): void {
     if (!(event.target instanceof Element)) {
       return;
     }
-    const id = event.target.closest('path[data-id]')?.getAttribute('data-id');
+    const id = event.target.closest('[data-id]')?.getAttribute('data-id');
     if (id) {
-      this.guest.toggle(quest.list, id);
+      this.guest.toggle(list, id);
     }
   }
 
