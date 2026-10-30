@@ -343,6 +343,26 @@ describe('Wanderquest', () => {
     }
   });
 
+  it("titles every keyed shape with its place's name, and nothing else", () => {
+    for (const quest of QUESTS) {
+      const svg = host.querySelector(`#quest-panel-${quest.id} svg.quest-outline`);
+      const names = new Map(quest.places.map((place) => [place.id, place.name]));
+      const keyed = Array.from(svg?.querySelectorAll('path[data-id]') ?? []);
+      expect(keyed.length, quest.id).toBe(quest.outline?.shapes.length);
+
+      for (const path of keyed) {
+        const id = path.getAttribute('data-id') ?? '';
+        const titles = Array.from(path.children).filter((child) => child.localName === 'title');
+        expect(
+          titles.map((title) => title.textContent),
+          `${quest.id} ${id}`
+        ).toEqual([names.get(id)]);
+      }
+      // Unkeyed land is none of the places, so it is named as none of them.
+      expect(svg?.querySelector('path.quest-outline-unkeyed title') ?? null).toBeNull();
+    }
+  });
+
   it('draws the bonus on the states panel, below the states, as one named image', () => {
     const maps = Array.from(host.querySelectorAll('svg.quest-bonus-map'));
     expect(maps.map((map) => map.closest('section')?.id)).toEqual(['quest-panel-states']);

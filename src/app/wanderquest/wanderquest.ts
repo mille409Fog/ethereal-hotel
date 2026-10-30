@@ -35,6 +35,15 @@ export class Wanderquest {
 
   public readonly quests = QUESTS;
 
+  /**
+   * Each quest's place names by id, for the `<title>` on its outline's shapes.
+   * Taken from the quest's own places, so a tooltip cannot name a place the
+   * checklist calls something else.
+   */
+  public readonly placeNames: ReadonlyMap<QUEST_STATE, ReadonlyMap<string, string>> = new Map(
+    QUESTS.map((quest) => [quest.id, new Map(quest.places.map((place) => [place.id, place.name]))])
+  );
+
   /** The quest on screen. */
   public readonly quest = signal(QUEST_STATE.STATES);
 

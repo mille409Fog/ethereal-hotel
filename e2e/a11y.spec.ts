@@ -276,6 +276,33 @@ test.describe('accessibility', () => {
   });
 });
 
+/**
+ * Every keyed shape on the wanderquest outlines carries a `<title>`, which is
+ * the pointer's tooltip, and 195 of them on the countries map. The SVG's
+ * `role="img"` is what keeps those out of the accessibility tree; axe would
+ * pass either way, so this reads the tree the browser actually built and
+ * requires each map to be one named image with nothing inside it.
+ */
+test.describe('wanderquest outlines', () => {
+  test('each map is one image to a screen reader, whatever its shapes are titled', async ({
+    page,
+  }) => {
+    await page.goto('/wanderquest');
+    const maps = [
+      ['States', 'Outline map of the fifty states', 'California'],
+      ['Continents', 'Outline map of the seven continents', 'Asia'],
+      ['Countries', 'Outline map of the countries of the world', 'Brazil'],
+    ] as const;
+
+    for (const [tab, label, place] of maps) {
+      await page.getByRole('tab', { name: tab }).click();
+      const svg = page.getByRole('tabpanel', { name: tab }).locator('svg.quest-outline');
+      await expect(svg.locator('path[data-id] > title', { hasText: place })).toHaveCount(1);
+      expect(await svg.ariaSnapshot()).toBe(`- img "${label}"`);
+    }
+  });
+});
+
 test.describe('keyboard operability', () => {
   test('the first Tab reaches a skip link that jumps to main content', async ({ page }) => {
     await page.goto('/');

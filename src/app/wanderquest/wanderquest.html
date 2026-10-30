@@ -54,12 +54,18 @@
           @if (outline.unkeyed; as unkeyed) {
             <path class="quest-outline-unkeyed" [attr.d]="unkeyed" />
           }
+          <!-- Each place's <title> is the pointer's native tooltip. The SVG's
+               role="img" makes its children presentational, so a screen
+               reader still hears one image and not a name per shape. -->
+          @let names = placeNames.get(quest.id);
           @for (shape of outline.shapes; track shape.id) {
             <path
               [attr.d]="shape.d"
               [attr.data-id]="shape.id"
               [class.quest-visited]="guest.has(quest.list, shape.id)"
-            />
+            >
+              <title>{{ names?.get(shape.id) }}</title>
+            </path>
           }
         </svg>
         <!-- The outline cannot draw what is too small for its scale, so it
