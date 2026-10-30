@@ -35,9 +35,14 @@
 
 /* No ground stroke, unlike the states: a tile holds one place, so there is
    no border inside it to draw, and on an island a few pixels across the
-   stroke would eat a pixel from every side. */
+   stroke would eat a pixel from every side.
+
+   The fill eases as the states outline's does, at the tabs' timing: once per
+   mark, which is the state it shows. Reduced motion is the global block's in
+   `styles.css`, whose `!important` would override a local `transition: none`. */
 .quest-bonus-land {
   fill: var(--quest-unvisited);
+  transition: fill 120ms ease-out;
 }
 
 /* The bonus colour, not the visited one, so the key's "Bonus, visited"
@@ -47,10 +52,11 @@
 }
 
 /* Anywhere on the tile lights its land, since anywhere on it is the target.
-   Only where a pointer can hover, as on the states outline. */
+   Only where a pointer can hover, and instantly, as on the states outline. */
 @media (hover: hover) {
   .quest-bonus-cell:hover .quest-bonus-land {
     fill: var(--quest-highlight);
+    transition-duration: 0s;
   }
 }
 

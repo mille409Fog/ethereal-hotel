@@ -160,8 +160,13 @@
   stroke-linejoin: round;
 }
 
+/* The fill eases at the tabs' timing. It plays once per mark, which is the
+   state it shows, and nothing here loops. Under reduced motion the global
+   block in `styles.css` collapses it to one frame, with `!important`, so a
+   local `transition: none` would never apply. */
 .quest-outline path {
   vector-effect: non-scaling-stroke;
+  transition: fill 120ms ease-out;
 }
 
 .quest-outline .quest-visited {
@@ -174,10 +179,14 @@
 }
 
 /* Only where a pointer can hover: on a touch screen the highlight would stick
-   to the last place tapped and read as a third state. */
+   to the last place tapped and read as a third state. The highlight arrives
+   instantly, because the transition above is for marks, not for a pointer
+   passing over; a transition is taken from the state being entered, so this
+   zero governs the way in and the 120ms the way out. */
 @media (hover: hover) {
   .quest-outline path[data-id]:hover {
     fill: var(--quest-highlight);
+    transition-duration: 0s;
   }
 }
 
