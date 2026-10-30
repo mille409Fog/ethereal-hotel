@@ -93,6 +93,14 @@
   cursor: pointer;
 }
 
+/* A visited place reads in the body colour, so the list shows progress as the
+   map does. Selected from the checkbox itself rather than from a class beside
+   it, so the two can never disagree; the tick still carries the difference
+   without colour. */
+.quest-checklist-item input:checked + label {
+  color: var(--color-text);
+}
+
 .quest-clear {
   min-height: 44px;
   padding: 0.5rem 1.25rem;
