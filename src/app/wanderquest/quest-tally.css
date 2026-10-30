@@ -1,5 +1,11 @@
 /* The guest's count is the panel's headline; the owner's sits beneath it in
-   the muted text, a reference rather than a score to beat. */
+   the muted text, a reference rather than a score to beat.
+
+   No `font-variant-numeric: tabular-nums` here, deliberately: Source Serif 4
+   and Source Sans 3 both default to tabular figures (every digit measured at
+   0.50em in Chromium, against 0.34–0.54em under `proportional-nums`), so the
+   declaration would change nothing. What still moves the centred line from
+   "9 of 50" to "10 of 50" is the extra digit, which no figure style removes. */
 
 .quest-tally {
   font-family: var(--font-serif);
