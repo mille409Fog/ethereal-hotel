@@ -58,7 +58,9 @@
 @if (asking()) {
   <div class="quest-clear-ask" role="group" [attr.aria-labelledby]="'quest-clear-' + current.list">
     <p class="quest-clear-question" [id]="'quest-clear-' + current.list">{{ question() }}</p>
-    <button type="button" class="quest-clear" (click)="onAnswer(true)">Clear them</button>
+    <button type="button" class="quest-clear quest-clear-destructive" (click)="onAnswer(true)">
+      Clear them
+    </button>
     <button #keep type="button" class="quest-clear" (click)="onAnswer(false)">Keep them</button>
   </div>
 } @else {

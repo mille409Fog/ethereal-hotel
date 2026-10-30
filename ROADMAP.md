@@ -27,25 +27,14 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## `/wanderquest` polish
 
-Six small aesthetic items for the travel quests, roughly cheapest first. The page's house rules
+Five small aesthetic items for the travel quests, roughly cheapest first. The page's house rules
 bind all of them: Fern's tokens and one accent for controls, the quest palettes in
 `wanderquest.css` for places and never for controls, no glow, and no motion that does not show a
 change of state. Any colour a change introduces is measured, not picked by eye. `wanderquest.spec.ts`
 recomputes the palette contrasts from the CSS, so a new pairing goes into that spec too.
 `e2e/a11y.spec.ts` runs axe over `/wanderquest` and has to stay green.
 
-### 1. The destructive answer looks destructive
-
-"Clear them" and "Keep them" are the same button, and only one of them loses data.
-**Effort:** 20 minutes.
-
-**DoD:** "Clear them" has a `--color-negative` border and text. That is a state colour, not the
-accent, as CLAUDE.md requires of an error-shaped thing. "Keep them" is unchanged and keeps focus
-as it does now. Under `forced-colors` the two still differ by something other than colour; the
-wording already does that, so confirm it rather than adding more. The text contrast on
-`--color-bg` is stated in a comment beside the rule.
-
-### 2. Place names on hover over the map
+### 1. Place names on hover over the map
 
 Hovering a shape highlights it but does not name it. On the countries outline most shapes cannot
 be recognised without a name. **Effort:** 1 hour.
@@ -56,7 +45,7 @@ its one `aria-label`, so screen readers hear one image and not 195 names; `e2e/a
 proves that. The bonus map already draws its names, so it is left alone. A unit test checks that
 every keyed path's title matches its place.
 
-### 3. A progress bar under the tally
+### 2. A progress bar under the tally
 
 "12 of 50" is a number to read; a bar is a proportion you take in at a glance. **Effort:** 1 hour.
 
@@ -67,7 +56,7 @@ accessible version and saying it twice is noise. Under `forced-colors` the fill 
 `Canvas`, matching the map. The bonus count gets a bar only if it reads as clearly secondary;
 otherwise it gets none, and this item says which was chosen.
 
-### 4. A completed quest says so
+### 3. A completed quest says so
 
 At 50 of 50 the tally reads exactly as it does at 49. **Effort:** 30 minutes.
 
@@ -76,7 +65,7 @@ taste, e.g. "All 50 states visited"). There is no confetti, animation or colour 
 words. The bonus stays "not required" and does not block completion. A unit test covers 49, 50
 and 50-plus-bonus.
 
-### 5. A one-line introduction under the title
+### 4. A one-line introduction under the title
 
 The header is the word "Wanderquest" and nothing else, so a visitor arriving from the projects
 section has to work out what the page is from the tabs. **Effort:** 15 minutes.
@@ -87,7 +76,7 @@ else."). That is the same claim the storage notice in the tally makes when it fa
 must not contradict each other. If `src/route-meta.json` describes the route, the two are worded
 consistently.
 
-### 6. Hovering a checklist row highlights its place on the map
+### 5. Hovering a checklist row highlights its place on the map
 
 `--quest-highlight` is in the key but only appears when the map itself is hovered. The list and
 the map are two drawings of one set of data and nothing connects them. **Effort:** 2–3 hours.

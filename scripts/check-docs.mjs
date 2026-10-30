@@ -2312,15 +2312,22 @@ check("wanderquest's palettes stay its own", () => {
       });
   }
 
-  const ground = /--color-bg:\s*(#[0-9a-f]{6})/i.exec(read('src/styles.css'))?.[1];
-  const copy = /const PAGE_BACKGROUND = '(#[0-9a-f]{6})'/i.exec(
-    read('src/app/wanderquest/wanderquest.spec.ts')
-  )?.[1];
-  if (!ground || !copy || ground.toLowerCase() !== copy.toLowerCase()) {
-    problems.push(
-      `wanderquest.spec.ts measures the palettes on ${copy ?? '(no PAGE_BACKGROUND)'}, but ` +
-        `--color-bg is ${ground ?? '(none)'}. The contrast test is only as true as that copy.`
-    );
+  // The unit tests load no global stylesheet, so the spec measures copies of
+  // the tokens it needs; each copy is only as true as this comparison.
+  const styles = read('src/styles.css');
+  const spec = read('src/app/wanderquest/wanderquest.spec.ts');
+  for (const [token, constant] of [
+    ['--color-bg', 'PAGE_BACKGROUND'],
+    ['--color-negative', 'NEGATIVE'],
+  ]) {
+    const value = new RegExp(`${token}:\\s*(#[0-9a-f]{6})`, 'i').exec(styles)?.[1];
+    const copy = new RegExp(`const ${constant} = '(#[0-9a-f]{6})'`, 'i').exec(spec)?.[1];
+    if (!value || !copy || value.toLowerCase() !== copy.toLowerCase()) {
+      problems.push(
+        `wanderquest.spec.ts measures with ${constant} = ${copy ?? '(none)'}, but ${token} is ` +
+          `${value ?? '(none)'}. The contrast test is only as true as that copy.`
+      );
+    }
   }
   return problems;
 });

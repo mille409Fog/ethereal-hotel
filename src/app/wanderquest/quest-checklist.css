@@ -121,6 +121,16 @@
   cursor: default;
 }
 
+/* The answer that loses data. --color-negative, the state colour rather than
+   the accent: this is the error-shaped choice, not a call to action. As text
+   it reads 7.15:1 on --color-bg and 6.24:1 on the --color-surface of its
+   hover; the border clears 3:1 by the same numbers. Under forced-colors the
+   colour is replaced, and the two answers still differ by their words. */
+.quest-clear-destructive {
+  border-color: var(--color-negative);
+  color: var(--color-negative);
+}
+
 .quest-clear:focus-visible {
   outline-offset: 2px;
 }

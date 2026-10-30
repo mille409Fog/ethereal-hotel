@@ -15,8 +15,14 @@ import { Wanderquest } from './wanderquest';
  */
 const PAGE_BACKGROUND = '#1a2a25';
 
+/** `--color-negative`, the destructive answer's text; a copy held the same way. */
+const NEGATIVE = '#e8a0a8';
+
 /** WCAG 1.4.11: a mark a reader has to tell apart from what surrounds it. */
 const NON_TEXT_CONTRAST = 3;
+
+/** WCAG 1.4.3: body-size text. */
+const TEXT_CONTRAST = 4.5;
 
 /**
  * OKLab's just-noticeable difference is about 0.02. Two roles in one palette
@@ -779,6 +785,17 @@ describe('Wanderquest', () => {
     expect(document.activeElement).toBe(button('Clear my states'));
 
     await press('Clear my states');
+    // Only the answer that loses data is drawn in the state colour. jsdom
+    // resolves the rule but not the token, so the rule is held here and the
+    // colour's contrast below.
+    const colour = (label: string): string => {
+      const found = button(label);
+      return found ? window.getComputedStyle(found).color : '';
+    };
+    expect(colour('Clear them')).toBe('var(--color-negative)');
+    expect(colour('Keep them')).not.toBe('var(--color-negative)');
+    expect(contrast(NEGATIVE, PAGE_BACKGROUND)).toBeGreaterThanOrEqual(TEXT_CONTRAST);
+    expect(document.activeElement).toBe(button('Keep them'));
     await press('Clear them');
 
     expect(text(statesPanel(), '.quest-tally')).toBe('0 of 50 states visited');
