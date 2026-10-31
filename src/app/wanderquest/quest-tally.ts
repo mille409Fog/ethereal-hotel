@@ -19,6 +19,18 @@ export class QuestTally {
   public readonly quest = input.required<IQuest>();
 
   public readonly visited = computed((): number => this.guest.visited(this.quest().list).size);
+  /**
+   * "12 of 50 states visited", until the last required place turns it into
+   * "All 50 states visited". Only the words change. The bonus is not counted,
+   * so it can neither block nor bring about completion.
+   */
+  public readonly headline = computed((): string => {
+    const { places, noun } = this.quest();
+    const visited = this.visited();
+    return visited === places.length
+      ? `All ${places.length} ${noun} visited`
+      : `${visited} of ${places.length} ${noun} visited`;
+  });
   /** The headline as a percentage, for the bar beneath it. */
   public readonly share = computed(
     (): number => (this.visited() / this.quest().places.length) * 100

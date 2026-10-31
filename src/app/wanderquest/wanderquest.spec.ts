@@ -757,6 +757,26 @@ describe('Wanderquest', () => {
     expect(statesPanel().querySelector('.quest-storage')).toBeNull();
   });
 
+  it('says the quest is complete at 50, not at 49, and the bonus changes nothing', async () => {
+    const seeded = async (states: readonly string[], bonus: readonly string[]): Promise<void> =>
+      openWith(memoryStorage({ [GUEST_PROGRESS_KEY]: JSON.stringify({ states, bonus }) }));
+    const all = STATES.map((place) => place.id);
+
+    await seeded(all.slice(1), []);
+    expect(text(statesPanel(), '.quest-tally')).toBe('49 of 50 states visited');
+
+    await seeded(all, []);
+    expect(text(statesPanel(), '.quest-tally')).toBe('All 50 states visited');
+    expect(text(statesPanel(), '.quest-bonus')).toContain('Bonus, not required: 0 of 6');
+
+    await seeded(
+      all,
+      BONUS.map((place) => place.id)
+    );
+    expect(text(statesPanel(), '.quest-tally')).toBe('All 50 states visited');
+    expect(text(statesPanel(), '.quest-bonus')).toContain('Bonus, not required: 6 of 6');
+  });
+
   it('works for the visit and says so when storage throws', async () => {
     const refusing = memoryStorage();
     vi.spyOn(refusing, 'getItem').mockImplementation(() => {

@@ -27,23 +27,14 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## `/wanderquest` polish
 
-Three small aesthetic items for the travel quests, roughly cheapest first. The page's house rules
+Two small aesthetic items for the travel quests, roughly cheapest first. The page's house rules
 bind all of them: Fern's tokens and one accent for controls, the quest palettes in
 `wanderquest.css` for places and never for controls, no glow, and no motion that does not show a
 change of state. Any colour a change introduces is measured, not picked by eye. `wanderquest.spec.ts`
 recomputes the palette contrasts from the CSS, so a new pairing goes into that spec too.
 `e2e/a11y.spec.ts` runs axe over `/wanderquest` and has to stay green.
 
-### 1. A completed quest says so
-
-At 50 of 50 the tally reads exactly as it does at 49. **Effort:** 30 minutes.
-
-**DoD:** when every required place is marked, the tally reads as complete (wording to the owner's
-taste, e.g. "All 50 states visited"). There is no confetti, animation or colour change, only the
-words. The bonus stays "not required" and does not block completion. A unit test covers 49, 50
-and 50-plus-bonus.
-
-### 2. A one-line introduction under the title
+### 1. A one-line introduction under the title
 
 The header is the word "Wanderquest" and nothing else, so a visitor arriving from the projects
 section has to work out what the page is from the tabs. **Effort:** 15 minutes.
@@ -54,7 +45,7 @@ else."). That is the same claim the storage notice in the tally makes when it fa
 must not contradict each other. If `src/route-meta.json` describes the route, the two are worded
 consistently.
 
-### 3. Hovering a checklist row highlights its place on the map
+### 2. Hovering a checklist row highlights its place on the map
 
 `--quest-highlight` is in the key but only appears when the map itself is hovered. The list and
 the map are two drawings of one set of data and nothing connects them. **Effort:** 2–3 hours.
