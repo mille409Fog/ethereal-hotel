@@ -25,6 +25,25 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
+## A red e2e test that depends on the hour
+
+### 1. Every floor's picture says it is drawn in real time
+
+`e2e/aubade.spec.ts` › "the lift reaches the floor below" fails at nautical twilight and passes at
+every other hour. A production build closes the `?t=` back door, so the test stands in the corridor
+at whatever the real sun is doing, and the canvas's `aria-label` is `CORRIDOR_COPY[state].picture`.
+Of the thirty `picture` strings in `src/aubade/desk.ts` (six floors × five states), `warning` on
+Floor −1 is the only one without "drawn in real time". It has been missing since the floor landed,
+and `triage/data/` already holds CI runs that failed on it. A local run says nothing either way: it
+passed earlier on 2026-10-30 and failed that evening, on a clean HEAD. **Effort:** 30 minutes.
+
+**DoD:** the corridor's `warning` picture carries the phrase as the other twenty-nine do, and is
+otherwise left as written. The real fix is a unit test in `desk.spec.ts` that walks every
+`*_COPY` table that is keyed by `AubadeState` and requires the phrase in every `picture`. The e2e
+test only ever sees the hour CI happens to run at, so it would take a year of runs to check all
+thirty, while the unit test checks them every time. The e2e assertion stays: it is the one place
+the label is read off a real canvas.
+
 ## `/wanderquest` polish
 
 Three small aesthetic items for the travel quests, roughly cheapest first. The page's house rules
@@ -34,7 +53,7 @@ change of state. Any colour a change introduces is measured, not picked by eye. 
 recomputes the palette contrasts from the CSS, so a new pairing goes into that spec too.
 `e2e/a11y.spec.ts` runs axe over `/wanderquest` and has to stay green.
 
-### 1. A completed quest says so
+### 2. A completed quest says so
 
 At 50 of 50 the tally reads exactly as it does at 49. **Effort:** 30 minutes.
 
@@ -43,7 +62,7 @@ taste, e.g. "All 50 states visited"). There is no confetti, animation or colour 
 words. The bonus stays "not required" and does not block completion. A unit test covers 49, 50
 and 50-plus-bonus.
 
-### 2. A one-line introduction under the title
+### 3. A one-line introduction under the title
 
 The header is the word "Wanderquest" and nothing else, so a visitor arriving from the projects
 section has to work out what the page is from the tabs. **Effort:** 15 minutes.
@@ -54,7 +73,7 @@ else."). That is the same claim the storage notice in the tally makes when it fa
 must not contradict each other. If `src/route-meta.json` describes the route, the two are worded
 consistently.
 
-### 3. Hovering a checklist row highlights its place on the map
+### 4. Hovering a checklist row highlights its place on the map
 
 `--quest-highlight` is in the key but only appears when the map itself is hovered. The list and
 the map are two drawings of one set of data and nothing connects them. **Effort:** 2–3 hours.
