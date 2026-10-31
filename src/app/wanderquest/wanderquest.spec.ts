@@ -592,6 +592,83 @@ describe('Wanderquest', () => {
     expect([fill(), bars().length]).toEqual(['4%', 1]);
   });
 
+  describe('a checklist row lighting its place', () => {
+    const row = (name: string, within: HTMLElement = statesPanel()): HTMLElement | null => {
+      const label = Array.from(within.querySelectorAll('label')).find(
+        (candidate) => candidate.textContent?.trim() === name
+      );
+      return label?.closest('li') ?? null;
+    };
+    const lit = (within: HTMLElement = statesPanel()): string[] =>
+      Array.from(within.querySelectorAll('svg.quest-outline path.quest-highlighted')).map(
+        (path) => path.getAttribute('data-id') ?? ''
+      );
+    const send = async (target: Element | null, type: string): Promise<void> => {
+      target?.dispatchEvent(new Event(type, { bubbles: type.startsWith('focus') }));
+      await fixture.whenStable();
+    };
+
+    it('lights the shape while the pointer is over the row, and clears it on leaving', async () => {
+      await send(row('California'), 'mouseenter');
+      expect(lit()).toEqual(['CA']);
+      const path = shape('CA');
+      // jsdom resolves the rule but not the custom property; the colour is
+      // the key's, held to its palette above.
+      expect(path ? window.getComputedStyle(path).fill : '').toBe('var(--quest-highlight)');
+
+      await send(row('California'), 'mouseleave');
+      expect(lit()).toEqual([]);
+    });
+
+    it('lights the shape while focus is in the row, for a keyboard user', async () => {
+      box('Nevada')?.focus();
+      await fixture.whenStable();
+      expect(lit()).toEqual(['NV']);
+
+      box('Utah')?.focus();
+      await fixture.whenStable();
+      expect(lit()).toEqual(['UT']);
+
+      box('Utah')?.blur();
+      await fixture.whenStable();
+      expect(lit()).toEqual([]);
+    });
+
+    it('lights a marked place too, and leaves its mark alone', async () => {
+      await clickBox('Texas');
+      await send(row('Texas'), 'mouseenter');
+      expect(lit()).toEqual(['TX']);
+      expect(shape('TX')?.classList.contains('quest-visited')).toBe(true);
+      expect(text(statesPanel(), '.quest-tally')).toBe('1 of 50 states visited');
+    });
+
+    it('lights only its own quest, though ids repeat across quests', async () => {
+      const countries = host.querySelector<HTMLElement>('#quest-panel-countries') ?? host;
+      await send(row('California'), 'mouseenter');
+      expect(lit(countries)).toEqual([]);
+
+      await send(row('Canada', countries), 'mouseenter');
+      expect([lit(), lit(countries)]).toEqual([[], ['CA']]);
+    });
+
+    it('does nothing, quietly, for a place too small to draw or a bonus place', async () => {
+      const countries = host.querySelector<HTMLElement>('#quest-panel-countries') ?? host;
+      const drawn = new Set(
+        QUESTS.find((quest) => quest.id === QUEST_STATE.COUNTRIES)?.outline?.shapes.map(
+          (outlined) => outlined.id
+        )
+      );
+      const undrawn = COUNTRIES.find((place) => !drawn.has(place.id));
+      expect(undrawn).toBeDefined();
+
+      await send(row(undrawn?.name ?? '', countries), 'mouseenter');
+      expect(host.querySelectorAll('path.quest-highlighted').length).toBe(0);
+
+      await send(row('Guam'), 'mouseenter');
+      expect(host.querySelectorAll('.quest-highlighted').length).toBe(0);
+    });
+  });
+
   describe('the bonus map', () => {
     const map = (): SVGSVGElement | null =>
       statesPanel().querySelector<SVGSVGElement>('svg.quest-bonus-map');

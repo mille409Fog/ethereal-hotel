@@ -20,9 +20,19 @@
       <p class="quest-filter-count" role="status">{{ shownCount() }}</p>
     </div>
   }
+  <!-- A row says its place to the map on hover and on focus alike: this list
+       is the map's keyboard route, so a keyboard user gets the link a mouse
+       user gets. focusin rather than focus, because it is the checkbox inside
+       that takes focus and only focusin bubbles to the row. -->
   <ul class="quest-checklist-items">
     @for (place of shown(); track place.id) {
-      <li class="quest-checklist-item">
+      <li
+        class="quest-checklist-item"
+        (mouseenter)="highlight.emit(place.id)"
+        (mouseleave)="highlight.emit(null)"
+        (focusin)="highlight.emit(place.id)"
+        (focusout)="highlight.emit(null)"
+      >
         <input
           type="checkbox"
           [id]="'quest-place-' + current.list + '-' + place.id"

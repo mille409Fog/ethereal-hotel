@@ -39,3 +39,36 @@ test.describe('wanderquest bonus map', () => {
     );
   });
 });
+
+/**
+ * The unit tests hold the class and the rule; jsdom cannot resolve the custom
+ * property behind it, so this reads the fill a real browser paints.
+ */
+test.describe('wanderquest checklist', () => {
+  test("fills a state with the panel's highlight from its row, by pointer and by keyboard", async ({
+    page,
+  }) => {
+    await page.goto('/wanderquest');
+    const ohio = page.locator('svg.quest-outline path[data-id="OH"]');
+    const fill = (): Promise<string> => ohio.evaluate((path) => window.getComputedStyle(path).fill);
+    const highlight = await page
+      .locator('#quest-panel-states')
+      .evaluate((panel) =>
+        window.getComputedStyle(panel).getPropertyValue('--quest-highlight').trim()
+      );
+    const resting = await fill();
+    // `--quest-highlight` is six-digit hex; the computed fill is rgb().
+    const [r, g, b] = [1, 3, 5].map((at) => parseInt(highlight.slice(at, at + 2), 16));
+    const lit = `rgb(${r}, ${g}, ${b})`;
+    expect(resting).not.toBe(lit);
+
+    // The label, not the text: the shape's own <title> also says "Ohio".
+    await page.locator('#quest-panel-states label', { hasText: /^Ohio$/ }).hover();
+    await expect.poll(fill).toBe(lit);
+    await page.mouse.move(0, 0);
+    await expect.poll(fill).toBe(resting);
+
+    await page.getByRole('checkbox', { name: 'Ohio' }).focus();
+    await expect.poll(fill).toBe(lit);
+  });
+});

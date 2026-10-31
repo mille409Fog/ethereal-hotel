@@ -196,6 +196,16 @@
   }
 }
 
+/* The place a checklist row points at, by hover or by focus. Outside the
+   hover query because focus is not a pointer: on a touch screen the shape
+   stays lit after a tap because its checkbox still holds focus, which is
+   true state rather than a stuck hover. Same colour and timing as the map's
+   own hover, and after `.quest-visited` so it wins over a marked place. */
+.quest-outline .quest-highlighted {
+  fill: var(--quest-highlight);
+  transition-duration: 0s;
+}
+
 /* Land that is none of the places: Antarctica, Taiwan. It is drawn so the
    coastline is whole, in a Fern grey rather than a palette colour, because a
    palette colour would say it can be visited and counted. */

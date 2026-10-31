@@ -51,6 +51,26 @@ export class Wanderquest {
     (): IQuest => QUESTS.find((quest) => quest.id === this.quest()) ?? QUESTS[0]
   );
 
+  /**
+   * The place a checklist row is pointing at, written by the checklist and
+   * read by the outline, so neither reaches into the other. Keyed by list as
+   * well as id because ids repeat across quests: "CA" is California on one
+   * map and Canada on another. A place too small to draw has no shape to
+   * match, so naming it fills nothing.
+   */
+  public readonly highlighted = signal<{ readonly list: GuestList; readonly id: string } | null>(
+    null
+  );
+
+  public onHighlight(list: GuestList, id: string | null): void {
+    this.highlighted.set(id === null ? null : { list, id });
+  }
+
+  public isHighlighted(list: GuestList, id: string): boolean {
+    const highlighted = this.highlighted();
+    return highlighted?.list === list && highlighted.id === id;
+  }
+
   public onSelection(selection: QUEST_STATE): void {
     this.quest.set(selection);
   }

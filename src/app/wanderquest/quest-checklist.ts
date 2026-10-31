@@ -7,6 +7,7 @@ import {
   inject,
   Injector,
   input,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -41,6 +42,14 @@ export class QuestChecklist {
   private readonly keepButton = viewChild<ElementRef<HTMLButtonElement>>('keep');
 
   public readonly quest = input.required<IQuest>();
+
+  /**
+   * The place whose row the pointer is over or focus is in, and null when it
+   * leaves. Handed up rather than drawn here: the page owns the one signal the
+   * outline reads, so the list never reaches into the map. Only the quest's
+   * own rows say it, because the bonus places are not on the outline.
+   */
+  public readonly highlight = output<string | null>();
 
   /** True while the clear control is waiting for an answer. */
   public readonly asking = signal(false);

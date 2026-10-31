@@ -70,6 +70,7 @@
               [attr.d]="shape.d"
               [attr.data-id]="shape.id"
               [class.quest-visited]="guest.has(quest.list, shape.id)"
+              [class.quest-highlighted]="isHighlighted(quest.list, shape.id)"
             >
               <title>{{ names?.get(shape.id) }}</title>
             </path>
@@ -112,7 +113,7 @@
           </li>
         }
       </ul>
-      <app-quest-checklist [quest]="quest" />
+      <app-quest-checklist [quest]="quest" (highlight)="onHighlight(quest.list, $event)" />
     </section>
   }
 </main>

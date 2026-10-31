@@ -25,27 +25,6 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## `/wanderquest` polish
-
-One small aesthetic item for the travel quests. The page's house rules
-bind it: Fern's tokens and one accent for controls, the quest palettes in
-`wanderquest.css` for places and never for controls, no glow, and no motion that does not show a
-change of state. Any colour a change introduces is measured, not picked by eye. `wanderquest.spec.ts`
-recomputes the palette contrasts from the CSS, so a new pairing goes into that spec too.
-`e2e/a11y.spec.ts` runs axe over `/wanderquest` and has to stay green.
-
-### 1. Hovering a checklist row highlights its place on the map
-
-`--quest-highlight` is in the key but only appears when the map itself is hovered. The list and
-the map are two drawings of one set of data and nothing connects them. **Effort:** 2–3 hours.
-
-**DoD:** hovering or focusing a checklist row fills its shape with `--quest-highlight`, and
-leaving the row clears it. Keyboard focus counts, which is the point: the list is the map's
-keyboard route, so a keyboard user gets the link a mouse user gets. The hovered id is one signal
-owned by the page, written by the checklist and read by the outline; neither component reaches
-into the other. Places too small to draw do nothing, quietly. Unit tests cover hover, focus,
-leaving, and an undrawn place; one e2e assertion confirms that the fill changes.
-
 ## Deliberately not doing
 
 Recorded so the next instance does not helpfully add them:
