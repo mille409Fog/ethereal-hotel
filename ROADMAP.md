@@ -27,25 +27,14 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## `/wanderquest` polish
 
-Two small aesthetic items for the travel quests, roughly cheapest first. The page's house rules
-bind all of them: Fern's tokens and one accent for controls, the quest palettes in
+One small aesthetic item for the travel quests. The page's house rules
+bind it: Fern's tokens and one accent for controls, the quest palettes in
 `wanderquest.css` for places and never for controls, no glow, and no motion that does not show a
 change of state. Any colour a change introduces is measured, not picked by eye. `wanderquest.spec.ts`
 recomputes the palette contrasts from the CSS, so a new pairing goes into that spec too.
 `e2e/a11y.spec.ts` runs axe over `/wanderquest` and has to stay green.
 
-### 1. A one-line introduction under the title
-
-The header is the word "Wanderquest" and nothing else, so a visitor arriving from the projects
-section has to work out what the page is from the tabs. **Effort:** 15 minutes.
-
-**DoD:** one sentence under the `<h1>`, in `--color-text-secondary`, that says what the page does
-and where the marks are kept (e.g. "Mark where you've been. It stays in this browser and nowhere
-else."). That is the same claim the storage notice in the tally makes when it fails, so the two
-must not contradict each other. If `src/route-meta.json` describes the route, the two are worded
-consistently.
-
-### 2. Hovering a checklist row highlights its place on the map
+### 1. Hovering a checklist row highlights its place on the map
 
 `--quest-highlight` is in the key but only appears when the map itself is hovered. The list and
 the map are two drawings of one set of data and nothing connects them. **Effort:** 2–3 hours.

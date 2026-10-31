@@ -23,6 +23,12 @@
   margin: 0;
 }
 
+.wanderquest-intro {
+  max-width: 36rem;
+  margin: 0.75rem auto 0;
+  color: var(--color-text-secondary);
+}
+
 /* ----- The selector ----- */
 
 /* Three equal columns rather than three widths of word, so the tabs do not

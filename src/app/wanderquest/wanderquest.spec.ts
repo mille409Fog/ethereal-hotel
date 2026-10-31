@@ -813,6 +813,18 @@ describe('Wanderquest', () => {
     expect(statesPanel().querySelector('.quest-storage')).not.toBeNull();
   });
 
+  // The introduction sits above the notice and is not withdrawn when the
+  // notice appears, so it may say where marks go but never that they stay.
+  it('introduces the page with a line that stays true when storage refuses', async () => {
+    await openWith(null);
+    await clickBox('Maine');
+
+    const intro = text(host, '.wanderquest-header h1 + .wanderquest-intro');
+    expect(intro).toContain('nothing you mark leaves this browser');
+    expect(intro).not.toMatch(/\b(keep|kept|stays?|saved?|remember)/i);
+    expect(text(statesPanel(), '.quest-storage')).toContain('last only until you leave');
+  });
+
   it('asks before clearing, and keeps everything when the answer is no', async () => {
     const button = (label: string): HTMLButtonElement | undefined =>
       Array.from(statesPanel().querySelectorAll<HTMLButtonElement>('button.quest-clear')).find(

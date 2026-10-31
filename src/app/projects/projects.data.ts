@@ -61,8 +61,7 @@ export interface IProject {
 export const PROJECTS: readonly IProject[] = [
   {
     name: 'wanderquest',
-    description:
-      'a simulation of three travel quests, can you see every state, country, and continent?',
+    description: 'three travel quests — every state, every continent, every country',
     category: 'interactive',
     tech: ['Angular 22'],
   },
