@@ -1,4 +1,5 @@
 import { AUBADE_STATES } from './solar/state';
+import * as desk from './desk';
 import { DESK_COPY, INVITATION, describeCountdown, formatClockTime } from './desk';
 
 /**
@@ -46,6 +47,38 @@ describe('the desk', () => {
       expect(DESK_COPY.open.picture).toContain('Moonlight');
       expect(DESK_COPY.shuttered.picture).toContain('shutter');
       expect(DESK_COPY.shuttered.picture).not.toContain('Moonlight');
+    });
+
+    it('says every floor’s picture is drawn in real time, at every hour', () => {
+      // The e2e suite reads this phrase off a real canvas, but only at whatever
+      // hour CI happens to run — the corridor's nautical twilight went without it
+      // from the day the floor landed, and failed CI only after dark. This walks
+      // all thirty every time. The tables are found by shape rather than listed,
+      // so a seventh floor fails the name check below instead of going unwalked.
+      const states = [...AUBADE_STATES].sort();
+      const tables = Object.entries(desk).filter(
+        ([name, value]) =>
+          name.endsWith('_COPY') &&
+          typeof value === 'object' &&
+          JSON.stringify(Object.keys(value).sort()) === JSON.stringify(states)
+      ) as Array<[string, Record<string, { picture: string }>]>;
+
+      // Six floors. Fewer means the filter above has stopped finding them, and
+      // the loop below would pass on nothing.
+      expect(tables.map(([name]) => name).sort()).toEqual([
+        'BOX_COPY',
+        'CELLAR_COPY',
+        'CORRIDOR_COPY',
+        'DESK_COPY',
+        'LIBRARY_COPY',
+        'PROJECTION_COPY',
+      ]);
+
+      for (const [name, table] of tables) {
+        for (const state of AUBADE_STATES) {
+          expect(table[state].picture, `${name}.${state}`).toContain('drawn in real time');
+        }
+      }
     });
 
     it('offers the invitation in AUBADE’s own words', () => {

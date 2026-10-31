@@ -149,8 +149,8 @@ export const CORRIDOR_COPY: Readonly<Record<AubadeState, IDeskCopy>> = {
   warning: {
     plate: 'Nautical twilight, five floors up. Down here the pools of light no longer meet.',
     picture:
-      'A hotel corridor below ground, lit low. Each sconce now throws a separate pool with dark ' +
-      'between them, and the mirrored wall repeats the line of them.',
+      'A hotel corridor below ground, lit low, drawn in real time. Each sconce now throws a ' +
+      'separate pool with dark between them, and the mirrored wall repeats the line of them.',
     opening:
       'The pools under the sconces have stopped meeting. The corridor is a row of separate ' +
       'lights now, with dark between them, and twice as many of them in the glass.',
