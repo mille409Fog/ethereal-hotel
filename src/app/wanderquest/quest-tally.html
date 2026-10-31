@@ -1,4 +1,10 @@
 <p class="quest-tally">{{ visited() }} of {{ quest().places.length }} {{ quest().noun }} visited</p>
+<!-- The sentence above is the accessible version; the bar is the same figure
+     drawn, so a screen reader is not told it twice. The bonus has no bar: see
+     the stylesheet. -->
+<div class="quest-progress" aria-hidden="true">
+  <div class="quest-progress-fill" [style.width.%]="share()"></div>
+</div>
 @if (quest().bonusPlaces; as bonus) {
   <p class="quest-bonus">
     Bonus, not required: {{ bonusVisited() }} of {{ bonus.length }} — DC and the inhabited

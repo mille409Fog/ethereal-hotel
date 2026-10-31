@@ -27,25 +27,14 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## `/wanderquest` polish
 
-Four small aesthetic items for the travel quests, roughly cheapest first. The page's house rules
+Three small aesthetic items for the travel quests, roughly cheapest first. The page's house rules
 bind all of them: Fern's tokens and one accent for controls, the quest palettes in
 `wanderquest.css` for places and never for controls, no glow, and no motion that does not show a
 change of state. Any colour a change introduces is measured, not picked by eye. `wanderquest.spec.ts`
 recomputes the palette contrasts from the CSS, so a new pairing goes into that spec too.
 `e2e/a11y.spec.ts` runs axe over `/wanderquest` and has to stay green.
 
-### 1. A progress bar under the tally
-
-"12 of 50" is a number to read; a bar is a proportion you take in at a glance. **Effort:** 1 hour.
-
-**DoD:** a thin bar under `.quest-tally`, filled with `--quest-visited` over a track of
-`--quest-unvisited`. These are data colours, which the palette comment already permits, and each
-pair is already measured at 3:1 or better. It is `aria-hidden`, because the tally sentence is the
-accessible version and saying it twice is noise. Under `forced-colors` the fill is `Highlight` on
-`Canvas`, matching the map. The bonus count gets a bar only if it reads as clearly secondary;
-otherwise it gets none, and this item says which was chosen.
-
-### 2. A completed quest says so
+### 1. A completed quest says so
 
 At 50 of 50 the tally reads exactly as it does at 49. **Effort:** 30 minutes.
 
@@ -54,7 +43,7 @@ taste, e.g. "All 50 states visited"). There is no confetti, animation or colour 
 words. The bonus stays "not required" and does not block completion. A unit test covers 49, 50
 and 50-plus-bonus.
 
-### 3. A one-line introduction under the title
+### 2. A one-line introduction under the title
 
 The header is the word "Wanderquest" and nothing else, so a visitor arriving from the projects
 section has to work out what the page is from the tabs. **Effort:** 15 minutes.
@@ -65,7 +54,7 @@ else."). That is the same claim the storage notice in the tally makes when it fa
 must not contradict each other. If `src/route-meta.json` describes the route, the two are worded
 consistently.
 
-### 4. Hovering a checklist row highlights its place on the map
+### 3. Hovering a checklist row highlights its place on the map
 
 `--quest-highlight` is in the key but only appears when the map itself is hovered. The list and
 the map are two drawings of one set of data and nothing connects them. **Effort:** 2–3 hours.

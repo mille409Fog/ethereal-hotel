@@ -19,6 +19,10 @@ export class QuestTally {
   public readonly quest = input.required<IQuest>();
 
   public readonly visited = computed((): number => this.guest.visited(this.quest().list).size);
+  /** The headline as a percentage, for the bar beneath it. */
+  public readonly share = computed(
+    (): number => (this.visited() / this.quest().places.length) * 100
+  );
   public readonly bonusVisited = computed((): number => this.guest.visited('bonus').size);
   public readonly persistent = this.guest.persistent;
 

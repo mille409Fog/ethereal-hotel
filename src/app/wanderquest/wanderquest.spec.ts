@@ -575,6 +575,23 @@ describe('Wanderquest', () => {
     expect(statesPanel().querySelectorAll('svg.quest-outline path.quest-visited').length).toBe(0);
   });
 
+  it('draws the tally as a hidden bar that the bonus never fills', async () => {
+    const bars = (): HTMLElement[] =>
+      Array.from(statesPanel().querySelectorAll<HTMLElement>('.quest-progress'));
+    const fill = (): string =>
+      statesPanel().querySelector<HTMLElement>('.quest-progress-fill')?.style.width ?? '';
+
+    expect(bars().map((bar) => bar.getAttribute('aria-hidden'))).toEqual(['true']);
+    expect(fill()).toBe('0%');
+
+    await clickBox('California');
+    await clickBox('Texas');
+    expect(fill()).toBe('4%');
+
+    await clickBox('Puerto Rico');
+    expect([fill(), bars().length]).toEqual(['4%', 1]);
+  });
+
   describe('the bonus map', () => {
     const map = (): SVGSVGElement | null =>
       statesPanel().querySelector<SVGSVGElement>('svg.quest-bonus-map');
