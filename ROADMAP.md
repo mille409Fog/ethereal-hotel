@@ -27,7 +27,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## `/wanderquest` maps
 
-Seven graphical items for the travel quests' maps, the first four the ones that matter. They share
+Six graphical items for the travel quests' maps, the first three the ones that matter. They share
 one complaint: a place the guest has marked that they cannot see. The page's house rules bind all
 of them: Fern's tokens and one accent for controls, the quest palettes in `wanderquest.css` for
 places and never for controls, no glow, and no motion that does not show a change of state. Any
@@ -41,28 +41,12 @@ hand, and keep each outline under the size ceiling `outline.spec.ts` holds it to
 what the page draws fails `e2e/project-frames.spec.ts` until `npm run frames:capture` is re-run;
 that is the gate working.
 
-### 1. The countries too small to draw are drawn as dots
-
-33 of the 195 countries have no shape: 29 are absent from Natural Earth's 1:110m file and four
-(BS, LU, VU, PS) roughen away. A guest who ticks Singapore or Malta sees nothing change on the
-map, and the panel has to apologise for it. **Effort:** 3–4 hours.
-
-**DoD:** each undrawn country is drawn as a dot at its location, fed by the same projection as the
-shapes. Positions come from a public-domain source cited in the generated file's header, as every
-other source is — Natural Earth's tiny-country points are the first place to look; confirm the file
-carries all 29 before relying on it. The four roughened ones take the centroid of their own 110m
-polygon. A dot is emitted as path data (a circle as two arcs) in `shapes`, so the template, the
-click handler, the hover and the checklist highlight need no new branch, and it fills, hovers and
-highlights exactly as a shape does. The radius is fixed in frame units and chosen so a dot is at
-least 24px across at the 320px layout (WCAG 2.5.8); where dots overlap, the note says which, and the
-Europe inset item below is where density is solved, not this one. The "too small to draw" line
-falls to whatever is still undrawn and disappears at 0. `outline.spec.ts`'s `UNDRAWN_COUNTRIES`
-shrinks to match.
-
-### 2. Europe gets an inset on the countries map
+### 1. Europe gets an inset on the countries map
 
 At the panel's 48rem, Europe is a few pixels per country: France, Germany, Italy and Spain marked
-together read as one green blob, and Luxembourg, Belgium and the Balkans cannot be aimed at.
+together read as one green blob, and Luxembourg, Belgium and the Balkans cannot be aimed at. The
+microstates are now dots of one size, and seven of them overlap there, Belgium and Switzerland
+hidden under them; the panel's note names which, and this item is what lets it stop.
 **Effort:** 4–6 hours.
 
 **DoD:** under the countries outline, an enlarged Europe drawn in the same Equal Earth projection
@@ -76,7 +60,7 @@ countries narrower than 8px at 320px once the dots and the wider map have landed
 records the number and the decision. If the page template's cyclomatic cap blocks a second outline,
 the outline becomes a component, as the bonus map did.
 
-### 3. The world maps are given more width
+### 2. The world maps are given more width
 
 Both world projections are about twice as wide as they are tall, and the 48rem cap that suits the
 states outline leaves them short on a desktop screen. **Effort:** 1 hour.
@@ -87,7 +71,7 @@ unchanged. Below 64rem nothing changes and nothing scrolls sideways at 320px. Th
 `.quest-panel` is rewritten to say which maps are wider and why. If the Europe inset item has
 landed, its Caribbean measurement is re-taken at the new width.
 
-### 4. The hovered place is named under the map
+### 3. The hovered place is named under the map
 
 A place's name appears only in the browser's native tooltip: about a second late, wherever the OS
 puts it, and never on touch. **Effort:** 2 hours.
@@ -101,7 +85,7 @@ every change, and a hover narrated aloud is noise. The `<title>` elements go, si
 one hover is worse than one; the unit test that checks every title matches its place moves to the
 caption, and the a11y assertion that screen readers hear one image still holds.
 
-### 5. The world maps sit on the globe's outline
+### 4. The world maps sit on the globe's outline
 
 The continents and countries float on the page background with no edge, so the projection's shape
 is lost and the oceans are nowhere. **Effort:** 1–2 hours.
@@ -115,7 +99,7 @@ are drawn in `--color-bg`; if that no longer reads against the sphere's fill, th
 and the comment on `.quest-outline` says why. Under `forced-colors` the sphere is `Canvas` with a
 `CanvasText` edge, so it adds a frame and takes nothing away.
 
-### 6. The scattered bonus territories can be found in their tiles
+### 5. The scattered bonus territories can be found in their tiles
 
 The U.S. Virgin Islands and American Samoa are islands spread far apart, so fitting each group to
 its tile leaves the land a few pixels across and the tile looks empty. **Effort:** 2 hours.
@@ -127,7 +111,7 @@ clears 3:1 against `--color-bg` or it is not used, and that pair is in the spec.
 which tiles it currently catches are written in the generated file's header. DC, Puerto Rico and
 Guam, which fill their tiles, are untouched.
 
-### 7. The countries checklist stops being 7,000 pixels on a phone
+### 6. The countries checklist stops being 7,000 pixels on a phone
 
 At 375px the countries list is one column of 195 rows and the page is about 7,300px tall; the
 "Clear my countries" button is at the bottom of all of it. **Effort:** 2–3 hours.

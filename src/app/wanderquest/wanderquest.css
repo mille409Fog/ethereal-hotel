@@ -215,7 +215,8 @@
   background: var(--color-border);
 }
 
-.quest-undrawn {
+.quest-undrawn,
+.quest-outline-note {
   color: var(--color-text-muted);
   font-size: 0.95rem;
   margin: 0.75rem 0 0;

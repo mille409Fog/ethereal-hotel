@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LinearRgb, linearToOklab } from '../aesthetic/colour';
 import { Deficiency, simulateLinear } from '../aesthetic/cvd';
 import { contrastRatio } from '../aesthetic/winnow';
+import { COUNTRIES_OUTLINE } from './countries.outline';
 import { GUEST_PROGRESS_KEY, GUEST_STORAGE, GuestProgressStore } from './guest-progress';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
@@ -421,16 +422,16 @@ describe('Wanderquest', () => {
     expect(key).toContain('Not counted');
   });
 
-  it('says how many places are too small to draw, and only where there are some', () => {
-    const notes = Array.from(host.querySelectorAll<HTMLElement>('.quest-undrawn'));
-    expect(notes.map((note) => note.closest('section')?.id)).toEqual(['quest-panel-countries']);
+  it('draws every place on some map, so no panel says a place is too small to draw', () => {
+    // The line is still in the template for an outline that leaves a place
+    // out; since the smallest countries became dots, none does.
+    expect(host.querySelectorAll('.quest-undrawn').length).toBe(0);
+  });
 
-    const drawn = QUESTS.find((quest) => quest.id === QUEST_STATE.COUNTRIES)?.outline?.shapes
-      .length;
-    expect(notes[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      `${COUNTRIES.length - (drawn ?? 0)} of the ${COUNTRIES.length} countries are too small to ` +
-        'draw at this scale, and count all the same.'
-    );
+  it('says on the countries panel only what drawing places as dots costs', () => {
+    const notes = Array.from(host.querySelectorAll<HTMLElement>('.quest-outline-note'));
+    expect(notes.map((note) => note.closest('section')?.id)).toEqual(['quest-panel-countries']);
+    expect(notes[0].textContent?.trim()).toBe(COUNTRIES_OUTLINE.note);
   });
 
   it('gives each panel its own palette in six-digit hex, and the bonus to states only', () => {
@@ -651,19 +652,13 @@ describe('Wanderquest', () => {
       expect([lit(), lit(countries)]).toEqual([[], ['CA']]);
     });
 
-    it('does nothing, quietly, for a place too small to draw or a bonus place', async () => {
+    it('lights a country drawn as a dot exactly as it lights a shape', async () => {
       const countries = host.querySelector<HTMLElement>('#quest-panel-countries') ?? host;
-      const drawn = new Set(
-        QUESTS.find((quest) => quest.id === QUEST_STATE.COUNTRIES)?.outline?.shapes.map(
-          (outlined) => outlined.id
-        )
-      );
-      const undrawn = COUNTRIES.find((place) => !drawn.has(place.id));
-      expect(undrawn).toBeDefined();
+      await send(row('Singapore', countries), 'mouseenter');
+      expect(lit(countries)).toEqual(['SG']);
+    });
 
-      await send(row(undrawn?.name ?? '', countries), 'mouseenter');
-      expect(host.querySelectorAll('path.quest-highlighted').length).toBe(0);
-
+    it('does nothing, quietly, for a bonus place, which the outline does not draw', async () => {
       await send(row('Guam'), 'mouseenter');
       expect(host.querySelectorAll('.quest-highlighted').length).toBe(0);
     });
@@ -1184,20 +1179,25 @@ describe('Wanderquest', () => {
       );
     });
 
-    it('lets a guest mark and count the countries too small to draw', async () => {
+    it('fills a country drawn as a dot when it is ticked, and toggles it from the dot', async () => {
+      await tick('Malta');
+      expect([path('MT')?.classList.contains('quest-visited'), tally()]).toEqual([
+        true,
+        '1 of 195 countries visited',
+      ]);
+
+      path('MT')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await fixture.whenStable();
+      expect([checkbox('Malta')?.checked, tally()]).toEqual([false, '0 of 195 countries visited']);
+    });
+
+    it('gives every country a place on the map to fill', () => {
       const drawn = new Set(
-        QUESTS.find((quest) => quest.id === QUEST_STATE.COUNTRIES)?.outline?.shapes.map(
-          (shape) => shape.id
+        Array.from(countries().querySelectorAll('svg.quest-outline path[data-id]')).map((shape) =>
+          shape.getAttribute('data-id')
         )
       );
-      const undrawn = COUNTRIES.filter((place) => !drawn.has(place.id));
-      expect(undrawn.length).toBe(33);
-
-      for (const place of undrawn) {
-        await tick(place.name);
-      }
-      expect(tally()).toBe('33 of 195 countries visited');
-      expect(countries().querySelectorAll('path.quest-visited').length).toBe(0);
+      expect(COUNTRIES.filter((place) => !drawn.has(place.id))).toEqual([]);
     });
 
     it('never colours the unkeyed land, whatever is marked', async () => {

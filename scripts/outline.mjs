@@ -444,15 +444,61 @@ export function simplify(line, tolerance) {
 }
 
 /**
+ * The centroid of some rings in screen units, each weighted by its area, so
+ * a country of several islands is centred on its land rather than on the sea
+ * between them. Signed, so a hole subtracts. In an equal-area projection the
+ * screen area is the ground area, so this is the centroid of the place.
+ */
+export function centroid(rings) {
+  let [area, x, y] = [0, 0, 0];
+  for (const ring of rings) {
+    for (let i = 0; i < ring.length; i += 1) {
+      const [x0, y0] = ring[i];
+      const [x1, y1] = ring[(i + 1) % ring.length];
+      const cross = x0 * y1 - x1 * y0;
+      area += cross;
+      x += (x0 + x1) * cross;
+      y += (y0 + y1) * cross;
+    }
+  }
+  return [x / (3 * area), y / (3 * area)];
+}
+
+/**
+ * A dot of `radius` at `[x, y]`, as path data: a circle drawn as two half
+ * arcs, whole units throughout. A path rather than a `<circle>` so a place
+ * drawn as a dot is the same element as one drawn as a shape, and whatever
+ * fills, hovers or lights one needs no branch for the other.
+ */
+export function dotData([x, y], radius) {
+  const [left, right, middle] = [Math.round(x) - radius, Math.round(x) + radius, Math.round(y)];
+  const half = `A${radius} ${radius} 0 1 0`;
+  return `M${left} ${middle}${half} ${right} ${middle}${half} ${left} ${middle}Z`;
+}
+
+/**
  * The smallest `viewBox` that holds every path, plus `margin` on each side, so
  * the outline fills its panel rather than the frame its projection was drawn
- * in. Reads the coordinates back out of the path data `pathData` writes, which
- * is all absolute pairs.
+ * in. Reads the coordinates back out of the path data `pathData` and
+ * `dotData` write: absolute pairs after `M` and `L`, and after `A` a radius
+ * and six more numbers ending in the arc's end. The arcs are only ever a
+ * dot's halves, which end level with its centre, so the dot's top and bottom
+ * are each end a radius up and down.
  */
 export function viewBoxOf(paths, margin) {
-  const numbers = paths.flatMap((d) => d.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? []);
-  const xs = numbers.filter((_, i) => i % 2 === 0);
-  const ys = numbers.filter((_, i) => i % 2 === 1);
+  const points = paths.flatMap((d) =>
+    [...d.matchAll(/([MLA])([^MLAZ]+)/g)].flatMap(([, command, args]) => {
+      const numbers = args.trim().split(/\s+/).map(Number);
+      if (command !== 'A') return [numbers];
+      const [radius, , , , , x, y] = numbers;
+      return [
+        [x, y - radius],
+        [x, y + radius],
+      ];
+    })
+  );
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
   const [left, top] = [Math.min(...xs) - margin, Math.min(...ys) - margin];
   const [right, bottom] = [Math.max(...xs) + margin, Math.max(...ys) + margin];
   return `${left} ${top} ${right - left} ${bottom - top}`;

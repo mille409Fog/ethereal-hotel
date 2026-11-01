@@ -13,8 +13,10 @@ import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
 import {
   albersUsa,
+  centroid,
   conicEqualArea,
   dissolve,
+  dotData,
   equalEarth,
   equalEarthWorld,
   fitTile,
@@ -448,5 +450,29 @@ describe('pathData', () => {
 describe('viewBoxOf', () => {
   test('is the bounds of every path, with the margin on each side', () => {
     assert.equal(viewBoxOf(['M10 20L30 20L30 40Z', 'M5 25L12 60Z'], 2), '3 18 29 44');
+  });
+
+  test("reaches a dot's top and bottom, not just the ends of its arcs", () => {
+    assert.equal(viewBoxOf([dotData([50, 50], 10)], 0), '40 40 20 20');
+    assert.equal(viewBoxOf(['M0 0L10 0L10 10Z', dotData([30, 5], 4)], 1), '-1 -1 36 12');
+  });
+});
+
+describe('dotData', () => {
+  test('writes a circle as two half arcs from its left edge, in whole units', () => {
+    assert.equal(dotData([10.4, -4.6], 3), 'M7 -5A3 3 0 1 0 13 -5A3 3 0 1 0 7 -5Z');
+  });
+});
+
+describe('centroid', () => {
+  test('is the middle of a square, whichever way round it runs', () => {
+    assert.deepEqual(centroid([square(0, 0, 10)]), [5, 5]);
+    assert.deepEqual(centroid([square(0, 0, 10).reverse()]), [5, 5]);
+  });
+
+  test('weights each island by its area, so the large one pulls hardest', () => {
+    // 100 square units centred on 5 and 4 centred on 21: (500 + 84) / 104.
+    const [x] = centroid([square(0, 0, 10), square(20, 0, 2)]);
+    assert.ok(Math.abs(x - 584 / 104) < 1e-9, `${x}`);
   });
 });

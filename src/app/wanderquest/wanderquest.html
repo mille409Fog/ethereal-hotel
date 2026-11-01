@@ -85,6 +85,11 @@
             this scale, and count all the same.
           </p>
         }
+        <!-- What drawing small places as dots costs: which crowd each other,
+             and which drawn places they hide. -->
+        @if (outline.note; as note) {
+          <p class="quest-outline-note">{{ note }}</p>
+        }
       }
       <app-quest-bonus-map [quest]="quest" (mapClick)="onMapClick($event, 'bonus')" />
       <ul class="quest-key" aria-label="Key">

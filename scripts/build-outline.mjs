@@ -35,7 +35,9 @@ import * as prettier from 'prettier';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from '../src/app/wanderquest/places.data.ts';
 import {
   albersUsa,
+  centroid,
   dissolve,
+  dotData,
   equalEarthWorld,
   fitTile,
   localEqualArea,
@@ -69,16 +71,21 @@ const ROUGHENING = { tolerance: TOLERANCE, minArea: MIN_AREA };
  */
 const COUNTRY_MIN_AREA = 1;
 
-/** A zipped shapefile's geometry and attribute table, and any other file asked for. */
-async function fetchShapefile(source, name, extra = []) {
+/** One file out of a zipped shapefile, by suffix, from a fetch per zip. */
+async function fetchZip(source, name) {
   const response = await fetch(source);
   if (!response.ok) throw new Error(`${source} answered ${response.status}`);
   const files = unzip(Buffer.from(await response.arrayBuffer()));
-  const file = (suffix) => {
+  return (suffix) => {
     const found = files.get(`${name}${suffix}`);
     if (!found) throw new Error(`${name}.zip has no ${suffix}`);
     return found;
   };
+}
+
+/** A zipped shapefile's geometry and attribute table, and any other file asked for. */
+async function fetchShapefile(source, name, extra = []) {
+  const file = await fetchZip(source, name);
   return {
     polygons: readPolygons(file('.shp')),
     rows: readTable(file('.dbf')),
@@ -120,7 +127,8 @@ function commentBody(text) {
  * `list` with no shape is left out of `shapes` rather than written empty, and
  * `unkeyed` is land drawn for context that is none of the places. `viewBox`
  * replaces the crop to the shapes, for a frame laid out in advance, and
- * `tiles` is that layout.
+ * `tiles` is that layout. The places in `onTop` are written after the rest,
+ * in list order, so they paint over them, and `note` is said on the panel.
  */
 async function writeOutline({
   file,
@@ -130,13 +138,17 @@ async function writeOutline({
   label,
   list,
   shapes,
+  onTop,
+  note,
   unkeyed,
   viewBox,
   tiles,
 }) {
   const output = path.join(outputDirectory, file);
+  const last = (place) => (onTop?.has(place.id) ? 1 : 0);
   const entries = list
     .filter((place) => shapes.get(place.id))
+    .sort((one, two) => last(one) - last(two))
     .map((place) => `  { id: '${place.id}', d: '${shapes.get(place.id)}' },`);
   const drawn = [...shapes.values(), ...(unkeyed ? [unkeyed] : [])].filter(Boolean);
   const tileEntries = (tiles ?? []).map(
@@ -154,7 +166,7 @@ export const ${constName}: IOutline<${typeName}> = {
   viewBox: '${viewBox ?? viewBoxOf(drawn, MARGIN)}',
   shapes: [
 ${entries.join('\n')}
-  ],${unkeyed ? `\n  unkeyed: '${unkeyed}',` : ''}${tiles ? `\n  tiles: [\n${tileEntries.join('\n')}\n  ],` : ''}
+  ],${note ? `\n  note: ${JSON.stringify(note)},` : ''}${unkeyed ? `\n  unkeyed: '${unkeyed}',` : ''}${tiles ? `\n  tiles: [\n${tileEntries.join('\n')}\n  ],` : ''}
 };
 `;
   const options = (await prettier.resolveConfig(output)) ?? {};
@@ -467,6 +479,37 @@ islands under ${MIN_AREA} square units dropped.`,
  * The 195 countries
  * ------------------------------------------------------------------------- */
 
+/**
+ * Where the countries the 1:110m file cannot draw are put: Natural Earth's
+ * countries at 1:50m, which carries all of them. Its tiny-countries points
+ * were the first choice and fall short, 16 of the 29 at 1:110m and 28 at
+ * 1:50m, Cape Verde in neither. Read for `LABEL_X`/`LABEL_Y`, the point
+ * Natural Earth sets a country's name on, which matches the tiny-countries
+ * file wherever that has the country. Not the tiny-countries point itself:
+ * that puts the Seychelles on Aldabra, a thousand kilometres from Mahé.
+ */
+const NATURAL_EARTH_50M = 'ne_50m_admin_0_countries';
+const NATURAL_EARTH_50M_SOURCE = `https://naciscdn.org/naturalearth/50m/cultural/${NATURAL_EARTH_50M}.zip`;
+
+/**
+ * A dot's radius in frame units, the same for every country it draws, so a
+ * dot says where a country is and nothing about its size. 10 is about 16px
+ * across at the panel's 48rem and 6px at 320px. The 24px of WCAG 2.5.8 at
+ * 320px would be 43 units, a dot 65px across on a desktop, and dots that size
+ * buried 54 drawn countries, France, Germany, Italy and Spain among them; at
+ * 14 they still hid 11, Palestine's alone covering Israel, Jordan, Lebanon and
+ * Cyprus. The map is not where 2.5.8 is met: every country's checkbox below
+ * it is, which is the criterion's equivalent-control exception, and why
+ * nothing on the map takes focus. The Europe inset is where crowding is
+ * solved, not this.
+ */
+const DOT_RADIUS = 10;
+
+/** `names` as prose: "A", "A and B", "A, B and C". */
+function listed(names) {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+}
+
 async function buildCountries() {
   const { polygons, rows, version } = await fetchNaturalEarth();
   const project = equalEarthWorld();
@@ -494,6 +537,68 @@ async function buildCountries() {
     (country) => shapes.has(country.id) && !shapes.get(country.id)
   );
   const named = (list) => list.map((country) => country.id).join(', ');
+  const nameOf = new Map(COUNTRIES.map((country) => [country.id, country.name]));
+
+  // Every undrawn country becomes a dot, at a whole-unit centre so the
+  // overlaps below are measured on what is drawn.
+  const file50m = await fetchZip(NATURAL_EARTH_50M_SOURCE, NATURAL_EARTH_50M);
+  const version50m = file50m('.VERSION.txt').toString('utf8').trim();
+  const labels = readTable(file50m('.dbf'));
+  const centres = new Map();
+  for (const country of absent) {
+    const row = labels.find((candidate) => candidate.ISO_A2_EH === country.id);
+    if (!row) throw new Error(`${NATURAL_EARTH_50M} has no ${country.id} (${country.name})`);
+    centres.set(country.id, project([Number(row.LABEL_X), Number(row.LABEL_Y)]));
+  }
+  for (const country of roughened) {
+    const i = rows.findIndex((candidate) => candidate.ISO_A2_EH === country.id);
+    centres.set(country.id, centroid(polygons[i].map((ring) => ring.map(project))));
+  }
+  const dots = COUNTRIES.filter((country) => centres.has(country.id)).map((country) => {
+    const [x, y] = centres.get(country.id).map(Math.round);
+    shapes.set(country.id, dotData([x, y], DOT_RADIUS));
+    return { id: country.id, x, y };
+  });
+
+  // Dots that touch, gathered into the groups they chain into.
+  const groups = dots.map((dot) => [dot]);
+  for (const one of dots) {
+    for (const two of dots) {
+      const [a, b] = [groups.find((g) => g.includes(one)), groups.find((g) => g.includes(two))];
+      if (a !== b && Math.hypot(one.x - two.x, one.y - two.y) < 2 * DOT_RADIUS) {
+        a.push(...b);
+        groups.splice(groups.indexOf(b), 1);
+      }
+    }
+  }
+  const crowded = groups
+    .filter((group) => group.length > 1)
+    .map((group) => dots.filter((dot) => group.includes(dot)))
+    .sort((one, two) => dots.indexOf(one[0]) - dots.indexOf(two[0]))
+    .map((group) => listed(group.map((dot) => nameOf.get(dot.id))));
+
+  // Drawn countries every point of which is under a dot, and whose.
+  const under = (x, y) =>
+    dots.filter((dot) => Math.hypot(x - dot.x, y - dot.y) <= DOT_RADIUS).map((dot) => dot.id);
+  const covered = COUNTRIES.filter((country) => shapes.get(country.id) && !centres.has(country.id))
+    .map((country) => {
+      const points = [...shapes.get(country.id).matchAll(/(-?\d+) (-?\d+)/g)].map(([, x, y]) =>
+        under(Number(x), Number(y))
+      );
+      if (points.some((ids) => ids.length === 0)) return null;
+      const by = dots.filter((dot) => points.some((ids) => ids.includes(dot.id)));
+      return `${nameOf.get(country.id)}, under ${listed(by.map((dot) => nameOf.get(dot.id)))}`;
+    })
+    .filter(Boolean);
+
+  const note = [
+    `${dots.length} countries too small to draw at this scale are dots, all one size whatever the country's.`,
+    crowded.length > 0 ? `Dots overlap for ${crowded.join('; ')}.` : '',
+    covered.length > 0 ? `Dots hide a whole country: ${covered.join('; ')}.` : '',
+    'Every country can be ticked in the list.',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   await writeOutline({
     file: 'countries.outline.ts',
@@ -504,21 +609,29 @@ The ${COUNTRIES.length} countries, outlined. GENERATED by \`npm run outline:buil
 ${naturalEarthCitation(version)}
 
 Joined on \`ISO_A2_EH\`, the code \`places.data.ts\` keys countries by. ${COUNTRIES.length - absent.length - roughened.length}
-of the ${COUNTRIES.length} are drawn. ${absent.length} are not in the file at this scale: ${named(absent)}.
+of the ${COUNTRIES.length} are drawn as shapes. ${absent.length} are not in the file at this scale: ${named(absent)}.
 ${roughened.length} are, but are smaller than a triangle once roughened: ${named(roughened)}.
-The panel says how many it cannot draw, and \`outline.spec.ts\` holds the list.
+
+Those ${dots.length} are drawn as dots of radius ${DOT_RADIUS} units, after every shape so they paint
+over them. The ${absent.length} sit at the label point of Natural Earth, 1:50m Admin 0 –
+Countries, version ${version50m} (\`${NATURAL_EARTH_50M}\`), also in the public domain.
+${NATURAL_EARTH_50M_SOURCE} Fetched ${today()}.
+The ${roughened.length} sit at the area-weighted centroid of their own 1:110m polygon. Where
+dots overlap or hide a country, the panel says which, in \`note\`.
 
 Land that is none of the ${COUNTRIES.length} is drawn unkeyed, as one path, so the coastline
 is whole without the count changing: ${unkeyedNames.join(', ')}.
 
 Projected in Equal Earth, 960 units from antimeridian to antimeridian, as the
-continents are, then cropped to the shapes; simplified to ${TOLERANCE} units, rounded
+continents are, then cropped to the shapes and dots; simplified to ${TOLERANCE} units, rounded
 to whole units, islands under ${COUNTRY_MIN_AREA} square unit dropped.`,
     typeName: 'CountryId',
     constName: 'COUNTRIES_OUTLINE',
     label: 'Outline map of the countries of the world',
     list: COUNTRIES,
     shapes,
+    onTop: new Set(centres.keys()),
+    note,
     unkeyed: pathData(unkeyedRings, project, roughening),
   });
 }

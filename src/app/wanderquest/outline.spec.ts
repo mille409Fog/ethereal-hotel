@@ -11,21 +11,38 @@ import { STATES_OUTLINE } from './states.outline';
  * outline is held to the same rules.
  */
 
-/** Absolute moves and lines in whole units, each ring closed: what the script writes. */
-const PATH_DATA = /^(M-?\d+ -?\d+(L-?\d+ -?\d+)+Z)+$/;
+/**
+ * Absolute moves and lines in whole units, each ring closed, or a dot: a
+ * circle as two half arcs. What the script writes, and nothing else.
+ */
+const PATH_DATA =
+  /^((M-?\d+ -?\d+(L-?\d+ -?\d+)+Z)+|M-?\d+ -?\d+(A\d+ \d+ 0 1 0 -?\d+ -?\d+){2}Z)$/;
+
+/** A dot's centre and radius, or null for a shape. */
+function dotOf(d: string): { x: number; y: number; r: number } | null {
+  const match = /^M(-?\d+) (-?\d+)A(\d+) \3 0 1 0 (-?\d+) \2A\3 \3 0 1 0 \1 \2Z$/.exec(d);
+  if (!match) {
+    return null;
+  }
+  const [left, y, r, right] = match.slice(1, 5).map(Number);
+  return right - left === 2 * r ? { x: left + r, y, r } : null;
+}
 
 /**
- * The countries Natural Earth's 1:110m file cannot draw: 29 it does not carry
- * at that scale, then the Bahamas, Luxembourg, Vanuatu and Palestine, which it
- * does but which rounding collapses below a triangle. Held exactly, so a
- * regenerated file that loses one more fails here, and one that gains one
- * says so too.
+ * The countries Natural Earth's 1:110m file cannot draw, which the outline
+ * draws as dots: 29 it does not carry at that scale, then the Bahamas,
+ * Luxembourg, Vanuatu and Palestine, which it does but which rounding
+ * collapses below a triangle. Held exactly, so a regenerated file that
+ * shrinks one more to a dot fails here, and one that draws one says so too.
  */
-const UNDRAWN_COUNTRIES = [
+const DOTTED_COUNTRIES = [
   ...['AD', 'AG', 'BH', 'BB', 'CV', 'KM', 'DM', 'GD', 'KI', 'LI', 'MV', 'MT', 'MH', 'MU', 'FM'],
   ...['MC', 'NR', 'PW', 'KN', 'LC', 'VC', 'WS', 'SM', 'ST', 'SC', 'SG', 'TO', 'TV', 'VA'],
   ...['BS', 'LU', 'VU', 'PS'],
 ];
+
+/** The countries the outline cannot draw at all, now that the smallest are dots. */
+const UNDRAWN_COUNTRIES: readonly string[] = [];
 
 interface IOutlineCase {
   readonly name: string;
@@ -167,9 +184,60 @@ describe('BONUS_OUTLINE', () => {
 });
 
 describe('COUNTRIES_OUTLINE', () => {
+  const name = new Map(COUNTRIES.map((country) => [country.id, country.name]));
+  const dots = COUNTRIES_OUTLINE.shapes.flatMap((shape) => {
+    const dot = dotOf(shape.d);
+    return dot ? [{ id: shape.id, ...dot }] : [];
+  });
+  const note = COUNTRIES_OUTLINE.note ?? '';
+
   it('draws the land that is none of the 195, unkeyed, so the coastline is whole', () => {
     // Antarctica alone is wider than most of the map; without it, and without
     // Greenland and Taiwan, the world would have holes the count never made.
     expect(COUNTRIES_OUTLINE.unkeyed?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it('draws exactly the countries too small for a shape as dots, all one size', () => {
+    expect(dots.map((dot) => dot.id).sort()).toEqual([...DOTTED_COUNTRIES].sort());
+    expect(new Set(dots.map((dot) => dot.r)).size).toBe(1);
+  });
+
+  it('draws every dot after every shape, so no shape paints over one', () => {
+    const firstDot = COUNTRIES_OUTLINE.shapes.findIndex((shape) => dotOf(shape.d));
+    expect(COUNTRIES_OUTLINE.shapes.slice(firstDot).every((shape) => dotOf(shape.d))).toBe(true);
+  });
+
+  it('keeps every dot whole inside the viewBox', () => {
+    const [left, top, width, height] = COUNTRIES_OUTLINE.viewBox.split(' ').map(Number);
+    for (const { id, x, y, r } of dots) {
+      expect(x - r >= left && x + r <= left + width, `${id} x`).toBe(true);
+      expect(y - r >= top && y + r <= top + height, `${id} y`).toBe(true);
+    }
+  });
+
+  it('names on the panel every country whose dot overlaps another', () => {
+    const crowded = dots.filter((one) =>
+      dots.some((two) => one !== two && Math.hypot(one.x - two.x, one.y - two.y) < one.r + two.r)
+    );
+    expect(crowded.length).toBeGreaterThan(0);
+    for (const dot of crowded) {
+      expect(note, dot.id).toContain(name.get(dot.id));
+    }
+  });
+
+  it('names on the panel every country a dot hides whole', () => {
+    // Hidden means every point of its outline lies under some dot: it can no
+    // longer be seen or clicked on the map, only ticked in the list.
+    const hidden = COUNTRIES_OUTLINE.shapes.filter(
+      (shape) =>
+        !dotOf(shape.d) &&
+        rings(shape.d)
+          .flat()
+          .every(([x, y]) => dots.some((dot) => Math.hypot(x - dot.x, y - dot.y) <= dot.r))
+    );
+    expect(hidden.map((shape) => shape.id).sort()).toEqual(['BE', 'CH', 'IL', 'LB', 'QA', 'TT']);
+    for (const shape of hidden) {
+      expect(note, shape.id).toContain(`${name.get(shape.id)}, under`);
+    }
   });
 });

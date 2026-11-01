@@ -6,14 +6,22 @@
  * (`ne_110m_admin_0_countries`), which Natural Earth places in the public
  * domain.
  * https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip
- * Fetched 2026-10-26.
+ * Fetched 2026-11-01.
  *
  * Joined on `ISO_A2_EH`, the code `places.data.ts` keys countries by. 162 of
- * the 195 are drawn. 29 are not in the file at this scale: AD, AG, BH, BB, CV,
- * KM, DM, GD, KI, LI, MV, MT, MH, MU, FM, MC, NR, PW, KN, LC, VC, WS, SM, ST,
- * SC, SG, TO, TV, VA. 4 are, but are smaller than a triangle once roughened:
- * BS, LU, VU, PS. The panel says how many it cannot draw, and `outline.spec.ts`
- * holds the list.
+ * the 195 are drawn as shapes. 29 are not in the file at this scale: AD, AG,
+ * BH, BB, CV, KM, DM, GD, KI, LI, MV, MT, MH, MU, FM, MC, NR, PW, KN, LC, VC,
+ * WS, SM, ST, SC, SG, TO, TV, VA. 4 are, but are smaller than a triangle once
+ * roughened: BS, LU, VU, PS.
+ *
+ * Those 33 are drawn as dots of radius 10 units, after every shape so they
+ * paint over them. The 29 sit at the label point of Natural Earth, 1:50m Admin
+ * 0 – Countries, version 5.1.1 (`ne_50m_admin_0_countries`), also in the public
+ * domain.
+ * https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip
+ * Fetched 2026-11-01. The 4 sit at the area-weighted centroid of their own
+ * 1:110m polygon. Where dots overlap or hide a country, the panel says which,
+ * in `note`.
  *
  * Land that is none of the 195 is drawn unkeyed, as one path, so the coastline
  * is whole without the count changing: Western Sahara, Falkland Islands,
@@ -21,15 +29,15 @@
  * Taiwan, Antarctica, Northern Cyprus, Somaliland, Kosovo.
  *
  * Projected in Equal Earth, 960 units from antimeridian to antimeridian, as the
- * continents are, then cropped to the shapes; simplified to 1.5 units, rounded
- * to whole units, islands under 1 square unit dropped.
+ * continents are, then cropped to the shapes and dots; simplified to 1.5 units,
+ * rounded to whole units, islands under 1 square unit dropped.
  */
 import type { CountryId } from './places.data';
 import type { IOutline } from './outline';
 
 export const COUNTRIES_OUTLINE: IOutline<CountryId> = {
   label: 'Outline map of the countries of the world',
-  viewBox: '74 1 873 467',
+  viewBox: '14 1 953 467',
   shapes: [
     {
       id: 'AF',
@@ -430,7 +438,41 @@ export const COUNTRIES_OUTLINE: IOutline<CountryId> = {
       d: 'M562 264L568 268L567 284L559 286L559 289L550 298L541 296L537 291L538 280L543 280L543 273L548 276L552 275L558 281L558 277L555 276L555 266L557 264Z',
     },
     { id: 'ZW', d: 'M560 313L552 310L546 297L550 298L559 289L566 293L564 306Z' },
+    { id: 'AD', d: 'M474 88A10 10 0 1 0 494 88A10 10 0 1 0 474 88Z' },
+    { id: 'AG', d: 'M309 172A10 10 0 1 0 329 172A10 10 0 1 0 309 172Z' },
+    { id: 'BS', d: 'M272 144A10 10 0 1 0 292 144A10 10 0 1 0 272 144Z' },
+    { id: 'BH', d: 'M598 142A10 10 0 1 0 618 142A10 10 0 1 0 598 142Z' },
+    { id: 'BB', d: 'M313 187A10 10 0 1 0 333 187A10 10 0 1 0 313 187Z' },
+    { id: 'CV', d: 'M408 180A10 10 0 1 0 428 180A10 10 0 1 0 408 180Z' },
+    { id: 'KM', d: 'M584 276A10 10 0 1 0 604 276A10 10 0 1 0 584 276Z' },
+    { id: 'DM', d: 'M309 178A10 10 0 1 0 329 178A10 10 0 1 0 309 178Z' },
+    { id: 'GD', d: 'M307 190A10 10 0 1 0 327 190A10 10 0 1 0 307 190Z' },
+    { id: 'KI', d: 'M50 227A10 10 0 1 0 70 227A10 10 0 1 0 50 227Z' },
+    { id: 'LI', d: 'M492 75A10 10 0 1 0 512 75A10 10 0 1 0 492 75Z' },
+    { id: 'LU', d: 'M483 67A10 10 0 1 0 503 67A10 10 0 1 0 483 67Z' },
+    { id: 'MV', d: 'M666 219A10 10 0 1 0 686 219A10 10 0 1 0 666 219Z' },
+    { id: 'MT', d: 'M505 109A10 10 0 1 0 525 109A10 10 0 1 0 505 109Z' },
+    { id: 'MH', d: 'M925 208A10 10 0 1 0 945 208A10 10 0 1 0 925 208Z' },
+    { id: 'MU', d: 'M619 306A10 10 0 1 0 639 306A10 10 0 1 0 619 306Z' },
+    { id: 'FM', d: 'M891 209A10 10 0 1 0 911 209A10 10 0 1 0 891 209Z' },
+    { id: 'MC', d: 'M487 85A10 10 0 1 0 507 85A10 10 0 1 0 487 85Z' },
+    { id: 'NR', d: 'M915 235A10 10 0 1 0 935 235A10 10 0 1 0 915 235Z' },
+    { id: 'PW', d: 'M827 207A10 10 0 1 0 847 207A10 10 0 1 0 827 207Z' },
+    { id: 'KN', d: 'M306 172A10 10 0 1 0 326 172A10 10 0 1 0 306 172Z' },
+    { id: 'LC', d: 'M310 184A10 10 0 1 0 330 184A10 10 0 1 0 310 184Z' },
+    { id: 'VC', d: 'M308 187A10 10 0 1 0 328 187A10 10 0 1 0 308 187Z' },
+    { id: 'WS', d: 'M16 282A10 10 0 1 0 36 282A10 10 0 1 0 16 282Z' },
+    { id: 'SM', d: 'M499 84A10 10 0 1 0 519 84A10 10 0 1 0 499 84Z' },
+    { id: 'ST', d: 'M489 230A10 10 0 1 0 509 230A10 10 0 1 0 489 230Z' },
+    { id: 'SC', d: 'M618 250A10 10 0 1 0 638 250A10 10 0 1 0 618 250Z' },
+    { id: 'SG', d: 'M747 229A10 10 0 1 0 767 229A10 10 0 1 0 747 229Z' },
+    { id: 'TO', d: 'M18 309A10 10 0 1 0 38 309A10 10 0 1 0 18 309Z' },
+    { id: 'TV', d: 'M945 264A10 10 0 1 0 965 264A10 10 0 1 0 945 264Z' },
+    { id: 'VU', d: 'M908 289A10 10 0 1 0 928 289A10 10 0 1 0 908 289Z' },
+    { id: 'VA', d: 'M499 90A10 10 0 1 0 519 90A10 10 0 1 0 499 90Z' },
+    { id: 'PS', d: 'M557 122A10 10 0 1 0 577 122A10 10 0 1 0 557 122Z' },
   ],
+  note: "33 countries too small to draw at this scale are dots, all one size whatever the country's. Dots overlap for Andorra, Liechtenstein, Luxembourg, Malta, Monaco, San Marino and Holy See; Antigua and Barbuda, Barbados, Dominica, Grenada, Saint Kitts and Nevis, Saint Lucia and Saint Vincent and the Grenadines. Dots hide a whole country: Belgium, under Luxembourg; Israel, under State of Palestine; Lebanon, under State of Palestine; Qatar, under Bahrain; Switzerland, under Liechtenstein, Luxembourg, Monaco and San Marino; Trinidad and Tobago, under Barbados, Grenada and Saint Vincent and the Grenadines. Every country can be ticked in the list.",
   unkeyed:
     'M458 136L458 142L450 142L447 158L436 159L442 157L451 139L458 138ZM404 3L460 4L447 5L451 5L447 7L449 9L443 9L446 10L445 11L446 12L436 15L441 18L434 17L432 19L440 19L404 28L396 34L393 40L390 41L384 39L380 32L379 25L388 20L381 20L382 18L388 18L381 17L384 15L381 12L357 7L378 4ZM633 397L636 399L631 400ZM308 168L309 170L305 170ZM908 308L910 312L907 312L905 305ZM791 147L791 156L787 150L789 144ZM399 460L409 462L391 463ZM348 450L351 450L349 447L351 446L358 452L349 452L347 451ZM768 466L192 466L252 466L233 465L224 463L240 462L213 458L226 459L232 458L230 456L246 455L282 454L307 456L297 452L348 454L359 453L361 451L356 447L354 442L359 437L368 434L369 435L361 437L363 440L359 444L374 454L360 458L349 458L357 460L350 460L386 465L433 462L420 460L450 456L462 450L480 451L494 448L499 449L529 449L542 445L550 447L583 440L594 444L607 444L601 451L603 452L646 440L647 442L658 443L675 439L679 442L695 440L703 443L734 440L737 439L737 442L752 442L751 444L754 445L784 450L758 458L755 460L758 461L741 463ZM609 193L610 200L607 205L596 201L593 196L594 193L597 196ZM528 91L528 86L531 88Z',
 };
