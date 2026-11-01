@@ -14,6 +14,7 @@ import { deflateRawSync } from 'node:zlib';
 import {
   albersUsa,
   centroid,
+  clipRing,
   conicEqualArea,
   dissolve,
   dotData,
@@ -22,6 +23,7 @@ import {
   fitTile,
   localEqualArea,
   pathData,
+  projectedBounds,
   readPolygons,
   readTable,
   ringArea,
@@ -298,6 +300,61 @@ describe('equalEarthWorld', () => {
   });
 });
 
+describe('projectedBounds', () => {
+  test('holds the whole box, out to the bow of its meridians, in whole units', () => {
+    const project = equalEarthWorld();
+    const box = { west: -25, east: 45, south: 34, north: 72 };
+    const bounds = projectedBounds(project, box);
+    for (const lat of [34, 40, 50, 60, 72]) {
+      for (const lon of [-25, 0, 45]) {
+        const [x, y] = project([lon, lat]);
+        assert.ok(x >= bounds.left && x <= bounds.right, `${lon}, ${lat} x`);
+        assert.ok(y >= bounds.top && y <= bounds.bottom, `${lon}, ${lat} y`);
+      }
+    }
+    // The west edge is set by the box's south-west corner, where the meridian
+    // is furthest out, and not by its north-west one.
+    assert.equal(bounds.left, Math.floor(project([-25, 34])[0]));
+    assert.ok(Object.values(bounds).every(Number.isInteger));
+  });
+});
+
+describe('clipRing', () => {
+  const frame = { left: 0, top: 0, right: 10, bottom: 10 };
+
+  test('leaves a ring inside the frame as it was', () => {
+    assert.deepEqual(clipRing(square(2, 2, 3), frame), square(2, 2, 3));
+  });
+
+  test('drops a ring wholly outside', () => {
+    assert.deepEqual(clipRing(square(20, 20, 3), frame), []);
+  });
+
+  test('cuts a ring that crosses a corner to the part inside, closed', () => {
+    const clipped = clipRing(square(5, 5, 10), frame);
+    assert.deepEqual(clipped[0], clipped.at(-1));
+    assert.deepEqual(boundsAt(clipped), [5, 5, 10, 10]);
+    assert.equal(ringArea(clipped), 25);
+  });
+
+  test('keeps the area inside when a concave ring leaves and comes back', () => {
+    // A U open to the top, its arms rising above the frame: the arms are cut
+    // at y = 0 and the area between them, outside the U, stays empty.
+    const u = [
+      [1, -5],
+      [3, -5],
+      [3, 6],
+      [7, 6],
+      [7, -5],
+      [9, -5],
+      [9, 8],
+      [1, 8],
+      [1, -5],
+    ];
+    assert.equal(ringArea(clipRing(u, frame)), 2 * 2 * 6 + 8 * 2);
+  });
+});
+
 describe('fitTile', () => {
   const tile = { x: 100, y: 200, size: 50, padding: 5 };
 
@@ -444,6 +501,17 @@ describe('pathData', () => {
       [0, 0],
     ];
     assert.equal(pathData([ring], identity, { tolerance: 0, minArea: 0 }), 'M0 0L10 0L10 10L0 10Z');
+  });
+
+  test('cuts each ring to the clip before judging its area', () => {
+    // Whole, the ring is 100 square units; inside the clip it is 3, under
+    // the minimum, so it goes.
+    const clip = { left: 0, top: 0, right: 0.3, bottom: 100 };
+    assert.equal(pathData([square(-1, 0, 10)], identity, { ...options, clip }), '');
+    assert.equal(
+      pathData([square(-1, 0, 10)], identity, { ...options, clip: { ...clip, right: 5 } }),
+      'M0 0L5 0L5 10L0 10Z'
+    );
   });
 });
 

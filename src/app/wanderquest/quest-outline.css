@@ -1,0 +1,107 @@
+/* An outline draws in its panel's palette, which it inherits as custom
+   properties from the section it sits in, so it fills without knowing which
+   quest it belongs to.
+
+   Every place unvisited until the guest marks it, with the ground drawn
+   between them so the borders show. The stroke does not scale with the
+   drawing, so a border is one pixel at 320px and at 1440px alike. */
+.quest-outline {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 1.5rem 0 0;
+  fill: var(--quest-unvisited);
+  stroke: var(--color-bg);
+  stroke-width: 1px;
+  stroke-linejoin: round;
+}
+
+/* The fill eases at the tabs' timing. It plays once per mark, which is the
+   state it shows, and nothing here loops. Under reduced motion the global
+   block in `styles.css` collapses it to one frame, with `!important`, so a
+   local `transition: none` would never apply. */
+.quest-outline path {
+  vector-effect: non-scaling-stroke;
+  transition: fill 120ms ease-out;
+}
+
+.quest-outline .quest-visited {
+  fill: var(--quest-visited);
+}
+
+/* Keyed paths only: the unkeyed land answers no click and takes no hover. */
+.quest-outline path[data-id] {
+  cursor: pointer;
+}
+
+/* Only where a pointer can hover: on a touch screen the highlight would stick
+   to the last place tapped and read as a third state. The highlight arrives
+   instantly, because the transition above is for marks, not for a pointer
+   passing over; a transition is taken from the state being entered, so this
+   zero governs the way in and the 120ms the way out. */
+@media (hover: hover) {
+  .quest-outline path[data-id]:hover {
+    fill: var(--quest-highlight);
+    transition-duration: 0s;
+  }
+}
+
+/* The place a checklist row points at, by hover or by focus. Outside the
+   hover query because focus is not a pointer: on a touch screen the shape
+   stays lit after a tap because its checkbox still holds focus, which is
+   true state rather than a stuck hover. Same colour and timing as the map's
+   own hover, and after `.quest-visited` so it wins over a marked place. On
+   every outline of the place at once, since each reads the same row. */
+.quest-outline .quest-highlighted {
+  fill: var(--quest-highlight);
+  transition-duration: 0s;
+}
+
+/* Land that is none of the places: Antarctica, Taiwan. It is drawn so the
+   coastline is whole, in a Fern grey rather than a palette colour, because a
+   palette colour would say it can be visited and counted. The key's swatch
+   is the page's, in the same token. */
+.quest-outline .quest-outline-unkeyed {
+  fill: var(--color-border);
+}
+
+/* The enlargement sits close under the map it enlarges. */
+.quest-outline-inset {
+  margin-top: 1rem;
+}
+
+/* The same rectangle at two scales: on the world map, the part the inset
+   enlarges, and around the inset, its frame. Interface, not data, so a Fern
+   token and not a palette colour, and the bonus tiles' frame colour. It is a
+   faint line, 1.64:1 on the page and 1.27:1 on the countries' unvisited
+   green, and need not be more: it is a cue to where the inset is, not the
+   only one, since the inset is named and sits directly below. `none`, so the
+   places under it answer the click. */
+.quest-outline-frame {
+  fill: none;
+  stroke: var(--color-border);
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+/* The fills are forced to one system colour, so the borders are all that is
+   left to draw the places apart. */
+@media (forced-colors: active) {
+  .quest-outline {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .quest-outline .quest-outline-unkeyed {
+    fill: GrayText;
+  }
+
+  .quest-outline .quest-visited {
+    fill: Highlight;
+  }
+
+  .quest-outline-frame {
+    fill: none;
+    stroke: CanvasText;
+  }
+}

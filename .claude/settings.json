@@ -1,5 +1,9 @@
 {
   "permissions": {
-    "allow": ["Bash(node -e ' *)"]
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(node shot.tmp.mjs \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/c--Users-Jacob-Miller-forest-ethereal-hotel/4e857989-d9fa-4b50-b258-dbf5267e6c44/scratchpad\")"
+    ]
   }
 }

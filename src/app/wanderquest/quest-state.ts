@@ -9,6 +9,7 @@
 import { BONUS_OUTLINE } from './bonus.outline';
 import { CONTINENTS_OUTLINE } from './continents.outline';
 import { COUNTRIES_OUTLINE } from './countries.outline';
+import { EUROPE_OUTLINE } from './europe.outline';
 import type { GuestList } from './guest-progress';
 import type { IOutline } from './outline';
 import { BONUS, CONTINENTS, COUNTRIES, STATES, type IPlace } from './places.data';
@@ -53,6 +54,11 @@ export interface IQuest {
   readonly outline: IOutline | null;
   /** The bonus places as small multiples, one tile each; only the states quest has them. */
   readonly bonusOutline: IOutline | null;
+  /**
+   * Part of `outline` drawn larger, under it, from the same list: Europe on
+   * the countries quest, where the world map is too small to aim at.
+   */
+  readonly insetOutline: IOutline | null;
 }
 
 /** The quests in tab order. Arrow keys walk this order and wrap. */
@@ -69,6 +75,7 @@ export const QUESTS: readonly IQuest[] = [
     filterable: false,
     outline: STATES_OUTLINE,
     bonusOutline: BONUS_OUTLINE,
+    insetOutline: null,
   },
   {
     id: QUEST_STATE.CONTINENTS,
@@ -82,6 +89,7 @@ export const QUESTS: readonly IQuest[] = [
     filterable: false,
     outline: CONTINENTS_OUTLINE,
     bonusOutline: null,
+    insetOutline: null,
   },
   {
     id: QUEST_STATE.COUNTRIES,
@@ -95,6 +103,7 @@ export const QUESTS: readonly IQuest[] = [
     filterable: true,
     outline: COUNTRIES_OUTLINE,
     bonusOutline: null,
+    insetOutline: EUROPE_OUTLINE,
   },
 ];
 

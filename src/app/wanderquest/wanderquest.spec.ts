@@ -3,6 +3,7 @@ import { LinearRgb, linearToOklab } from '../aesthetic/colour';
 import { Deficiency, simulateLinear } from '../aesthetic/cvd';
 import { contrastRatio } from '../aesthetic/winnow';
 import { COUNTRIES_OUTLINE } from './countries.outline';
+import { EUROPE_OUTLINE } from './europe.outline';
 import { GUEST_PROGRESS_KEY, GUEST_STORAGE, GuestProgressStore } from './guest-progress';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
@@ -329,7 +330,9 @@ describe('Wanderquest', () => {
       [QUEST_STATE.CONTINENTS]: 'Outline map of the seven continents',
       [QUEST_STATE.COUNTRIES]: 'Outline map of the countries of the world',
     };
-    expect(host.querySelectorAll('svg.quest-outline').length).toBe(QUESTS.length);
+    expect(host.querySelectorAll('svg.quest-outline:not(.quest-outline-inset)').length).toBe(
+      QUESTS.length
+    );
 
     for (const quest of QUESTS) {
       const svg = host.querySelector(`#quest-panel-${quest.id} svg.quest-outline`);
@@ -409,10 +412,13 @@ describe('Wanderquest', () => {
   });
 
   it('draws the land that is none of the countries apart, and keys it as not counted', async () => {
-    const unkeyed = host.querySelectorAll('path.quest-outline-unkeyed');
-    expect(unkeyed.length, 'only the countries map has land outside its count').toBe(1);
-    expect(unkeyed[0].closest('section')?.id).toBe('quest-panel-countries');
-    expect(unkeyed[0].hasAttribute('data-id')).toBe(false);
+    // The world and its Europe inset, each with the land of its own frame.
+    const unkeyed = Array.from(host.querySelectorAll('path.quest-outline-unkeyed'));
+    expect(unkeyed.length, 'only the countries maps have land outside their count').toBe(2);
+    for (const land of unkeyed) {
+      expect(land.closest('section')?.id).toBe('quest-panel-countries');
+      expect(land.hasAttribute('data-id')).toBe(false);
+    }
 
     tabs()[2].click();
     await fixture.whenStable();
@@ -1198,6 +1204,82 @@ describe('Wanderquest', () => {
         )
       );
       expect(COUNTRIES.filter((place) => !drawn.has(place.id))).toEqual([]);
+    });
+
+    describe('and Europe enlarged', () => {
+      const inset = (): SVGSVGElement | null =>
+        countries().querySelector<SVGSVGElement>('svg.quest-outline-inset');
+      const world = (): SVGSVGElement | null =>
+        countries().querySelector<SVGSVGElement>('svg.quest-outline:not(.quest-outline-inset)');
+      const inEurope = (id: string): Element | null =>
+        inset()?.querySelector(`path[data-id="${id}"]`) ?? null;
+      const row = (name: string): Element | null => checkbox(name)?.closest('li') ?? null;
+
+      it('draws it on the countries panel only, under the world, as one named image', () => {
+        const insets = Array.from(host.querySelectorAll('svg.quest-outline-inset'));
+        expect(insets.map((svg) => svg.closest('section')?.id)).toEqual(['quest-panel-countries']);
+
+        const svg = inset();
+        expect(svg?.getAttribute('role')).toBe('img');
+        expect(svg?.getAttribute('aria-label')).toBe(EUROPE_OUTLINE.label);
+        expect(svg?.querySelectorAll('[tabindex], a, [focusable="true"]').length).toBe(0);
+        expect(
+          Array.from(svg?.querySelectorAll('path[data-id]') ?? []).map((path) =>
+            path.getAttribute('data-id')
+          )
+        ).toEqual(EUROPE_OUTLINE.shapes.map((shape) => shape.id));
+        const map = world();
+        expect(
+          map && svg && map.compareDocumentPosition(svg) & Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
+      });
+
+      it('toggles a place from a click on the inset, and fills it on both maps', async () => {
+        inEurope('LU')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await fixture.whenStable();
+        expect([checkbox('Luxembourg')?.checked, tally()]).toEqual([
+          true,
+          '1 of 195 countries visited',
+        ]);
+        expect(inEurope('LU')?.classList.contains('quest-visited')).toBe(true);
+        expect(path('LU')?.classList.contains('quest-visited')).toBe(true);
+
+        path('LU')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await fixture.whenStable();
+        expect(inEurope('LU')?.classList.contains('quest-visited')).toBe(false);
+      });
+
+      it('lights a place on both maps from its checklist row', async () => {
+        row('Belgium')?.dispatchEvent(new Event('mouseenter'));
+        await fixture.whenStable();
+        const lit = (svg: SVGSVGElement | null): string[] =>
+          Array.from(svg?.querySelectorAll('path.quest-highlighted') ?? []).map(
+            (shape) => shape.getAttribute('data-id') ?? ''
+          );
+        expect([lit(world()), lit(inset())]).toEqual([['BE'], ['BE']]);
+      });
+
+      it('marks the part it enlarges on the world map, and frames itself the same', () => {
+        const rect = (svg: SVGSVGElement | null): number[] => {
+          const frames = Array.from(svg?.querySelectorAll('rect.quest-outline-frame') ?? []);
+          expect(frames.length).toBe(1);
+          return ['x', 'y', 'width', 'height'].map((key) => Number(frames[0].getAttribute(key)));
+        };
+        const { x, y, width, height } = EUROPE_OUTLINE.enlarges ?? {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+        };
+        expect(rect(world())).toEqual([x, y, width, height]);
+        const [, , frameWidth, frameHeight] = rect(inset());
+        expect(frameWidth / width).toBe(frameHeight / height);
+        // The frame is interface: it answers no click and is no place.
+        for (const frame of countries().querySelectorAll('rect.quest-outline-frame')) {
+          expect(frame.hasAttribute('data-id')).toBe(false);
+        }
+        expect(host.querySelectorAll('rect.quest-outline-frame').length).toBe(2);
+      });
     });
 
     it('never colours the unkeyed land, whatever is marked', async () => {

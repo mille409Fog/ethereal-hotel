@@ -229,6 +229,29 @@ export function equalEarthWorld() {
 }
 
 /**
+ * The smallest whole-unit rectangle that holds a box of longitude and latitude
+ * once projected. Its edges are sampled rather than its corners projected,
+ * because in Equal Earth a meridian bows outward and a parallel is straight
+ * but no corner need be the extreme of either.
+ */
+export function projectedBounds(project, { west, east, south, north }, samples = 64) {
+  const points = [];
+  for (let i = 0; i <= samples; i += 1) {
+    const lon = west + ((east - west) * i) / samples;
+    const lat = south + ((north - south) * i) / samples;
+    points.push(project([lon, south]), project([lon, north]));
+    points.push(project([west, lat]), project([east, lat]));
+  }
+  const b = boundsOf(points);
+  return {
+    left: Math.floor(b.left),
+    top: Math.floor(b.top),
+    right: Math.ceil(b.right),
+    bottom: Math.ceil(b.bottom),
+  };
+}
+
+/**
  * A projection for one place drawn on its own: Albers' equal-area conic
  * centred on the place, with its standard parallels a sixth of the way in from
  * the edges of its latitude, the usual rule for a region. Unit scale, centre at
@@ -505,18 +528,59 @@ export function viewBoxOf(paths, margin) {
 }
 
 /**
+ * A projected ring cut to a rectangle, Sutherland–Hodgman: each side of the
+ * rectangle in turn keeps what is inside it and puts a point where an edge
+ * crosses it. A ring wholly outside comes back empty. A concave ring that
+ * leaves and re-enters comes back as one ring with a seam along the side it
+ * left by; filled, the seam has no area and draws nothing, and that is all an
+ * outline needs from a clip. Closed in, closed out.
+ */
+export function clipRing(ring, { left, top, right, bottom }) {
+  const sides = [
+    { inside: ([x]) => x >= left, cross: (a, b) => at(a, b, 0, left) },
+    { inside: ([x]) => x <= right, cross: (a, b) => at(a, b, 0, right) },
+    { inside: ([, y]) => y >= top, cross: (a, b) => at(a, b, 1, top) },
+    { inside: ([, y]) => y <= bottom, cross: (a, b) => at(a, b, 1, bottom) },
+  ];
+  // Where the edge from `a` to `b` reaches `value` on `axis`.
+  function at(a, b, axis, value) {
+    const t = (value - a[axis]) / (b[axis] - a[axis]);
+    return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+  }
+
+  let points = ring.slice(0, -1);
+  for (const { inside, cross } of sides) {
+    const next = [];
+    points.forEach((point, i) => {
+      const previous = points[(i + points.length - 1) % points.length];
+      if (inside(point)) {
+        if (!inside(previous)) next.push(cross(previous, point));
+        next.push(point);
+      } else if (inside(previous)) {
+        next.push(cross(previous, point));
+      }
+    });
+    points = next;
+    if (points.length === 0) return [];
+  }
+  return [...points, points[0]];
+}
+
+/**
  * One state's rings as an SVG path: projected, simplified, rounded to whole
  * units, and with every ring that comes out smaller than `minArea` dropped.
  * That last rule is what "roughest" means in practice — it is where the
  * Florida Keys, most of the Aleutians and the smaller Hawaiian islands go. A
  * ring is closed in the source (its last point repeats its first); `Z` closes
- * it here, so the repeat is not written.
+ * it here, so the repeat is not written. Given `clip`, a rectangle in
+ * projected units, each ring is cut to it before anything else is decided,
+ * so a coast that runs on past the frame is neither drawn nor counted.
  */
-export function pathData(rings, project, { tolerance, minArea }) {
+export function pathData(rings, project, { tolerance, minArea, clip }) {
   const parts = [];
   for (const ring of rings) {
-    const projected = ring.map(project);
-    if (ringArea(projected) < minArea) continue;
+    const projected = clip ? clipRing(ring.map(project), clip) : ring.map(project);
+    if (projected.length === 0 || ringArea(projected) < minArea) continue;
     const points = simplify(projected, tolerance)
       .slice(0, -1)
       .map(([x, y]) => [Math.round(x), Math.round(y)])

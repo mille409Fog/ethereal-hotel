@@ -1,0 +1,41 @@
+<!-- One image with one name, and nothing in it takes focus: the map is a
+     picture of the checklist below, not a second control. A click on a place
+     is a shortcut for its checkbox and nothing more, so the keyboard route is
+     the list, which is why the rule that expects a key handler beside a click
+     is off for this element. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events -->
+<svg
+  class="quest-outline"
+  role="img"
+  [class.quest-outline-inset]="outline().enlarges !== undefined"
+  [attr.aria-label]="outline().label"
+  [attr.viewBox]="outline().viewBox"
+  (click)="mapClick.emit($event)"
+>
+  @if (outline().unkeyed; as unkeyed) {
+    <path class="quest-outline-unkeyed" [attr.d]="unkeyed" />
+  }
+  <!-- Each place's <title> is the pointer's native tooltip. The SVG's
+       role="img" makes its children presentational, so a screen reader still
+       hears one image and not a name per shape. -->
+  @for (shape of outline().shapes; track shape.id) {
+    <path
+      [attr.d]="shape.d"
+      [attr.data-id]="shape.id"
+      [class.quest-visited]="guest.has(list(), shape.id)"
+      [class.quest-highlighted]="shape.id === highlighted()"
+    >
+      <title>{{ names()?.get(shape.id) }}</title>
+    </path>
+  }
+  <!-- Over the places, so no fill hides it, and answering no click. -->
+  @for (frame of frames(); track $index) {
+    <rect
+      class="quest-outline-frame"
+      [attr.x]="frame.x"
+      [attr.y]="frame.y"
+      [attr.width]="frame.width"
+      [attr.height]="frame.height"
+    />
+  }
+</svg>

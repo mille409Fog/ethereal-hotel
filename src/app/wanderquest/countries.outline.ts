@@ -31,6 +31,12 @@
  * Projected in Equal Earth, 960 units from antimeridian to antimeridian, as the
  * continents are, then cropped to the shapes and dots; simplified to 1.5 units,
  * rounded to whole units, islands under 1 square unit dropped.
+ *
+ * Too small to aim at, measured: drawn narrower than 8px with this map 288px
+ * wide, the most a 320px screen leaves it, are 141 countries. 43 are in Europe
+ * (25°W–45°E, 34°N–72°N), which `europe.outline.ts` enlarges. 17 are in the
+ * Caribbean (90°W–59°W, 9°N–27°N), which nothing enlarges yet: AG, BS, BB, BZ,
+ * CR, DM, DO, SV, GD, HT, HN, JM, NI, KN, LC, VC, TT.
  */
 import type { CountryId } from './places.data';
 import type { IOutline } from './outline';
@@ -472,7 +478,7 @@ export const COUNTRIES_OUTLINE: IOutline<CountryId> = {
     { id: 'VA', d: 'M499 90A10 10 0 1 0 519 90A10 10 0 1 0 499 90Z' },
     { id: 'PS', d: 'M557 122A10 10 0 1 0 577 122A10 10 0 1 0 557 122Z' },
   ],
-  note: "33 countries too small to draw at this scale are dots, all one size whatever the country's. Dots overlap for Andorra, Liechtenstein, Luxembourg, Malta, Monaco, San Marino and Holy See; Antigua and Barbuda, Barbados, Dominica, Grenada, Saint Kitts and Nevis, Saint Lucia and Saint Vincent and the Grenadines. Dots hide a whole country: Belgium, under Luxembourg; Israel, under State of Palestine; Lebanon, under State of Palestine; Qatar, under Bahrain; Switzerland, under Liechtenstein, Luxembourg, Monaco and San Marino; Trinidad and Tobago, under Barbados, Grenada and Saint Vincent and the Grenadines. Every country can be ticked in the list.",
+  note: "33 countries too small to draw at this scale are dots, all one size whatever the country's. Dots overlap for Antigua and Barbuda, Barbados, Dominica, Grenada, Saint Kitts and Nevis, Saint Lucia and Saint Vincent and the Grenadines. Dots hide a whole country: Israel, under State of Palestine; Qatar, under Bahrain; Trinidad and Tobago, under Barbados, Grenada and Saint Vincent and the Grenadines. Europe is drawn again below at 6 times the scale, where the 10 of its countries the dots crowd or hide here stand clear of each other. Every country can be ticked in the list.",
   unkeyed:
     'M458 136L458 142L450 142L447 158L436 159L442 157L451 139L458 138ZM404 3L460 4L447 5L451 5L447 7L449 9L443 9L446 10L445 11L446 12L436 15L441 18L434 17L432 19L440 19L404 28L396 34L393 40L390 41L384 39L380 32L379 25L388 20L381 20L382 18L388 18L381 17L384 15L381 12L357 7L378 4ZM633 397L636 399L631 400ZM308 168L309 170L305 170ZM908 308L910 312L907 312L905 305ZM791 147L791 156L787 150L789 144ZM399 460L409 462L391 463ZM348 450L351 450L349 447L351 446L358 452L349 452L347 451ZM768 466L192 466L252 466L233 465L224 463L240 462L213 458L226 459L232 458L230 456L246 455L282 454L307 456L297 452L348 454L359 453L361 451L356 447L354 442L359 437L368 434L369 435L361 437L363 440L359 444L374 454L360 458L349 458L357 460L350 460L386 465L433 462L420 460L450 456L462 450L480 451L494 448L499 449L529 449L542 445L550 447L583 440L594 444L607 444L601 451L603 452L646 440L647 442L658 443L675 439L679 442L695 440L703 443L734 440L737 439L737 442L752 442L751 444L754 445L784 450L758 458L755 460L758 461L741 463ZM609 193L610 200L607 205L596 201L593 196L594 193L597 196ZM528 91L528 86L531 88Z',
 };

@@ -10,6 +10,7 @@ import {
 import { GuestProgressStore, type GuestList } from './guest-progress';
 import { QuestBonusMap } from './quest-bonus-map';
 import { QuestChecklist } from './quest-checklist';
+import { QuestOutline } from './quest-outline';
 import { QUEST_STATE, QUESTS, stepQuest, type IQuest } from './quest-state';
 import { QuestTally } from './quest-tally';
 
@@ -22,7 +23,7 @@ import { QuestTally } from './quest-tally';
  */
 @Component({
   selector: 'app-wanderquest',
-  imports: [QuestBonusMap, QuestChecklist, QuestTally],
+  imports: [QuestBonusMap, QuestChecklist, QuestOutline, QuestTally],
   providers: [GuestProgressStore],
   styleUrl: './wanderquest.css',
   templateUrl: './wanderquest.html',
@@ -66,9 +67,10 @@ export class Wanderquest {
     this.highlighted.set(id === null ? null : { list, id });
   }
 
-  public isHighlighted(list: GuestList, id: string): boolean {
+  /** The id a checklist row is lighting in `list`, or null when it lights none there. */
+  public highlightedIn(list: GuestList): string | null {
     const highlighted = this.highlighted();
-    return highlighted?.list === list && highlighted.id === id;
+    return highlighted?.list === list ? highlighted.id : null;
   }
 
   public onSelection(selection: QUEST_STATE): void {

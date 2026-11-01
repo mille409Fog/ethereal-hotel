@@ -29,6 +29,14 @@ export interface IOutlineTile<Id extends string = string> {
   readonly partial?: string;
 }
 
+/** A rectangle in an outline's `viewBox` units. */
+export interface IOutlineRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface IOutline<Id extends string = string> {
   /** What the outline shows, for the SVG's accessible name. */
   readonly label: string;
@@ -53,4 +61,10 @@ export interface IOutline<Id extends string = string> {
    * two shapes' sizes say nothing about the two places'.
    */
   readonly tiles?: ReadonlyArray<IOutlineTile<Id>>;
+  /**
+   * Present when the outline is an inset: the part of the quest's main
+   * outline it draws larger, in that outline's units. The main outline marks
+   * it, so the two read as one place at two scales.
+   */
+  readonly enlarges?: IOutlineRect;
 }

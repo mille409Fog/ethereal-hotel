@@ -45,37 +45,28 @@
     >
       <app-quest-tally [quest]="quest" />
       @if (quest.outline; as outline) {
-        <!-- One image with one name, and nothing in it takes focus: the map is
-             a picture of the checklist below, not a second control. A click
-             on a place is a shortcut for its checkbox and nothing more, so
-             the keyboard route is the list, which is why the rule that
-             expects a key handler beside a click is off for this element. -->
-        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events -->
-        <svg
-          class="quest-outline"
-          role="img"
-          [attr.aria-label]="outline.label"
-          [attr.viewBox]="outline.viewBox"
-          (click)="onMapClick($event, quest.list)"
-        >
-          @if (outline.unkeyed; as unkeyed) {
-            <path class="quest-outline-unkeyed" [attr.d]="unkeyed" />
-          }
-          <!-- Each place's <title> is the pointer's native tooltip. The SVG's
-               role="img" makes its children presentational, so a screen
-               reader still hears one image and not a name per shape. -->
-          @let names = placeNames.get(quest.id);
-          @for (shape of outline.shapes; track shape.id) {
-            <path
-              [attr.d]="shape.d"
-              [attr.data-id]="shape.id"
-              [class.quest-visited]="guest.has(quest.list, shape.id)"
-              [class.quest-highlighted]="isHighlighted(quest.list, shape.id)"
-            >
-              <title>{{ names?.get(shape.id) }}</title>
-            </path>
-          }
-        </svg>
+        <!-- The quest's map, and under it the part of it enlarged, if it has
+             one: two drawings of one list, so a click on either toggles the
+             place and a checklist row lights it in both. -->
+        @let names = placeNames.get(quest.id);
+        @let lit = highlightedIn(quest.list);
+        <app-quest-outline
+          [outline]="outline"
+          [list]="quest.list"
+          [names]="names"
+          [highlighted]="lit"
+          [inset]="quest.insetOutline"
+          (mapClick)="onMapClick($event, quest.list)"
+        />
+        @if (quest.insetOutline; as inset) {
+          <app-quest-outline
+            [outline]="inset"
+            [list]="quest.list"
+            [names]="names"
+            [highlighted]="lit"
+            (mapClick)="onMapClick($event, quest.list)"
+          />
+        }
         <!-- The outline cannot draw what is too small for its scale, so it
              says so rather than letting the count and the picture disagree. -->
         @let undrawn = quest.places.length - outline.shapes.length;

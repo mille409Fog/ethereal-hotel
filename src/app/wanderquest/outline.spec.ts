@@ -1,8 +1,10 @@
 import { BONUS_OUTLINE } from './bonus.outline';
 import { CONTINENTS_OUTLINE } from './continents.outline';
 import { COUNTRIES_OUTLINE } from './countries.outline';
+import { EUROPE_OUTLINE } from './europe.outline';
 import type { IOutline } from './outline';
 import { BONUS, CONTINENTS, COUNTRIES, STATES, type IPlace } from './places.data';
+import { frameOf } from './quest-outline';
 import { STATES_OUTLINE } from './states.outline';
 
 /**
@@ -183,12 +185,63 @@ describe('BONUS_OUTLINE', () => {
   });
 });
 
-describe('COUNTRIES_OUTLINE', () => {
-  const name = new Map(COUNTRIES.map((country) => [country.id, country.name]));
-  const dots = COUNTRIES_OUTLINE.shapes.flatMap((shape) => {
+interface IDot {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly r: number;
+}
+
+/** An outline's dots, with the place each is. */
+function dotsOf(outline: IOutline): IDot[] {
+  return outline.shapes.flatMap((shape) => {
     const dot = dotOf(shape.d);
     return dot ? [{ id: shape.id, ...dot }] : [];
   });
+}
+
+/** The dots that overlap another. */
+function crowdedOf(dots: readonly IDot[]): IDot[] {
+  return dots.filter((one) =>
+    dots.some((two) => one !== two && Math.hypot(one.x - two.x, one.y - two.y) < one.r + two.r)
+  );
+}
+
+/**
+ * The shapes a dot hides whole: every point of the outline lies under some
+ * dot, so the place can no longer be seen or clicked on that map, only
+ * ticked in the list.
+ */
+function hiddenOf(outline: IOutline): string[] {
+  const dots = dotsOf(outline);
+  return outline.shapes
+    .filter(
+      (shape) =>
+        !dotOf(shape.d) &&
+        rings(shape.d)
+          .flat()
+          .every(([x, y]) => dots.some((dot) => Math.hypot(x - dot.x, y - dot.y) <= dot.r))
+    )
+    .map((shape) => shape.id);
+}
+
+/**
+ * The countries Europe's inset draws where they can be seen and aimed at:
+ * drawn there, and neither a dot touching another nor a shape under them.
+ */
+const CLEAR_IN_EUROPE = new Set<string>(
+  EUROPE_OUTLINE.shapes
+    .map((shape) => shape.id)
+    .filter(
+      (id) =>
+        !crowdedOf(dotsOf(EUROPE_OUTLINE)).some((dot) => dot.id === id) &&
+        !hiddenOf(EUROPE_OUTLINE).includes(id)
+    )
+);
+
+describe('COUNTRIES_OUTLINE', () => {
+  const name = new Map<string, string>(COUNTRIES.map((country) => [country.id, country.name]));
+  const dots = dotsOf(COUNTRIES_OUTLINE);
   const note = COUNTRIES_OUTLINE.note ?? '';
 
   it('draws the land that is none of the 195, unkeyed, so the coastline is whole', () => {
@@ -215,29 +268,109 @@ describe('COUNTRIES_OUTLINE', () => {
     }
   });
 
-  it('names on the panel every country whose dot overlaps another', () => {
-    const crowded = dots.filter((one) =>
-      dots.some((two) => one !== two && Math.hypot(one.x - two.x, one.y - two.y) < one.r + two.r)
-    );
+  it('names on the panel every country whose dot overlaps another, unless Europe draws it clear', () => {
+    const crowded = crowdedOf(dots);
     expect(crowded.length).toBeGreaterThan(0);
     for (const dot of crowded) {
-      expect(note, dot.id).toContain(name.get(dot.id));
+      if (!CLEAR_IN_EUROPE.has(dot.id)) {
+        expect(note, dot.id).toContain(name.get(dot.id));
+      }
     }
   });
 
-  it('names on the panel every country a dot hides whole', () => {
-    // Hidden means every point of its outline lies under some dot: it can no
-    // longer be seen or clicked on the map, only ticked in the list.
-    const hidden = COUNTRIES_OUTLINE.shapes.filter(
-      (shape) =>
-        !dotOf(shape.d) &&
-        rings(shape.d)
-          .flat()
-          .every(([x, y]) => dots.some((dot) => Math.hypot(x - dot.x, y - dot.y) <= dot.r))
-    );
-    expect(hidden.map((shape) => shape.id).sort()).toEqual(['BE', 'CH', 'IL', 'LB', 'QA', 'TT']);
-    for (const shape of hidden) {
-      expect(note, shape.id).toContain(`${name.get(shape.id)}, under`);
+  it('names on the panel every country a dot hides whole, unless Europe draws it clear', () => {
+    const hidden = hiddenOf(COUNTRIES_OUTLINE);
+    expect(hidden.sort()).toEqual(['BE', 'CH', 'IL', 'LB', 'QA', 'TT']);
+    for (const id of hidden.filter((candidate) => !CLEAR_IN_EUROPE.has(candidate))) {
+      expect(note, id).toContain(`${name.get(id)}, under`);
     }
+  });
+
+  it('stops naming what the inset draws clear, and says that it does', () => {
+    // The overlap of Europe's microstates and the two countries under them
+    // were the reason for the inset; the note naming them is what it ends.
+    for (const id of ['AD', 'LI', 'LU', 'MT', 'MC', 'SM', 'VA', 'BE', 'CH']) {
+      expect(CLEAR_IN_EUROPE.has(id), id).toBe(true);
+      expect(note, id).not.toContain(name.get(id));
+    }
+    expect(note).toContain('Europe is drawn again below');
+  });
+});
+
+describe('EUROPE_OUTLINE', () => {
+  const ids = EUROPE_OUTLINE.shapes.map((shape) => shape.id);
+  const frame = frameOf(EUROPE_OUTLINE);
+  const enlarges = EUROPE_OUTLINE.enlarges;
+
+  it('draws each country at most once, under the ids the world map uses', () => {
+    expect(new Set(ids).size, 'a place is drawn twice').toBe(ids.length);
+    const world = new Set(COUNTRIES_OUTLINE.shapes.map((shape) => shape.id));
+    expect(ids.filter((id) => !world.has(id))).toEqual([]);
+  });
+
+  it('gives every shape path data the script could have written, under its ceiling', () => {
+    for (const shape of EUROPE_OUTLINE.shapes) {
+      expect(shape.d, shape.id).toMatch(PATH_DATA);
+    }
+    expect(EUROPE_OUTLINE.unkeyed ?? '').toMatch(PATH_DATA);
+    // About 23KB: the 1:50m coast at six times the scale. More than the
+    // world map, which is why it is held separately rather than raised there.
+    const bytes =
+      EUROPE_OUTLINE.shapes.reduce((sum, shape) => sum + shape.d.length, 0) +
+      (EUROPE_OUTLINE.unkeyed?.length ?? 0);
+    expect(bytes).toBeLessThanOrEqual(26_000);
+  });
+
+  it('is the rectangle it marks on the world map, at a whole multiple of its scale', () => {
+    expect(enlarges).toBeDefined();
+    const { x, y, width, height } = enlarges ?? { x: 0, y: 0, width: 0, height: 0 };
+    const scale = frame.width / width;
+    expect(Number.isInteger(scale), `scale ${scale}`).toBe(true);
+    expect(frame.height).toBe(height * scale);
+
+    const [left, top, worldWidth, worldHeight] = COUNTRIES_OUTLINE.viewBox.split(' ').map(Number);
+    expect(x >= left && x + width <= left + worldWidth).toBe(true);
+    expect(y >= top && y + height <= top + worldHeight).toBe(true);
+  });
+
+  it('keeps every shape inside its frame, cut there rather than running on', () => {
+    for (const shape of EUROPE_OUTLINE.shapes.filter((candidate) => !dotOf(candidate.d))) {
+      for (const [px, py] of rings(shape.d).flat()) {
+        expect(px >= 0 && px <= frame.width, `${shape.id} x ${px}`).toBe(true);
+        expect(py >= 0 && py <= frame.height, `${shape.id} y ${py}`).toBe(true);
+      }
+    }
+  });
+
+  it('dots only what would fit inside a dot, so no target is smaller than one', () => {
+    // The four the 1:50m file cannot shape at this scale, and four more it
+    // can but would draw smaller than a dot: Lebanon is the sliver north of
+    // the frame's edge. Held exactly, as the world map's dots are.
+    expect(
+      dotsOf(EUROPE_OUTLINE)
+        .map((dot) => dot.id)
+        .sort()
+    ).toEqual(['AD', 'LB', 'LI', 'LU', 'MC', 'MT', 'SM', 'VA']);
+    for (const shape of EUROPE_OUTLINE.shapes.filter((candidate) => !dotOf(candidate.d))) {
+      const points = rings(shape.d).flat();
+      const extent = (axis: 0 | 1): number =>
+        Math.max(...points.map((point) => point[axis])) -
+        Math.min(...points.map((point) => point[axis]));
+      expect(Math.max(extent(0), extent(1)), shape.id).toBeGreaterThanOrEqual(20);
+    }
+    expect(ids).toEqual(expect.arrayContaining(['BE', 'CH']));
+  });
+
+  it('keeps every dot whole inside its frame', () => {
+    for (const { id, x, y, r } of dotsOf(EUROPE_OUTLINE)) {
+      expect(x - r >= 0 && x + r <= frame.width, `${id} x`).toBe(true);
+      expect(y - r >= 0 && y + r <= frame.height, `${id} y`).toBe(true);
+    }
+  });
+
+  it('crowds and hides nothing, so its note has nothing to say', () => {
+    expect(crowdedOf(dotsOf(EUROPE_OUTLINE))).toEqual([]);
+    expect(hiddenOf(EUROPE_OUTLINE)).toEqual([]);
+    expect(EUROPE_OUTLINE.note).toBeUndefined();
   });
 });

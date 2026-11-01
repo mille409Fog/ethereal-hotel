@@ -292,11 +292,15 @@ test.describe('wanderquest outlines', () => {
       ['States', 'Outline map of the fifty states', 'California'],
       ['Continents', 'Outline map of the seven continents', 'Asia'],
       ['Countries', 'Outline map of the countries of the world', 'Brazil'],
+      // Europe's inset: a second image on the same panel, with its own name.
+      ['Countries', 'Outline map of Europe, enlarged', 'Belgium'],
     ] as const;
 
     for (const [tab, label, place] of maps) {
       await page.getByRole('tab', { name: tab }).click();
-      const svg = page.getByRole('tabpanel', { name: tab }).locator('svg.quest-outline');
+      const svg = page
+        .getByRole('tabpanel', { name: tab })
+        .locator(`svg.quest-outline[aria-label="${label}"]`);
       await expect(svg.locator('path[data-id] > title', { hasText: place })).toHaveCount(1);
       expect(await svg.ariaSnapshot()).toBe(`- img "${label}"`);
     }
