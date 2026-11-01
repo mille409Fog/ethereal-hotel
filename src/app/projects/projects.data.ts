@@ -64,6 +64,12 @@ export const PROJECTS: readonly IProject[] = [
     description: 'three travel quests — every state, every continent, every country',
     category: 'interactive',
     tech: ['Angular 22'],
+    link: '/wanderquest',
+    linkLabel: 'start the quests',
+    frame: {
+      src: '/projects/wanderquest.webp',
+      alt: 'The states quest with seven marked, “7 of 50 states visited”, and those seven filled in on the map of the United States.',
+    },
   },
   {
     name: 'murmuration',

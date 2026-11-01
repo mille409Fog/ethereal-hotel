@@ -101,6 +101,17 @@ interface IRecipe {
   readonly prepare: (page: Page) => Promise<void>;
 }
 
+/** The states ticked before `/wanderquest` is photographed; its alt counts them. */
+const WANDERQUEST_MARKS = [
+  'Ohio',
+  'Michigan',
+  'Indiana',
+  'Illinois',
+  'Pennsylvania',
+  'New York',
+  'Kentucky',
+] as const;
+
 const RECIPES: Readonly<Record<string, IRecipe>> = {
   // Polling, the state a visitor to the deployed demo sees, over the committed
   // snapshot of the seeded hotel.
@@ -146,6 +157,24 @@ const RECIPES: Readonly<Record<string, IRecipe>> = {
       await page.locator('.cell[tabindex="0"]').focus();
       await page.keyboard.press('ArrowRight');
       await expect(page.locator('.triad-primary .triad-name')).toBeVisible();
+    },
+  },
+  // A guest a few states in, because a fresh visitor's map is all one colour
+  // and says nothing about what the page does. The pointer is parked after
+  // the last tick so no row is left hovered and no state highlighted.
+  '/wanderquest': {
+    anchors: ['#quest-panel-states app-quest-tally', '#quest-panel-states svg.quest-outline'],
+    prepare: async (page) => {
+      await page.goto('/wanderquest');
+      const panel = page.locator('#quest-panel-states');
+      for (const state of WANDERQUEST_MARKS) {
+        await panel.getByRole('checkbox', { name: state, exact: true }).check();
+      }
+      await page.mouse.move(0, 0);
+      await expect(panel.locator('svg.quest-outline path.quest-visited')).toHaveCount(
+        WANDERQUEST_MARKS.length
+      );
+      await expect(panel.locator('svg.quest-outline path.quest-highlighted')).toHaveCount(0);
     },
   },
   '/murmuration': {

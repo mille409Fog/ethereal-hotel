@@ -129,9 +129,10 @@ not leave the note behind when the suppression goes.
   in CI and re-rendering could never fix it. `scripts/pdf-text.mjs` reads the text layer, which
   _is_ identical everywhere; its one rule is that it never reads a coordinate, because glyph
   advances are not.
-- **`public/projects/*.webp` are generated too.** `e2e/project-frames.spec.ts` photographs the
-  four live routes from the production build and checks them inside `npm run e2e`, so a change to
-  `/dashboard`, `/booking`, `/gallery` or `/aesthetic` that moves a word or a colour fails the
+- **`public/projects/*.webp` are generated too.** `e2e/project-frames.spec.ts` photographs every
+  on-site route in `projects.data.ts` from the production build and checks them inside
+  `npm run e2e`, so a change to `/dashboard`, `/booking`, `/gallery`, `/aesthetic`, `/murmuration`
+  or `/wanderquest` that moves a word or a colour fails the
   suite until `npm run frames:capture` is re-run. That is the gate working, not a flaky test.
 - **GLSL lives inside a template literal, so a backtick in a shader comment ends the string** and
   the error lands thirty lines away. Same family: GLSL ES 3.00 reserves `half`, `sample`, `input`,
