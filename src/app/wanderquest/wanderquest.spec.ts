@@ -347,24 +347,107 @@ describe('Wanderquest', () => {
     }
   });
 
-  it("titles every keyed shape with its place's name, and nothing else", () => {
-    for (const quest of QUESTS) {
-      const svg = host.querySelector(`#quest-panel-${quest.id} svg.quest-outline`);
-      const names = new Map(quest.places.map((place) => [place.id, place.name]));
-      const keyed = Array.from(svg?.querySelectorAll('path[data-id]') ?? []);
-      expect(keyed.length, quest.id).toBe(quest.outline?.shapes.length);
+  describe('the caption under each outline', () => {
+    /** A pointer event as the browser sends it; jsdom's lacks `pointerType`. */
+    const point = async (
+      target: Element | null,
+      type: 'pointerover' | 'pointerup' | 'pointerleave',
+      pointerType = 'mouse'
+    ): Promise<void> => {
+      const event = new MouseEvent(type, { bubbles: type !== 'pointerleave' });
+      Object.defineProperty(event, 'pointerType', { value: pointerType });
+      target?.dispatchEvent(event);
+      await fixture.whenStable();
+    };
+    const caption = (svg: Element | null): string =>
+      svg?.nextElementSibling?.matches('p.quest-outline-caption')
+        ? (svg.nextElementSibling.textContent?.trim() ?? '')
+        : 'no caption';
+    const states = (): SVGSVGElement | null => statesPanel().querySelector('svg.quest-outline');
 
-      for (const path of keyed) {
-        const id = path.getAttribute('data-id') ?? '';
-        const titles = Array.from(path.children).filter((child) => child.localName === 'title');
-        expect(
-          titles.map((title) => title.textContent),
-          `${quest.id} ${id}`
-        ).toEqual([names.get(id)]);
+    it("names every keyed shape under the pointer with its place's name, and nothing else", async () => {
+      const svgs = Array.from(host.querySelectorAll('svg.quest-outline'));
+      expect(svgs.map(caption).every((line) => line === '')).toBe(true);
+
+      for (const quest of QUESTS) {
+        const svg = host.querySelector(`#quest-panel-${quest.id} svg.quest-outline`);
+        const names = new Map(quest.places.map((place) => [place.id, place.name]));
+        const keyed = Array.from(svg?.querySelectorAll('path[data-id]') ?? []);
+        expect(keyed.length, quest.id).toBe(quest.outline?.shapes.length);
+
+        for (const path of keyed) {
+          const id = path.getAttribute('data-id') ?? '';
+          expect(path.querySelector('title'), `${quest.id} ${id}`).toBeNull();
+          await point(path, 'pointerover');
+          expect(caption(svg), `${quest.id} ${id}`).toBe(`${names.get(id)} — not yet visited`);
+        }
+        // The ground between places, and unkeyed land where a map has it, are
+        // none of the places, so they are named as none of them.
+        await point(svg, 'pointerover');
+        expect(caption(svg), quest.id).toBe('');
+        const unkeyed = svg?.querySelector('path.quest-outline-unkeyed');
+        if (unkeyed) {
+          await point(keyed[0], 'pointerover');
+          await point(unkeyed, 'pointerover');
+          expect(caption(svg), quest.id).toBe('');
+        }
       }
-      // Unkeyed land is none of the places, so it is named as none of them.
-      expect(svg?.querySelector('path.quest-outline-unkeyed title') ?? null).toBeNull();
-    }
+    });
+
+    it('says the state, follows a mark at once, and empties when the pointer leaves', async () => {
+      await point(shape('TX'), 'pointerover');
+      expect(caption(states())).toBe('Texas — not yet visited');
+
+      await clickShape('TX');
+      expect(caption(states())).toBe('Texas — visited');
+
+      await point(states(), 'pointerleave');
+      expect(caption(states())).toBe('');
+    });
+
+    it("names the checklist row's place, but only on a drawing that holds it", async () => {
+      box('Ohio')?.focus();
+      await fixture.whenStable();
+      expect(caption(states())).toBe('Ohio — not yet visited');
+
+      const countries = host.querySelector<HTMLElement>('#quest-panel-countries') ?? host;
+      const [world, europe] = Array.from(countries.querySelectorAll('svg.quest-outline'));
+      const focusCountry = async (name: string): Promise<void> => {
+        const label = Array.from(countries.querySelectorAll('label')).find(
+          (candidate) => candidate.textContent?.trim() === name
+        );
+        countries.querySelector<HTMLInputElement>(`#${label?.htmlFor}`)?.focus();
+        await fixture.whenStable();
+      };
+      await focusCountry('Belgium');
+      expect([caption(world), caption(europe)]).toEqual([
+        'Belgium — not yet visited',
+        'Belgium — not yet visited',
+      ]);
+      await focusCountry('Brazil');
+      expect([caption(world), caption(europe)]).toEqual(['Brazil — not yet visited', '']);
+    });
+
+    it('names the place a tap toggled, keeps it after the finger lifts, and yields to a row', async () => {
+      // A finger passing over is a scroll as often as a tap, so it names nothing.
+      await point(shape('UT'), 'pointerover', 'touch');
+      expect(caption(states())).toBe('');
+
+      await point(shape('UT'), 'pointerup', 'touch');
+      await clickShape('UT');
+      await point(states(), 'pointerleave', 'touch');
+      expect(caption(states())).toBe('Utah — visited');
+
+      box('Nevada')?.focus();
+      await fixture.whenStable();
+      expect(caption(states())).toBe('Nevada — not yet visited');
+    });
+
+    it('is not a live region, so a hover is never read aloud', () => {
+      for (const line of Array.from(host.querySelectorAll('.quest-outline-caption'))) {
+        expect(line.closest('[aria-live], [role="status"], [role="log"]')).toBeNull();
+      }
+    });
   });
 
   it('draws the bonus on the states panel, below the states, as one named image', () => {

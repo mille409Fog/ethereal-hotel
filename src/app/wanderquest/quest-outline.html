@@ -11,22 +11,22 @@
   [attr.aria-label]="outline().label"
   [attr.viewBox]="outline().viewBox"
   (click)="mapClick.emit($event)"
+  (pointerover)="onPointerOver($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointerleave)="onPointerLeave($event)"
 >
   @if (outline().unkeyed; as unkeyed) {
     <path class="quest-outline-unkeyed" [attr.d]="unkeyed" />
   }
-  <!-- Each place's <title> is the pointer's native tooltip. The SVG's
-       role="img" makes its children presentational, so a screen reader still
-       hears one image and not a name per shape. -->
+  <!-- No <title> on a shape: the caption below names it, at once and on
+       touch, and a native tooltip a second later would name it twice. -->
   @for (shape of outline().shapes; track shape.id) {
     <path
       [attr.d]="shape.d"
       [attr.data-id]="shape.id"
       [class.quest-visited]="guest.has(list(), shape.id)"
       [class.quest-highlighted]="shape.id === highlighted()"
-    >
-      <title>{{ names()?.get(shape.id) }}</title>
-    </path>
+    />
   }
   <!-- Over the places, so no fill hides it, and answering no click. -->
   @for (frame of frames(); track $index) {
@@ -39,3 +39,6 @@
     />
   }
 </svg>
+<!-- Not aria-live, for the reason the dashboard's metrics grid is not: the
+     checklist already announces every mark, and a hover read aloud is noise. -->
+<p class="quest-outline-caption">{{ caption() }}</p>

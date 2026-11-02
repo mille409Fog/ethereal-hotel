@@ -65,6 +65,27 @@
   fill: var(--color-border);
 }
 
+/* The place under the pointer, or under the checklist row, and its state. It
+   reserves its height whether or not it names anything, so the page below
+   does not jump as a pointer crosses the map. The longest caption is the
+   United Kingdom's, 70 characters, which at 0.95rem takes two lines on a
+   narrow screen and one from 40rem up. `e2e/wanderquest.spec.ts` measures
+   both, empty and holding it. It changes instantly and has no transition:
+   it is a readout of the pointer, not a mark. */
+.quest-outline-caption {
+  min-height: 3em;
+  margin: 0.5rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 40rem) {
+  .quest-outline-caption {
+    min-height: 1.5em;
+  }
+}
+
 /* The enlargement sits close under the map it enlarges. */
 .quest-outline-inset {
   margin-top: 1rem;
