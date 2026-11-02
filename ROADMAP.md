@@ -27,7 +27,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## `/wanderquest` maps
 
-Six graphical items for the travel quests' maps, the first two the ones that matter. They share
+Five graphical items for the travel quests' maps, the first the one that matters most. They share
 one complaint: a place the guest has marked that they cannot see. The page's house rules bind all
 of them: Fern's tokens and one accent for controls, the quest palettes in `wanderquest.css` for
 places and never for controls, no glow, and no motion that does not show a change of state. Any
@@ -41,19 +41,7 @@ hand, and keep each outline under the size ceiling `outline.spec.ts` holds it to
 what the page draws fails `e2e/project-frames.spec.ts` until `npm run frames:capture` is re-run;
 that is the gate working.
 
-### 1. The world maps are given more width
-
-Both world projections are about twice as wide as they are tall, and the 48rem cap that suits the
-states outline leaves them short on a desktop screen. **Effort:** 1 hour.
-
-**DoD:** the continents and countries outlines grow to 64rem where the viewport allows, while the
-tally, key and checklist keep the panel's 48rem measure; the states outline and the bonus map are
-unchanged. Below 64rem nothing changes and nothing scrolls sideways at 320px. The CSS comment on
-`.quest-panel` is rewritten to say which maps are wider and why. Europe's inset widens with the
-countries outline above it, so the two stay one width. The Caribbean measurement in
-`build-outline.mjs` is taken at 320px and does not move.
-
-### 2. The hovered place is named under the map
+### 1. The hovered place is named under the map
 
 A place's name appears only in the browser's native tooltip: about a second late, wherever the OS
 puts it, and never on touch. **Effort:** 2 hours.
@@ -67,7 +55,7 @@ every change, and a hover narrated aloud is noise. The `<title>` elements go, si
 one hover is worse than one; the unit test that checks every title matches its place moves to the
 caption, and the a11y assertion that screen readers hear one image still holds.
 
-### 3. The world maps sit on the globe's outline
+### 2. The world maps sit on the globe's outline
 
 The continents and countries float on the page background with no edge, so the projection's shape
 is lost and the oceans are nowhere. **Effort:** 1–2 hours.
@@ -81,7 +69,7 @@ are drawn in `--color-bg`; if that no longer reads against the sphere's fill, th
 and the comment on `.quest-outline` says why. Under `forced-colors` the sphere is `Canvas` with a
 `CanvasText` edge, so it adds a frame and takes nothing away.
 
-### 4. The scattered bonus territories can be found in their tiles
+### 3. The scattered bonus territories can be found in their tiles
 
 The U.S. Virgin Islands and American Samoa are islands spread far apart, so fitting each group to
 its tile leaves the land a few pixels across and the tile looks empty. **Effort:** 2 hours.
@@ -93,7 +81,7 @@ clears 3:1 against `--color-bg` or it is not used, and that pair is in the spec.
 which tiles it currently catches are written in the generated file's header. DC, Puerto Rico and
 Guam, which fill their tiles, are untouched.
 
-### 5. The countries checklist stops being 7,000 pixels on a phone
+### 4. The countries checklist stops being 7,000 pixels on a phone
 
 At 375px the countries list is one column of 195 rows and the page is about 7,300px tall; the
 "Clear my countries" button is at the bottom of all of it. **Effort:** 2–3 hours.
@@ -107,7 +95,7 @@ inventing one would put a claim on screen nothing backs. Measure the page height
 and after and record both in this item's commit message. States and continents are short enough to
 stay as they are.
 
-### 6. The Caribbean gets an inset, as Europe did
+### 5. The Caribbean gets an inset, as Europe did
 
 The measurement Europe's inset left in `build-outline.mjs` decided it: at 320px the world map
 draws 17 Caribbean countries narrower than 8px, against Europe's 43, in a third of the area, and

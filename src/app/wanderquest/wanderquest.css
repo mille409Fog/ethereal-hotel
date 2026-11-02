@@ -143,13 +143,38 @@
 
 /* ----- The panel ----- */
 
-/* Wide enough for an outline to show its borders; the text in it is short
-   enough not to need a measure of its own. */
+/* The page is the container the world maps measure themselves against, so
+   `100cqi` below is exactly the width inside its padding, where `100vw`
+   would count the scrollbar and push a map past the edge. */
+.wanderquest-page {
+  container-type: inline-size;
+}
+
+/* 48rem is the measure for everything in a panel: the tally, the key, the
+   checklist and the notes, and the states outline, which fills it on a
+   desktop at 30rem high. The two world maps are wider: the countries are
+   2.04 times as wide as tall and the continents 1.68, so at 48rem the world
+   is under 29rem high, and a country's dot 16px across. Their outlines,
+   Europe's inset with them so the two stay one width, break out of the
+   measure to 64rem, or the page's whole width where that is less, which
+   puts the dot at 21px. Only from a 64rem viewport: below it nothing moves,
+   and at 320px the cap never binds. The bonus tiles keep the measure; they
+   are small multiples, not a projection. */
 .quest-panel {
   max-width: 48rem;
   margin: 0 auto;
   padding: 2rem 0;
   text-align: center;
+}
+
+@media (min-width: 64rem) {
+  .quest-panel:is([data-quest='continents'], [data-quest='countries']) app-quest-outline {
+    --quest-map-width: min(64rem, 100cqi);
+
+    display: block;
+    width: var(--quest-map-width);
+    margin-inline: calc((100% - var(--quest-map-width)) / 2);
+  }
 }
 
 /* The outlines themselves are `QuestOutline`'s, in `quest-outline.css`. */

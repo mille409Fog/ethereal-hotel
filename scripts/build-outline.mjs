@@ -497,9 +497,10 @@ const NATURAL_EARTH_50M_SOURCE = `https://naciscdn.org/naturalearth/50m/cultural
 
 /**
  * A dot's radius in frame units, the same for every country it draws, so a
- * dot says where a country is and nothing about its size. 10 is about 16px
- * across at the panel's 48rem and 6px at 320px. The 24px of WCAG 2.5.8 at
- * 320px would be 43 units, a dot 65px across on a desktop, and dots that size
+ * dot says where a country is and nothing about its size. 10 is about 21px
+ * across at the 64rem the world map widens to on a desktop, 16px at the
+ * panel's 48rem and 6px at 320px. The 24px of WCAG 2.5.8 at
+ * 320px would be 43 units, a dot 90px across on a desktop, and dots that size
  * buried 54 drawn countries, France, Germany, Italy and Spain among them; at
  * 14 they still hid 11, Palestine's alone covering Israel, Jordan, Lebanon and
  * Cyprus. The map is not where 2.5.8 is met: every country's checkbox below
@@ -522,7 +523,7 @@ const EUROPE = { west: -25, east: 45, south: 34, north: 72 };
  * How many times the world map's scale the inset is drawn at. A whole number,
  * so the rectangle on the world map and the inset's frame are exactly one
  * shape at two sizes: 173 × 100 units there, 1038 × 600 here. At this scale
- * Luxembourg is about 13px across at the panel's 48rem, where on the world map
+ * Luxembourg is about 17px across at the inset's 64rem, where on the world map
  * it is a dot over Belgium.
  */
 const INSET_SCALE = 6;
