@@ -2319,6 +2319,8 @@ check("wanderquest's palettes stay its own", () => {
   for (const [token, constant] of [
     ['--color-bg', 'PAGE_BACKGROUND'],
     ['--color-negative', 'NEGATIVE'],
+    ['--color-surface', 'SEA'],
+    ['--color-inactive', 'UNKEYED'],
   ]) {
     const value = new RegExp(`${token}:\\s*(#[0-9a-f]{6})`, 'i').exec(styles)?.[1];
     const copy = new RegExp(`const ${constant} = '(#[0-9a-f]{6})'`, 'i').exec(spec)?.[1];

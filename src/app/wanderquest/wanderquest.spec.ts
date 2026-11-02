@@ -20,6 +20,12 @@ const PAGE_BACKGROUND = '#1a2a25';
 /** `--color-negative`, the destructive answer's text; a copy held the same way. */
 const NEGATIVE = '#e8a0a8';
 
+/** `--color-surface`, the sea the world maps' places sit on; a copy held the same way. */
+const SEA = '#24342f';
+
+/** `--color-inactive`, the land that is none of the places; a copy held the same way. */
+const UNKEYED = '#75847e';
+
 /** WCAG 1.4.11: a mark a reader has to tell apart from what surrounds it. */
 const NON_TEXT_CONTRAST = 3;
 
@@ -59,9 +65,14 @@ function contrast(a: string, b: string): number {
   return contrastRatio(luminance(a), luminance(b));
 }
 
-/** OKLab distance between two colours as someone with `deficiency` sees them. */
-function apart(a: string, b: string, deficiency: Deficiency): number {
-  const [p, q] = [a, b].map((hex) => linearToOklab(simulateLinear(linear(hex), deficiency)));
+/**
+ * OKLab distance between two colours as someone with `deficiency` sees them,
+ * or with typical vision when there is none.
+ */
+function apart(a: string, b: string, deficiency: Deficiency | null): number {
+  const [p, q] = [a, b].map((hex) =>
+    linearToOklab(deficiency ? simulateLinear(linear(hex), deficiency) : linear(hex))
+  );
   return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 }
 
@@ -587,6 +598,78 @@ describe('Wanderquest', () => {
         });
       }
     }
+  });
+
+  describe('the sea under the world maps', () => {
+    const seas = (): SVGPathElement[] =>
+      Array.from(host.querySelectorAll<SVGPathElement>('path.quest-outline-sphere'));
+    /** The quests whose outline sits on a globe: every Equal Earth one, and not the states. */
+    const global = QUESTS.filter((quest) => quest.outline?.sphere !== undefined);
+
+    it('lies under every place on the world maps and the inset, and under none on the states', () => {
+      expect(global.map((quest) => quest.id)).toEqual([
+        QUEST_STATE.CONTINENTS,
+        QUEST_STATE.COUNTRIES,
+      ]);
+      expect(seas().map((sea) => sea.closest('section')?.id)).toEqual([
+        'quest-panel-continents',
+        'quest-panel-countries',
+        'quest-panel-countries',
+      ]);
+      for (const sea of seas()) {
+        expect(sea.parentElement?.firstElementChild).toBe(sea);
+        expect(sea.hasAttribute('data-id')).toBe(false);
+        // jsdom resolves the rule but not the token; the token is measured below.
+        expect(window.getComputedStyle(sea).fill).toBe('var(--color-surface)');
+        expect(window.getComputedStyle(sea).pointerEvents).toBe('none');
+      }
+    });
+
+    it('answers no click', async () => {
+      for (const sea of seas()) {
+        sea.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      }
+      await fixture.whenStable();
+      expect(host.querySelectorAll('path.quest-visited').length).toBe(0);
+      expect(storage.getItem(GUEST_PROGRESS_KEY)).toBeNull();
+    });
+
+    it('holds every mark on it at 3:1, as the page holds them', () => {
+      for (const quest of global) {
+        const { visited, highlight } = palettes()[quest.id];
+        for (const mark of [visited, highlight]) {
+          expect(contrast(mark, SEA), `${quest.id} ${mark} on the sea`).toBeGreaterThanOrEqual(
+            NON_TEXT_CONTRAST
+          );
+        }
+      }
+    });
+
+    // Neither is a mark, so neither owes the sea 3:1, and no fill that dark
+    // could reach it; but each is land, and must not read as sea. So each is
+    // held apart from it as two roles in a palette are, and for typical
+    // vision too: the unkeyed grey looks the same to everyone.
+    it('keeps the unvisited fill and the unkeyed grey apart from it, as land', () => {
+      const land = [
+        ...global.map((quest) => [quest.id, palettes()[quest.id].unvisited]),
+        ['unkeyed', UNKEYED],
+      ];
+      for (const [name, fill] of land) {
+        for (const deficiency of [null, ...RED_GREEN]) {
+          expect(
+            apart(fill, SEA, deficiency),
+            `${name} ${fill} on the sea under ${deficiency ?? 'typical vision'}`
+          ).toBeGreaterThanOrEqual(WITHIN_PALETTE);
+        }
+      }
+      // The unkeyed land is drawn beside the countries' unmarked ones.
+      for (const deficiency of [null, ...RED_GREEN]) {
+        expect(
+          apart(UNKEYED, palettes()[QUEST_STATE.COUNTRIES].unvisited, deficiency),
+          `unkeyed beside the countries under ${deficiency ?? 'typical vision'}`
+        ).toBeGreaterThanOrEqual(WITHIN_PALETTE);
+      }
+    });
   });
 
   it('switches the palette, and its key, with the view', async () => {

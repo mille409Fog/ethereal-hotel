@@ -15,6 +15,10 @@
   (pointerup)="onPointerUp($event)"
   (pointerleave)="onPointerLeave($event)"
 >
+  <!-- First, so every place paints over it. -->
+  @if (outline().sphere; as sphere) {
+    <path class="quest-outline-sphere" [attr.d]="sphere" />
+  }
   @if (outline().unkeyed; as unkeyed) {
     <path class="quest-outline-unkeyed" [attr.d]="unkeyed" />
   }

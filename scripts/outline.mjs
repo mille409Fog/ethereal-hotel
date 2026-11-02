@@ -229,6 +229,21 @@ export function equalEarthWorld() {
 }
 
 /**
+ * The whole globe's edge as one ring of `[lon, lat]`, d3's `{type: 'Sphere'}`
+ * for a projection centred on Greenwich: down the antimeridian's east side
+ * from pole to pole, then up its west side. The closing edges are the poles,
+ * which Equal Earth draws as straight lines, so a point at each end is all
+ * they need; the meridians bow, so they are sampled every `step` degrees and
+ * left to `simplify` to thin. Closed, as a boundary file's rings are.
+ */
+export function sphereRing(step = 1) {
+  const ring = [];
+  for (let lat = 90; lat >= -90; lat -= step) ring.push([180, lat]);
+  for (let lat = -90; lat <= 90; lat += step) ring.push([-180, lat]);
+  return [...ring, ring[0]];
+}
+
+/**
  * The smallest whole-unit rectangle that holds a box of longitude and latitude
  * once projected. Its edges are sampled rather than its corners projected,
  * because in Equal Earth a meridian bows outward and a parallel is straight

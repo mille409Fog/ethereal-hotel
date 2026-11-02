@@ -100,7 +100,7 @@
 
                  hue   unvisited    visited      highlight
      states      255°  0.39 × 0.55  0.74 × 0.90  0.89 × 0.75   blue
-     continents   25°  0.34 × 0.60  0.68 × 0.80  0.84 × 0.70   red
+     continents   25°  0.20 × 0.60  0.68 × 0.80  0.84 × 0.70   red
      countries   145°  0.45 × 0.50  0.84 × 0.70  0.95 × 0.75   green
      bonus        85°               0.82 × 0.85                gold
 
@@ -113,14 +113,24 @@
    unvisited fill. Gold sits on the blue–yellow axis that both red–green
    deficiencies keep.
 
-   Contrast, WCAG 2, visited on --color-bg / on its own unvisited:
-     states      6.52 / 4.19     (bonus 8.50 / 5.46)
-     continents  4.82 / 3.93
-     countries   9.74 / 4.67
+   The world maps draw their places on a sea in --color-surface, and every
+   fill there is measured against it too. That is what moved the continents'
+   unvisited from 0.34 to 0.20: at 0.34 its red sat 1.07:1 from the sea, and
+   0.024 from it in OKLab under protanopia, about one just-noticeable
+   difference, so to a protanope the unmarked continents had no fill at all.
+   It could not go lighter, where it meets the countries' green; darker, the
+   sea is 0.107 away and every other distance grew. It is now the one fill
+   darker than the page, which on these two maps it never touches.
+
+   Contrast, WCAG 2, visited on --color-bg / on its own unvisited / on the sea:
+     states      6.52 / 4.19     (bonus 8.50 / 5.46)   no sea
+     continents  4.82 / 5.89 / 4.20
+     countries   9.74 / 4.67 / 8.49
    `wanderquest.spec.ts` recomputes these from this file, holds them at 3:1
-   (WCAG 1.4.11), and holds the CVD distances above. Visited is always the
-   lighter fill by at least 3:1, so the difference survives greyscale; the
-   key below names every colour, so it never rests on hue alone. */
+   (WCAG 1.4.11), and holds the CVD distances above, the sea's included.
+   Visited is always the lighter fill by at least 3:1, so the difference
+   survives greyscale; the key below names every colour, so it never rests
+   on hue alone. */
 
 .quest-panel[data-quest='states'] {
   --quest-unvisited: #2a466a;
@@ -130,7 +140,7 @@
 }
 
 .quest-panel[data-quest='continents'] {
-  --quest-unvisited: #5b2421;
+  --quest-unvisited: #280c0a;
   --quest-visited: #ed6862;
   --quest-highlight: #f0bcb6;
 }
@@ -152,9 +162,9 @@
 
 /* 48rem is the measure for everything in a panel: the tally, the key, the
    checklist and the notes, and the states outline, which fills it on a
-   desktop at 30rem high. The two world maps are wider: the countries are
-   2.04 times as wide as tall and the continents 1.68, so at 48rem the world
-   is under 29rem high, and a country's dot 16px across. Their outlines,
+   desktop at 30rem high. The two world maps are wider: each is the whole
+   globe, about 2.05 times as wide as tall, so at 48rem the world is under
+   24rem high, and a country's dot 16px across. Their outlines,
    Europe's inset with them so the two stay one width, break out of the
    measure to 64rem, or the page's whole width where that is less, which
    puts the dot at 21px. Only from a 64rem viewport: below it nothing moves,
@@ -182,7 +192,7 @@
 /* Land that is none of the places, in the Fern grey the outline draws it in,
    because a palette colour would say it can be visited and counted. */
 .quest-swatch-unkeyed {
-  background: var(--color-border);
+  background: var(--color-inactive);
 }
 
 .quest-undrawn,

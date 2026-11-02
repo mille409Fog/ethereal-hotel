@@ -27,7 +27,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## `/wanderquest` maps
 
-Four graphical items for the travel quests' maps. They share one complaint: a place the guest has
+Three graphical items for the travel quests' maps. They share one complaint: a place the guest has
 marked that they cannot see. The page's house rules bind all
 of them: Fern's tokens and one accent for controls, the quest palettes in `wanderquest.css` for
 places and never for controls, no glow, and no motion that does not show a change of state. Any
@@ -41,21 +41,7 @@ hand, and keep each outline under the size ceiling `outline.spec.ts` holds it to
 what the page draws fails `e2e/project-frames.spec.ts` until `npm run frames:capture` is re-run;
 that is the gate working.
 
-### 1. The world maps sit on the globe's outline
-
-The continents and countries float on the page background with no edge, so the projection's shape
-is lost and the oceans are nowhere. **Effort:** 1–2 hours.
-
-**DoD:** the build script emits Equal Earth's sphere outline as an optional `sphere` path on
-`IOutline`, drawn beneath the places in a Fern token and answering no click. The states outline,
-an Albers composite with no sphere, gets none. Every fill on the map is measured against the new
-background: unvisited, visited and highlight per palette, and the unkeyed grey, which must still
-read as land and not as sea. Those pairs join `wanderquest.spec.ts`. The borders between places
-are drawn in `--color-bg`; if that no longer reads against the sphere's fill, the stroke changes
-and the comment on `.quest-outline` says why. Under `forced-colors` the sphere is `Canvas` with a
-`CanvasText` edge, so it adds a frame and takes nothing away.
-
-### 2. The scattered bonus territories can be found in their tiles
+### 1. The scattered bonus territories can be found in their tiles
 
 The U.S. Virgin Islands and American Samoa are islands spread far apart, so fitting each group to
 its tile leaves the land a few pixels across and the tile looks empty. **Effort:** 2 hours.
@@ -67,7 +53,7 @@ clears 3:1 against `--color-bg` or it is not used, and that pair is in the spec.
 which tiles it currently catches are written in the generated file's header. DC, Puerto Rico and
 Guam, which fill their tiles, are untouched.
 
-### 3. The countries checklist stops being 7,000 pixels on a phone
+### 2. The countries checklist stops being 7,000 pixels on a phone
 
 At 375px the countries list is one column of 195 rows and the page is about 7,300px tall; the
 "Clear my countries" button is at the bottom of all of it. **Effort:** 2–3 hours.
@@ -81,7 +67,7 @@ inventing one would put a claim on screen nothing backs. Measure the page height
 and after and record both in this item's commit message. States and continents are short enough to
 stay as they are.
 
-### 4. The Caribbean gets an inset, as Europe did
+### 3. The Caribbean gets an inset, as Europe did
 
 The measurement Europe's inset left in `build-outline.mjs` decided it: at 320px the world map
 draws 17 Caribbean countries narrower than 8px, against Europe's 43, in a third of the area, and

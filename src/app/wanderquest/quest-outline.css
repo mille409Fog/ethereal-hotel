@@ -4,7 +4,13 @@
 
    Every place unvisited until the guest marks it, with the ground drawn
    between them so the borders show. The stroke does not scale with the
-   drawing, so a border is one pixel at 320px and at 1440px alike. */
+   drawing, so a border is one pixel at 320px and at 1440px alike.
+
+   The world maps put a sea under the places, and the border stayed the
+   page's colour on purpose. A border lies between two places, so what it
+   has to read against is their fills, which the sea did not change. Where
+   it runs along a coast it lies on the sea instead, 1.15:1 darker, and only
+   sharpens the coast the fills already draw. */
 .quest-outline {
   display: block;
   width: 100%;
@@ -57,12 +63,28 @@
   transition-duration: 0s;
 }
 
+/* The globe the world maps sit on, and the sea between their places: Fern's
+   surface, the colour every card on the site is raised in, so the sea is
+   interface and not data, and no palette colour is spent on it. 1.15:1 on
+   the page, which alone is a hint, so the edge is the frame's line. On an
+   inset the sphere is the frame, and the two lines coincide. It sits under
+   every place and answers no click, as the frame does. */
+.quest-outline .quest-outline-sphere {
+  fill: var(--color-surface);
+  stroke: var(--color-border);
+  pointer-events: none;
+}
+
 /* Land that is none of the places: Antarctica, Taiwan. It is drawn so the
    coastline is whole, in a Fern grey rather than a palette colour, because a
-   palette colour would say it can be visited and counted. The key's swatch
-   is the page's, in the same token. */
+   palette colour would say it can be visited and counted. Fern's inactive,
+   the token for what is not in play, and not its border grey, which it was
+   until the sea came: on the sea that grey is 0.090 in OKLab, under the 0.1
+   two things on one map are held to, and 0.064 from the countries' own
+   unvisited green. Inactive is 0.289 and 0.147. The key's swatch is the
+   page's, in the same token. */
 .quest-outline .quest-outline-unkeyed {
-  fill: var(--color-border);
+  fill: var(--color-inactive);
 }
 
 /* The place under the pointer, or under the checklist row, and its state. It
@@ -94,7 +116,7 @@
 /* The same rectangle at two scales: on the world map, the part the inset
    enlarges, and around the inset, its frame. Interface, not data, so a Fern
    token and not a palette colour, and the bonus tiles' frame colour. It is a
-   faint line, 1.64:1 on the page and 1.27:1 on the countries' unvisited
+   faint line, 1.43:1 on the sea and 1.27:1 on the countries' unvisited
    green, and need not be more: it is a cue to where the inset is, not the
    only one, since the inset is named and sits directly below. `none`, so the
    places under it answer the click. */
@@ -106,9 +128,16 @@
 }
 
 /* The fills are forced to one system colour, so the borders are all that is
-   left to draw the places apart. */
+   left to draw the places apart. The sea is the page's own `Canvas` inside a
+   `CanvasText` edge: a frame round the world that takes no contrast from the
+   borders inside it. */
 @media (forced-colors: active) {
   .quest-outline {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .quest-outline .quest-outline-sphere {
     fill: Canvas;
     stroke: CanvasText;
   }

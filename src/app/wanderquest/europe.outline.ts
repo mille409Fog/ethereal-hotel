@@ -7,7 +7,7 @@
  * (`ne_50m_admin_0_countries`), which Natural Earth places in the public
  * domain.
  * https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip
- * Fetched 2026-11-01. The finer of the two Natural Earth scales, because this
+ * Fetched 2026-11-02. The finer of the two Natural Earth scales, because this
  * map is drawn larger; joined on `ISO_A2_EH` as the world map is, so a shape
  * here is the same place as the shape of the same id there.
  *
@@ -26,7 +26,10 @@
  * Earth's label point, because even here they are smaller than a triangle or
  * would fit inside a dot, which is the smaller target: AD, LB, LI, LU, MT, MC,
  * SM, VA. Land inside the frame that is none of the 195 is drawn unkeyed: Isle
- * of Man, Kosovo, Aland, Greenland, Faroe Islands, Northern Cyprus.
+ * of Man, Kosovo, Aland, Greenland, Faroe Islands, Northern Cyprus. The globe's
+ * edge, `sphere`, is cut to the frame as everything else is, and inside the
+ * globe that leaves the frame itself: the sea the countries sit on, as on the
+ * world map.
  */
 import type { CountryId } from './places.data';
 import type { IOutline } from './outline';
@@ -242,5 +245,6 @@ export const EUROPE_OUTLINE: IOutline<CountryId> = {
   ],
   unkeyed:
     'M316 236L311 237L316 232ZM655 429L661 422L670 431L675 432L673 440L670 443L666 441L663 443L662 447L660 447L658 440L652 435L651 431ZM612 143L615 145L610 146L609 144ZM128 0L138 3L131 6L139 5L138 16L130 16L131 12L127 16L120 16L114 14L109 8L84 4L96 5L96 8L85 11L67 10L71 11L69 13L58 16L84 16L73 20L75 21L96 17L130 21L112 24L113 25L107 25L80 36L32 41L33 42L29 43L15 38L15 44L0 50L0 0ZM99 11L98 14L89 16L69 16L75 11ZM294 117L291 118L293 120L288 116ZM297 116L295 117L295 115ZM868 575L861 577L859 573L852 575L849 573L852 573L852 569L862 570L875 564L867 571Z',
+  sphere: 'M0 600L0 0L1038 0L1038 600Z',
   enlarges: { x: 418, y: 16, width: 173, height: 100 },
 };

@@ -6,7 +6,7 @@
  * (`ne_110m_admin_0_countries`), which Natural Earth places in the public
  * domain.
  * https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip
- * Fetched 2026-10-25.
+ * Fetched 2026-11-02.
  *
  * There is no authoritative boundary set for the seven-continent model, so each
  * continent is Natural Earth's countries dissolved by its `CONTINENT` field,
@@ -19,16 +19,18 @@
  * Papua New Guinea's in Oceania. Left out: French Southern and Antarctic Lands,
  * which Natural Earth files under "Seven seas (open ocean)".
  *
- * Projected in Equal Earth, 960 units from antimeridian to antimeridian, then
- * cropped to the shapes; simplified to 1.5 units, rounded to whole units,
- * islands under 12 square units dropped.
+ * Projected in Equal Earth, 960 units from antimeridian to antimeridian, and
+ * drawn on the globe's edge, `sphere`, so the frame is the whole globe rather
+ * than a crop to the land; simplified to 1.5 units, rounded to whole units,
+ * islands under 12 square units dropped. The edge is simplified to 0.5, so no
+ * coast pokes past it by more than the rounding of the two.
  */
 import type { ContinentId } from './places.data';
 import type { IOutline } from './outline';
 
 export const CONTINENTS_OUTLINE: IOutline<ContinentId> = {
   label: 'Outline map of the seven continents',
-  viewBox: '129 1 783 467',
+  viewBox: '-2 -2 964 471',
   shapes: [
     {
       id: 'AF',
@@ -59,4 +61,6 @@ export const CONTINENTS_OUTLINE: IOutline<ContinentId> = {
       d: 'M332 408L343 413L337 416L320 408L329 412L329 409ZM337 352L343 360L342 365L332 367L334 373L327 374L332 379L329 382L330 386L327 388L327 390L332 393L329 403L333 407L328 409L328 411L317 405L312 397L313 392L309 391L309 384L312 385L311 378L309 378L310 381L308 381L303 362L304 347L297 299L280 286L268 259L264 256L263 251L267 243L264 242L264 237L275 220L274 203L280 200L282 194L291 189L292 190L290 193L290 201L291 194L295 190L300 196L308 198L316 195L314 196L315 198L319 200L319 203L328 212L336 213L343 219L347 227L345 233L350 234L350 238L352 236L360 239L361 243L373 244L386 253L387 266L378 280L375 311L372 315L366 316L359 322L357 334L349 353L343 355Z',
     },
   ],
+  sphere:
+    'M764 0L787 10L809 21L831 34L849 45L866 58L882 72L894 84L908 99L918 112L929 128L938 145L946 163L952 180L957 198L959 216L960 234L959 252L957 269L952 287L946 305L938 322L929 339L918 355L908 368L894 383L882 395L866 409L849 422L831 434L809 446L787 457L764 467L196 467L161 451L133 436L104 417L81 398L60 377L42 355L27 332L15 308L7 284L2 262L0 241L1 219L3 198L9 177L18 152L29 132L42 112L57 93L75 75L94 58L115 43L140 27L167 13L196 0Z',
 };

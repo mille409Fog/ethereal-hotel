@@ -101,15 +101,18 @@ for (const { name, outline, places, undrawn, ceiling } of OUTLINES) {
       for (const shape of outline.shapes) {
         expect(shape.d, shape.id).toMatch(PATH_DATA);
       }
-      if (outline.unkeyed !== undefined) {
-        expect(outline.unkeyed).toMatch(PATH_DATA);
+      for (const extra of [outline.unkeyed, outline.sphere]) {
+        if (extra !== undefined) {
+          expect(extra).toMatch(PATH_DATA);
+        }
       }
       expect(outline.viewBox).toMatch(/^-?\d+ -?\d+ \d+ \d+$/);
     });
 
     it('stays under its size ceiling', () => {
       const keyed = outline.shapes.reduce((sum, shape) => sum + shape.d.length, 0);
-      expect(keyed + (outline.unkeyed?.length ?? 0)).toBeLessThanOrEqual(ceiling);
+      const extra = (outline.unkeyed?.length ?? 0) + (outline.sphere?.length ?? 0);
+      expect(keyed + extra).toBeLessThanOrEqual(ceiling);
     });
   });
 }
@@ -123,6 +126,94 @@ describe('STATES_OUTLINE', () => {
     expect(STATES_OUTLINE.unkeyed).toBeUndefined();
   });
 });
+
+describe('the sphere', () => {
+  /** The extremes of every point in some path data. */
+  const extent = (d: string): { left: number; top: number; right: number; bottom: number } => {
+    const points = rings(d).flat();
+    const xs = points.map(([x]) => x);
+    const ys = points.map(([, y]) => y);
+    return {
+      left: Math.min(...xs),
+      top: Math.min(...ys),
+      right: Math.max(...xs),
+      bottom: Math.max(...ys),
+    };
+  };
+
+  it('is drawn for the Equal Earth outlines, and not for Albers USA or the tiles', () => {
+    // The states are three projections in one frame, and the bonus six; neither has a globe.
+    expect(STATES_OUTLINE.sphere).toBeUndefined();
+    expect(BONUS_OUTLINE.sphere).toBeUndefined();
+    for (const outline of [CONTINENTS_OUTLINE, COUNTRIES_OUTLINE, EUROPE_OUTLINE]) {
+      expect(outline.sphere, outline.label).toBeDefined();
+    }
+  });
+
+  it('is the whole globe on the world maps, 960 units across, and the crop holds it', () => {
+    for (const outline of [CONTINENTS_OUTLINE, COUNTRIES_OUTLINE]) {
+      const globe = extent(outline.sphere ?? '');
+      expect([globe.left, globe.top, globe.right], outline.label).toEqual([0, 0, 960]);
+      const [left, top, width, height] = outline.viewBox.split(' ').map(Number);
+      expect(left <= globe.left && left + width >= globe.right, outline.label).toBe(true);
+      expect(top <= globe.top && top + height >= globe.bottom, outline.label).toBe(true);
+    }
+  });
+
+  it('holds all the land on the world maps, so no coast runs off into the page', () => {
+    // Inside the edge, or within a unit of it: both are rounded to whole
+    // units, so a coast on the antimeridian (Chukotka, Antarctica's corners)
+    // can land 0.75 past it, which is under a pixel at the map's widest. A
+    // dot is a marker, not land, and is not held to it.
+    for (const outline of [CONTINENTS_OUTLINE, COUNTRIES_OUTLINE]) {
+      const [globe] = rings(outline.sphere ?? '');
+      const land = [...outline.shapes.map((shape) => shape.d), outline.unkeyed ?? ''];
+      for (const d of land.filter((candidate) => !dotOf(candidate))) {
+        for (const point of rings(d).flat()) {
+          expect(
+            within(point, globe) || distanceTo(point, globe) <= 1,
+            `${outline.label} ${point.join(' ')}`
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('is the frame on the inset, which lies wholly inside the globe', () => {
+    const frame = frameOf(EUROPE_OUTLINE);
+    expect(extent(EUROPE_OUTLINE.sphere ?? '')).toEqual({
+      left: 0,
+      top: 0,
+      right: frame.width,
+      bottom: frame.height,
+    });
+    expect(rings(EUROPE_OUTLINE.sphere ?? '')).toHaveLength(1);
+  });
+});
+
+/** Whether a point lies inside a ring, by the even-odd rule. */
+function within([x, y]: [number, number], ring: Array<[number, number]>): boolean {
+  let inside = false;
+  ring.forEach(([ax, ay], i) => {
+    const [bx, by] = ring[(i + ring.length - 1) % ring.length];
+    if (ay > y !== by > y && x < ((bx - ax) * (y - ay)) / (by - ay) + ax) {
+      inside = !inside;
+    }
+  });
+  return inside;
+}
+
+/** How far a point is from the nearest edge of a ring. */
+function distanceTo([x, y]: [number, number], ring: Array<[number, number]>): number {
+  return Math.min(
+    ...ring.map(([ax, ay], i) => {
+      const [bx, by] = ring[(i + 1) % ring.length];
+      const [dx, dy] = [bx - ax, by - ay];
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
+      return Math.hypot(x - ax - t * dx, y - ay - t * dy);
+    })
+  );
+}
 
 /** Each closed ring of some path data, as its points. */
 function rings(d: string): Array<Array<[number, number]>> {

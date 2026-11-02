@@ -46,6 +46,7 @@ import {
   projectedBounds,
   readPolygons,
   readTable,
+  sphereRing,
   unzip,
   USA_FRAME,
   viewBoxOf,
@@ -64,6 +65,15 @@ const MIN_AREA = 12;
 const MARGIN = 2;
 
 const ROUGHENING = { tolerance: TOLERANCE, minArea: MIN_AREA };
+
+/**
+ * The globe's edge is simplified finer than the land. At `TOLERANCE` the
+ * equator's bulge is cut a unit inward, and a coast that reaches the
+ * antimeridian would then poke past the edge of the world it sits on. At this
+ * value what is left is whole-unit rounding, 0.75 at most (Chukotka), and
+ * finer costs bytes without closing it: 0.62 at 0.1, 0.45 unsimplified.
+ */
+const SPHERE_ROUGHENING = { tolerance: 0.5, minArea: 0 };
 
 /**
  * The countries' smaller minimum. An island the states and continents lose is
@@ -131,7 +141,8 @@ function commentBody(text) {
  * replaces the crop to the shapes, for a frame laid out in advance, and
  * `tiles` is that layout. The places in `onTop` are written after the rest,
  * in list order, so they paint over them, and `note` is said on the panel.
- * `enlarges` is the rectangle of another outline an inset draws larger.
+ * `enlarges` is the rectangle of another outline an inset draws larger, and
+ * `sphere` the globe's edge the places sit on, which the crop holds whole.
  */
 async function writeOutline({
   file,
@@ -147,6 +158,7 @@ async function writeOutline({
   viewBox,
   tiles,
   enlarges,
+  sphere,
 }) {
   const output = path.join(outputDirectory, file);
   const last = (place) => (onTop?.has(place.id) ? 1 : 0);
@@ -155,6 +167,7 @@ async function writeOutline({
     .sort((one, two) => last(one) - last(two))
     .map((place) => `  { id: '${place.id}', d: '${shapes.get(place.id)}' },`);
   const drawn = [...shapes.values(), ...(unkeyed ? [unkeyed] : [])].filter(Boolean);
+  const cropped = sphere ? [...drawn, sphere] : drawn;
   const tileEntries = (tiles ?? []).map(
     (tile) =>
       `  { id: '${tile.id}', x: ${tile.x}, y: ${tile.y}, size: ${tile.size}, name: { x: ${tile.name.x}, y: ${tile.name.y} }${tile.partial ? `, partial: '${tile.partial}'` : ''} },`
@@ -167,10 +180,10 @@ import type { IOutline } from './outline';
 
 export const ${constName}: IOutline<${typeName}> = {
   label: '${label}',
-  viewBox: '${viewBox ?? viewBoxOf(drawn, MARGIN)}',
+  viewBox: '${viewBox ?? viewBoxOf(cropped, MARGIN)}',
   shapes: [
 ${entries.join('\n')}
-  ],${note ? `\n  note: ${JSON.stringify(note)},` : ''}${unkeyed ? `\n  unkeyed: '${unkeyed}',` : ''}${tiles ? `\n  tiles: [\n${tileEntries.join('\n')}\n  ],` : ''}${enlarges ? `\n  enlarges: { x: ${enlarges.x}, y: ${enlarges.y}, width: ${enlarges.width}, height: ${enlarges.height} },` : ''}
+  ],${note ? `\n  note: ${JSON.stringify(note)},` : ''}${unkeyed ? `\n  unkeyed: '${unkeyed}',` : ''}${sphere ? `\n  sphere: '${sphere}',` : ''}${tiles ? `\n  tiles: [\n${tileEntries.join('\n')}\n  ],` : ''}${enlarges ? `\n  enlarges: { x: ${enlarges.x}, y: ${enlarges.y}, width: ${enlarges.width}, height: ${enlarges.height} },` : ''}
 };
 `;
   const options = (await prettier.resolveConfig(output)) ?? {};
@@ -382,6 +395,16 @@ async function fetchNaturalEarth() {
   return { polygons, rows, version: extra['.VERSION.txt'].trim() };
 }
 
+/**
+ * The globe's edge in `project`, the ground every Equal Earth outline draws
+ * its places on, so the projection's shape and the sea inside it show. Given
+ * `clip`, an inset's frame, it is cut there, which inside the globe is the
+ * frame itself. The states get none: Albers USA is three projections in one
+ * frame, and has no globe to outline.
+ */
+const sphereOf = (project, clip) =>
+  pathData([sphereRing()], project, { ...SPHERE_ROUGHENING, clip });
+
 /** Both world outlines cite the same file the same way. */
 function naturalEarthCitation(version) {
   return `Source: Natural Earth, 1:110m Admin 0 – Countries, version ${version}
@@ -468,14 +491,17 @@ ${moved.join(' ')}
 New Guinea is split along its border, Indonesia's half in Asia and Papua New
 Guinea's in Oceania. Left out: ${skipped.join('; ')}.
 
-Projected in Equal Earth, 960 units from antimeridian to antimeridian, then
-cropped to the shapes; simplified to ${TOLERANCE} units, rounded to whole units,
-islands under ${MIN_AREA} square units dropped.`,
+Projected in Equal Earth, 960 units from antimeridian to antimeridian, and
+drawn on the globe's edge, \`sphere\`, so the frame is the whole globe rather
+than a crop to the land; simplified to ${TOLERANCE} units, rounded to whole units,
+islands under ${MIN_AREA} square units dropped. The edge is simplified to
+${SPHERE_ROUGHENING.tolerance}, so no coast pokes past it by more than the rounding of the two.`,
     typeName: 'ContinentId',
     constName: 'CONTINENTS_OUTLINE',
     label: 'Outline map of the seven continents',
     list: CONTINENTS,
     shapes,
+    sphere: sphereOf(project),
   });
 }
 
@@ -675,7 +701,8 @@ async function buildCountries() {
   });
 
   const unkeyed = pathData(unkeyedRings, project, roughening);
-  const viewBox = viewBoxOf([...shapes.values(), unkeyed], MARGIN);
+  const sphere = sphereOf(project);
+  const viewBox = viewBoxOf([...shapes.values(), unkeyed, sphere], MARGIN);
 
   // Europe again, `INSET_SCALE` times larger, from the 1:50m file: at this
   // scale the 1:110m borders would show their corners, and it has no Andorra
@@ -807,9 +834,9 @@ dots overlap or hide a country, the panel says which, in \`note\`.
 Land that is none of the ${COUNTRIES.length} is drawn unkeyed, as one path, so the coastline
 is whole without the count changing: ${unkeyedNames.join(', ')}.
 
-Projected in Equal Earth, 960 units from antimeridian to antimeridian, as the
-continents are, then cropped to the shapes and dots; simplified to ${TOLERANCE} units, rounded
-to whole units, islands under ${COUNTRY_MIN_AREA} square unit dropped.
+Projected in Equal Earth, 960 units from antimeridian to antimeridian, and
+drawn on the globe's edge, \`sphere\`, as the continents are; simplified to ${TOLERANCE} units,
+rounded to whole units, islands under ${COUNTRY_MIN_AREA} square unit dropped.
 
 Too small to aim at, measured: drawn narrower than ${NARROW_PX}px with this map ${MEASURE_PX}px wide,
 the most a 320px screen leaves it, are ${narrow.length} countries. ${narrowEurope.length} are in Europe
@@ -824,6 +851,7 @@ Caribbean (${degrees(CARIBBEAN)}), which nothing enlarges yet: ${named(narrowCar
     note,
     unkeyed,
     viewBox,
+    sphere,
   });
 
   await writeOutline({
@@ -852,7 +880,9 @@ ${insetShapes.size} countries are drawn, ${insetDots.length} of them as dots of 
 Earth's label point, because even here they are smaller than a triangle or
 would fit inside a dot, which is the smaller target:
 ${insetDots.map((dot) => dot.id).join(', ') || 'none'}. Land inside the frame that is none of the
-${COUNTRIES.length} is drawn unkeyed: ${insetUnkeyedNames.join(', ') || 'none'}.`,
+${COUNTRIES.length} is drawn unkeyed: ${insetUnkeyedNames.join(', ') || 'none'}. The globe's edge,
+\`sphere\`, is cut to the frame as everything else is, and inside the globe
+that leaves the frame itself: the sea the countries sit on, as on the world map.`,
     typeName: 'CountryId',
     constName: 'EUROPE_OUTLINE',
     label: 'Outline map of Europe, enlarged',
@@ -861,6 +891,7 @@ ${COUNTRIES.length} is drawn unkeyed: ${insetUnkeyedNames.join(', ') || 'none'}.
     onTop: new Set(insetCentres.keys()),
     unkeyed: insetUnkeyed.join(''),
     viewBox: `${-MARGIN} ${-MARGIN} ${frame.right + 2 * MARGIN} ${frame.bottom + 2 * MARGIN}`,
+    sphere: sphereOf(insetProject, frame),
     enlarges: {
       x: box.left,
       y: box.top,

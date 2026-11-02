@@ -56,6 +56,13 @@ export interface IOutline<Id extends string = string> {
    */
   readonly unkeyed?: string;
   /**
+   * The globe's edge, drawn beneath everything as the sea the places sit on:
+   * on the world maps, Equal Earth's whole outline, and on an inset, that
+   * outline cut to its frame. Absent where the projection has no globe to
+   * draw, as Albers USA has not. Never a place, so it answers no click.
+   */
+  readonly sphere?: string;
+  /**
    * Present when the outline is small multiples rather than one map: one
    * square per shape, in the same order. Each is drawn to its own scale, so
    * two shapes' sizes say nothing about the two places'.

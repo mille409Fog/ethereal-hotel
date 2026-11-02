@@ -28,6 +28,7 @@ import {
   readTable,
   ringArea,
   simplify,
+  sphereRing,
   unzip,
   viewBoxOf,
 } from './outline.mjs';
@@ -297,6 +298,37 @@ describe('equalEarthWorld', () => {
   test('is 960 units from antimeridian to antimeridian, with the north pole on y = 0', () => {
     assert.ok(Math.abs(project([180, 0])[0] - project([-180, 0])[0] - 960) < 1e-9);
     assert.ok(Math.abs(project([0, 90])[1]) < 1e-9);
+  });
+});
+
+describe('sphereRing', () => {
+  const project = equalEarthWorld();
+  const ring = sphereRing();
+
+  test('is closed, and runs along the antimeridian from pole to pole on both sides', () => {
+    assert.deepEqual(ring.at(-1), ring[0]);
+    assert.ok(ring.every(([lon, lat]) => Math.abs(lon) === 180 && Math.abs(lat) <= 90));
+    assert.deepEqual(
+      [ring[0], ring.find(([, lat]) => lat === -90)],
+      [
+        [180, 90],
+        [180, -90],
+      ]
+    );
+  });
+
+  test('projects to the whole globe, so every point on Earth lies inside it', () => {
+    // At the land's 1.5 the equator's bulge is simplified a unit inward.
+    const outline = pathData([ring], project, { tolerance: 0.5, minArea: 0 });
+    const [left, top, width, height] = viewBoxOf([outline], 0).split(' ').map(Number);
+    assert.deepEqual([left, top, width], [0, 0, 960]);
+    assert.equal(top + height, Math.round(project([0, -90])[1]));
+  });
+
+  test('cut to a frame inside the globe, is the frame', () => {
+    const frame = { left: 418, top: 16, right: 591, bottom: 116 };
+    const cut = pathData([ring], project, { tolerance: 0.5, minArea: 0, clip: frame });
+    assert.equal(cut, 'M418 116L418 16L591 16L591 116Z');
   });
 });
 
