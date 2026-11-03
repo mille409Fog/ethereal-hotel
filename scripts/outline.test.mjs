@@ -14,6 +14,7 @@ import { deflateRawSync } from 'node:zlib';
 import {
   albersUsa,
   centroid,
+  circleAround,
   clipRing,
   conicEqualArea,
   dissolve,
@@ -21,12 +22,14 @@ import {
   equalEarth,
   equalEarthWorld,
   fitTile,
+  islandGroups,
   localEqualArea,
   pathData,
   projectedBounds,
   readPolygons,
   readTable,
   ringArea,
+  ringsOfPath,
   simplify,
   sphereRing,
   unzip,
@@ -422,6 +425,42 @@ describe('fitTile', () => {
   test('never drops the largest piece, however small the place', () => {
     const fit = fitTile([square(0, 0, 0.001)], identity, tile, 1e9);
     assert.equal(fit.rings.length, 1);
+  });
+});
+
+describe('ringsOfPath', () => {
+  test('reads back the rings pathData wrote, unclosed as it writes them', () => {
+    const rings = [square(0, 0, 4), square(10, 10, 2)];
+    assert.deepEqual(
+      ringsOfPath(pathData(rings, identity, { tolerance: 0, minArea: 0 })),
+      rings.map((ring) => ring.slice(0, -1))
+    );
+  });
+});
+
+describe('islandGroups', () => {
+  test('joins rings within the gap, and leaves a far one a group of its own', () => {
+    const [a, b, far] = [square(0, 0, 4), square(6, 0, 4), square(100, 0, 4)];
+    assert.deepEqual(islandGroups([a, far, b], 3), [[a, b], [far]]);
+  });
+
+  test('joins a chain end to end, though its ends are far apart', () => {
+    const chain = [square(0, 0, 4), square(20, 0, 4), square(10, 0, 4)];
+    assert.equal(islandGroups(chain, 8).length, 1);
+  });
+});
+
+describe('circleAround', () => {
+  test('rings every point, with the clearance beyond the farthest, in whole units', () => {
+    const points = [
+      [0, 0],
+      [10, 0],
+      [10, 4],
+    ];
+    const { cx, cy, r } = circleAround(points, 3);
+    assert.deepEqual([cx, cy], [5, 2]);
+    assert.ok(Number.isInteger(r));
+    for (const [x, y] of points) assert.ok(Math.hypot(x - cx, y - cy) + 3 <= r);
   });
 });
 

@@ -356,6 +356,64 @@ export function fitTile(rings, project, { x, y, size, padding }, minArea) {
   };
 }
 
+/**
+ * The rings of path data as `pathData` writes it, `M…L…Z` in whole units, back
+ * as points: what is drawn, after simplifying and dropping, rather than what
+ * was projected. Not for a dot, whose arcs it does not read.
+ */
+export function ringsOfPath(d) {
+  return d
+    .split('Z')
+    .filter(Boolean)
+    .map((ring) =>
+      ring
+        .slice(1)
+        .split('L')
+        .map((point) => point.split(' ').map(Number))
+    );
+}
+
+/**
+ * Rings gathered into island groups: two rings whose bounding boxes come
+ * within `gap` of each other are one group, and so is anything either is near,
+ * so a chain joins end to end. In ring order, by each group's first ring.
+ */
+export function islandGroups(rings, gap) {
+  const boxes = rings.map(boundsOf);
+  const near = (a, b) =>
+    a.left - gap <= b.right &&
+    b.left - gap <= a.right &&
+    a.top - gap <= b.bottom &&
+    b.top - gap <= a.bottom;
+  const group = rings.map((_, i) => i);
+  const root = (i) => (group[i] === i ? i : root(group[i]));
+  boxes.forEach((one, i) =>
+    boxes.slice(0, i).forEach((two, j) => {
+      if (near(one, two)) group[root(i)] = root(j);
+    })
+  );
+  const groups = new Map();
+  rings.forEach((ring, i) => {
+    const key = root(i);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(ring);
+  });
+  return [...groups.values()];
+}
+
+/**
+ * A circle round some points in whole units: centred on their bounds, out to
+ * the farthest of them, and `clearance` beyond it so a stroke on the circle
+ * never touches what it rings. Not the smallest circle, which would need
+ * Welzl's algorithm to save a unit or two on a shape this script never draws.
+ */
+export function circleAround(points, clearance) {
+  const b = boundsOf(points);
+  const [cx, cy] = [Math.round((b.left + b.right) / 2), Math.round((b.top + b.bottom) / 2)];
+  const farthest = Math.max(...points.map(([x, y]) => Math.hypot(x - cx, y - cy)));
+  return { cx, cy, r: Math.ceil(farthest) + clearance };
+}
+
 /* ---------------------------------------------------------------------------
  * Dissolving
  * ------------------------------------------------------------------------- */

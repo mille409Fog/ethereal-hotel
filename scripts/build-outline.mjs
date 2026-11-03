@@ -37,15 +37,19 @@ import { BONUS, CONTINENTS, COUNTRIES, STATES } from '../src/app/wanderquest/pla
 import {
   albersUsa,
   centroid,
+  circleAround,
   dissolve,
   dotData,
   equalEarthWorld,
   fitTile,
+  islandGroups,
   localEqualArea,
   pathData,
   projectedBounds,
   readPolygons,
   readTable,
+  ringArea,
+  ringsOfPath,
   sphereRing,
   unzip,
   USA_FRAME,
@@ -170,7 +174,7 @@ async function writeOutline({
   const cropped = sphere ? [...drawn, sphere] : drawn;
   const tileEntries = (tiles ?? []).map(
     (tile) =>
-      `  { id: '${tile.id}', x: ${tile.x}, y: ${tile.y}, size: ${tile.size}, name: { x: ${tile.name.x}, y: ${tile.name.y} }${tile.partial ? `, partial: '${tile.partial}'` : ''} },`
+      `  { id: '${tile.id}', x: ${tile.x}, y: ${tile.y}, size: ${tile.size}, name: { x: ${tile.name.x}, y: ${tile.name.y} }${tile.partial ? `, partial: '${tile.partial}'` : ''}${tile.circles ? `, circles: [${tile.circles.map(({ cx, cy, r }) => `{ cx: ${cx}, cy: ${cy}, r: ${r} }`).join(', ')}]` : ''} },`
   );
   const source = `/**
 ${commentBody(header)}
@@ -270,6 +274,21 @@ const BONUS_SCALE = '5m';
  */
 const TILE = { size: 400, padding: 20, nameBand: 110, nameBaseline: 45, gap: 40, columns: 2 };
 
+/**
+ * When a tile's land is too little to find, and how it is found instead. A
+ * tile whose drawn land covers less than `share` of its square is ringed: each
+ * island group in it, pieces within `gap` units of one another, gets a circle
+ * `clearance` units clear of its land. The three that fill their tiles cover
+ * 23–28% (Guam, DC) and 8.9% (Puerto Rico); the scattered three 0.8–4.9%, so
+ * the threshold sits between Puerto Rico and the Virgin Islands, near their
+ * geometric mean. The gap is measured the same way: in the 2025 file the
+ * pieces of one group are at most 22 units apart (Ofu-Olosega to Ta'u) and
+ * two groups at least 196 (Tinian's to Rota). A ring stays `inset` inside its
+ * square, clear of the square's own stroke; where one would not, the tile is
+ * refitted to its rings rather than its land.
+ */
+const SCATTERED = { share: 0.065, gap: 60, clearance: 10, inset: 6 };
+
 /** Mean Earth radius in km, to state each tile's scale in the header. */
 const EARTH_RADIUS_KM = 6371;
 
@@ -305,6 +324,8 @@ async function buildBonus() {
   const shapes = new Map();
   const tiles = [];
   const notes = [];
+  const caught = [];
+  const percent = (share) => `${(share * 100).toFixed(1)}%`;
   BONUS.forEach((place, i) => {
     const row = rows.findIndex((candidate) => candidate.STUSPS === place.id);
     if (row === -1) throw new Error(`${name} has no ${place.id} (${place.name})`);
@@ -322,8 +343,57 @@ async function buildBonus() {
       { x, y, size: TILE.size, padding: TILE.padding },
       MIN_AREA
     );
-    const d = pathData(fit.rings, fit.project, ROUGHENING);
+    let d = pathData(fit.rings, fit.project, ROUGHENING);
     if (!d) throw new Error(`${place.id} has no drawable shape even filling its own tile`);
+
+    // The share is judged on the land fitted to its square, so refitting to
+    // the rings below cannot change which tiles are caught.
+    const land = ringsOfPath(d).reduce((sum, ring) => sum + ringArea(ring), 0);
+    const share = land / TILE.size ** 2;
+    let scale = fit.scale;
+    let circles;
+    if (share < SCATTERED.share) {
+      // A ring round a wide group reaches far past it above and below, so
+      // a group against an edge rings out of its square. Then the drawing
+      // is refitted to the rings rather than the land: shrunk about the
+      // rings' bounds and centred, until every ring is inside. A few passes,
+      // because the clearance does not shrink and rounding moves a unit.
+      let project = fit.project;
+      let shrunk = 1;
+      for (let pass = 0; ; pass += 1) {
+        circles = islandGroups(ringsOfPath(d), SCATTERED.gap).map((group) =>
+          circleAround(group.flat(), SCATTERED.clearance)
+        );
+        const b = {
+          left: Math.min(...circles.map(({ cx, r }) => cx - r)),
+          top: Math.min(...circles.map(({ cy, r }) => cy - r)),
+          right: Math.max(...circles.map(({ cx, r }) => cx + r)),
+          bottom: Math.max(...circles.map(({ cy, r }) => cy + r)),
+        };
+        const [low, high] = [SCATTERED.inset, TILE.size - SCATTERED.inset];
+        if (b.left >= x + low && b.right <= x + high && b.top >= y + low && b.bottom <= y + high) {
+          break;
+        }
+        if (pass === 10) throw new Error(`${place.id}'s rings do not settle inside its tile`);
+        const room = high - low;
+        const k = Math.min(1, room / (b.right - b.left), room / (b.bottom - b.top));
+        const [fromX, fromY] = [(b.left + b.right) / 2, (b.top + b.bottom) / 2];
+        const [toX, toY] = [x + TILE.size / 2, y + TILE.size / 2];
+        const previous = project;
+        project = (point) => {
+          const [px, py] = previous(point);
+          return [toX + k * (px - fromX), toY + k * (py - fromY)];
+        };
+        shrunk *= k;
+        d = pathData(fit.rings, project, ROUGHENING);
+      }
+      scale *= shrunk;
+      caught.push(
+        `${place.id} at ${percent(share)}, ${circles.length} group${circles.length === 1 ? '' : 's'}` +
+          (shrunk === 1 ? '' : `, drawn at ${percent(shrunk)} of its fit so they are inside`)
+      );
+    }
+
     shapes.set(place.id, d);
     tiles.push({
       id: place.id,
@@ -332,13 +402,15 @@ async function buildBonus() {
       size: TILE.size,
       name: { x: x + TILE.size / 2, y: y + TILE.size + TILE.nameBaseline },
       ...(partial ? { partial: partial.note } : {}),
+      ...(circles ? { circles } : {}),
     });
 
     const drawn = d.split('M').length - 1;
     const total = polygons[row].length;
-    const across = (TILE.size * EARTH_RADIUS_KM) / fit.scale;
+    const across = (TILE.size * EARTH_RADIUS_KM) / scale;
     notes.push(
       `${place.id} ${across < 100 ? across.toFixed(1) : Math.round(across)} km, ` +
+        `${percent(share)} land, ` +
         `${drawn} of ${total} piece${total === 1 ? '' : 's'} drawn` +
         (partial ? ` (${cut} north of ${partial.northOf}° left out first: ${partial.note})` : '')
     );
@@ -368,8 +440,14 @@ show anything: ${PARTIAL.map((p) => `${p.place}, ${p.note}`).join('; ')}. The pa
 
 Tile frame: ${frame.width} × ${frame.height} units, ${BONUS.length} squares of ${TILE.size} in \`BONUS\` order,
 ${TILE.columns} to a row, ${TILE.gap} apart, the land inset ${TILE.padding} from each edge, and a band of
-${TILE.nameBand} under each square for its name. Each tile's width on the ground, and how
-much of its place it draws: ${notes.join('; ')}.`,
+${TILE.nameBand} under each square for its name. Each tile's width on the ground, how much
+of its square is land, and how much of its place it draws: ${notes.join('; ')}.
+
+Ringed where the land is too little to find: a tile whose land covers less than
+${percent(SCATTERED.share)} of its square gets a circle round each island group, pieces within
+${SCATTERED.gap} units of one another, ${SCATTERED.clearance} units clear of the land and at least ${SCATTERED.inset} inside the
+square. The panel strokes a ring in its place's fill, only while that fill is
+a mark. Caught today: ${caught.length > 0 ? caught.join('; ') : 'none'}.`,
     typeName: 'BonusId',
     constName: 'BONUS_OUTLINE',
     label: 'Outline maps of the District of Columbia and the five inhabited territories',

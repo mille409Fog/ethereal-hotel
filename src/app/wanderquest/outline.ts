@@ -27,6 +27,19 @@ export interface IOutlineTile<Id extends string = string> {
   readonly name: { readonly x: number; readonly y: number };
   /** What of the place the tile leaves out, when it draws only part: said on the panel. */
   readonly partial?: string;
+  /**
+   * Present when the land covers too little of the square to be found: a
+   * circle round each island group, in `viewBox` units, for the panel to
+   * stroke. The generated file's header says what "too little" is.
+   */
+  readonly circles?: readonly IOutlineCircle[];
+}
+
+/** A circle in an outline's `viewBox` units. */
+export interface IOutlineCircle {
+  readonly cx: number;
+  readonly cy: number;
+  readonly r: number;
 }
 
 /** A rectangle in an outline's `viewBox` units. */

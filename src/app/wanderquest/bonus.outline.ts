@@ -7,7 +7,7 @@
  * 1:5,000,000 (`cb_2025_us_state_5m`), a work of the US government and so in
  * the public domain.
  * https://www2.census.gov/geo/tiger/GENZ2025/shp/cb_2025_us_state_5m.zip
- * Fetched 2026-10-28. The 1:20,000,000 file the states are drawn from carries
+ * Fetched 2026-11-03. The 1:20,000,000 file the states are drawn from carries
  * DC and PR only; this is the coarsest scale that carries all six.
  *
  * Small multiples, not one map: each place is projected in its own Albers
@@ -23,12 +23,21 @@
  *
  * Tile frame: 840 × 1610 units, 6 squares of 400 in `BONUS` order, 2 to a row,
  * 40 apart, the land inset 20 from each edge, and a band of 110 under each
- * square for its name. Each tile's width on the ground, and how much of its
- * place it draws: DC 25.2 km, 1 of 1 piece drawn; PR 319 km, 4 of 8 pieces
- * drawn; GU 50.3 km, 1 of 1 piece drawn; VI 90.2 km, 5 of 5 pieces drawn; MP
- * 146 km, 5 of 15 pieces drawn (10 north of 15.5° left out first: drawn as its
- * southern islands, Saipan, Tinian and Rota, without the Northern Islands
- * beyond them); AS 171 km, 3 of 5 pieces drawn.
+ * square for its name. Each tile's width on the ground, how much of its square
+ * is land, and how much of its place it draws: DC 25.2 km, 27.8% land, 1 of 1
+ * piece drawn; PR 319 km, 8.8% land, 4 of 8 pieces drawn; GU 50.3 km, 23.0%
+ * land, 1 of 1 piece drawn; VI 119 km, 4.9% land, 5 of 5 pieces drawn; MP 153
+ * km, 1.6% land, 4 of 15 pieces drawn (10 north of 15.5° left out first: drawn
+ * as its southern islands, Saipan, Tinian and Rota, without the Northern
+ * Islands beyond them); AS 171 km, 0.8% land, 3 of 5 pieces drawn.
+ *
+ * Ringed where the land is too little to find: a tile whose land covers less
+ * than 6.5% of its square gets a circle round each island group, pieces within
+ * 60 units of one another, 10 units clear of the land and at least 6 inside the
+ * square. The panel strokes a ring in its place's fill, only while that fill is
+ * a mark. Caught today: VI at 4.9%, 2 groups, drawn at 75.6% of its fit so they
+ * are inside; MP at 1.6%, 2 groups, drawn at 94.8% of its fit so they are
+ * inside; AS at 0.8%, 2 groups.
  */
 import type { BonusId } from './places.data';
 import type { IOutline } from './outline';
@@ -51,11 +60,11 @@ export const BONUS_OUTLINE: IOutline<BonusId> = {
     },
     {
       id: 'VI',
-      d: 'M653 609L658 600L673 599L676 595L675 591L678 590L703 596L717 604L717 608L713 610L697 602L694 608L699 612L698 623L695 624L677 614L668 620L661 620L656 617ZM611 890L618 887L635 891L650 883L662 880L677 881L688 893L702 895L713 891L758 891L762 893L759 899L744 900L740 904L692 921L683 919L652 924L637 930L629 928L613 929L611 926L613 915L608 899ZM597 573L600 570L604 570L606 580L603 582L600 582ZM542 596L567 591L569 576L574 576L577 591L581 592L591 587L600 593L608 595L649 590L653 594L651 598L625 601L624 606L636 613L641 619L640 623L636 624L626 616L619 619L619 623L615 624L597 616L594 611L586 614L581 622L576 621L575 612L564 601L553 605L543 605L539 600ZM518 605L521 601L526 605L525 609L519 609Z',
+      d: 'M650 651L654 644L665 643L667 637L669 636L688 641L698 647L695 651L683 646L681 650L685 653L684 661L681 662L668 654L661 660L656 660L652 657ZM618 863L624 861L636 864L647 858L657 856L668 857L676 866L687 867L695 864L729 864L732 866L730 870L719 871L716 874L680 887L673 885L649 889L637 893L620 893L618 890L620 882L616 870ZM608 624L610 621L613 622L614 629L609 630ZM566 641L585 637L587 626L590 626L593 637L603 635L616 640L647 637L650 640L649 643L629 645L628 649L637 654L641 659L640 661L637 662L629 656L624 658L624 661L621 662L607 656L605 652L600 654L596 661L592 660L591 653L583 645L567 648L564 644ZM548 648L550 645L554 648L553 651L549 651Z',
     },
     {
       id: 'MP',
-      d: 'M268 1134L270 1132L273 1135L270 1137ZM264 1169L272 1149L271 1142L288 1132L299 1120L302 1121L305 1125L304 1129L300 1130L291 1145L291 1152L295 1157L294 1163L285 1159L280 1161L280 1168L284 1171L282 1178L269 1176L265 1173ZM232 1203L237 1191L251 1177L254 1183L255 1191L252 1198L257 1203L259 1208L256 1224L251 1230L248 1232L237 1211L232 1210ZM221 1251L229 1249L231 1251L230 1254L221 1257L218 1255ZM95 1476L107 1462L120 1460L130 1453L145 1455L144 1465L140 1467L131 1468L122 1478L110 1480L108 1475L105 1474L100 1477L96 1478Z',
+      d: 'M244 1175L252 1155L252 1149L267 1139L278 1128L280 1129L284 1133L283 1136L279 1137L270 1151L273 1168L265 1165L260 1167L260 1173L263 1177L262 1183L249 1181ZM214 1207L219 1196L232 1182L235 1187L236 1196L233 1202L238 1207L240 1211L237 1227L232 1233L229 1234L219 1214L214 1214ZM204 1253L212 1250L213 1252L212 1255L204 1258L201 1256ZM84 1465L96 1453L108 1450L117 1444L132 1446L130 1455L118 1458L110 1468L99 1469L97 1464L94 1463L89 1467L85 1467Z',
     },
     {
       id: 'AS',
@@ -66,7 +75,17 @@ export const BONUS_OUTLINE: IOutline<BonusId> = {
     { id: 'DC', x: 0, y: 0, size: 400, name: { x: 200, y: 445 } },
     { id: 'PR', x: 440, y: 0, size: 400, name: { x: 640, y: 445 } },
     { id: 'GU', x: 0, y: 550, size: 400, name: { x: 200, y: 995 } },
-    { id: 'VI', x: 440, y: 550, size: 400, name: { x: 640, y: 995 } },
+    {
+      id: 'VI',
+      x: 440,
+      y: 550,
+      size: 400,
+      name: { x: 640, y: 995 },
+      circles: [
+        { cx: 623, cy: 642, r: 86 },
+        { cx: 674, cy: 875, r: 69 },
+      ],
+    },
     {
       id: 'MP',
       x: 0,
@@ -75,7 +94,21 @@ export const BONUS_OUTLINE: IOutline<BonusId> = {
       name: { x: 200, y: 1545 },
       partial:
         'drawn as its southern islands, Saipan, Tinian and Rota, without the Northern Islands beyond them',
+      circles: [
+        { cx: 243, cy: 1193, r: 86 },
+        { cx: 108, cy: 1457, r: 37 },
+      ],
     },
-    { id: 'AS', x: 440, y: 1100, size: 400, name: { x: 640, y: 1545 } },
+    {
+      id: 'AS',
+      x: 440,
+      y: 1100,
+      size: 400,
+      name: { x: 640, y: 1545 },
+      circles: [
+        { cx: 786, cy: 1287, r: 47 },
+        { cx: 498, cy: 1310, r: 49 },
+      ],
+    },
   ],
 };

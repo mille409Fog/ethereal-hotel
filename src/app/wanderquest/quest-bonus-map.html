@@ -30,6 +30,18 @@
           [attr.data-id]="tile.id"
           [class.quest-visited]="guest.has('bonus', tile.id)"
         />
+        <!-- Only where the land is too little to find: a ring round each
+             island group, in the land's own state, so the ring is the land's
+             colour whenever that colour is a mark. -->
+        @for (circle of tile.circles ?? []; track $index) {
+          <circle
+            class="quest-bonus-ring"
+            [attr.cx]="circle.cx"
+            [attr.cy]="circle.cy"
+            [attr.r]="circle.r"
+            [class.quest-visited]="guest.has('bonus', tile.id)"
+          />
+        }
         <text class="quest-bonus-name" [attr.x]="tile.name.x" [attr.y]="tile.name.y">
           @for (line of tile.lines; track $index) {
             <tspan [attr.x]="tile.name.x" [attr.dy]="$first ? 0 : '1.2em'">{{ line }}</tspan>

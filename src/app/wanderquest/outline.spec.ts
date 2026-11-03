@@ -263,6 +263,65 @@ describe('BONUS_OUTLINE', () => {
     ]);
   });
 
+  describe('the rings round scattered land', () => {
+    const tiles = BONUS_OUTLINE.tiles ?? [];
+    /** A tile's land as a share of its square, by the shoelace formula. */
+    const share = (id: string, size: number): number =>
+      rings(shape(id)).reduce((sum, ring) => {
+        const twice = ring.reduce((acc, [x0, y0], i) => {
+          const [x1, y1] = ring[(i + 1) % ring.length];
+          return acc + x0 * y1 - x1 * y0;
+        }, 0);
+        return sum + Math.abs(twice) / 2;
+      }, 0) /
+      (size * size);
+
+    it('rings the scattered three and leaves the three that fill their tiles alone', () => {
+      expect(tiles.filter((tile) => tile.circles).map((tile) => tile.id)).toEqual([
+        'VI',
+        'MP',
+        'AS',
+      ]);
+    });
+
+    it('rings by land share, so every ringed tile has less land than every other', () => {
+      // The threshold is the script's; what is held here is that it is one
+      // line through the shares, not a list someone picked.
+      const ringed = tiles.filter((tile) => tile.circles).map((t) => share(t.id, t.size));
+      const plain = tiles.filter((tile) => !tile.circles).map((t) => share(t.id, t.size));
+      expect(Math.max(...ringed)).toBeLessThan(Math.min(...plain));
+    });
+
+    it('puts every piece of land inside a ring, and every ring inside its square', () => {
+      for (const tile of tiles.filter((candidate) => candidate.circles)) {
+        const circles = tile.circles ?? [];
+        for (const [x, y] of rings(shape(tile.id)).flat()) {
+          expect(
+            circles.some(({ cx, cy, r }) => Math.hypot(x - cx, y - cy) < r),
+            `${tile.id} ${x} ${y}`
+          ).toBe(true);
+        }
+        for (const { cx, cy, r } of circles) {
+          expect(cx - r > tile.x && cx + r < tile.x + tile.size, `${tile.id} x`).toBe(true);
+          expect(cy - r > tile.y && cy + r < tile.y + tile.size, `${tile.id} y`).toBe(true);
+        }
+      }
+    });
+
+    it('rings each island group once, so no two rings in a tile overlap', () => {
+      for (const tile of tiles) {
+        const circles = tile.circles ?? [];
+        circles.forEach((one, i) => {
+          for (const two of circles.slice(i + 1)) {
+            expect(Math.hypot(one.cx - two.cx, one.cy - two.cy), tile.id).toBeGreaterThan(
+              one.r + two.r
+            );
+          }
+        });
+      }
+    });
+  });
+
   it("keeps American Samoa's Manu'a group, not just Tutuila", () => {
     // Manu'a lies a hundred kilometres east of Tutuila, the largest piece. A
     // fit set by Rose Atoll and Swains Island shrank it below the island

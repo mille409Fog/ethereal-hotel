@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LinearRgb, linearToOklab } from '../aesthetic/colour';
 import { Deficiency, simulateLinear } from '../aesthetic/cvd';
 import { contrastRatio } from '../aesthetic/winnow';
+import { BONUS_OUTLINE } from './bonus.outline';
 import { COUNTRIES_OUTLINE } from './countries.outline';
 import { EUROPE_OUTLINE } from './europe.outline';
 import { GUEST_PROGRESS_KEY, GUEST_STORAGE, GuestProgressStore } from './guest-progress';
@@ -902,6 +903,60 @@ describe('Wanderquest', () => {
       expect(path?.classList.contains('quest-visited')).toBe(true);
     });
 
+    describe('the rings round scattered land', () => {
+      const ringsOf = (id: string): SVGCircleElement[] =>
+        Array.from(
+          map()?.querySelectorAll<SVGCircleElement>(`g[data-id="${id}"] circle.quest-bonus-ring`) ??
+            []
+        );
+
+      it('draws one per island group the outline names, and none where the land fills', () => {
+        for (const tile of BONUS_OUTLINE.tiles ?? []) {
+          expect(
+            ringsOf(tile.id).map((ring) => ['cx', 'cy', 'r'].map((a) => ring.getAttribute(a))),
+            tile.id
+          ).toEqual((tile.circles ?? []).map(({ cx, cy, r }) => [cx, cy, r].map(String)));
+        }
+        for (const id of ['DC', 'PR', 'GU']) {
+          expect(ringsOf(id), id).toEqual([]);
+        }
+      });
+
+      it('strokes nothing while the place is unmarked, and the bonus colour once it is', async () => {
+        // jsdom resolves the rule but not the custom property; the colour's
+        // contrast is held below.
+        const strokes = (): string[] =>
+          ringsOf('AS').map((ring) => window.getComputedStyle(ring).stroke);
+        expect(strokes()).toEqual(['none', 'none']);
+
+        await click(water('AS'));
+        expect(strokes()).toEqual(['var(--quest-bonus)', 'var(--quest-bonus)']);
+        expect(ringsOf('AS').every((ring) => ring.classList.contains('quest-visited'))).toBe(true);
+
+        await click(water('AS'));
+        expect(strokes()).toEqual(['none', 'none']);
+      });
+
+      it('takes no click of its own, so the tile beneath is still the target', () => {
+        for (const ring of ringsOf('VI')) {
+          expect(window.getComputedStyle(ring).pointerEvents).toBe('none');
+        }
+      });
+
+      it('uses only the fills that clear 3:1 on the page, and not the unvisited one', () => {
+        // The ring takes its land's fill: the bonus colour once marked, the
+        // highlight under the pointer. The unvisited fill fails the pair,
+        // which is why an unmarked place has no ring.
+        const { bonus, highlight, unvisited } = palettes()[QUEST_STATE.STATES];
+        for (const stroke of [bonus, highlight]) {
+          expect(contrast(stroke, PAGE_BACKGROUND), `${stroke} ring`).toBeGreaterThanOrEqual(
+            NON_TEXT_CONTRAST
+          );
+        }
+        expect(contrast(unvisited, PAGE_BACKGROUND)).toBeLessThan(NON_TEXT_CONTRAST);
+      });
+    });
+
     it('never writes the bonus to the states, or the states to the bonus', async () => {
       await click(water('MP'));
       expect(stored()).toEqual(expect.objectContaining({ states: [], bonus: ['MP'] }));
@@ -911,7 +966,7 @@ describe('Wanderquest', () => {
       expect(stored()).toEqual(expect.objectContaining({ states: ['CA'], bonus: ['MP'] }));
       expect(filled('MP')).toBe(true);
       expect(shape('CA')?.classList.contains('quest-visited')).toBe(true);
-      expect(map()?.querySelectorAll('.quest-visited').length).toBe(1);
+      expect(map()?.querySelectorAll('path.quest-visited').length).toBe(1);
     });
 
     it('keeps its marks through a reload, under the one key', async () => {

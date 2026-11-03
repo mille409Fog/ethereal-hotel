@@ -60,6 +60,33 @@
   }
 }
 
+/* The rings round the scattered tiles' islands take the land's fill, but
+   only the fills that are marks: the bonus colour and the highlight each
+   clear 3:1 on the page, and the unvisited fill does not, so an unmarked
+   place has no ring rather than a ring nobody can see. The spec holds both
+   pairs. No transition: `none` does not interpolate, and the ring appears
+   with the click that lights its land.
+
+   Never a target of its own: a click inside the circle falls through to the
+   tile beneath, which is already the place's target. */
+.quest-bonus-ring {
+  fill: none;
+  stroke: none;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.quest-bonus-ring.quest-visited {
+  stroke: var(--quest-bonus);
+}
+
+@media (hover: hover) {
+  .quest-bonus-cell:hover .quest-bonus-ring {
+    stroke: var(--quest-highlight);
+  }
+}
+
 /* In frame units: 40 of them, which the width above turns into pixels. */
 .quest-bonus-name {
   fill: var(--color-text-secondary);
@@ -86,6 +113,10 @@
 
   .quest-bonus-land.quest-visited {
     fill: Highlight;
+  }
+
+  .quest-bonus-ring.quest-visited {
+    stroke: Highlight;
   }
 
   .quest-bonus-name {
