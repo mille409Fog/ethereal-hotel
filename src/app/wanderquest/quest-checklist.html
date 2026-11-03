@@ -24,25 +24,62 @@
        is the map's keyboard route, so a keyboard user gets the link a mouse
        user gets. focusin rather than focus, because it is the checkbox inside
        that takes focus and only focusin bubbles to the row. -->
-  <ul class="quest-checklist-items">
-    @for (place of shown(); track place.id) {
-      <li
-        class="quest-checklist-item"
-        (mouseenter)="highlight.emit(place.id)"
-        (mouseleave)="highlight.emit(null)"
-        (focusin)="highlight.emit(place.id)"
-        (focusout)="highlight.emit(null)"
-      >
-        <input
-          type="checkbox"
-          [id]="'quest-place-' + current.list + '-' + place.id"
-          [checked]="isVisited(current.list, place.id)"
-          (change)="onToggle(current.list, place.id)"
+  <ng-template #row let-place let-scope="scope" let-keep="keep">
+    <li
+      class="quest-checklist-item"
+      (mouseenter)="highlight.emit(place.id)"
+      (mouseleave)="highlight.emit(null)"
+      (focusin)="highlight.emit(place.id)"
+      (focusout)="highlight.emit(null)"
+    >
+      <input
+        type="checkbox"
+        [id]="scope + place.id"
+        [checked]="isVisited(current.list, place.id)"
+        (change)="onToggle(current.list, place.id, keep)"
+      />
+      <label [attr.for]="scope + place.id">{{ place.name }}</label>
+    </li>
+  </ng-template>
+  @if (shown().length > 0) {
+    <ul class="quest-checklist-items">
+      @for (place of shown(); track place.id) {
+        <ng-container
+          *ngTemplateOutlet="
+            row;
+            context: {
+              $implicit: place,
+              scope: 'quest-place-' + current.list + '-',
+              keep: current.filterable,
+            }
+          "
         />
-        <label [attr.for]="'quest-place-' + current.list + '-' + place.id">{{ place.name }}</label>
-      </li>
-    }
-  </ul>
+      }
+    </ul>
+  }
+  @if (current.filterable) {
+    <!-- The whole alphabet, closed until asked for. A place on both lists is
+         one mark with two checkboxes: both read the store. -->
+    <details class="quest-all">
+      <summary class="quest-all-summary">
+        All {{ current.places.length }} {{ current.noun }}
+      </summary>
+      <ul class="quest-checklist-items">
+        @for (place of current.places; track place.id) {
+          <ng-container
+            *ngTemplateOutlet="
+              row;
+              context: {
+                $implicit: place,
+                scope: 'quest-place-' + current.list + '-all-',
+                keep: false,
+              }
+            "
+          />
+        }
+      </ul>
+    </details>
+  }
 </fieldset>
 @if (current.bonusPlaces; as bonus) {
   <!-- Not drawn on the outline, so this is the only way to mark them. -->

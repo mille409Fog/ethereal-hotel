@@ -121,6 +121,8 @@ test.describe('wanderquest caption', () => {
       await expect(line).toHaveText('');
       const empty = (await line.boundingBox())?.height;
 
+      // The whole list is behind a closed disclosure; the search is the way in.
+      await page.getByRole('searchbox', { name: 'Find a country' }).fill('united kingdom');
       await page
         .getByRole('checkbox', { name: 'United Kingdom of Great Britain and Northern Ireland' })
         .focus();

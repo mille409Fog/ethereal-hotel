@@ -47,7 +47,10 @@ export interface IQuest {
   readonly ownerBonus: ITally | null;
   /**
    * Whether the checklist gets a filter. Fifty states scan as a block; 195
-   * countries are a wall, so only that list is searched.
+   * countries are a wall, so only that list is searched, and it lists just the
+   * visited and the matches, leaving the whole alphabet behind a disclosure.
+   * It is not grouped by continent: nothing here maps a country to one, and
+   * every such mapping is contested (Russia, Türkiye, Egypt).
    */
   readonly filterable: boolean;
   /** The rough contours of the quest's map, or null until its outline is built. */

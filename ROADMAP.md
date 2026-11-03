@@ -27,35 +27,20 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## `/wanderquest` maps
 
-Two graphical items for the travel quests' maps. They share one complaint: a place the guest has
-marked that they cannot see. The page's house rules bind all
-of them: Fern's tokens and one accent for controls, the quest palettes in `wanderquest.css` for
+One graphical item for the travel quests' maps. Its complaint: a place the guest has marked that
+they cannot see. The page's house rules bind it: Fern's tokens and one accent for controls, the quest palettes in `wanderquest.css` for
 places and never for controls, no glow, and no motion that does not show a change of state. Any
 colour a change introduces is measured, not picked by eye; `wanderquest.spec.ts` recomputes the
 palette contrasts from the CSS, so a new pairing goes into that spec too. `e2e/a11y.spec.ts` runs
 axe over `/wanderquest` and has to stay green.
 
-Two things every item here will trip over. The `*.outline.ts` files are generated: edit
+Two things any item here will trip over. The `*.outline.ts` files are generated: edit
 `scripts/build-outline.mjs` and re-run `npm run outline:build`, which needs the network and runs by
 hand, and keep each outline under the size ceiling `outline.spec.ts` holds it to. And any change to
 what the page draws fails `e2e/project-frames.spec.ts` until `npm run frames:capture` is re-run;
 that is the gate working.
 
-### 1. The countries checklist stops being 7,000 pixels on a phone
-
-At 375px the countries list is one column of 195 rows and the page is about 7,300px tall; the
-"Clear my countries" button is at the bottom of all of it. **Effort:** 2–3 hours.
-
-**DoD:** on the countries quest only, the list shows the places the guest has visited and whatever
-the search matches; the full alphabetical list is behind a native `<details>` ("All 195
-countries"), closed by default. Nothing is lost to the keyboard: the search is still the first
-control, and opening the disclosure gives the whole list. Grouping by continent is out, because the
-repo holds no country-to-continent mapping and every one is contested (Russia, Türkiye, Egypt);
-inventing one would put a claim on screen nothing backs. Measure the page height at 375px before
-and after and record both in this item's commit message. States and continents are short enough to
-stay as they are.
-
-### 2. The Caribbean gets an inset, as Europe did
+### 1. The Caribbean gets an inset, as Europe did
 
 The measurement Europe's inset left in `build-outline.mjs` decided it: at 320px the world map
 draws 17 Caribbean countries narrower than 8px, against Europe's 43, in a third of the area, and

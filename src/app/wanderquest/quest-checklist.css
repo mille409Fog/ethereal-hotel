@@ -101,6 +101,28 @@
   color: var(--color-text);
 }
 
+/* The full list's disclosure. The summary keeps its native marker, so it reads
+   as the control it is, and is 44px tall like the other controls here. */
+.quest-all {
+  margin: 0;
+}
+
+.quest-checklist-items + .quest-all {
+  margin-top: 1rem;
+}
+
+.quest-all-summary {
+  min-height: 44px;
+  padding-block: 0.625rem;
+  box-sizing: border-box;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.quest-all-summary:focus-visible {
+  outline-offset: 2px;
+}
+
 .quest-clear {
   min-height: 44px;
   padding: 0.5rem 1.25rem;

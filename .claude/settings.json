@@ -9,7 +9,9 @@
       "Bash(awk '{print length\\($0\\)-8, $0}')",
       "Bash(node --no-warnings -e ' *)",
       "Bash(awk '{print length}')",
-      "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/4667152e-2602-4751-8aa9-23b9262019ee/scratchpad/share.mjs\" src/app/wanderquest/bonus.outline.ts)"
+      "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/4667152e-2602-4751-8aa9-23b9262019ee/scratchpad/share.mjs\" src/app/wanderquest/bonus.outline.ts)",
+      "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/6923761c-02d0-4b90-a89d-36c23b0f52d6/scratchpad/measure.mjs\" \"C:/Users/Jacob Miller/forest/ethereal-hotel\")",
+      "Bash(grep -v \"^\\\\s*$\")"
     ]
   }
 }

@@ -1313,10 +1313,13 @@ describe('Wanderquest', () => {
     const tally = (): string => text(countries(), '.quest-tally');
     const path = (id: string): Element | null =>
       countries().querySelector(`svg.quest-outline path[data-id="${id}"]`);
+    /** The short list's rows: what sits above the disclosure, not inside it. */
     const listed = (): string[] =>
-      Array.from(countries().querySelectorAll('.quest-checklist-item label')).map(
-        (label) => label.textContent?.trim() ?? ''
-      );
+      Array.from(
+        countries().querySelectorAll('fieldset.quest-checklist > ul > .quest-checklist-item label')
+      ).map((label) => label.textContent?.trim() ?? '');
+    const all = (): HTMLDetailsElement | null =>
+      countries().querySelector<HTMLDetailsElement>('details.quest-all');
     const checkbox = (name: string): HTMLInputElement | null => {
       const label = Array.from(countries().querySelectorAll('label')).find(
         (candidate) => candidate.textContent?.trim() === name
@@ -1344,14 +1347,41 @@ describe('Wanderquest', () => {
       await fixture.whenStable();
     });
 
-    it('lists all 195, labelled, with a filter above them', () => {
-      expect(listed()).toEqual(COUNTRIES.map((place) => place.name));
+    it('opens on a labelled search and the whole list closed behind a disclosure', () => {
       const id = filter()?.id ?? '';
       expect(countries().querySelector(`label[for="${id}"]`)?.textContent?.trim()).toBe(
         'Find a country'
       );
       expect(countries().querySelector('.quest-filter-count')?.getAttribute('role')).toBe('status');
-      expect(count()).toBe('All 195 countries');
+      expect([listed(), count()]).toEqual([[], '']);
+
+      const details = all();
+      expect(details?.open).toBe(false);
+      expect(text(details ?? host, 'summary')).toBe('All 195 countries');
+      expect(
+        Array.from(details?.querySelectorAll('.quest-checklist-item label') ?? []).map((label) =>
+          label.textContent?.trim()
+        )
+      ).toEqual(COUNTRIES.map((place) => place.name));
+    });
+
+    // The search is the first control: nothing focusable comes before it in
+    // the checklist, and the disclosure's summary comes after it.
+    it('puts the search before every other control in the list', () => {
+      const controls = Array.from(
+        countries().querySelectorAll('app-quest-checklist input, app-quest-checklist summary')
+      );
+      expect(controls[0]).toBe(filter());
+      expect(controls[1]?.tagName).toBe('SUMMARY');
+    });
+
+    it('gives every checkbox its own id, though a place can have two', async () => {
+      await tick('Japan');
+      const ids = Array.from(countries().querySelectorAll('input[type="checkbox"]')).map(
+        (box) => box.id
+      );
+      expect(ids.length).toBe(196);
+      expect(new Set(ids).size).toBe(196);
     });
 
     it('narrows by name as the guest types, ignoring case and accents', async () => {
@@ -1361,34 +1391,60 @@ describe('Wanderquest', () => {
           (place) => place.name
         )
       );
-      expect(count()).toBe(`${listed().length} of 195 countries`);
+      expect(count()).toBe(`${listed().length} countries match “GUINEA”`);
 
       await type('turkiye');
       expect(listed()).toEqual(['Türkiye']);
-      expect(count()).toBe('1 of 195 countries');
+      expect(count()).toBe('1 country matches “turkiye”');
     });
 
-    it('says when nothing matches, and restores the whole list when cleared', async () => {
+    it('says when nothing matches, and empties the short list when cleared', async () => {
       await type('Atlantis');
       expect(listed()).toEqual([]);
       expect(count()).toBe('No country matches “Atlantis”');
 
       await type('');
-      expect(listed().length).toBe(195);
-      expect(count()).toBe('All 195 countries');
+      expect([listed(), count()]).toEqual([[], '']);
+      expect(all()?.querySelectorAll('.quest-checklist-item').length).toBe(195);
     });
 
-    it('keeps a selection through filtering', async () => {
+    it('lists the visited beside whatever the search matches', async () => {
       await type('japan');
       await tick('Japan');
       await type('kenya');
+      expect(listed()).toEqual(['Japan', 'Kenya']);
       await tick('Kenya');
       expect(tally()).toBe('2 of 195 countries visited');
 
       await type('');
+      expect(listed()).toEqual(['Japan', 'Kenya']);
       expect(checkbox('Japan')?.checked).toBe(true);
       expect(checkbox('Kenya')?.checked).toBe(true);
       expect(path('JP')?.classList.contains('quest-visited')).toBe(true);
+    });
+
+    it('lists a place ticked in the full list, or on the map, above it', async () => {
+      all()?.querySelector<HTMLInputElement>('#quest-place-countries-all-PE')?.click();
+      await fixture.whenStable();
+      path('BR')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await fixture.whenStable();
+      expect(listed()).toEqual(['Brazil', 'Peru']);
+    });
+
+    // Removing the row would take the focused checkbox with it.
+    it('keeps a row unticked from the short list until the search changes', async () => {
+      await tick('Chile');
+      await type('');
+      await tick('Chile');
+      expect([listed(), checkbox('Chile')?.checked, tally()]).toEqual([
+        ['Chile'],
+        false,
+        '0 of 195 countries visited',
+      ]);
+
+      await type('c');
+      await type('');
+      expect(listed()).toEqual([]);
     });
 
     it('toggles a country from the map and its checkbox, and the tally follows both', async () => {
