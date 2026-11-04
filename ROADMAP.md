@@ -24,6 +24,132 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   implying more. On mobile emulation the same build scores 86 on `/` and 76 on `/dashboard` — the
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
+- **The items below are a visual pass, not new features.** Each one brings the interface back in
+  line with rules `CLAUDE.md` already states (no decorative motion, no glow, one accent, state
+  colours are not decoration). None of them adds an effect. Any item that changes `/dashboard`,
+  `/booking`, `/gallery` or a project card changes a committed frame in `public/projects/`, so
+  `npm run e2e` fails until `npm run frames:capture` is re-run and the new `.webp` files are
+  committed. That is part of each item's DoD, not a separate step.
+
+## Items
+
+### 1. Remove the hover and focus motion the Fern pass left behind
+
+**Effort:** small. **Why:** the decorative loops were removed, but the hover motion from the same
+era was not. Every `.btn` grows a white circle from its centre on hover
+(`projects.css`, `.btn::before`). Project cards rise 8px and scale to 102%. Metric cards and demo
+cards rise even though neither is a link, which suggests a click that does nothing. Inputs on
+`/booking` jump up 1px on focus. Tech badges are labels and still move on hover. Almost every one
+of these uses `transition: all 0.3s`, which also animates properties nobody meant to animate.
+
+**DoD:**
+
+- No `transform` on `:hover` or `:focus` anywhere in `src/app/` (outside `/murmuration`'s canvas
+  and `/aesthetic`'s medallion, which shows state). The `.btn::before` ripple is deleted.
+- Hover on something you can click is a border-colour or background-colour change. Hover on
+  something you can't click (metric cards, demo cards, tech badges) is nothing.
+- No `transition: all` left in `src/app/`. Each transition names its properties and runs ≤150ms.
+- The stacked double black `box-shadow` on cards is replaced with the border alone, or with one
+  shadow at most. On `--color-bg` the shadow is close to invisible and only adds noise.
+- `check:docs` gains a check that fails on `transition: all` and on a `transform` inside a
+  `:hover`/`:focus` rule in `src/app/`, with the same exemptions, so this doesn't come back.
+- Frames re-captured.
+
+### 2. Replace emoji icons with one monochrome SVG set
+
+**Effort:** small–medium. **Why:** emoji look different on every OS and arrive in full colour. In
+the contact section of `resume.html`, the phone (`&#128222;`) and pin (`&#128205;`) are pink, close
+to `--color-negative`, so the page's error colour shows up as decoration. Emoji widths also vary,
+so the text after each icon starts at a different x (the email line is about 7px off). The six in
+`metrics-grid.html` (🛏️ 💵 📈 🧾 🛎️ 🗝️) and the ⚡ in `dashboard-footer.html` have the same problem
+on the dashboard.
+
+**DoD:**
+
+- No emoji in any template under `src/app/`. A `check:docs` rule enforces it, using the Unicode
+  pictographic ranges.
+- Contact rows use inline SVG icons drawn in `currentColor`, inheriting `--color-text-muted`,
+  `aria-hidden="true"`, fixed size, so every label starts at the same x. The icons are hand-written
+  `<path>` data or vendored from an open-licence set with the licence noted; no icon-font
+  dependency.
+- Metric cards either get icons from the same set or lose the icon row. Recommendation: lose it.
+  The label already names the metric, and without the icon the number becomes the first thing the
+  eye reaches.
+- `.contact-icon` is styled in both `app.css` and `resume.css`. Delete whichever one is dead.
+- Frames re-captured.
+
+### 3. Give the dashboard a layout with a hierarchy
+
+**Effort:** small. **Why:** six metric cards in an `auto-fit, minmax(240px, 1fr)` grid come out as
+four plus two at desktop width, with two empty slots at the end of the second row. Every card is
+also the same size, so nothing on the screen says what a hotelier reads first.
+
+**DoD:**
+
+- At 1280px, no row of metric cards has an empty slot.
+- Occupancy and room revenue today are visibly primary: larger cards or a larger value, in a row
+  above the other four. Implemented with `grid-template-areas` or explicit spans, not by
+  reordering the DOM. The reading order and the throttled `role="status"` digest stay as they are.
+- At 390px every card is still readable without horizontal scroll, and the e2e axe pass stays
+  clean.
+- Frames re-captured.
+
+### 4. Make the three NDA cards read as deliberate, not as missing images
+
+**Effort:** small. **Why:** the last row of project cards says "No screenshot. The case study shows
+the reasoning." three times in a row. One of those reads as an honest note; three in a row read as
+broken images.
+
+**DoD:**
+
+- Each NDA card's plate carries its own line: the constraint or the decision its case study is
+  about, taken from `/work` and stated just as plainly. It stays type on the ground, in the existing
+  `.room-plate` style. No illustrations or stock images, because the plate exists so as not to
+  pretend.
+- The text comes from the case-study data rather than a second copy in the card, so the two
+  cannot drift. If the data has no field for it, add one there.
+- The footnote under the grid still explains why there are no screenshots.
+
+### 5. Small consistency fixes: contact headings, booking errors, a stale header
+
+**Effort:** small. Three unrelated fixes, batched because each is too small to stand on its own.
+
+**DoD:**
+
+- **Contact headings** ("Contact Information", "Links", "Education" …) are in `--color-text`, not
+  the accent. Today they are the same blue as the links under them, so headings and links can't be
+  told apart.
+- **The booking rejection is styled as two different things.** On a field-attributed server error,
+  the message appears under the field and again beside the submit button (`booking.ts`,
+  `setOutcome`). Both are wanted: one is attached to the field, the other is the outcome of the
+  submit. But they currently look identical, so it reads as a bug. The outcome line gets a
+  distinct treatment (for example a bordered `--color-negative` callout with the field error kept
+  inline), or, when the error is attributed to a field, it says which field rather than repeating
+  the message. Whichever is chosen, the ARIA wiring stays the same and the e2e booking assertions
+  stay green.
+- **`projects.css` opens with "Booking Engine Styles"** and carries `.form-control` and
+  `.form-row` rules the project cards never use. Correct the header and move or delete the dead
+  rules.
+- Frames re-captured if `/booking` changed.
+
+### 6. Rework the hero's composition
+
+**Effort:** medium. **Why:** the first screen is left-aligned text with the right ~40% of a desktop
+viewport empty, and three buttons of equal weight. It is the weakest screen on the site and the one
+every visitor sees.
+
+**DoD:** pick one of the two directions below and record the choice and the reason in a comment
+above the hero markup.
+
+- **(a) Show the claim on the first screen.** Fill the empty column with a small read-only digest
+  from the same API as `/dashboard` (occupancy, the latest booking), linking to the full route. It
+  must degrade the way the dashboard does: when the API is down it says so, and it never shows a
+  fixture number as if it were live. It must not cost `/` its Lighthouse scores (performance 90,
+  accessibility 100): no Chart.js on `/`, and the request must not block first paint.
+- **(b) Recompose as a single column.** A reading-width single column with more vertical space,
+  one primary call to action, and the other two as text links.
+- Either way: no motion, no illustration, no glow, and the hero still works before hydration (plain
+  `href`s, as the current comment explains).
 
 ## Deliberately not doing
 
