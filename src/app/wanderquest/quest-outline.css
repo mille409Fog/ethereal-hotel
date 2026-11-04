@@ -108,7 +108,7 @@
   }
 }
 
-/* The enlargement sits close under the map it enlarges. */
+/* An enlargement sits close under the map it enlarges, or the one before it. */
 .quest-outline-inset {
   margin-top: 1rem;
 }

@@ -165,7 +165,7 @@
    desktop at 30rem high. The two world maps are wider: each is the whole
    globe, about 2.05 times as wide as tall, so at 48rem the world is under
    24rem high, and a country's dot 16px across. Their outlines,
-   Europe's inset with them so the two stay one width, break out of the
+   the insets with them so all stay one width, break out of the
    measure to 64rem, or the page's whole width where that is less, which
    puts the dot at 21px. Only from a 64rem viewport: below it nothing moves,
    and at 320px the cap never binds. The bonus tiles keep the measure; they

@@ -45,9 +45,9 @@
     >
       <app-quest-tally [quest]="quest" />
       @if (quest.outline; as outline) {
-        <!-- The quest's map, and under it the part of it enlarged, if it has
-             one: two drawings of one list, so a click on either toggles the
-             place and a checklist row lights it in both. -->
+        <!-- The quest's map, and under it the parts of it enlarged, if it has
+             any: drawings of one list, so a click on any toggles the place and
+             a checklist row lights it in every one that holds it. -->
         @let names = placeNames.get(quest.id);
         @let lit = highlightedIn(quest.list);
         <app-quest-outline
@@ -55,10 +55,10 @@
           [list]="quest.list"
           [names]="names"
           [highlighted]="lit"
-          [inset]="quest.insetOutline"
+          [insets]="quest.insetOutlines"
           (mapClick)="onMapClick($event, quest.list)"
         />
-        @if (quest.insetOutline; as inset) {
+        @for (inset of quest.insetOutlines; track inset.label) {
           <app-quest-outline
             [outline]="inset"
             [list]="quest.list"

@@ -7,6 +7,7 @@
  * the spec can walk it without a fixture.
  */
 import { BONUS_OUTLINE } from './bonus.outline';
+import { CARIBBEAN_OUTLINE } from './caribbean.outline';
 import { CONTINENTS_OUTLINE } from './continents.outline';
 import { COUNTRIES_OUTLINE } from './countries.outline';
 import { EUROPE_OUTLINE } from './europe.outline';
@@ -58,10 +59,11 @@ export interface IQuest {
   /** The bonus places as small multiples, one tile each; only the states quest has them. */
   readonly bonusOutline: IOutline | null;
   /**
-   * Part of `outline` drawn larger, under it, from the same list: Europe on
-   * the countries quest, where the world map is too small to aim at.
+   * Parts of `outline` drawn larger, under it in this order, from the same
+   * list: Europe and the Caribbean on the countries quest, where the world map
+   * is too small to aim at. Empty where nothing is.
    */
-  readonly insetOutline: IOutline | null;
+  readonly insetOutlines: readonly IOutline[];
 }
 
 /** The quests in tab order. Arrow keys walk this order and wrap. */
@@ -78,7 +80,7 @@ export const QUESTS: readonly IQuest[] = [
     filterable: false,
     outline: STATES_OUTLINE,
     bonusOutline: BONUS_OUTLINE,
-    insetOutline: null,
+    insetOutlines: [],
   },
   {
     id: QUEST_STATE.CONTINENTS,
@@ -92,7 +94,7 @@ export const QUESTS: readonly IQuest[] = [
     filterable: false,
     outline: CONTINENTS_OUTLINE,
     bonusOutline: null,
-    insetOutline: null,
+    insetOutlines: [],
   },
   {
     id: QUEST_STATE.COUNTRIES,
@@ -106,7 +108,7 @@ export const QUESTS: readonly IQuest[] = [
     filterable: true,
     outline: COUNTRIES_OUTLINE,
     bonusOutline: null,
-    insetOutline: EUROPE_OUTLINE,
+    insetOutlines: [EUROPE_OUTLINE, CARIBBEAN_OUTLINE],
   },
 ];
 

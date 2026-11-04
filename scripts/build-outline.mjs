@@ -5,7 +5,8 @@
  *     npm run outline:build -- continents      # just the named ones
  *
  * The targets are `states`, `bonus`, `continents` and `countries`; the last
- * also writes Europe's inset, because the world map's note depends on it.
+ * also writes each of `INSETS`, Europe's and the Caribbean's, because the
+ * world map's note depends on them.
  *
  * Like `fetch-gallery.mjs`, this writes a build *input*: each output is a
  * committed TypeScript module of SVG path data, so the build fetches nothing,
@@ -609,9 +610,9 @@ const NATURAL_EARTH_50M_SOURCE = `https://naciscdn.org/naturalearth/50m/cultural
  * 14 they still hid 11, Palestine's alone covering Israel, Jordan, Lebanon and
  * Cyprus. The map is not where 2.5.8 is met: every country's checkbox below
  * it is, which is the criterion's equivalent-control exception, and why
- * nothing on the map takes focus. The Europe inset is where crowding is
- * solved, not this. It uses the same radius in a frame of nearly the same
- * width, so a dot is one size on both maps.
+ * nothing on the map takes focus. The insets are where crowding is solved,
+ * not this. They use the same radius in frames of nearly the same width, so a
+ * dot is one size on every map.
  */
 const DOT_RADIUS = 10;
 
@@ -624,40 +625,74 @@ const DOT_RADIUS = 10;
 const EUROPE = { west: -25, east: 45, south: 34, north: 72 };
 
 /**
- * How many times the world map's scale the inset is drawn at. A whole number,
- * so the rectangle on the world map and the inset's frame are exactly one
- * shape at two sizes: 173 × 100 units there, 1038 × 600 here. At this scale
- * Luxembourg is about 17px across at the inset's 64rem, where on the world map
- * it is a dot over Belgium.
- */
-const INSET_SCALE = 6;
-
-/**
- * The Caribbean, for the measurement that decides whether it needs an inset as
- * Europe did: the box such an inset would enlarge, Central America to Barbados.
+ * The box the Caribbean's inset enlarges: Central America to Barbados, the
+ * Bahamas to Trinidad and the Panama isthmus. Its edges are cut through
+ * Mexico, Colombia and Venezuela, drawn as far as the frame, as Europe's are.
  */
 const CARIBBEAN = { west: -90, east: -59, south: 9, north: 27 };
 
 /**
- * The measurement itself. A country is too small to aim at when it is drawn
- * narrower than `NARROW_PX` with the map `MEASURE_PX` wide: the 288px a 320px
- * screen leaves inside the page's padding. Every dot is, since a dot is 20
- * units across. Taken on the world map, and the same count taken over Europe
- * is the yardstick, since Europe is the region that was given an inset.
+ * The regions the world map is drawn again for, larger, one under another in
+ * this order, each by the same code: `buildInset` draws it and `dotCosts`
+ * judges it, and each writes its own outline with its own `enlarges`
+ * rectangle on the world map.
  *
- * The count is printed in the countries outline's header each build. On
- * 2026-11-01 it was 43 in Europe and 17 in the Caribbean, and the decision
- * taken on it is that the Caribbean needs an inset too. 17 is under half of
- * Europe's count, but the box is a third of Europe's area on the map (5,760
- * square units to 17,300), so its narrow countries are packed a fifth more
- * densely than Europe's; and what the Caribbean's 17 cost is the cost
- * Europe's did, seven dots overlapping and
- * Trinidad and Tobago hidden under three of them, which the panel's note
- * still has to name. The width is fixed at 320px, so giving the map more
- * room on a desktop changes neither count.
+ * `scale` is how many times the world map's scale an inset is drawn at. A
+ * whole number, so the rectangle on the world map and the inset's frame are
+ * exactly one shape at two sizes. Europe's is 6, 173 × 100 units on the world
+ * map and 1038 × 600 in its inset, where Luxembourg is about 17px across at
+ * 64rem and on the world map is a dot over Belgium. Every later inset takes
+ * the whole number that brings its frame nearest Europe's width, since the
+ * insets are drawn at one width and a dot of `DOT_RADIUS` should be one size
+ * on all of them: the Caribbean's 12 makes 90 × 64 units 1080 × 768, where 11
+ * would make them 990 × 704. `title` starts a sentence on the panel and `name`
+ * sits inside one.
+ */
+const INSETS = [
+  {
+    file: 'europe.outline.ts',
+    constName: 'EUROPE_OUTLINE',
+    title: 'Europe',
+    name: 'Europe',
+    region: EUROPE,
+    scale: 6,
+  },
+  {
+    file: 'caribbean.outline.ts',
+    constName: 'CARIBBEAN_OUTLINE',
+    title: 'The Caribbean',
+    name: 'the Caribbean',
+    region: CARIBBEAN,
+    scale: 12,
+  },
+];
+
+/**
+ * The measurement that decides whether a region needs an inset. A country is
+ * too small to aim at when it is drawn narrower than `NARROW_PX` with the map
+ * `MEASURE_PX` wide: the 288px a 320px screen leaves inside the page's
+ * padding. Every dot is, since a dot is 20 units across. Taken on the world
+ * map over each inset's box, and on the inset itself at the same width, to say
+ * how many it still leaves too small.
+ *
+ * The counts are printed in the countries outline's header each build. On
+ * 2026-11-01 they were 43 in Europe, which had an inset, and 17 in the
+ * Caribbean, which did not yet, and the decision taken on them was that the
+ * Caribbean needed one too. 17 is under half of Europe's count, but the box is
+ * a third of Europe's area on the map (5,760 square units to 17,300), so its
+ * narrow countries are packed a fifth more densely than Europe's; and what
+ * the Caribbean's 17 cost was the cost Europe's did, seven dots overlapping
+ * and Trinidad and Tobago hidden under three of them, which the panel's note
+ * had to name. The width is fixed at 320px, so giving the map more room on a
+ * desktop changes no count.
  */
 const MEASURE_PX = 288;
 const NARROW_PX = 8;
+
+/** A box of degrees as the headers write it: "25°W–45°E, 34°N–72°N". */
+const degrees = ({ west, east, south, north }) =>
+  `${Math.abs(west)}°${west < 0 ? 'W' : 'E'}–${Math.abs(east)}°${east < 0 ? 'W' : 'E'}, ` +
+  `${south}°N–${north}°N`;
 
 /** `names` as prose: "A", "A and B", "A, B and C". */
 function listed(names) {
@@ -728,6 +763,70 @@ const fitsInDot = (d) => widthOf(d) < 2 * DOT_RADIUS && heightOf(d) < 2 * DOT_RA
 /** Whether a projected point lies inside a rectangle of `projectedBounds`. */
 const within = ([x, y], box) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
 
+/**
+ * One of `INSETS` drawn: its box on the world map, `scale` times larger, from
+ * the 1:50m file, since at this scale the 1:110m borders would show their
+ * corners, and it has no Andorra or Malta to draw. Every ring is cut to the
+ * frame, so Russia is drawn as far as Europe's box and no further; a country
+ * with nothing left inside it is not in the inset, and one too small for a
+ * shape there, or small enough to fit inside a dot, is a dot.
+ */
+function buildInset({ region, scale }, { project, roughening, wanted, labels, polygons50m }) {
+  const box = projectedBounds(project, region);
+  const frame = {
+    left: 0,
+    top: 0,
+    right: (box.right - box.left) * scale,
+    bottom: (box.bottom - box.top) * scale,
+  };
+  const insetProject = (point) => {
+    const [x, y] = project(point);
+    return [(x - box.left) * scale, (y - box.top) * scale];
+  };
+  const clipped = { ...roughening, clip: frame };
+  const shapes = new Map();
+  const centres = new Map();
+  const unkeyed = [];
+  const unkeyedNames = [];
+  labels.forEach((row, i) => {
+    const id = row.ISO_A2_EH;
+    const d = pathData(polygons50m[i], insetProject, clipped);
+    if (!wanted.has(id)) {
+      if (d) {
+        unkeyed.push(d);
+        unkeyedNames.push(row.ADMIN);
+      }
+      return;
+    }
+    if (shapes.has(id) || centres.has(id)) {
+      throw new Error(`${NATURAL_EARTH_50M} has two shapes for ${id}`);
+    }
+    const label = insetProject([Number(row.LABEL_X), Number(row.LABEL_Y)]);
+    if (d && !fitsInDot(d)) shapes.set(id, d);
+    else if (within(label, frame)) centres.set(id, label);
+  });
+  // A dot is moved in from the frame's edge until it is whole, so the frame
+  // never cuts a target in half: Lebanon's label point sits on Europe's edge.
+  const clamp = (value, high) => Math.min(Math.max(value, DOT_RADIUS), high - DOT_RADIUS);
+  const dots = COUNTRIES.filter((country) => centres.has(country.id)).map((country) => {
+    const [cx, cy] = centres.get(country.id).map(Math.round);
+    const [x, y] = [clamp(cx, frame.right), clamp(cy, frame.bottom)];
+    shapes.set(country.id, dotData([x, y], DOT_RADIUS));
+    return { id: country.id, x, y };
+  });
+  return {
+    box,
+    frame,
+    shapes,
+    dotted: new Set(centres.keys()),
+    dots,
+    costs: dotCosts(dots, shapes),
+    unkeyed: unkeyed.join(''),
+    unkeyedNames,
+    sphere: sphereOf(insetProject, frame),
+  };
+}
+
 async function buildCountries() {
   const { polygons, rows, version } = await fetchNaturalEarth();
   const project = equalEarthWorld();
@@ -782,63 +881,35 @@ async function buildCountries() {
   const sphere = sphereOf(project);
   const viewBox = viewBoxOf([...shapes.values(), unkeyed, sphere], MARGIN);
 
-  // Europe again, `INSET_SCALE` times larger, from the 1:50m file: at this
-  // scale the 1:110m borders would show their corners, and it has no Andorra
-  // or Malta to draw. Every ring is cut to the frame, so Russia is drawn as
-  // far as the box and no further; a country with nothing left inside it is
-  // not in the inset, and one too small for a shape there is a dot, as above.
-  const box = projectedBounds(project, EUROPE);
-  const frame = {
-    left: 0,
-    top: 0,
-    right: (box.right - box.left) * INSET_SCALE,
-    bottom: (box.bottom - box.top) * INSET_SCALE,
-  };
-  const insetProject = (point) => {
-    const [x, y] = project(point);
-    return [(x - box.left) * INSET_SCALE, (y - box.top) * INSET_SCALE];
-  };
-  const insetRoughening = { ...roughening, clip: frame };
+  // Each inset, drawn by one code path. A later inset's scale is held to the
+  // rule `INSETS` states, so a region added with a guessed scale stops here.
   const polygons50m = readPolygons(file50m('.shp'));
-  const insetShapes = new Map();
-  const insetCentres = new Map();
-  const insetUnkeyed = [];
-  const insetUnkeyedNames = [];
-  labels.forEach((row, i) => {
-    const id = row.ISO_A2_EH;
-    const d = pathData(polygons50m[i], insetProject, insetRoughening);
-    if (!wanted.has(id)) {
-      if (d) {
-        insetUnkeyed.push(d);
-        insetUnkeyedNames.push(row.ADMIN);
-      }
-      return;
+  const context = { project, roughening, wanted, labels, polygons50m };
+  const insets = INSETS.map((spec) => ({ ...spec, ...buildInset(spec, context) }));
+  const [first] = insets;
+  for (const inset of insets.slice(1)) {
+    const nearest = Math.round(first.frame.right / (inset.box.right - inset.box.left));
+    if (inset.scale !== nearest) {
+      throw new Error(
+        `${inset.name}'s inset is at ${inset.scale} times the world map's scale; ` +
+          `${nearest} brings its frame nearest ${first.name}'s width`
+      );
     }
-    if (insetShapes.has(id) || insetCentres.has(id)) {
-      throw new Error(`${NATURAL_EARTH_50M} has two shapes for ${id}`);
-    }
-    const label = insetProject([Number(row.LABEL_X), Number(row.LABEL_Y)]);
-    if (d && !fitsInDot(d)) insetShapes.set(id, d);
-    else if (within(label, frame)) insetCentres.set(id, label);
-  });
-  // A dot is moved in from the frame's edge until it is whole, so the frame
-  // never cuts a target in half: Lebanon's label point sits on the edge.
-  const clamp = (value, high) => Math.min(Math.max(value, DOT_RADIUS), high - DOT_RADIUS);
-  const insetDots = COUNTRIES.filter((country) => insetCentres.has(country.id)).map((country) => {
-    const [cx, cy] = insetCentres.get(country.id).map(Math.round);
-    const [x, y] = [clamp(cx, frame.right), clamp(cy, frame.bottom)];
-    insetShapes.set(country.id, dotData([x, y], DOT_RADIUS));
-    return { id: country.id, x, y };
-  });
+  }
 
   // What the dots cost on each map. A country the world map crowds or hides
-  // is left out of its note when the inset draws it clear of every dot,
-  // because there it can be seen and aimed at; the inset's own costs, if it
+  // is left out of its note when an inset draws it clear of every dot,
+  // because there it can be seen and aimed at; an inset's own costs, if it
   // has any, are said too.
   const world = dotCosts(dots, shapes);
-  const inset = dotCosts(insetDots, insetShapes);
-  const troubled = new Set([...inset.crowded.flat(), ...inset.covered.map(({ id }) => id)]);
-  const apart = (id) => insetShapes.has(id) && !troubled.has(id);
+  const apartIn = (inset) => {
+    const troubled = new Set([
+      ...inset.costs.crowded.flat(),
+      ...inset.costs.covered.map(({ id }) => id),
+    ]);
+    return (id) => inset.shapes.has(id) && !troubled.has(id);
+  };
+  const apart = (id) => insets.some((inset) => apartIn(inset)(id));
   const crowdedText = (groups) =>
     groups.map((group) => listed(group.map((id) => nameOf.get(id)))).join('; ');
   const coveredText = (list) =>
@@ -847,26 +918,33 @@ async function buildCountries() {
       .join('; ');
   const worldCrowded = world.crowded.filter((group) => !group.every(apart));
   const worldCovered = world.covered.filter(({ id }) => !apart(id));
-  const enlarged = new Set(
-    [...world.crowded.flat(), ...world.covered.map(({ id }) => id)].filter(apart)
-  );
+  const troubledOnWorld = [...world.crowded.flat(), ...world.covered.map(({ id }) => id)];
 
+  const insetNotes = insets.flatMap((inset) => {
+    const enlarged = new Set(troubledOnWorld.filter(apartIn(inset)));
+    const { crowded, covered } = inset.costs;
+    return [
+      enlarged.size > 0
+        ? `${inset.title} is drawn again below at ${inset.scale} times the scale, where the ` +
+          `${enlarged.size} of its countries the dots crowd or hide here stand clear of each other.`
+        : '',
+      crowded.length > 0
+        ? `Below, in ${inset.name}, dots overlap for ${crowdedText(crowded)}.`
+        : '',
+      covered.length > 0 ? `Below, in ${inset.name}, dots hide ${coveredText(covered)}.` : '',
+    ];
+  });
   const note = [
     `${dots.length} countries too small to draw at this scale are dots, all one size whatever the country's.`,
     worldCrowded.length > 0 ? `Dots overlap for ${crowdedText(worldCrowded)}.` : '',
     worldCovered.length > 0 ? `Dots hide a whole country: ${coveredText(worldCovered)}.` : '',
-    enlarged.size > 0
-      ? `Europe is drawn again below at ${INSET_SCALE} times the scale, where the ${enlarged.size} ` +
-        'of its countries the dots crowd or hide here stand clear of each other.'
-      : '',
-    inset.crowded.length > 0 ? `Below, dots overlap for ${crowdedText(inset.crowded)}.` : '',
-    inset.covered.length > 0 ? `Below, dots hide ${coveredText(inset.covered)}.` : '',
+    ...insetNotes,
     'Every country can be ticked in the list.',
   ]
     .filter(Boolean)
     .join(' ');
 
-  // The Caribbean measurement: see `CARIBBEAN`.
+  // The measurement: see `MEASURE_PX`.
   const pxPerUnit = MEASURE_PX / Number(viewBox.split(' ')[2]);
   const labelOf = new Map(
     labels.map((row) => [row.ISO_A2_EH, [Number(row.LABEL_X), Number(row.LABEL_Y)]])
@@ -878,17 +956,18 @@ async function buildCountries() {
   const narrow = COUNTRIES.filter(
     (country) => widthOf(shapes.get(country.id)) * pxPerUnit < NARROW_PX
   );
-  const narrowIn = (region) => narrow.filter((country) => inBox(country.id, region));
-  const [narrowEurope, narrowCaribbean] = [narrowIn(EUROPE), narrowIn(CARIBBEAN)];
-  const insetPxPerUnit = MEASURE_PX / (frame.right + 2 * MARGIN);
-  const stillNarrow = narrowEurope.filter(
-    (country) =>
-      !insetShapes.has(country.id) ||
-      widthOf(insetShapes.get(country.id)) * insetPxPerUnit < NARROW_PX
-  );
-  const degrees = ({ west, east, south, north }) =>
-    `${Math.abs(west)}°${west < 0 ? 'W' : 'E'}–${Math.abs(east)}°${east < 0 ? 'W' : 'E'}, ` +
-    `${south}°N–${north}°N`;
+  // Per inset: the countries in its region the world map draws too narrow,
+  // and of those, the ones its own drawing still does at the same width.
+  const measured = insets.map((inset) => {
+    const pxPerInsetUnit = MEASURE_PX / (inset.frame.right + 2 * MARGIN);
+    const narrowHere = narrow.filter((country) => inBox(country.id, inset.region));
+    const stillNarrow = narrowHere.filter(
+      (country) =>
+        !inset.shapes.has(country.id) ||
+        widthOf(inset.shapes.get(country.id)) * pxPerInsetUnit < NARROW_PX
+    );
+    return { ...inset, narrow: narrowHere, stillNarrow };
+  });
 
   await writeOutline({
     file: 'countries.outline.ts',
@@ -917,9 +996,14 @@ drawn on the globe's edge, \`sphere\`, as the continents are; simplified to ${TO
 rounded to whole units, islands under ${COUNTRY_MIN_AREA} square unit dropped.
 
 Too small to aim at, measured: drawn narrower than ${NARROW_PX}px with this map ${MEASURE_PX}px wide,
-the most a 320px screen leaves it, are ${narrow.length} countries. ${narrowEurope.length} are in Europe
-(${degrees(EUROPE)}), which \`europe.outline.ts\` enlarges. ${narrowCaribbean.length} are in the
-Caribbean (${degrees(CARIBBEAN)}), which nothing enlarges yet: ${named(narrowCaribbean)}.`,
+the most a 320px screen leaves it, are ${narrow.length} countries. ${measured.length} regions are enlarged, each in an
+inset of its own under this map: ${measured
+      .map(
+        (inset) =>
+          `${inset.name} (${degrees(inset.region)}), where ${inset.narrow.length} of them are, which \`${inset.file}\` ` +
+          `draws at ${inset.scale} times this scale`
+      )
+      .join('; ')}.`,
     typeName: 'CountryId',
     constName: 'COUNTRIES_OUTLINE',
     label: 'Outline map of the countries of the world',
@@ -932,10 +1016,19 @@ Caribbean (${degrees(CARIBBEAN)}), which nothing enlarges yet: ${named(narrowCar
     sphere,
   });
 
+  for (const inset of measured) {
+    await writeInset(inset, version50m);
+  }
+}
+
+/** One inset's outline module, from what `buildInset` and the measurement made of it. */
+async function writeInset(inset, version50m) {
+  const { box, frame, shapes, dots, narrow, stillNarrow } = inset;
+  const named = (list) => list.map((country) => country.id).join(', ');
   await writeOutline({
-    file: 'europe.outline.ts',
+    file: inset.file,
     header: `
-Europe, enlarged from the countries outline. GENERATED by \`npm run outline:build\`
+${inset.title}, enlarged from the countries outline. GENERATED by \`npm run outline:build\`
 (\`scripts/build-outline.mjs\`, the \`countries\` target, since the world map's
 note depends on it) — edit the script, not this file.
 
@@ -945,31 +1038,31 @@ ${NATURAL_EARTH_50M_SOURCE} Fetched ${today()}. The finer of the two Natural
 Earth scales, because this map is drawn larger; joined on \`ISO_A2_EH\` as the
 world map is, so a shape here is the same place as the shape of the same id there.
 
-The box ${degrees(EUROPE)} in the same Equal Earth projection as the world map,
-at ${INSET_SCALE} times its scale: ${frame.right} × ${frame.bottom} units here, and the rectangle
+The box ${degrees(inset.region)} in the same Equal Earth projection as the world map,
+at ${inset.scale} times its scale: ${frame.right} × ${frame.bottom} units here, and the rectangle
 \`enlarges\`, ${box.right - box.left} × ${box.bottom - box.top} units at ${box.left}, ${box.top}, on the world map. Every ring is
 cut to the frame, so the countries on its edges are drawn only as far as it.
 Simplified to ${TOLERANCE} units, rounded to whole units, islands under ${COUNTRY_MIN_AREA} square unit dropped.
 
-Of the ${narrowEurope.length} countries in the box that the world map draws narrower than ${NARROW_PX}px
+Of the ${narrow.length} countries in the box that the world map draws narrower than ${NARROW_PX}px
 when ${MEASURE_PX}px wide, ${stillNarrow.length} still are here at the same width: ${named(stillNarrow) || 'none'}.
 
-${insetShapes.size} countries are drawn, ${insetDots.length} of them as dots of radius ${DOT_RADIUS} units at Natural
+${shapes.size} countries are drawn, ${dots.length} of them as dots of radius ${DOT_RADIUS} units at Natural
 Earth's label point, because even here they are smaller than a triangle or
 would fit inside a dot, which is the smaller target:
-${insetDots.map((dot) => dot.id).join(', ') || 'none'}. Land inside the frame that is none of the
-${COUNTRIES.length} is drawn unkeyed: ${insetUnkeyedNames.join(', ') || 'none'}. The globe's edge,
+${dots.map((dot) => dot.id).join(', ') || 'none'}. Land inside the frame that is none of the
+${COUNTRIES.length} is drawn unkeyed: ${inset.unkeyedNames.join(', ') || 'none'}. The globe's edge,
 \`sphere\`, is cut to the frame as everything else is, and inside the globe
 that leaves the frame itself: the sea the countries sit on, as on the world map.`,
     typeName: 'CountryId',
-    constName: 'EUROPE_OUTLINE',
-    label: 'Outline map of Europe, enlarged',
+    constName: inset.constName,
+    label: `Outline map of ${inset.name}, enlarged`,
     list: COUNTRIES,
-    shapes: insetShapes,
-    onTop: new Set(insetCentres.keys()),
-    unkeyed: insetUnkeyed.join(''),
+    shapes,
+    onTop: inset.dotted,
+    unkeyed: inset.unkeyed,
     viewBox: `${-MARGIN} ${-MARGIN} ${frame.right + 2 * MARGIN} ${frame.bottom + 2 * MARGIN}`,
-    sphere: sphereOf(insetProject, frame),
+    sphere: inset.sphere,
     enlarges: {
       x: box.left,
       y: box.top,

@@ -7,7 +7,7 @@
  * (`ne_50m_admin_0_countries`), which Natural Earth places in the public
  * domain.
  * https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip
- * Fetched 2026-11-02. The finer of the two Natural Earth scales, because this
+ * Fetched 2026-11-04. The finer of the two Natural Earth scales, because this
  * map is drawn larger; joined on `ISO_A2_EH` as the world map is, so a shape
  * here is the same place as the shape of the same id there.
  *

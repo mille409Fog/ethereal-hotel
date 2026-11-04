@@ -13,7 +13,8 @@ import type { IOutline, IOutlineRect } from './outline';
 /**
  * One quest outline: the places of `list`, each filled by the guest's marks
  * and lit by the checklist row pointing at it. A panel can draw more than one
- * of a list, the countries as the world and again as Europe enlarged, and
+ * of a list, the countries as the world and again as Europe and the
+ * Caribbean enlarged, and
  * each reads the same store and the same highlight, so a mark or a row shows
  * on every drawing of its place at once. Its own component because the page
  * template sits at the cyclomatic cap, which a second outline would cross.
@@ -38,8 +39,8 @@ export class QuestOutline {
   /** The id a checklist row is lighting in this list, if any. */
   public readonly highlighted = input<string | null>(null);
 
-  /** An inset of this outline, whose rectangle is marked on it. */
-  public readonly inset = input<IOutline | null>(null);
+  /** The insets of this outline, each of whose rectangles is marked on it. */
+  public readonly insets = input<readonly IOutline[]>([]);
 
   /**
    * A click anywhere on the map, handed up as the bonus map's is, so the
@@ -65,7 +66,7 @@ export class QuestOutline {
   /**
    * The line under the outline: the place being pointed at and its state, or
    * nothing. A row can light a place this drawing does not hold, a country
-   * outside Europe's inset or one too small to draw, and the caption under a
+   * outside an inset or one too small to draw, and the caption under a
    * map names only what is on it.
    */
   public readonly caption = computed((): string => {
@@ -79,13 +80,13 @@ export class QuestOutline {
 
   /**
    * The rectangles that tie an inset to its outline: on the outline, the part
-   * the inset enlarges; on the inset, its own frame. The same rectangle at two
+   * each inset enlarges; on an inset, its own frame. The same rectangle at two
    * scales, which is what lets the two read as one place.
    */
   public readonly frames = computed((): IOutlineRect[] => {
     const outline = this.outline();
-    const enlarged = this.inset()?.enlarges;
-    return [...(outline.enlarges ? [frameOf(outline)] : []), ...(enlarged ? [enlarged] : [])];
+    const enlarged = this.insets().flatMap((inset) => (inset.enlarges ? [inset.enlarges] : []));
+    return [...(outline.enlarges ? [frameOf(outline)] : []), ...enlarged];
   });
 
   /**

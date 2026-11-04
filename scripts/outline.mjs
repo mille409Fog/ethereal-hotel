@@ -95,7 +95,9 @@ export function readPolygons(shp) {
 /**
  * A dBASE table's rows, as objects keyed by field name, values trimmed. A
  * field is padded with spaces by the Census and with NULs by Natural Earth;
- * both are padding, so both go.
+ * both are padding, so both go. Values are UTF-8, as both publishers' `.cpg`
+ * says: read as Latin-1, Curaçao came out as "CuraÃ§ao" in a header. Field
+ * names stay Latin-1, which for their ASCII is the same thing.
  */
 export function readTable(dbf) {
   const rowCount = dbf.readUInt32LE(4);
@@ -115,7 +117,7 @@ export function readTable(dbf) {
     const row = {};
     for (const field of fields) {
       row[field.name] = dbf
-        .toString('latin1', at, at + field.length)
+        .toString('utf8', at, at + field.length)
         .replace(/\0/g, '')
         .trim();
       at += field.length;

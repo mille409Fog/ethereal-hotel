@@ -25,35 +25,6 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
 
-## `/wanderquest` maps
-
-One graphical item for the travel quests' maps. Its complaint: a place the guest has marked that
-they cannot see. The page's house rules bind it: Fern's tokens and one accent for controls, the quest palettes in `wanderquest.css` for
-places and never for controls, no glow, and no motion that does not show a change of state. Any
-colour a change introduces is measured, not picked by eye; `wanderquest.spec.ts` recomputes the
-palette contrasts from the CSS, so a new pairing goes into that spec too. `e2e/a11y.spec.ts` runs
-axe over `/wanderquest` and has to stay green.
-
-Two things any item here will trip over. The `*.outline.ts` files are generated: edit
-`scripts/build-outline.mjs` and re-run `npm run outline:build`, which needs the network and runs by
-hand, and keep each outline under the size ceiling `outline.spec.ts` holds it to. And any change to
-what the page draws fails `e2e/project-frames.spec.ts` until `npm run frames:capture` is re-run;
-that is the gate working.
-
-### 1. The Caribbean gets an inset, as Europe did
-
-The measurement Europe's inset left in `build-outline.mjs` decided it: at 320px the world map
-draws 17 Caribbean countries narrower than 8px, against Europe's 43, in a third of the area, and
-the panel's note still names seven overlapping dots there and Trinidad and Tobago hidden under
-three of them. **Effort:** 2–3 hours.
-
-**DoD:** a second inset under Europe's, the `CARIBBEAN` box at a whole multiple of the world map's
-scale, built by the same code path rather than a copy of it: `EUROPE` and `CARIBBEAN` become a list
-of insets, each writing its own outline and its own `enlarges` rectangle on the world map. The
-note stops naming the Caribbean for the reason it stopped naming Europe, and `outline.spec.ts`
-holds the same claims for both. The header's measurement says which insets exist instead of
-"nothing enlarges yet".
-
 ## Deliberately not doing
 
 Recorded so the next instance does not helpfully add them:

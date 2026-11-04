@@ -4,6 +4,7 @@ import { Deficiency, simulateLinear } from '../aesthetic/cvd';
 import { contrastRatio } from '../aesthetic/winnow';
 import { BONUS_OUTLINE } from './bonus.outline';
 import { COUNTRIES_OUTLINE } from './countries.outline';
+import { CARIBBEAN_OUTLINE } from './caribbean.outline';
 import { EUROPE_OUTLINE } from './europe.outline';
 import { GUEST_PROGRESS_KEY, GUEST_STORAGE, GuestProgressStore } from './guest-progress';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
@@ -507,9 +508,9 @@ describe('Wanderquest', () => {
   });
 
   it('draws the land that is none of the countries apart, and keys it as not counted', async () => {
-    // The world and its Europe inset, each with the land of its own frame.
+    // The world and its two insets, each with the land of its own frame.
     const unkeyed = Array.from(host.querySelectorAll('path.quest-outline-unkeyed'));
-    expect(unkeyed.length, 'only the countries maps have land outside their count').toBe(2);
+    expect(unkeyed.length, 'only the countries maps have land outside their count').toBe(3);
     for (const land of unkeyed) {
       expect(land.closest('section')?.id).toBe('quest-panel-countries');
       expect(land.hasAttribute('data-id')).toBe(false);
@@ -607,13 +608,14 @@ describe('Wanderquest', () => {
     /** The quests whose outline sits on a globe: every Equal Earth one, and not the states. */
     const global = QUESTS.filter((quest) => quest.outline?.sphere !== undefined);
 
-    it('lies under every place on the world maps and the inset, and under none on the states', () => {
+    it('lies under every place on the world maps and the insets, and under none on the states', () => {
       expect(global.map((quest) => quest.id)).toEqual([
         QUEST_STATE.CONTINENTS,
         QUEST_STATE.COUNTRIES,
       ]);
       expect(seas().map((sea) => sea.closest('section')?.id)).toEqual([
         'quest-panel-continents',
+        'quest-panel-countries',
         'quest-panel-countries',
         'quest-panel-countries',
       ]);
@@ -1483,32 +1485,50 @@ describe('Wanderquest', () => {
       expect(COUNTRIES.filter((place) => !drawn.has(place.id))).toEqual([]);
     });
 
-    describe('and Europe enlarged', () => {
-      const inset = (): SVGSVGElement | null =>
-        countries().querySelector<SVGSVGElement>('svg.quest-outline-inset');
+    describe('and Europe and the Caribbean enlarged', () => {
+      const insets = (): SVGSVGElement[] =>
+        Array.from(countries().querySelectorAll<SVGSVGElement>('svg.quest-outline-inset'));
+      const inset = (): SVGSVGElement | null => insets()[0] ?? null;
       const world = (): SVGSVGElement | null =>
         countries().querySelector<SVGSVGElement>('svg.quest-outline:not(.quest-outline-inset)');
       const inEurope = (id: string): Element | null =>
         inset()?.querySelector(`path[data-id="${id}"]`) ?? null;
       const row = (name: string): Element | null => checkbox(name)?.closest('li') ?? null;
 
-      it('draws it on the countries panel only, under the world, as one named image', () => {
-        const insets = Array.from(host.querySelectorAll('svg.quest-outline-inset'));
-        expect(insets.map((svg) => svg.closest('section')?.id)).toEqual(['quest-panel-countries']);
+      it('draws them on the countries panel only, under the world, in order, each one named image', () => {
+        const all = Array.from(host.querySelectorAll('svg.quest-outline-inset'));
+        expect(all.map((svg) => svg.closest('section')?.id)).toEqual([
+          'quest-panel-countries',
+          'quest-panel-countries',
+        ]);
 
-        const svg = inset();
-        expect(svg?.getAttribute('role')).toBe('img');
-        expect(svg?.getAttribute('aria-label')).toBe(EUROPE_OUTLINE.label);
-        expect(svg?.querySelectorAll('[tabindex], a, [focusable="true"]').length).toBe(0);
-        expect(
-          Array.from(svg?.querySelectorAll('path[data-id]') ?? []).map((path) =>
-            path.getAttribute('data-id')
-          )
-        ).toEqual(EUROPE_OUTLINE.shapes.map((shape) => shape.id));
-        const map = world();
-        expect(
-          map && svg && map.compareDocumentPosition(svg) & Node.DOCUMENT_POSITION_FOLLOWING
-        ).toBeTruthy();
+        const outlines = [EUROPE_OUTLINE, CARIBBEAN_OUTLINE];
+        let previous = world();
+        insets().forEach((svg, i) => {
+          const outline = outlines[i];
+          expect(svg.getAttribute('role')).toBe('img');
+          expect(svg.getAttribute('aria-label')).toBe(outline.label);
+          expect(svg.querySelectorAll('[tabindex], a, [focusable="true"]').length).toBe(0);
+          expect(
+            Array.from(svg.querySelectorAll('path[data-id]')).map((path) =>
+              path.getAttribute('data-id')
+            )
+          ).toEqual(outline.shapes.map((shape) => shape.id));
+          expect(
+            previous && previous.compareDocumentPosition(svg) & Node.DOCUMENT_POSITION_FOLLOWING,
+            outline.label
+          ).toBeTruthy();
+          previous = svg;
+        });
+      });
+
+      it('toggles Trinidad and Tobago from the Caribbean, where no dot hides it', async () => {
+        insets()[1]
+          ?.querySelector('path[data-id="TT"]')
+          ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await fixture.whenStable();
+        expect(checkbox('Trinidad and Tobago')?.checked).toBe(true);
+        expect(path('TT')?.classList.contains('quest-visited')).toBe(true);
       });
 
       it('toggles a place from a click on the inset, and fills it on both maps', async () => {
@@ -1536,26 +1556,29 @@ describe('Wanderquest', () => {
         expect([lit(world()), lit(inset())]).toEqual([['BE'], ['BE']]);
       });
 
-      it('marks the part it enlarges on the world map, and frames itself the same', () => {
-        const rect = (svg: SVGSVGElement | null): number[] => {
-          const frames = Array.from(svg?.querySelectorAll('rect.quest-outline-frame') ?? []);
-          expect(frames.length).toBe(1);
-          return ['x', 'y', 'width', 'height'].map((key) => Number(frames[0].getAttribute(key)));
-        };
-        const { x, y, width, height } = EUROPE_OUTLINE.enlarges ?? {
-          x: 0,
-          y: 0,
-          width: 0,
-          height: 0,
-        };
-        expect(rect(world())).toEqual([x, y, width, height]);
-        const [, , frameWidth, frameHeight] = rect(inset());
-        expect(frameWidth / width).toBe(frameHeight / height);
+      it('marks the part each enlarges on the world map, and frames each the same', () => {
+        const rects = (svg: SVGSVGElement | null): number[][] =>
+          Array.from(svg?.querySelectorAll('rect.quest-outline-frame') ?? []).map((frame) =>
+            ['x', 'y', 'width', 'height'].map((key) => Number(frame.getAttribute(key)))
+          );
+        const outlines = [EUROPE_OUTLINE, CARIBBEAN_OUTLINE];
+        const enlarged = outlines.map(({ enlarges }) => {
+          const { x, y, width, height } = enlarges ?? { x: 0, y: 0, width: 0, height: 0 };
+          return [x, y, width, height];
+        });
+        expect(rects(world())).toEqual(enlarged);
+        insets().forEach((svg, i) => {
+          const own = rects(svg);
+          expect(own.length).toBe(1);
+          const [, , frameWidth, frameHeight] = own[0];
+          const [, , width, height] = enlarged[i];
+          expect(frameWidth / width, outlines[i].label).toBe(frameHeight / height);
+        });
         // The frame is interface: it answers no click and is no place.
         for (const frame of countries().querySelectorAll('rect.quest-outline-frame')) {
           expect(frame.hasAttribute('data-id')).toBe(false);
         }
-        expect(host.querySelectorAll('rect.quest-outline-frame').length).toBe(2);
+        expect(host.querySelectorAll('rect.quest-outline-frame').length).toBe(4);
       });
     });
 

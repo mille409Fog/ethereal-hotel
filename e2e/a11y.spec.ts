@@ -293,8 +293,9 @@ test.describe('wanderquest outlines', () => {
       ['States', 'Outline map of the fifty states', 'CA'],
       ['Continents', 'Outline map of the seven continents', 'AS'],
       ['Countries', 'Outline map of the countries of the world', 'BR'],
-      // Europe's inset: a second image on the same panel, with its own name.
+      // The insets: more images on the same panel, each with its own name.
       ['Countries', 'Outline map of Europe, enlarged', 'BE'],
+      ['Countries', 'Outline map of the Caribbean, enlarged', 'TT'],
     ] as const;
 
     for (const [tab, label, place] of maps) {
