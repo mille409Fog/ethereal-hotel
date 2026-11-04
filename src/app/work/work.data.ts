@@ -59,6 +59,16 @@ export interface ICaseStudy {
 
   /** The result, ending on a number that discloses nothing. */
   readonly outcome: string;
+
+  /**
+   * The one sentence the home page's NDA card prints where a screenshot would
+   * be. It is a quotation, not a summary: `work.data.spec.ts` fails unless it
+   * appears word for word in `constraint` or `decision`, so the card can only
+   * say what this page already says, and cannot drift from it. A different
+   * line per study, so three cards in a row read as three different problems
+   * rather than three missing images.
+   */
+  readonly plate: string;
 }
 
 /** One candidate approach, and why it was or wasn't taken. */
@@ -133,6 +143,9 @@ export const CASE_STUDIES: readonly ICaseStudy[] = [
     outcome:
       'The fix reached production through the normal cherry-pick path instead of waiting on the ' +
       'next scheduled cut — which would have left the bug live for as long as two weeks.',
+    plate:
+      'The pipeline was versioned with the branch that invoked it, not with the code it was ' +
+      'building.',
   },
   {
     slug: 'design-before-access',
@@ -187,6 +200,7 @@ export const CASE_STUDIES: readonly ICaseStudy[] = [
     outcome:
       'The first pass after whiteboarding came in above 96% coverage. Of roughly 1,400 scenarios ' +
       'exercised, 3 required reworking the architecture.',
+    plate: 'The scarce resource was never engineering effort. It was approved machine time.',
   },
   {
     slug: 'two-phase-schema',
@@ -240,5 +254,8 @@ export const CASE_STUDIES: readonly ICaseStudy[] = [
     outcome:
       'Transaction failures following a new rollout fell by more than half — still above the ' +
       'background failure rate, though within its margin of error.',
+    plate:
+      'A loud failure after a rollout is an incident with a timestamp; a false positive is a ' +
+      'number somebody trusts.',
   },
 ];

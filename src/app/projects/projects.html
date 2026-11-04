@@ -28,13 +28,13 @@
                 loading="lazy"
                 decoding="async"
               />
-            } @else {
-              <!-- No stand-in picture for work that cannot be shown. -->
+            } @else if (project.study; as study) {
+              <!-- No stand-in picture for work that cannot be shown. The line is
+                   quoted from the case study (work.data.ts, `plate`), so each
+                   card names its own problem and none can say more than /work. -->
               <div class="room-plate">
                 <span class="room-plate-label">Under NDA</span>
-                <span class="room-plate-line"
-                  >No screenshot. The case study shows the reasoning.</span
-                >
+                <span class="room-plate-line">{{ study.plate }}</span>
               </div>
             }
             <div class="room-info">
@@ -65,9 +65,10 @@
     </div>
 
     <p class="demo-note">
-      * The last three are under NDA. Rather than generalise the description until it says nothing,
-      each links to a <a href="/work">case study</a> covering the constraint, the options and the
-      tradeoff — none of which is confidential.
+      * The last three are under NDA, so there are no screenshots of them: the code and the screens
+      are the confidential part. Rather than generalise the description until it says nothing, each
+      card quotes its <a href="/work">case study</a>, which covers the constraint, the options and
+      the tradeoff — none of which is confidential.
     </p>
   </div>
 </section>

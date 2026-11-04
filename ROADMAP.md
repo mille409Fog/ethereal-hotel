@@ -33,23 +33,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Make the three NDA cards read as deliberate, not as missing images
-
-**Effort:** small. **Why:** the last row of project cards says "No screenshot. The case study shows
-the reasoning." three times in a row. One of those reads as an honest note; three in a row read as
-broken images.
-
-**DoD:**
-
-- Each NDA card's plate carries its own line: the constraint or the decision its case study is
-  about, taken from `/work` and stated just as plainly. It stays type on the ground, in the existing
-  `.room-plate` style. No illustrations or stock images, because the plate exists so as not to
-  pretend.
-- The text comes from the case-study data rather than a second copy in the card, so the two
-  cannot drift. If the data has no field for it, add one there.
-- The footnote under the grid still explains why there are no screenshots.
-
-### 2. Small consistency fixes: contact headings, booking errors, a stale header
+### 1. Small consistency fixes: contact headings, booking errors, a stale header
 
 **Effort:** small. Three unrelated fixes, batched because each is too small to stand on its own.
 
@@ -71,7 +55,7 @@ broken images.
   rules.
 - Frames re-captured if `/booking` changed.
 
-### 3. Rework the hero's composition
+### 2. Rework the hero's composition
 
 **Effort:** medium. **Why:** the first screen is left-aligned text with the right ~40% of a desktop
 viewport empty, and three buttons of equal weight. It is the weakest screen on the site and the one

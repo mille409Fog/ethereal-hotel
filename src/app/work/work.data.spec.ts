@@ -124,6 +124,32 @@ describe('case study data', () => {
     expect([0, 3]).toContain(CASE_STUDIES.length);
   });
 
+  /**
+   * The plate is what the home page's NDA card says in place of a screenshot.
+   * Requiring it to be a quotation is what keeps it from becoming a second,
+   * looser telling of the study: it cannot claim anything this page does not.
+   * Case is ignored only so a sentence that opens mid-paragraph ("But the
+   * pipeline…") can be quoted with a capital. Because it is a substring of
+   * prose already scanned above, the deny-list covers it for free.
+   */
+  it('quotes each plate word for word from the constraint or the decision', () => {
+    for (const study of CASE_STUDIES) {
+      const source = `${study.constraint} ${study.decision}`.toLowerCase();
+      expect(source, `"${study.slug}" plate is not a quotation`).toContain(
+        study.plate.toLowerCase()
+      );
+    }
+  });
+
+  it('gives every study a distinct plate short enough for the card', () => {
+    const plates = CASE_STUDIES.map((study) => study.plate);
+    expect(new Set(plates).size).toBe(plates.length);
+    for (const study of CASE_STUDIES) {
+      // Short enough to sit in a 16:10 box at card width without clipping.
+      expect(study.plate.length, `"${study.slug}" plate is too long`).toBeLessThanOrEqual(120);
+    }
+  });
+
   it('gives every study a unique slug', () => {
     const slugs = CASE_STUDIES.map((study) => study.slug);
     expect(new Set(slugs).size).toBe(slugs.length);

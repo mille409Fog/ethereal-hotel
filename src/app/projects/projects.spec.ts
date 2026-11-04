@@ -40,10 +40,31 @@ describe('Projects', () => {
     });
   });
 
-  it('shows the NDA cards a plate that says there is no screenshot', () => {
-    const plates = cards().filter((card) => card.querySelector('.room-plate'));
-    expect(plates).toHaveLength(PROJECTS.filter((project) => !project.frame).length);
-    plates.forEach((card) => expect(card.textContent).toContain('No screenshot'));
+  it('gives every card a frame or a case study, never both and never neither', () => {
+    for (const project of PROJECTS) {
+      expect(Boolean(project.frame) !== Boolean(project.study), project.name).toBe(true);
+    }
+  });
+
+  it('links each NDA card to the study it quotes', () => {
+    for (const project of PROJECTS) {
+      if (project.study) {
+        expect(project.link, project.name).toBe(`/work#${project.study.slug}`);
+      }
+    }
+  });
+
+  it('prints each NDA card its own line from its case study', () => {
+    const plated = PROJECTS.filter((project) => project.study);
+    const lines = cards()
+      .map((card) => card.querySelector('.room-plate-line')?.textContent?.trim())
+      .filter((line): line is string => line !== undefined);
+    expect(lines).toEqual(plated.map((project) => project.study?.plate));
+    expect(new Set(lines).size).toBe(lines.length);
+  });
+
+  it('still explains under the grid why there are no screenshots', () => {
+    expect(el.querySelector('.demo-note')?.textContent).toMatch(/no screenshots/i);
   });
 
   it('never describes a frame as a screenshot of something', () => {

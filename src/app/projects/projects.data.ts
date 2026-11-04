@@ -8,7 +8,11 @@
  * app. The spec runs outside Angular and cannot load a decorated class, so the
  * list has to live in a file with no Angular imports. One structure, then, and
  * the card cannot point at a picture the gate does not know about.
+ * (`work.data.ts` is imported for the same reason it can be: it has no
+ * Angular imports either.)
  */
+
+import { CASE_STUDIES, ICaseStudy } from '../work/work.data';
 
 /**
  * The size every frame is encoded at, in pixels.
@@ -47,6 +51,11 @@ export interface IProjectFrame {
  * frame spec fails otherwise. The NDA cards have none on purpose: there is no
  * screenshot to show, and a stock picture standing in for one would be the
  * single thing on the page that is not what it looks like.
+ *
+ * `study` is what they carry instead: the case study itself, not a copy of
+ * any of its words, so the plate prints `study.plate` and cannot drift from
+ * `/work`. `projects.spec.ts` holds that a card has a frame or a study, never
+ * both, and that its link points at the study it carries.
  */
 export interface IProject {
   readonly name: string;
@@ -56,6 +65,20 @@ export interface IProject {
   readonly link?: string;
   readonly linkLabel?: string;
   readonly frame?: IProjectFrame;
+  readonly study?: ICaseStudy;
+}
+
+/**
+ * The study with this slug. Throws rather than returning `undefined`, so a
+ * renamed slug fails every test that imports this file instead of rendering
+ * a card whose plate is blank.
+ */
+function caseStudy(slug: string): ICaseStudy {
+  const study = CASE_STUDIES.find((candidate) => candidate.slug === slug);
+  if (!study) {
+    throw new Error(`No case study "${slug}" in work.data.ts`);
+  }
+  return study;
 }
 
 export const PROJECTS: readonly IProject[] = [
@@ -146,6 +169,7 @@ export const PROJECTS: readonly IProject[] = [
     tech: ['Angular 22', 'GraphQL', 'TypeScript', 'Azure'],
     link: '/work#pipeline-fork',
     linkLabel: 'Read the Case Study',
+    study: caseStudy('pipeline-fork'),
   },
   {
     name: 'Financial Clearinghouse System',
@@ -154,6 +178,7 @@ export const PROJECTS: readonly IProject[] = [
     tech: ['Angular', 'C#', 'T-SQL', 'Blazor'],
     link: '/work#design-before-access',
     linkLabel: 'Read the Case Study',
+    study: caseStudy('design-before-access'),
   },
   {
     name: 'Device Telemetry Pipeline',
@@ -162,5 +187,6 @@ export const PROJECTS: readonly IProject[] = [
     tech: ['Java', 'Spring Boot', 'Kafka', 'Microservices'],
     link: '/work#two-phase-schema',
     linkLabel: 'Read the Case Study',
+    study: caseStudy('two-phase-schema'),
   },
 ];
