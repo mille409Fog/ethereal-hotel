@@ -33,23 +33,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Give the dashboard a layout with a hierarchy
-
-**Effort:** small. **Why:** six metric cards in an `auto-fit, minmax(240px, 1fr)` grid come out as
-four plus two at desktop width, with two empty slots at the end of the second row. Every card is
-also the same size, so nothing on the screen says what a hotelier reads first.
-
-**DoD:**
-
-- At 1280px, no row of metric cards has an empty slot.
-- Occupancy and room revenue today are visibly primary: larger cards or a larger value, in a row
-  above the other four. Implemented with `grid-template-areas` or explicit spans, not by
-  reordering the DOM. The reading order and the throttled `role="status"` digest stay as they are.
-- At 390px every card is still readable without horizontal scroll, and the e2e axe pass stays
-  clean.
-- Frames re-captured.
-
-### 2. Make the three NDA cards read as deliberate, not as missing images
+### 1. Make the three NDA cards read as deliberate, not as missing images
 
 **Effort:** small. **Why:** the last row of project cards says "No screenshot. The case study shows
 the reasoning." three times in a row. One of those reads as an honest note; three in a row read as
@@ -65,7 +49,7 @@ broken images.
   cannot drift. If the data has no field for it, add one there.
 - The footnote under the grid still explains why there are no screenshots.
 
-### 3. Small consistency fixes: contact headings, booking errors, a stale header
+### 2. Small consistency fixes: contact headings, booking errors, a stale header
 
 **Effort:** small. Three unrelated fixes, batched because each is too small to stand on its own.
 
@@ -87,7 +71,7 @@ broken images.
   rules.
 - Frames re-captured if `/booking` changed.
 
-### 4. Rework the hero's composition
+### 3. Rework the hero's composition
 
 **Effort:** medium. **Why:** the first screen is left-aligned text with the right ~40% of a desktop
 viewport empty, and three buttons of equal weight. It is the weakest screen on the site and the one

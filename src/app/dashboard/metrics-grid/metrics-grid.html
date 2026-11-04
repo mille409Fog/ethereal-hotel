@@ -8,8 +8,10 @@
   <!-- The cards used to open on an emoji each. The label already names the
        metric, so the icon only stood between the eye and the number; without
        it the number is the first thing a card says. -->
+  <!-- Source order is the order the cards were written in. The layout, with
+       occupancy and revenue on top, is placed in metrics-grid.css. -->
   <div class="metrics-grid">
-    <div class="metric-card">
+    <div class="metric-card metric-card--primary metric-card--occupancy">
       <div class="metric-value">{{ metrics().occupancy | number: '1.1-1' }}%</div>
       <div class="metric-label">Occupancy</div>
       <div class="metric-detail">
@@ -17,19 +19,19 @@
       </div>
     </div>
 
-    <div class="metric-card">
+    <div class="metric-card metric-card--adr">
       <div class="metric-value">{{ metrics().adr | currency: 'USD' : 'symbol' : '1.0-0' }}</div>
       <div class="metric-label">ADR</div>
       <div class="metric-detail">Average daily rate per occupied room</div>
     </div>
 
-    <div class="metric-card">
+    <div class="metric-card metric-card--revpar">
       <div class="metric-value">{{ metrics().revpar | currency: 'USD' : 'symbol' : '1.0-0' }}</div>
       <div class="metric-label">RevPAR</div>
       <div class="metric-detail">Revenue per available room</div>
     </div>
 
-    <div class="metric-card">
+    <div class="metric-card metric-card--primary metric-card--revenue">
       <div class="metric-value">
         {{ metrics().revenueToday | currency: 'USD' : 'symbol' : '1.0-0' }}
       </div>
@@ -37,7 +39,7 @@
       <div class="metric-detail">{{ metrics().guestsInHouse | number }} guests in house</div>
     </div>
 
-    <div class="metric-card">
+    <div class="metric-card metric-card--movement">
       <div class="metric-value">
         {{ metrics().arrivalsToday }} / {{ metrics().departuresToday }}
       </div>
@@ -57,7 +59,7 @@
       </div>
     </div>
 
-    <div class="metric-card">
+    <div class="metric-card metric-card--available">
       <div class="metric-value">{{ metrics().availableRooms }}</div>
       <div class="metric-label">Rooms Available</div>
       <div class="metric-detail">

@@ -135,6 +135,82 @@ test.describe('dashboard with the backend up', () => {
   });
 });
 
+/**
+ * The grid's rows, as the eye reads them: card labels grouped by their top
+ * edge, each row left to right, and whether that row reaches the grid's right
+ * edge. A row that falls short has an empty slot at the end of it.
+ */
+async function metricRows(page: Page): Promise<Array<{ labels: string[]; filled: boolean }>> {
+  return page.locator('.metrics-grid').evaluate((grid) => {
+    const right = grid.getBoundingClientRect().right;
+    const rows = new Map<number, Array<{ label: string; left: number; right: number }>>();
+    for (const card of Array.from(grid.querySelectorAll('.metric-card'))) {
+      const box = card.getBoundingClientRect();
+      const top = Math.round(box.top);
+      const label = card.querySelector('.metric-label')?.textContent?.trim() ?? '';
+      rows.set(top, [...(rows.get(top) ?? []), { label, left: box.left, right: box.right }]);
+    }
+    return [...rows.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, cards]) => {
+        cards.sort((a, b) => a.left - b.left);
+        return {
+          labels: cards.map((c) => c.label),
+          filled: Math.abs(cards[cards.length - 1].right - right) < 1,
+        };
+      });
+  });
+}
+
+test.describe('dashboard layout', () => {
+  test('puts occupancy and revenue above four supporting figures at 1280px', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await stubBackendUp(page);
+    await page.goto('/dashboard');
+    await expect(page.locator('.metric-card')).toHaveCount(METRIC_CARDS);
+
+    expect(await metricRows(page)).toEqual([
+      { labels: ['Occupancy', 'Room Revenue Today'], filled: true },
+      { labels: ['ADR', 'RevPAR', 'Arrivals / Departures', 'Rooms Available'], filled: true },
+    ]);
+
+    // "Visibly primary" as a number rather than a judgement.
+    const size = (label: string): Promise<number> =>
+      metricCard(page, label)
+        .locator('.metric-value')
+        .evaluate((el) => parseFloat(el.ownerDocument.defaultView!.getComputedStyle(el).fontSize));
+    expect(await size('Occupancy')).toBeGreaterThan(await size('ADR'));
+    expect(await size('Room Revenue Today')).toBeGreaterThan(await size('ADR'));
+  });
+
+  test('stacks every card readably at 390px with no horizontal scroll', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await stubBackendUp(page);
+    await page.goto('/dashboard');
+    await expect(page.locator('.metric-card')).toHaveCount(METRIC_CARDS);
+
+    const rows = await metricRows(page);
+    expect(rows.map((r) => r.labels)).toEqual([
+      ['Occupancy'],
+      ['Room Revenue Today'],
+      ['ADR'],
+      ['RevPAR'],
+      ['Arrivals / Departures'],
+      ['Rooms Available'],
+    ]);
+    expect(rows.every((r) => r.filled)).toBe(true);
+
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+    ).toBe(true);
+    // A value wider than its card is clipped by the card's overflow: hidden,
+    // which no page-level scroll check would notice.
+    for (const value of await page.locator('.metric-value').all()) {
+      expect(await value.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    }
+  });
+});
+
 test.describe('dashboard with the backend down', () => {
   test('falls back to the committed fixture and says so', async ({ page }) => {
     await stubBackendDown(page);

@@ -1,9 +1,47 @@
-/* Metrics Grid */
+/* Metrics Grid
+
+   Two tiers. Occupancy and room revenue today are what a duty manager reads
+   first, so they take the top row at double width; the four supporting
+   figures share the row beneath. An `auto-fit` grid used to lay six equal
+   cards out as four plus two, with two empty slots and no first thing to read.
+
+   The placement is done with named areas, not by reordering the DOM. Source
+   order stays the order the cards were written in, and the throttled
+   `role="status"` digest is unaffected because the grid is not a live region.
+   No card is focusable, so the visual order cannot disagree with a focus
+   order. `e2e/dashboard.spec.ts` checks the rows at 1280px and 390px. */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-areas:
+    'occupancy occupancy revenue revenue'
+    'adr revpar movement available';
   gap: 1.5rem;
   margin-bottom: 3rem;
+}
+
+.metric-card--occupancy {
+  grid-area: occupancy;
+}
+
+.metric-card--revenue {
+  grid-area: revenue;
+}
+
+.metric-card--adr {
+  grid-area: adr;
+}
+
+.metric-card--revpar {
+  grid-area: revpar;
+}
+
+.metric-card--movement {
+  grid-area: movement;
+}
+
+.metric-card--available {
+  grid-area: available;
 }
 
 .metric-card {
@@ -67,10 +105,44 @@
   color: var(--color-negative);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* The primary pair says so by size alone; the card chrome is unchanged. */
+.metric-card--primary {
+  padding: 2.25rem 1.75rem;
+}
+
+.metric-card--primary .metric-value {
+  font-size: 3.5rem;
+}
+
+/* Responsive. Below 1024px four supporting cards no longer fit a row, so the
+   grid becomes two columns: the primary pair still shares the top row, and
+   the four beneath fill two rows exactly. */
+@media (max-width: 1024px) {
   .metrics-grid {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'occupancy revenue'
+      'adr revpar'
+      'movement available';
+  }
+}
+
+/* A phone gets one column. At 390px two columns leave each card about 110px
+   of content width, narrower than a four-figure currency at 2.5rem. */
+@media (max-width: 600px) {
+  .metrics-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'occupancy'
+      'revenue'
+      'adr'
+      'revpar'
+      'movement'
+      'available';
     gap: 1rem;
+  }
+
+  .metric-card--primary .metric-value {
+    font-size: 3rem;
   }
 }
