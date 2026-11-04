@@ -2289,6 +2289,43 @@ check('the portfolio stays serene', () => {
   return problems;
 });
 
+// Emoji were the portfolio's icons, and they were the wrong material for it:
+// each OS draws them in its own full colour — the contact card's phone and pin
+// came out a pink close to --color-negative, so the error colour appeared as
+// decoration — and at its own width, so no two labels after them started at
+// the same x. The contact rows now draw Feather paths in currentColor and the
+// metric cards dropped the icon row. `Extended_Pictographic` is Unicode's own
+// definition of the emoji-capable range, and numeric entities are decoded
+// first because the contact card wrote its emoji as `&#128222;`.
+check('no template under src/app/ draws an emoji', () => {
+  const templates = readdirSync(path.join(repoRoot, 'src/app'), { recursive: true })
+    .map((file) => `src/app/${String(file).replace(/\\/g, '/')}`)
+    .filter((file) => file.endsWith('.html'));
+
+  const decode = (line) =>
+    line.replace(/&#(x[0-9a-f]+|\d+);/gi, (entity, code) => {
+      const point = code[0].toLowerCase() === 'x' ? parseInt(code.slice(1), 16) : Number(code);
+      return point <= 0x10ffff ? String.fromCodePoint(point) : entity;
+    });
+
+  const problems = [];
+  for (const file of templates) {
+    read(file)
+      .split('\n')
+      .forEach((line, index) => {
+        const emoji = decode(line).match(/\p{Extended_Pictographic}/u);
+        if (emoji) {
+          problems.push(
+            `${file}:${index + 1} draws ${emoji[0]} (U+${emoji[0].codePointAt(0).toString(16).toUpperCase()}). ` +
+              `Emoji arrive in each OS's colours and widths; use an inline SVG in currentColor, ` +
+              `as the contact card does, or no icon.`
+          );
+        }
+      });
+  }
+  return problems;
+});
+
 // The loops went with the Fern pass, but the hover motion of the same era
 // stayed: buttons that grew a white circle, project cards that rose 8px and
 // scaled, metric cards that lifted as if they were links, inputs that jumped on

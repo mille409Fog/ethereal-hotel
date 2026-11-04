@@ -5,9 +5,11 @@
        wall of numbers to anyone navigating by heading. -->
   <h2 id="metrics-heading" class="visually-hidden">Current hotel metrics</h2>
 
+  <!-- The cards used to open on an emoji each. The label already names the
+       metric, so the icon only stood between the eye and the number; without
+       it the number is the first thing a card says. -->
   <div class="metrics-grid">
     <div class="metric-card">
-      <div class="metric-icon" aria-hidden="true">🛏️</div>
       <div class="metric-value">{{ metrics().occupancy | number: '1.1-1' }}%</div>
       <div class="metric-label">Occupancy</div>
       <div class="metric-detail">
@@ -16,21 +18,18 @@
     </div>
 
     <div class="metric-card">
-      <div class="metric-icon" aria-hidden="true">💵</div>
       <div class="metric-value">{{ metrics().adr | currency: 'USD' : 'symbol' : '1.0-0' }}</div>
       <div class="metric-label">ADR</div>
       <div class="metric-detail">Average daily rate per occupied room</div>
     </div>
 
     <div class="metric-card">
-      <div class="metric-icon" aria-hidden="true">📈</div>
       <div class="metric-value">{{ metrics().revpar | currency: 'USD' : 'symbol' : '1.0-0' }}</div>
       <div class="metric-label">RevPAR</div>
       <div class="metric-detail">Revenue per available room</div>
     </div>
 
     <div class="metric-card">
-      <div class="metric-icon" aria-hidden="true">🧾</div>
       <div class="metric-value">
         {{ metrics().revenueToday | currency: 'USD' : 'symbol' : '1.0-0' }}
       </div>
@@ -39,7 +38,6 @@
     </div>
 
     <div class="metric-card">
-      <div class="metric-icon" aria-hidden="true">🛎️</div>
       <div class="metric-value">
         {{ metrics().arrivalsToday }} / {{ metrics().departuresToday }}
       </div>
@@ -60,7 +58,6 @@
     </div>
 
     <div class="metric-card">
-      <div class="metric-icon" aria-hidden="true">🗝️</div>
       <div class="metric-value">{{ metrics().availableRooms }}</div>
       <div class="metric-label">Rooms Available</div>
       <div class="metric-detail">

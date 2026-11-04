@@ -33,30 +33,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Replace emoji icons with one monochrome SVG set
-
-**Effort:** small–medium. **Why:** emoji look different on every OS and arrive in full colour. In
-the contact section of `resume.html`, the phone (`&#128222;`) and pin (`&#128205;`) are pink, close
-to `--color-negative`, so the page's error colour shows up as decoration. Emoji widths also vary,
-so the text after each icon starts at a different x (the email line is about 7px off). The six in
-`metrics-grid.html` (🛏️ 💵 📈 🧾 🛎️ 🗝️) and the ⚡ in `dashboard-footer.html` have the same problem
-on the dashboard.
-
-**DoD:**
-
-- No emoji in any template under `src/app/`. A `check:docs` rule enforces it, using the Unicode
-  pictographic ranges.
-- Contact rows use inline SVG icons drawn in `currentColor`, inheriting `--color-text-muted`,
-  `aria-hidden="true"`, fixed size, so every label starts at the same x. The icons are hand-written
-  `<path>` data or vendored from an open-licence set with the licence noted; no icon-font
-  dependency.
-- Metric cards either get icons from the same set or lose the icon row. Recommendation: lose it.
-  The label already names the metric, and without the icon the number becomes the first thing the
-  eye reaches.
-- `.contact-icon` is styled in both `app.css` and `resume.css`. Delete whichever one is dead.
-- Frames re-captured.
-
-### 2. Give the dashboard a layout with a hierarchy
+### 1. Give the dashboard a layout with a hierarchy
 
 **Effort:** small. **Why:** six metric cards in an `auto-fit, minmax(240px, 1fr)` grid come out as
 four plus two at desktop width, with two empty slots at the end of the second row. Every card is
@@ -72,7 +49,7 @@ also the same size, so nothing on the screen says what a hotelier reads first.
   clean.
 - Frames re-captured.
 
-### 3. Make the three NDA cards read as deliberate, not as missing images
+### 2. Make the three NDA cards read as deliberate, not as missing images
 
 **Effort:** small. **Why:** the last row of project cards says "No screenshot. The case study shows
 the reasoning." three times in a row. One of those reads as an honest note; three in a row read as
@@ -88,7 +65,7 @@ broken images.
   cannot drift. If the data has no field for it, add one there.
 - The footnote under the grid still explains why there are no screenshots.
 
-### 4. Small consistency fixes: contact headings, booking errors, a stale header
+### 3. Small consistency fixes: contact headings, booking errors, a stale header
 
 **Effort:** small. Three unrelated fixes, batched because each is too small to stand on its own.
 
@@ -110,7 +87,7 @@ broken images.
   rules.
 - Frames re-captured if `/booking` changed.
 
-### 5. Rework the hero's composition
+### 4. Rework the hero's composition
 
 **Effort:** medium. **Why:** the first screen is left-aligned text with the right ~40% of a desktop
 viewport empty, and three buttons of equal weight. It is the weakest screen on the site and the one

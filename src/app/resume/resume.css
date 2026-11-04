@@ -65,7 +65,11 @@
   gap: 0.75rem;
 }
 
+/* Flex with a fixed-size icon is what starts every label at the same x. */
 .contact-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   font-size: 0.95rem;
   color: var(--color-text-secondary);
   line-height: 1.5;
@@ -85,9 +89,18 @@
   color: var(--color-text);
 }
 
+/* Feather's stroke attributes live here rather than on each <svg>, so the five
+   icons cannot disagree about weight. */
 .contact-icon {
-  margin-right: 0.75rem;
-  font-size: 1.1rem;
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--color-text-muted);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .text-muted {

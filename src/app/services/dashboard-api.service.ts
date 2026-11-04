@@ -256,7 +256,7 @@ export class DashboardApiService {
     this.ws.onerror = (error) => {
       // Log only. A socket error is followed by a close event, which is what
       // drives reconnection — erroring the Subject here would kill the stream.
-      console.error('❌ WebSocket error:', error);
+      console.error('WebSocket error:', error);
     };
 
     this.ws.onclose = () => {

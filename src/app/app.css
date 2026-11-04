@@ -362,24 +362,6 @@ main > * + * {
   border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
-.contact-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-}
-
-.contact-list li {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-}
-
-.contact-icon {
-  margin-right: 0.5rem;
-}
-
 .text-muted {
   color: var(--color-text-muted);
   font-size: 0.875rem;
