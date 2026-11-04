@@ -78,7 +78,7 @@
 .contact-block a {
   color: var(--color-accent-text);
   text-decoration: none;
-  transition: all 0.3s ease;
+  transition: color 0.15s ease;
 }
 
 .contact-block a:hover {

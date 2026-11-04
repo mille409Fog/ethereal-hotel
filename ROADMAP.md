@@ -33,29 +33,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Remove the hover and focus motion the Fern pass left behind
-
-**Effort:** small. **Why:** the decorative loops were removed, but the hover motion from the same
-era was not. Every `.btn` grows a white circle from its centre on hover
-(`projects.css`, `.btn::before`). Project cards rise 8px and scale to 102%. Metric cards and demo
-cards rise even though neither is a link, which suggests a click that does nothing. Inputs on
-`/booking` jump up 1px on focus. Tech badges are labels and still move on hover. Almost every one
-of these uses `transition: all 0.3s`, which also animates properties nobody meant to animate.
-
-**DoD:**
-
-- No `transform` on `:hover` or `:focus` anywhere in `src/app/` (outside `/murmuration`'s canvas
-  and `/aesthetic`'s medallion, which shows state). The `.btn::before` ripple is deleted.
-- Hover on something you can click is a border-colour or background-colour change. Hover on
-  something you can't click (metric cards, demo cards, tech badges) is nothing.
-- No `transition: all` left in `src/app/`. Each transition names its properties and runs ≤150ms.
-- The stacked double black `box-shadow` on cards is replaced with the border alone, or with one
-  shadow at most. On `--color-bg` the shadow is close to invisible and only adds noise.
-- `check:docs` gains a check that fails on `transition: all` and on a `transform` inside a
-  `:hover`/`:focus` rule in `src/app/`, with the same exemptions, so this doesn't come back.
-- Frames re-captured.
-
-### 2. Replace emoji icons with one monochrome SVG set
+### 1. Replace emoji icons with one monochrome SVG set
 
 **Effort:** small–medium. **Why:** emoji look different on every OS and arrive in full colour. In
 the contact section of `resume.html`, the phone (`&#128222;`) and pin (`&#128205;`) are pink, close
@@ -78,7 +56,7 @@ on the dashboard.
 - `.contact-icon` is styled in both `app.css` and `resume.css`. Delete whichever one is dead.
 - Frames re-captured.
 
-### 3. Give the dashboard a layout with a hierarchy
+### 2. Give the dashboard a layout with a hierarchy
 
 **Effort:** small. **Why:** six metric cards in an `auto-fit, minmax(240px, 1fr)` grid come out as
 four plus two at desktop width, with two empty slots at the end of the second row. Every card is
@@ -94,7 +72,7 @@ also the same size, so nothing on the screen says what a hotelier reads first.
   clean.
 - Frames re-captured.
 
-### 4. Make the three NDA cards read as deliberate, not as missing images
+### 3. Make the three NDA cards read as deliberate, not as missing images
 
 **Effort:** small. **Why:** the last row of project cards says "No screenshot. The case study shows
 the reasoning." three times in a row. One of those reads as an honest note; three in a row read as
@@ -110,7 +88,7 @@ broken images.
   cannot drift. If the data has no field for it, add one there.
 - The footnote under the grid still explains why there are no screenshots.
 
-### 5. Small consistency fixes: contact headings, booking errors, a stale header
+### 4. Small consistency fixes: contact headings, booking errors, a stale header
 
 **Effort:** small. Three unrelated fixes, batched because each is too small to stand on its own.
 
@@ -132,7 +110,7 @@ broken images.
   rules.
 - Frames re-captured if `/booking` changed.
 
-### 6. Rework the hero's composition
+### 5. Rework the hero's composition
 
 **Effort:** medium. **Why:** the first screen is left-aligned text with the right ~40% of a desktop
 viewport empty, and three buttons of equal weight. It is the weakest screen on the site and the one

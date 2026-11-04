@@ -67,6 +67,7 @@
   /* The glow sits at z-index -1. Without its own stacking context here it
      would sink behind the page background and vanish. */
   isolation: isolate;
+  transition: background-color 0.15s ease;
 }
 
 .orb:focus-visible {
@@ -91,7 +92,7 @@
     color-mix(in srgb, var(--orb) 45%, black) 100%
   );
   box-shadow: 0 0 18px 2px color-mix(in srgb, var(--orb) 60%, transparent);
-  transition: transform 0.3s ease;
+  transition: transform 0.15s ease;
 }
 
 .orb-sphere::before {
@@ -109,9 +110,10 @@
   opacity: 0.8;
 }
 
-.orb:hover .orb-sphere,
-.orb:focus-visible .orb-sphere {
-  transform: scale(1.08);
+/* Hover tints the button's ground rather than growing the sphere; the sphere
+   only changes size for `aria-pressed`, which is state. */
+.orb:hover {
+  background-color: color-mix(in srgb, var(--color-text) 6%, transparent);
 }
 
 .orb[aria-pressed='true'] .orb-sphere {

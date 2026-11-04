@@ -2289,6 +2289,52 @@ check('the portfolio stays serene', () => {
   return problems;
 });
 
+// The loops went with the Fern pass, but the hover motion of the same era
+// stayed: buttons that grew a white circle, project cards that rose 8px and
+// scaled, metric cards that lifted as if they were links, inputs that jumped on
+// focus — nearly all on `transition: all 0.3s`, which animates whatever else
+// happens to change. Hover on something clickable is now a colour change, and
+// on anything else nothing. So no rule in `src/app/` whose selector names
+// `:hover` or `:focus` may move its element, and no transition may be `all`.
+// `/murmuration` is spectacle and exempt, as is `/aesthetic`'s medallion,
+// whose motion shows state; both are named here so the carve-out is visible.
+check('hover and focus do not move anything', () => {
+  const exempt = (file, selector) =>
+    file.startsWith('src/app/murmuration/') || /\.medallion\b/.test(selector);
+  const sheets = readdirSync(path.join(repoRoot, 'src/app'), { recursive: true })
+    .map((file) => `src/app/${String(file).replace(/\\/g, '/')}`)
+    .filter((file) => file.endsWith('.css'));
+
+  const problems = [];
+  for (const sheet of sheets) {
+    // Blank out comments but keep their newlines, so line numbers still count.
+    const css = read(sheet).replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+    const lineOf = (offset) => css.slice(0, offset).split('\n').length;
+    // Innermost rules only: a selector cannot contain a brace, so a rule inside
+    // `@media` is matched on its own selector, not the at-rule's.
+    for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const [, selector, body] = rule;
+      if (exempt(sheet, selector)) continue;
+      const at = `${sheet}:${lineOf(rule.index + selector.search(/\S/))}`;
+      if (
+        /:(hover|focus)/.test(selector) &&
+        /(^|[;\s])(transform|translate|scale|rotate)\s*:/.test(body)
+      ) {
+        problems.push(
+          `${at} moves an element on hover or focus. Change a border or background ` +
+            `colour instead, or nothing at all if it cannot be clicked.`
+        );
+      }
+      if (/(^|[;\s])transition(-property)?\s*:[^;]*\ball\b/.test(body)) {
+        problems.push(
+          `${at} uses \`transition: all\`. Name the properties, and keep it at 150ms or under.`
+        );
+      }
+    }
+  }
+  return problems;
+});
+
 // Wanderquest's palettes are data colours, and they stay inside its folder: a
 // `--quest-*` read anywhere else is a second accent arriving by the back door.
 // The spec holds every visited colour at 3:1 on the page, but the unit tests

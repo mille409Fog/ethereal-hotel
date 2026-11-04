@@ -96,9 +96,6 @@
   border-radius: 8px;
   padding: 1.75rem;
   margin-bottom: 2rem;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .form-heading {
@@ -147,7 +144,7 @@ app-booking-field {
   border-radius: 4px;
   background: var(--color-bg);
   color: var(--color-text);
-  transition: border-color 0.3s ease;
+  transition: border-color 0.15s ease;
 }
 
 .form-control:hover:not(:focus):not(:disabled) {
@@ -183,7 +180,9 @@ app-booking-field {
   font-size: 0.9375rem;
   font-weight: 500;
   border: 1px solid transparent;
-  transition: all 0.3s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   line-height: 1.4;
 }
 
@@ -196,7 +195,6 @@ app-booking-field {
 .btn-primary:hover:not(:disabled) {
   background: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
-  transform: translateY(-2px);
 }
 
 .btn:disabled {
