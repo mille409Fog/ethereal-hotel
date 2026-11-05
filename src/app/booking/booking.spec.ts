@@ -272,6 +272,24 @@ describe('Booking', () => {
       expect(component.describedBy('check_in', false)).toBeNull();
     });
 
+    it('names the blamed field in the outcome instead of repeating its message', async () => {
+      api.createBooking.mockRejectedValue(
+        new BookingApiError('rejected', 422, {
+          check_out: 'check_out must be after check_in',
+          adults: 'Input should be greater than 0',
+        })
+      );
+      const component = await readyComponent();
+
+      await component.submit();
+
+      expect(component.outcomeIsError()).toBe(true);
+      expect(component.outcome()).toBe(
+        'The server rejected this booking. See Check-out and Adults above.'
+      );
+      expect(component.outcome()).not.toContain('must be after');
+    });
+
     it('adds nothing to the list and keeps the form usable', async () => {
       api.createBooking.mockRejectedValue(datesRejected);
       const component = await readyComponent();

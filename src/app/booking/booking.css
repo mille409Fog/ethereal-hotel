@@ -218,8 +218,19 @@ app-booking-field {
   display: none;
 }
 
+/* A bordered callout, not a second copy of `.field-error`. On an attributed
+   rejection both are on screen at once — the field's objection under the
+   field, and the submit's outcome here — and when they shared a treatment the
+   page looked like it had printed one error twice. The text is the default
+   colour so the border carries the state; the field error stays bare red
+   inline. */
 .form-outcome--error {
-  color: var(--color-negative);
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-negative);
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-negative) 8%, transparent);
+  color: var(--color-text);
 }
 
 /* ----- Bookings table ----- */

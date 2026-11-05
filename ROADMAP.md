@@ -33,29 +33,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Small consistency fixes: contact headings, booking errors, a stale header
-
-**Effort:** small. Three unrelated fixes, batched because each is too small to stand on its own.
-
-**DoD:**
-
-- **Contact headings** ("Contact Information", "Links", "Education" …) are in `--color-text`, not
-  the accent. Today they are the same blue as the links under them, so headings and links can't be
-  told apart.
-- **The booking rejection is styled as two different things.** On a field-attributed server error,
-  the message appears under the field and again beside the submit button (`booking.ts`,
-  `setOutcome`). Both are wanted: one is attached to the field, the other is the outcome of the
-  submit. But they currently look identical, so it reads as a bug. The outcome line gets a
-  distinct treatment (for example a bordered `--color-negative` callout with the field error kept
-  inline), or, when the error is attributed to a field, it says which field rather than repeating
-  the message. Whichever is chosen, the ARIA wiring stays the same and the e2e booking assertions
-  stay green.
-- **`projects.css` opens with "Booking Engine Styles"** and carries `.form-control` and
-  `.form-row` rules the project cards never use. Correct the header and move or delete the dead
-  rules.
-- Frames re-captured if `/booking` changed.
-
-### 2. Rework the hero's composition
+### 1. Rework the hero's composition
 
 **Effort:** medium. **Why:** the first screen is left-aligned text with the right ~40% of a desktop
 viewport empty, and three buttons of equal weight. It is the weakest screen on the site and the one

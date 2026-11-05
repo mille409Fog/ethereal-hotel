@@ -38,6 +38,31 @@ const FIELDS = ['room_id', 'guest_id', 'check_in', 'check_out', 'adults', 'child
 
 type FieldName = (typeof FIELDS)[number];
 
+/**
+ * What each field is called on screen. The template binds its labels from
+ * here, so the outcome line can name a field in the same words the visitor
+ * sees above the input — not the wire name, and not a second copy.
+ */
+export const FIELD_LABELS: Readonly<Record<FieldName, string>> = {
+  room_id: 'Room',
+  guest_id: 'Guest',
+  check_in: 'Check-in',
+  check_out: 'Check-out',
+  adults: 'Adults',
+  children: 'Children',
+};
+
+function isFieldName(key: string): key is FieldName {
+  return (FIELDS as readonly string[]).includes(key);
+}
+
+/** "Check-out", "Check-in and Check-out", "Room, Adults and Children". */
+function joinLabels(labels: readonly string[]): string {
+  return labels.length < 2
+    ? labels.join('')
+    : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+}
+
 /** ISO `YYYY-MM-DD` in the visitor's own timezone, which is what a date input wants. */
 function isoDate(date: Date): string {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
@@ -63,6 +88,8 @@ function byNewestStay(a: IBooking, b: IBooking): number {
 export class Booking implements OnInit {
   private readonly api = inject(BookingApiService);
   private readonly fb = inject(FormBuilder);
+
+  public readonly labels = FIELD_LABELS;
 
   public readonly status = signal<BookingPageStatus>('checking');
   public readonly submitting = signal(false);
@@ -296,10 +323,16 @@ export class Booking implements OnInit {
     }
 
     this.serverErrors.set(error.fieldErrors);
-    const attributed = Object.keys(error.fieldErrors).length > 0;
+    // When the server blamed a field, its message is already under that field.
+    // Repeating it here put the same sentence on screen twice and read as a
+    // bug; the outcome is the result of the submit, so it says *where* to look
+    // and leaves the *why* to the field.
+    const blamed = Object.keys(error.fieldErrors)
+      .filter(isFieldName)
+      .map((field) => FIELD_LABELS[field]);
     this.setOutcome(
-      attributed
-        ? `The server rejected this booking: ${error.message}`
+      blamed.length > 0
+        ? `The server rejected this booking. See ${joinLabels(blamed)} above.`
         : `The server rejected this booking (HTTP ${error.status}): ${error.message}`,
       true
     );

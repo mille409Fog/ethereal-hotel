@@ -50,7 +50,9 @@
   font-family: var(--font-serif);
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--color-accent-text);
+  /* Text, not the accent: the links under these headings are the accent, and
+     a heading in the same blue could not be told apart from them. */
+  color: var(--color-text);
   margin: 0;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid var(--color-border);

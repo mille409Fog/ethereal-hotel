@@ -33,7 +33,7 @@
       "width": 1180,
       "height": 738
     },
-    "text": "Room Booking Engine A reactive form writing to the same database the dashboard reads. Submit one and the occupancy figures on the dashboard move. Live data · reads and writes are hitting the API Connected to the API. Bookings submitted here are written to a real database. New booking ROOM 101 · Standard · sleeps 3 · $100/night 103 · Deluxe · sleeps 4 · $300/night 201 · Suite · sleeps 4 · $400/night · out of service GUEST Ada Lovelace Alan Turing CHECK-IN CHECK-OUT Must be at least one night after check-in. The API owns that rule — set them equal to see it answer. check_out must be after check_in ADULTS 1 to 12. CHILDREN 0 to 12. Create booking The server rejected this booking: check_out must be after check_in"
+    "text": "Room Booking Engine A reactive form writing to the same database the dashboard reads. Submit one and the occupancy figures on the dashboard move. Live data · reads and writes are hitting the API Connected to the API. Bookings submitted here are written to a real database. New booking ROOM 101 · Standard · sleeps 3 · $100/night 103 · Deluxe · sleeps 4 · $300/night 201 · Suite · sleeps 4 · $400/night · out of service GUEST Ada Lovelace Alan Turing CHECK-IN CHECK-OUT Must be at least one night after check-in. The API owns that rule — set them equal to see it answer. check_out must be after check_in ADULTS 1 to 12. CHILDREN 0 to 12. Create booking The server rejected this booking. See Check-out above."
   },
   "/gallery": {
     "clip": {
