@@ -24,33 +24,16 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
   implying more. On mobile emulation the same build scores 86 on `/` and 76 on `/dashboard` — the
   dashboard route ships Chart.js and 229kB of its own chunk. Raising _that_ is real work on the
   bundle, not a threshold edit, and it is deliberately not an item yet.
-- **The items below are a visual pass, not new features.** Each one brings the interface back in
-  line with rules `CLAUDE.md` already states (no decorative motion, no glow, one accent, state
-  colours are not decoration). None of them adds an effect. Any item that changes `/dashboard`,
-  `/booking`, `/gallery` or a project card changes a committed frame in `public/projects/`, so
-  `npm run e2e` fails until `npm run frames:capture` is re-run and the new `.webp` files are
-  committed. That is part of each item's DoD, not a separate step.
+- **The last pass was visual, and it finished.** It brought the interface back in line with rules
+  `CLAUDE.md` already states (no decorative motion, no glow, one accent, state colours are not
+  decoration) without adding an effect. Its one lasting rule applies to whatever comes next: an
+  item that changes `/dashboard`, `/booking`, `/gallery` or a project card changes a committed
+  frame in `public/projects/`, so `npm run e2e` fails until `npm run frames:capture` is re-run and
+  the new `.webp` files are committed. That is part of the item's DoD, not a separate step.
 
 ## Items
 
-### 1. Rework the hero's composition
-
-**Effort:** medium. **Why:** the first screen is left-aligned text with the right ~40% of a desktop
-viewport empty, and three buttons of equal weight. It is the weakest screen on the site and the one
-every visitor sees.
-
-**DoD:** pick one of the two directions below and record the choice and the reason in a comment
-above the hero markup.
-
-- **(a) Show the claim on the first screen.** Fill the empty column with a small read-only digest
-  from the same API as `/dashboard` (occupancy, the latest booking), linking to the full route. It
-  must degrade the way the dashboard does: when the API is down it says so, and it never shows a
-  fixture number as if it were live. It must not cost `/` its Lighthouse scores (performance 90,
-  accessibility 100): no Chart.js on `/`, and the request must not block first paint.
-- **(b) Recompose as a single column.** A reading-width single column with more vertical space,
-  one primary call to action, and the other two as text links.
-- Either way: no motion, no illustration, no glow, and the hero still works before hydration (plain
-  `href`s, as the current comment explains).
+None open. Add the next one as item 1, with a Definition of Done.
 
 ## Deliberately not doing
 

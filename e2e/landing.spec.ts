@@ -22,13 +22,20 @@ test.describe('landing page', () => {
     // Exact, because the availability line below names the same role.
     await expect(hero.getByText('Senior Software Engineer', { exact: true })).toBeVisible();
 
-    // The two calls to action, which are the only interactive things in the
-    // hero and the first thing a visitor is offered.
+    // One primary action and two text links. The count is the composition:
+    // three equal buttons asked a visitor to choose before telling them
+    // anything, and a second `.btn` here is that layout coming back. The
+    // reasoning is in the comment above the hero markup.
+    await expect(hero.locator('.btn')).toHaveCount(1);
     await expect(hero.getByRole('link', { name: 'View My Work' })).toHaveAttribute(
       'href',
       '#projects'
     );
-    await expect(hero.getByRole('link', { name: 'Get In Touch' })).toHaveAttribute(
+    await expect(hero.getByRole('link', { name: 'Read the case studies' })).toHaveAttribute(
+      'href',
+      '/work'
+    );
+    await expect(hero.getByRole('link', { name: 'Get in touch' })).toHaveAttribute(
       'href',
       '#contact'
     );

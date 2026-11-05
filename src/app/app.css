@@ -104,43 +104,6 @@ main > * + * {
   font-style: italic;
 }
 
-/* ----- Hero (Home) ----- */
-.section-home {
-  min-height: calc(100vh - 60px);
-  display: flex;
-  align-items: center;
-  background: var(--color-bg);
-}
-
-.hero-title {
-  font-family: var(--font-serif);
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
-  font-weight: 600;
-  color: var(--color-text);
-  margin: 0 0 0.5rem;
-  letter-spacing: -0.02em;
-}
-
-.hero-subtitle {
-  font-size: 1.1rem;
-  color: var(--color-accent-text);
-  margin: 0 0 1.5rem;
-  letter-spacing: 0.02em;
-}
-
-.hero-bio {
-  max-width: 560px;
-  color: var(--color-text-secondary);
-  line-height: 1.75;
-  margin: 0 0 2.5rem;
-}
-
-.hero-actions {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
 /* ----- Buttons ----- */
 .btn {
   display: inline-block;

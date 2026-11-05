@@ -1,6 +1,17 @@
-<!-- ===== A: HOME ===== -->
+<!-- ===== A: HOME =====
+     One reading-width column, chosen over a live API digest in a second column.
+     The old layout left the right ~40% of a desktop screen empty and offered
+     three buttons of equal weight; this removes the empty column rather than
+     filling it. The digest would have put the site's claim on the first screen,
+     but it would also have put a network request, a cold-started function and a
+     third degradation path on `/` — and the dashboard is one scroll away, in
+     Projects, as a frame of the real thing. A first screen with one thing to
+     read and one thing to do is the more honest version of the same site.
+
+     One primary action, because a visitor offered three equal ones has been
+     asked to choose before being told anything. The other two stay, as text. -->
 <section id="home" class="section section-home" tabindex="-1">
-  <div class="section-inner">
+  <div class="hero-column">
     <h1 class="hero-title">Jacob Miller</h1>
     <p class="hero-subtitle">Senior Software Engineer</p>
     <p class="hero-bio">
@@ -18,12 +29,14 @@
          gets focus management, middle click and copy-link for free. -->
     <div class="hero-actions">
       <a class="btn btn-primary" href="#projects">View My Work</a>
-      <!-- A route, not an anchor, so this one is a real navigation. Same plain
-           `href` as the links to /dashboard and /booking rather than
-           routerLink: the site treats its routes as pages, and a hero that
-           works before hydration is worth more here than a saved reload. -->
-      <a class="btn btn-outline" href="/work">Read the Case Studies</a>
-      <a class="btn btn-outline" href="#contact">Get In Touch</a>
+      <ul class="hero-links">
+        <!-- A route, not an anchor, so this one is a real navigation. Same plain
+             `href` as the links to /dashboard and /booking rather than
+             routerLink: the site treats its routes as pages, and a hero that
+             works before hydration is worth more here than a saved reload. -->
+        <li><a href="/work">Read the case studies</a></li>
+        <li><a href="#contact">Get in touch</a></li>
+      </ul>
     </div>
     @if (availability; as line) {
       <p class="hero-availability">

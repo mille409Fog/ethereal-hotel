@@ -1,6 +1,6 @@
 /* ----- Hero (Home) Styles ----- */
 .section {
-  padding: 5rem 2rem;
+  padding: 6rem 2rem;
   background: var(--color-bg);
 }
 
@@ -14,8 +14,13 @@
   background: var(--color-bg);
 }
 
-.section-inner {
-  max-width: 1000px;
+/* Reading width, centred on the page, text left-aligned inside it. The width
+   is the bio's measure rather than the site's 1000px section width: the old
+   hero sat in the wider box with the copy capped at 560px, which is what left
+   the right of the screen empty. */
+.hero-column {
+  width: 100%;
+  max-width: 36rem;
   margin: 0 auto;
 }
 
@@ -31,25 +36,50 @@
 .hero-subtitle {
   font-size: 1.1rem;
   color: var(--color-accent-text);
-  margin: 0 0 1.5rem;
+  margin: 0 0 2.5rem;
   letter-spacing: 0.02em;
 }
 
 .hero-bio {
-  max-width: 560px;
   color: var(--color-text-secondary);
   line-height: 1.75;
-  margin: 0 0 2.5rem;
+  margin: 0 0 1.25rem;
 }
 
 .hero-actions {
+  margin-top: 2.75rem;
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  gap: 1rem 2rem;
   flex-wrap: wrap;
 }
 
+/* The two secondary actions, as text. A list because they are a set of
+   destinations; the bullets go because the row already says so. */
+.hero-links {
+  display: flex;
+  gap: 0.5rem 1.5rem;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Underlined: without a button's box, colour alone would not mark these as
+   links. Hover is a colour change and nothing else. */
+.hero-links a {
+  font-size: 0.9375rem;
+  color: var(--color-accent-text);
+  text-underline-offset: 0.2em;
+  transition: color 0.15s ease;
+}
+
+.hero-links a:hover {
+  color: var(--color-text);
+}
+
 .hero-availability {
-  margin: 1.5rem 0 0;
+  margin: 2.5rem 0 0;
   font-size: 0.9375rem;
   color: var(--color-text-secondary);
 }
@@ -64,7 +94,8 @@
 .hero-availability a:hover {
   color: var(--color-text);
 }
-/* Buttons used in hero */
+
+/* The one button left in the hero. */
 .btn {
   display: inline-block;
   padding: 0.625rem 1.5rem;
@@ -89,14 +120,4 @@
 .btn-primary:hover {
   background: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
-}
-
-.btn-outline {
-  background: transparent;
-  color: var(--color-accent-text);
-  border-color: var(--color-accent);
-}
-
-.btn-outline:hover {
-  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
 }
