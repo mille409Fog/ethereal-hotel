@@ -18,6 +18,7 @@ const chartRegistry = vi.hoisted(() => ({ instances: [] as IMockChart[] }));
 vi.mock('chart.js', () => {
   class MockChart {
     public data: ChartConfiguration['data'];
+    public readonly stop = vi.fn();
     public readonly update = vi.fn();
     public readonly destroy = vi.fn();
 
@@ -39,6 +40,7 @@ interface IMockChart {
   readonly ctx: unknown;
   readonly config: ChartConfiguration;
   data: ChartConfiguration['data'];
+  readonly stop: ReturnType<typeof vi.fn>;
   readonly update: ReturnType<typeof vi.fn>;
   readonly destroy: ReturnType<typeof vi.fn>;
 }
@@ -187,6 +189,27 @@ describe('ChartsSection', () => {
     expect(charts[guestsChart].data.datasets[0].data).toEqual([52]);
     // Animation is off so the 2s live feed does not judder.
     expect(charts[guestsChart].update).toHaveBeenCalledWith('none');
+  });
+
+  // `update('none')` does not touch a running animation, which would otherwise
+  // finish on the data the chart was built from. `e2e/dashboard.spec.ts` proves
+  // the pixels; this pins the order, across all three charts, where it is cheap.
+  it('cancels running animations before drawing new data on every chart', async () => {
+    const charts = await renderCharts({});
+    for (const chart of charts) {
+      chart.stop.mockClear();
+      chart.update.mockClear();
+    }
+
+    fixture.componentRef.setInput('metrics', metricsWith({ occupiedRooms: 1 }));
+    await fixture.whenStable();
+
+    for (const chart of charts) {
+      expect(chart.stop).toHaveBeenCalledTimes(1);
+      expect(chart.stop.mock.invocationCallOrder[0]).toBeLessThan(
+        chart.update.mock.invocationCallOrder[0]
+      );
+    }
   });
 
   it('tears down every chart on destroy', async () => {

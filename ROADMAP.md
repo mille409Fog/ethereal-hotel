@@ -37,28 +37,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Stop the phone-width charts drawing the fixture over real data
-
-**Effort:** small–medium. **Why:** the bar for this repo is that every number on screen is derived
-from real rows, and at phone width the charts break it. At 390px on production the doughnut draws
-about 7% out of service, the committed fixture's proportions, while the card above it says 1 of 64.
-At 1440px the same read draws 1.9%. It repeated across runs, at 390px with and without mobile
-emulation, and was still wrong 9–12 seconds after load. With 1.5 seconds added to the API it came
-out right (2.6%), so timing is involved. The line and bar charts appear to do the same under real
-date labels, but that was judged by eye. The cause is not established. Start from `applySeries` in
-`charts-section.ts`, where `update('none')` may be meeting the charts' initial animation, and treat
-that as a lead rather than a finding.
-
-**DoD:**
-
-- The root cause is found and stated in a comment where the fix lands.
-- At 390px and 1440px, all three charts show the API's data, not the fixture's, however quickly the
-  API answers. A longer delay before drawing is not a fix.
-- A test fails on today's code. It reads what the chart holds or paints, not `roomMixChartLabel`:
-  that label is computed from the signal, so it can be right while the canvas is wrong.
-- The fixture still renders, and still says so, when the API is down.
-
-### 2. Make the dashboard's transport claims agree
+### 1. Make the dashboard's transport claims agree
 
 **Effort:** small. **Why:** on production the badge says "polled from the API every few seconds"
 and the footer, directly below it, says "Streamed over a WebSocket every 2 seconds". The footer is
@@ -76,7 +55,7 @@ prove it doesn't do that.
   something true of the deployed site.
 - A spec covers the footer in each state, and frames are re-captured.
 
-### 3. Make the charts belong to the site
+### 2. Make the charts belong to the site
 
 **Effort:** small–medium. **Why:** the rest of `/dashboard` is designed and the charts are Chart.js
 defaults, so they are what makes the route look like a template. They use the library's default sans
@@ -94,7 +73,7 @@ and the gridlines are dense enough to compete with the data.
   so the two can't disagree. `roomMixChartLabel` and the other canvas labels remain accurate.
 - Frames re-captured.
 
-### 4. Fix the navigation at phone width
+### 3. Fix the navigation at phone width
 
 **Effort:** small. **Why:** at 390px "Jacob Miller" wraps to two lines and crowds "Home". At 320px
 the page scrolls sideways, because the nav needs 360px. The links are 20px tall, which is a small
@@ -109,7 +88,7 @@ tap target for the main way around the home page. `navigation.css` has no media 
 - No menu icon or animated drawer, unless the four links genuinely cannot fit at 320px, in which
   case the item records why.
 
-### 5. Give the demo routes a way back
+### 4. Give the demo routes a way back
 
 **Effort:** small–medium. **Why:** visitors reach the demos from the project cards, and then the
 site stops. `/dashboard`, `/booking`, `/aesthetic`, `/wanderquest` and `/murmuration` have no link
@@ -124,7 +103,7 @@ back at all. `/work` and `/gallery` have one, at the bottom of a long page.
 - `/aubade` and `/aubade/reader` are untouched: that work shares nothing with this one.
 - Bottom-of-page back links are removed if they have become redundant, and frames are re-captured.
 
-### 6. Give an unknown URL a page
+### 5. Give an unknown URL a page
 
 **Effort:** small. **Why:** `app.routes.ts` has no wildcard, so a mistyped address shows a completely
 blank screen on production and rewrites the URL to `/` without showing the home page. For a site sent
@@ -139,7 +118,7 @@ to reviewers, a truncated link in a message is an ordinary way to arrive.
 - `scripts/emit-route-meta.mjs` does not stamp a static file for the wildcard. If the response stays
   HTTP 200 because of the SPA rewrite, a comment says so rather than implying a real 404.
 
-### 7. Make the project cards read as one set, and describe them truthfully
+### 6. Make the project cards read as one set, and describe them truthfully
 
 **Effort:** small. **Why:** the grid is what most visitors judge, and it has three visible seams.
 Buttons don't share a baseline across a row (their bottoms sit at 1581/1581/1638px and
@@ -157,7 +136,7 @@ exists to avoid.
 - The intro describes what is actually in the grid: demos built here, and work under NDA.
 - `npm run resume:check` still passes, and frames are re-captured.
 
-### 8. Stop the booking table hiding its columns on phones
+### 7. Stop the booking table hiding its columns on phones
 
 **Effort:** small. **Why:** at 390px the table is 625px wide inside a 308px scroller, so check-out,
 guests, rate and status are out of view with nothing to suggest they exist. `status` is the column
@@ -172,7 +151,7 @@ that shows a booking was really written and cancelled.
 - The e2e booking assertions and axe run stay green, and frames are re-captured if the desktop frame
   moved.
 
-### 9. Shorten the dashboard on phones
+### 8. Shorten the dashboard on phones
 
 **Effort:** small. **Why:** at 390px the six metric cards stack in one column and the page is about
 3,000px tall, so the charts start well below where most visitors stop. The desktop layout already
@@ -185,7 +164,7 @@ ranks two figures above the other four, and the phone layout could say the same 
 - The DOM order, reading order and throttled `role="status"` digest are unchanged.
 - The charts begin at least one screen higher than they do today.
 
-### 10. Keep the painting beside the words on `/gallery`
+### 9. Keep the painting beside the words on `/gallery`
 
 **Effort:** small. **Why:** on desktop the label runs far longer than the painting, leaving roughly
 700px of empty column under the picture while the visitor reads about details they can no longer
@@ -200,7 +179,7 @@ see. "Up close" asks you to look at the boats while the boats have scrolled away
   nothing animates.
 - Frames re-captured if the Gallery frame moved.
 
-### 11. Remove the glow around the Gallery's panel
+### 10. Remove the glow around the Gallery's panel
 
 **Effort:** small. **Why:** `CLAUDE.md` says no glow, and the check behind it only reads
 `text-shadow`, so a `box-shadow` halo gets through. Two things on `/gallery` use one, and they are not
@@ -218,7 +197,7 @@ tint already carries the colour.
   state, so it is not part of this item.
 - `CLAUDE.md`'s no-glow rule states the new check and its exemptions, and frames are re-captured.
 
-### 12. Tighten the Wanderquest layout
+### 11. Tighten the Wanderquest layout
 
 **Effort:** small. **Why:** the legend explains the map but sits below all six bonus tiles, a long
 way from it. The tiles stack two across and three down, which pushes the checklist further away, when

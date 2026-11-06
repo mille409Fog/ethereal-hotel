@@ -38,7 +38,7 @@ function pathOf(url: string): string {
 }
 
 const HEALTH_PATH = pathOf(environment.healthUrl);
-const DASHBOARD_PATH = pathOf(`${environment.apiUrl}/dashboard`);
+export const DASHBOARD_PATH = pathOf(`${environment.apiUrl}/dashboard`);
 const METRICS_PATH = pathOf(`${environment.apiUrl}/metrics`);
 const BOOKINGS_PATH = pathOf(`${environment.apiUrl}/bookings`);
 const ROOMS_PATH = pathOf(`${environment.apiUrl}/rooms`);

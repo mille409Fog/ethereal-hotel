@@ -9,8 +9,9 @@
  * the health check fails; this proves the numbers reach the screen.
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import type { IMetrics } from '../src/app/services/dashboard-api.service';
+import type { IDashboardData, IMetrics } from '../src/app/services/dashboard-api.service';
 import {
+  DASHBOARD_PATH,
   LIVE_DASHBOARD,
   OFFLINE_DASHBOARD,
   POLLED_METRICS,
@@ -99,10 +100,9 @@ async function expectMetricsRendered(page: Page, metrics: IMetrics): Promise<voi
         : 'Even turnover today';
   await expect(metricCard(page, 'Arrivals / Departures')).toContainText(expectedNet);
 
-  // The charts are canvases, so their pixels are not assertable — but their
-  // aria-labels are computed from the same signals they plot, which makes the
-  // room-mix label a faithful readout of whether the chart received this data
-  // or stale data.
+  // The aria-labels are computed from the same signals the charts plot, so this
+  // proves the data reached the component, not that it reached the canvas. The
+  // `dashboard charts` tests below read the pixels for that.
   await expect(page.locator('#roomMixChart')).toHaveAttribute(
     'aria-label',
     `Room inventory tonight: ${metrics.occupiedRooms} occupied, ` +
@@ -209,6 +209,135 @@ test.describe('dashboard layout', () => {
       expect(await value.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     }
   });
+});
+
+/**
+ * What the charts are served below: every series different from the fixture in
+ * both values and dates, so no canvas can match it by accident. 1 room of 64 out
+ * of service is production's shape, against the fixture's 4.
+ */
+const CHART_DASHBOARD: IDashboardData = {
+  ...LIVE_DASHBOARD,
+  metrics: { ...LIVE_DASHBOARD.metrics, availableRooms: 38, operationalRooms: 63 },
+  historicalGuests: reshaped(LIVE_DASHBOARD.historicalGuests),
+  historicalRevenue: reshaped(LIVE_DASHBOARD.historicalRevenue),
+};
+
+/** The same number of nights, in another month, with the values reversed. */
+function reshaped(series: IDashboardData['historicalGuests']): IDashboardData['historicalGuests'] {
+  return series.map(({ timestamp }, night) => ({
+    timestamp: timestamp.replace(/^\d{4}-\d{2}/, '2031-03'),
+    value: series[series.length - 1 - night].value,
+  }));
+}
+
+const CHART_IDS = ['guestsChart', 'revenueChart', 'roomMixChart'] as const;
+
+type ChartPixels = Record<(typeof CHART_IDS)[number], string>;
+
+/** What each canvas holds right now. The bitmap, because that is the claim. */
+function chartPixels(page: Page): Promise<ChartPixels> {
+  return page.evaluate(
+    (ids) =>
+      Object.fromEntries(
+        ids.map((id) => [id, (document.getElementById(id) as HTMLCanvasElement).toDataURL()])
+      ) as ChartPixels,
+    CHART_IDS
+  );
+}
+
+/** Resolves once Chart.js has put something on the canvas, so it is animating. */
+async function firstPaint(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const canvas = document.getElementById('roomMixChart') as HTMLCanvasElement | null;
+    return canvas
+      ?.getContext('2d')
+      ?.getImageData(0, 0, canvas.width, canvas.height)
+      .data.some((channel) => channel !== 0);
+  });
+}
+
+/** Hold `/dashboard` unanswered until the returned function is called. */
+async function holdDashboardAnswer(page: Page): Promise<() => void> {
+  let release = (): void => undefined;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  await page.route(`**${DASHBOARD_PATH}`, async (route) => {
+    await released;
+    await route.fallback();
+  });
+  return release;
+}
+
+/** Longer than Chart.js's default 1000ms, so nothing is left animating. */
+const INITIAL_ANIMATION_OVER_MS = 1500;
+
+test.describe('dashboard charts', () => {
+  // The bug followed whether a chart card is a whole number of pixels wide, not
+  // the screen: 390 and 1280 are, 1440 is not. See `redraw` in charts-section.ts.
+  for (const width of [390, 1280, 1440]) {
+    /**
+     * The canvases against themselves, because the aria-labels cannot see this:
+     * they are computed from the signal, so they were right the whole time the
+     * bitmap was wrong. An answer that lands after the initial animation has
+     * always drawn correctly, which makes it the reference for one that lands
+     * during it, and the backend-down render proves the two are not both the
+     * fixture. The answer is held until the first paint rather than delayed by
+     * a guess, so it lands mid-animation however fast this machine is.
+     */
+    test(`draw the API's data at ${width}px when it answers mid-animation`, async ({ context }) => {
+      const open = async (): Promise<Page> => {
+        const page = await context.newPage();
+        await page.setViewportSize({ width, height: 844 });
+        return page;
+      };
+
+      const offline = await open();
+      await stubBackendDown(offline);
+      await offline.goto('/dashboard');
+      await expectDataSource(offline, 'simulated');
+      await firstPaint(offline);
+      await offline.waitForTimeout(INITIAL_ANIMATION_OVER_MS);
+      const fixture = await chartPixels(offline);
+      await offline.close();
+
+      const late = await open();
+      await stubBackendUp(late, [], CHART_DASHBOARD);
+      const releaseLate = await holdDashboardAnswer(late);
+      await late.goto('/dashboard');
+      await firstPaint(late);
+      await late.waitForTimeout(INITIAL_ANIMATION_OVER_MS);
+      releaseLate();
+      await expect(late.locator('#roomMixChart')).toHaveAttribute('aria-label', /1 out of service/);
+      await expect.poll(async () => chartPixels(late)).not.toEqual(fixture);
+      const reference = await chartPixels(late);
+      await late.close();
+
+      for (const id of CHART_IDS) {
+        expect(reference[id], `${id} must differ from the fixture`).not.toBe(fixture[id]);
+      }
+
+      const page = await open();
+      await stubBackendUp(page, [], CHART_DASHBOARD);
+      const release = await holdDashboardAnswer(page);
+      await page.goto('/dashboard');
+      await firstPaint(page);
+      release();
+      await expect(page.locator('#roomMixChart')).toHaveAttribute('aria-label', /1 out of service/);
+
+      // Polled because an animation may still be finishing. The first poll of
+      // `/metrics` after this is 15s away, well past this timeout, so nothing
+      // but the answer under test can correct the canvas.
+      await expect
+        .poll(
+          async () => {
+            const pixels = await chartPixels(page);
+            return CHART_IDS.filter((id) => pixels[id] !== reference[id]);
+          },
+          { timeout: INITIAL_ANIMATION_OVER_MS * 2 }
+        )
+        .toEqual([]);
+    });
+  }
 });
 
 test.describe('dashboard with the backend down', () => {

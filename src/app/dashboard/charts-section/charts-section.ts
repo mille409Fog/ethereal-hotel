@@ -366,6 +366,27 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
   }
 
   /**
+   * Draw what a chart now holds, at once and for good.
+   *
+   * `update('none')` alone is not enough. It writes the new geometry straight
+   * onto the elements but leaves any running animation alone, and an animation
+   * fixed its destination when it started. So an answer landing during the
+   * 1000ms initial animation was overwritten on the next frame, and the chart
+   * finished on the fixture it was built from, until the next poll 15s later.
+   *
+   * It looked like a phone bug and was not one: it followed whether the card is
+   * a whole number of pixels wide. A fractional width (371.33px at 1440) can
+   * never equal the integer `canvas.width`, so Chart.js's `retinaScale` reports
+   * a change on every resize, and the `update('resize')` that follows the first
+   * observer callback ends the initial animation. Those widths had nothing left
+   * to overwrite the answer; 390, 1280 and 1442 did.
+   */
+  private static redraw(chart: Chart): void {
+    chart.stop();
+    chart.update('none'); // no animation — smoother under a 2s feed
+  }
+
+  /**
    * Re-point the charts at the current inputs. The series come from the API in
    * full, so we replace them rather than shifting a window by hand.
    */
@@ -373,18 +394,18 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
     if (this.guestsChart) {
       this.guestsChart.data.labels = guests.labels;
       this.guestsChart.data.datasets[0].data = guests.data;
-      this.guestsChart.update('none'); // no animation — smoother under a 2s feed
+      ChartsSection.redraw(this.guestsChart);
     }
 
     if (this.revenueChart) {
       this.revenueChart.data.labels = revenue.labels;
       this.revenueChart.data.datasets[0].data = revenue.data;
-      this.revenueChart.update('none');
+      ChartsSection.redraw(this.revenueChart);
     }
 
     if (this.roomMixChart) {
       this.roomMixChart.data.datasets[0].data = roomMix;
-      this.roomMixChart.update('none');
+      ChartsSection.redraw(this.roomMixChart);
     }
   }
 }
