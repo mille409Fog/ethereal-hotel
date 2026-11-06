@@ -161,6 +161,17 @@ describe('MetricsGrid', () => {
      * The hosted demo sits on an unchanging fixture. Re-announcing an identical
      * sentence every 30 seconds forever would be its own accessibility problem.
      */
+    // 84.35 is where `DecimalPipe` and `toFixed` part company. The doughnut's
+    // centre goes through the same function, and its spec holds the same value.
+    it('says the figure the card prints, at the value the two used to round apart', async () => {
+      setMetrics({ occupancy: 84.35 });
+
+      await tick();
+
+      expect(liveRegion()?.textContent).toContain('Occupancy 84.4 percent');
+      expect(announcing.nativeElement.querySelector('.metric-value')?.textContent).toBe('84.4%');
+    });
+
     it('does not repeat itself while the figures are unchanged', async () => {
       setMetrics({ occupancy: 85 });
 

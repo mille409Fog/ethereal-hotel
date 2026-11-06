@@ -15,6 +15,8 @@ import { OFFLINE_DASHBOARD } from '../../services/offline-dashboard.fixture';
 /** Records every chart the component builds, so a test can inspect its config. */
 const chartRegistry = vi.hoisted(() => ({ instances: [] as IMockChart[] }));
 
+const mockChartDefaults = vi.hoisted(() => ({ font: { family: '' } }));
+
 vi.mock('chart.js', () => {
   class MockChart {
     public data: ChartConfiguration['data'];
@@ -30,6 +32,8 @@ vi.mock('chart.js', () => {
       chartRegistry.instances.push(this as unknown as IMockChart);
     }
 
+    public static readonly defaults = mockChartDefaults;
+
     public static register(): void {}
   }
 
@@ -44,6 +48,36 @@ interface IMockChart {
   readonly update: ReturnType<typeof vi.fn>;
   readonly destroy: ReturnType<typeof vi.fn>;
 }
+
+/** A y axis's tick callback, loosened so tests can call it. */
+type TickFormat = (value: number | string) => string;
+
+const yAxisOf = (chart: IMockChart): { callback: TickFormat; maxTicksLimit: number } =>
+  (
+    chart.config.options?.scales?.['y'] as unknown as {
+      ticks: { callback: TickFormat; maxTicksLimit: number };
+    }
+  ).ticks;
+
+/** What the doughnut's centre plugin drew on a recording context, in order. */
+const drawnCentre = (chart: IMockChart): Array<{ text: string; x: number; font: string }> => {
+  const drawn: Array<{ text: string; x: number; font: string }> = [];
+  const ctx = {
+    font: '',
+    save: vi.fn(),
+    restore: vi.fn(),
+    fillText(text: string, x: number): void {
+      drawn.push({ text, x, font: this.font });
+    },
+  };
+  const plugin = (chart.config as { plugins?: Array<{ afterDatasetsDraw?: unknown }> })
+    .plugins?.[0];
+  (plugin?.afterDatasetsDraw as (target: unknown) => void)({
+    ctx,
+    chartArea: { left: 10, right: 110, top: 0, bottom: 200 },
+  });
+  return drawn;
+};
 
 /** Shape of the tooltip label callbacks, loosened so tests can call them. */
 type TooltipLabel = (context: { label?: string; parsed: unknown }) => string;
@@ -174,6 +208,131 @@ describe('ChartsSection', () => {
     );
   });
 
+  it('hides the legend on both single-series charts and keeps it on the doughnut', async () => {
+    const charts = await renderCharts({});
+
+    const legendOf = (chart: IMockChart): unknown => chart.config.options?.plugins?.legend?.display;
+    expect(legendOf(charts[guestsChart])).toBe(false);
+    expect(legendOf(charts[revenueChart])).toBe(false);
+    expect(legendOf(charts[roomMixChart])).toBeUndefined();
+  });
+
+  it('reads money as money on the revenue axis, and only there', async () => {
+    const charts = await renderCharts({});
+
+    expect(yAxisOf(charts[revenueChart]).callback(12000)).toBe('$12,000');
+    expect(yAxisOf(charts[guestsChart]).callback(1200)).toBe('1,200');
+  });
+
+  it('keeps vertical rules out of the plots and limits the horizontal ones', async () => {
+    const charts = await renderCharts({});
+
+    for (const chart of [charts[guestsChart], charts[revenueChart]]) {
+      expect(chart.config.options?.scales?.['x']?.grid?.display).toBe(false);
+      expect(yAxisOf(chart).maxTicksLimit).toBe(5);
+    }
+  });
+
+  describe('occupancy in the doughnut', () => {
+    it('draws the figure over the centre of the chart area, with its denominator', async () => {
+      const charts = await renderCharts({ metrics: metricsWith({ occupancy: 85 }) });
+
+      expect(drawnCentre(charts[roomMixChart]).map(({ text, x }) => [text, x])).toEqual([
+        ['85.0%', 60],
+        ['of sellable rooms', 60],
+      ]);
+    });
+
+    // 84.35 is the value `toFixed` would round the other way from the metric
+    // card. `metrics-grid.spec.ts` pins the card to the same answer.
+    it('rounds the way the metric card does', async () => {
+      const charts = await renderCharts({ metrics: metricsWith({ occupancy: 84.35 }) });
+
+      expect(drawnCentre(charts[roomMixChart])[0].text).toBe('84.4%');
+    });
+
+    it('follows the metrics without rebuilding the chart', async () => {
+      const charts = await renderCharts({ metrics: metricsWith({ occupancy: 85 }) });
+      const chart = charts[roomMixChart];
+      chart.update.mockClear();
+
+      fixture.componentRef.setInput('metrics', metricsWith({ occupancy: 62.5 }));
+      await fixture.whenStable();
+
+      expect(chart.update).toHaveBeenCalledWith('none');
+      expect(drawnCentre(chart)[0].text).toBe('62.5%');
+    });
+  });
+
+  describe('the body face', () => {
+    const FAMILY = "'Source Sans 3', sans-serif";
+    let load: ReturnType<typeof vi.fn>;
+    let settleFont: () => void;
+
+    beforeEach(() => {
+      vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+        getPropertyValue: (name: string) => (name === '--font-sans' ? FAMILY : ''),
+      } as unknown as CSSStyleDeclaration);
+
+      load = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            settleFont = resolve;
+          })
+      );
+      // jsdom has no font loading at all, so this is defined rather than spied.
+      Object.defineProperty(document, 'fonts', { configurable: true, value: { load } });
+    });
+
+    afterEach(() => {
+      Reflect.deleteProperty(document, 'fonts');
+      vi.useRealTimers();
+    });
+
+    it('draws nothing until the face has loaded, then draws in it', async () => {
+      await renderCharts({});
+
+      expect(load).toHaveBeenCalledWith(`12px ${FAMILY}`);
+      expect(chartRegistry.instances).toHaveLength(0);
+
+      settleFont();
+      await afterChartInit();
+
+      expect(chartRegistry.instances).toHaveLength(3);
+      expect(mockChartDefaults.font.family).toBe(FAMILY);
+      expect(drawnCentre(chartRegistry.instances[roomMixChart])[0].font).toContain(FAMILY);
+    });
+
+    it('still draws if the face fails to load', async () => {
+      load.mockRejectedValue(new Error('network'));
+
+      const charts = await renderCharts({});
+
+      expect(charts).toHaveLength(3);
+    });
+
+    it('stops waiting for a font that never answers', async () => {
+      vi.useFakeTimers();
+      fixture.detectChanges();
+
+      await vi.advanceTimersByTimeAsync(CHART_INIT_DELAY_MS);
+      expect(chartRegistry.instances).toHaveLength(0);
+
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(chartRegistry.instances).toHaveLength(3);
+    });
+
+    it('builds nothing if the route is left during the wait', async () => {
+      await renderCharts({});
+
+      fixture.destroy();
+      settleFont();
+      await afterChartInit();
+
+      expect(chartRegistry.instances).toHaveLength(0);
+    });
+  });
+
   it('re-points the existing charts when the inputs change, without rebuilding them', async () => {
     const charts = await renderCharts({ historicalGuests: guestHistory });
     expect(charts).toHaveLength(3);
@@ -265,9 +424,10 @@ describe('ChartsSection', () => {
       );
     });
 
-    it('describes the room mix as the three counts it splits into', async () => {
+    it('describes the room mix as its three counts and the figure in its centre', async () => {
       await renderCharts({
         metrics: metricsWith({
+          occupancy: 85,
           occupiedRooms: 51,
           availableRooms: 9,
           totalRooms: 64,
@@ -276,7 +436,8 @@ describe('ChartsSection', () => {
       });
 
       expect(labelOf('roomMixChart')).toBe(
-        'Room inventory tonight: 51 occupied, 9 available, 4 out of service.'
+        'Room inventory tonight: 51 occupied, 9 available, 4 out of service. ' +
+          'Occupancy 85.0 percent of sellable rooms.'
       );
     });
 

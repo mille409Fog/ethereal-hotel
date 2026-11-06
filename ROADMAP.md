@@ -37,25 +37,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Make the charts belong to the site
-
-**Effort:** small–medium. **Why:** the rest of `/dashboard` is designed and the charts are Chart.js
-defaults, so they are what makes the route look like a template. They use the library's default sans
-rather than Source Sans, the line chart's legend repeats its title, revenue axis labels have no `$`,
-and the gridlines are dense enough to compete with the data.
-
-**DoD:**
-
-- Chart text uses the site's body face. The font must be loaded before the first draw, because a
-  canvas will not re-render when it arrives later.
-- The single-series legend is gone, and money reads as money on the axis.
-- Gridlines are reduced until the data is the strongest thing in the plot. Colours keep coming from
-  the tokens at runtime.
-- The doughnut's centre carries the occupancy figure, drawn from the same value as the metric card
-  so the two can't disagree. `roomMixChartLabel` and the other canvas labels remain accurate.
-- Frames re-captured.
-
-### 2. Fix the navigation at phone width
+### 1. Fix the navigation at phone width
 
 **Effort:** small. **Why:** at 390px "Jacob Miller" wraps to two lines and crowds "Home". At 320px
 the page scrolls sideways, because the nav needs 360px. The links are 20px tall, which is a small
@@ -70,7 +52,7 @@ tap target for the main way around the home page. `navigation.css` has no media 
 - No menu icon or animated drawer, unless the four links genuinely cannot fit at 320px, in which
   case the item records why.
 
-### 3. Give the demo routes a way back
+### 2. Give the demo routes a way back
 
 **Effort:** small–medium. **Why:** visitors reach the demos from the project cards, and then the
 site stops. `/dashboard`, `/booking`, `/aesthetic`, `/wanderquest` and `/murmuration` have no link
@@ -85,7 +67,7 @@ back at all. `/work` and `/gallery` have one, at the bottom of a long page.
 - `/aubade` and `/aubade/reader` are untouched: that work shares nothing with this one.
 - Bottom-of-page back links are removed if they have become redundant, and frames are re-captured.
 
-### 4. Give an unknown URL a page
+### 3. Give an unknown URL a page
 
 **Effort:** small. **Why:** `app.routes.ts` has no wildcard, so a mistyped address shows a completely
 blank screen on production and rewrites the URL to `/` without showing the home page. For a site sent
@@ -100,7 +82,7 @@ to reviewers, a truncated link in a message is an ordinary way to arrive.
 - `scripts/emit-route-meta.mjs` does not stamp a static file for the wildcard. If the response stays
   HTTP 200 because of the SPA rewrite, a comment says so rather than implying a real 404.
 
-### 5. Make the project cards read as one set, and describe them truthfully
+### 4. Make the project cards read as one set, and describe them truthfully
 
 **Effort:** small. **Why:** the grid is what most visitors judge, and it has three visible seams.
 Buttons don't share a baseline across a row (their bottoms sit at 1581/1581/1638px and
@@ -118,7 +100,7 @@ exists to avoid.
 - The intro describes what is actually in the grid: demos built here, and work under NDA.
 - `npm run resume:check` still passes, and frames are re-captured.
 
-### 6. Stop the booking table hiding its columns on phones
+### 5. Stop the booking table hiding its columns on phones
 
 **Effort:** small. **Why:** at 390px the table is 625px wide inside a 308px scroller, so check-out,
 guests, rate and status are out of view with nothing to suggest they exist. `status` is the column
@@ -133,7 +115,7 @@ that shows a booking was really written and cancelled.
 - The e2e booking assertions and axe run stay green, and frames are re-captured if the desktop frame
   moved.
 
-### 7. Shorten the dashboard on phones
+### 6. Shorten the dashboard on phones
 
 **Effort:** small. **Why:** at 390px the six metric cards stack in one column and the page is about
 3,000px tall, so the charts start well below where most visitors stop. The desktop layout already
@@ -146,7 +128,7 @@ ranks two figures above the other four, and the phone layout could say the same 
 - The DOM order, reading order and throttled `role="status"` digest are unchanged.
 - The charts begin at least one screen higher than they do today.
 
-### 8. Keep the painting beside the words on `/gallery`
+### 7. Keep the painting beside the words on `/gallery`
 
 **Effort:** small. **Why:** on desktop the label runs far longer than the painting, leaving roughly
 700px of empty column under the picture while the visitor reads about details they can no longer
@@ -161,7 +143,7 @@ see. "Up close" asks you to look at the boats while the boats have scrolled away
   nothing animates.
 - Frames re-captured if the Gallery frame moved.
 
-### 9. Remove the glow around the Gallery's panel
+### 8. Remove the glow around the Gallery's panel
 
 **Effort:** small. **Why:** `CLAUDE.md` says no glow, and the check behind it only reads
 `text-shadow`, so a `box-shadow` halo gets through. Two things on `/gallery` use one, and they are not
@@ -179,7 +161,7 @@ tint already carries the colour.
   state, so it is not part of this item.
 - `CLAUDE.md`'s no-glow rule states the new check and its exemptions, and frames are re-captured.
 
-### 10. Tighten the Wanderquest layout
+### 9. Tighten the Wanderquest layout
 
 **Effort:** small. **Why:** the legend explains the map but sits below all six bonus tiles, a long
 way from it. The tiles stack two across and three down, which pushes the checklist further away, when

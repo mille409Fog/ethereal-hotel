@@ -12,7 +12,7 @@
        occupancy and revenue on top, is placed in metrics-grid.css. -->
   <div class="metrics-grid">
     <div class="metric-card metric-card--primary metric-card--occupancy">
-      <div class="metric-value">{{ metrics().occupancy | number: '1.1-1' }}%</div>
+      <div class="metric-value">{{ occupancy() }}%</div>
       <div class="metric-label">Occupancy</div>
       <div class="metric-detail">
         {{ metrics().occupiedRooms }} of {{ metrics().operationalRooms }} sellable rooms

@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { IMetrics } from '../../services/dashboard-api.service';
 import { OFFLINE_DASHBOARD } from '../../services/offline-dashboard.fixture';
+import { formatOccupancy } from '../occupancy';
 
 @Component({
   selector: 'app-metrics-grid',
@@ -56,6 +57,9 @@ export class MetricsGrid {
     this.destroyRef.onDestroy(() => clearInterval(timer));
   }
 
+  /** The headline figure, in the one format the doughnut's centre also draws. */
+  public readonly occupancy = computed(() => formatOccupancy(this.metrics().occupancy));
+
   /**
    * Rooms held back for maintenance — physical inventory that is not sellable
    * tonight, and therefore excluded from the occupancy denominator.
@@ -83,11 +87,10 @@ export class MetricsGrid {
    * them rather than the way they are laid out.
    */
   private digest(): string {
-    const { occupancy, occupiedRooms, operationalRooms, adr, arrivalsToday, departuresToday } =
-      this.metrics();
+    const { occupiedRooms, operationalRooms, adr, arrivalsToday, departuresToday } = this.metrics();
 
     return [
-      `Occupancy ${occupancy.toFixed(1)} percent`,
+      `Occupancy ${this.occupancy()} percent`,
       `${occupiedRooms} of ${operationalRooms} sellable rooms occupied`,
       `average daily rate ${Math.round(adr)} dollars`,
       `${arrivalsToday} arrivals and ${departuresToday} departures today`,

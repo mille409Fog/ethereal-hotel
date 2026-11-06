@@ -11,6 +11,9 @@
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 2rem;
+  /* A canvas counts its default 300px as content, so without this a grid item
+     cannot go below 366px and the card overflows a phone-width column. */
+  min-width: 0;
 }
 
 .chart-title {

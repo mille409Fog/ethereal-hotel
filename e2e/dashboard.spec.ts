@@ -107,7 +107,8 @@ async function expectMetricsRendered(page: Page, metrics: IMetrics): Promise<voi
   await expect(page.locator('#roomMixChart')).toHaveAttribute(
     'aria-label',
     `Room inventory tonight: ${metrics.occupiedRooms} occupied, ` +
-      `${metrics.availableRooms} available, ${outOfService} out of service.`
+      `${metrics.availableRooms} available, ${outOfService} out of service. ` +
+      `Occupancy ${metrics.occupancy.toFixed(1)} percent of sellable rooms.`
   );
   await expect(page.locator('#guestsChart')).toBeVisible();
   await expect(page.locator('#revenueChart')).toBeVisible();

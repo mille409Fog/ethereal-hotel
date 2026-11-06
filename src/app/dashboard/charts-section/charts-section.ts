@@ -7,12 +7,20 @@ import {
   effect,
   input,
 } from '@angular/core';
-import { Chart, ChartConfiguration, registerables } from 'chart.js';
+import { Chart, ChartConfiguration, Plugin, registerables } from 'chart.js';
 import { IHistoricalData, IMetrics } from '../../services/dashboard-api.service';
 import { OFFLINE_DASHBOARD } from '../../services/offline-dashboard.fixture';
+import { formatOccupancy } from '../occupancy';
 
 // Register Chart.js components
 Chart.register(...registerables);
+
+/**
+ * How long the charts will wait for the body face. Long enough for a slow
+ * connection, short enough that a stalled font cannot leave three blank cards;
+ * past it they draw in the fallback and the next update picks the face up.
+ */
+const FONT_WAIT_MS = 3000;
 
 /**
  * The palette every chart draws in, read from the tokens in `src/styles.css`
@@ -25,6 +33,7 @@ Chart.register(...registerables);
  * empty and Chart.js falls back to its defaults, which is all a test needs.
  */
 interface IChartPalette {
+  readonly family: string;
   readonly accent: string;
   readonly text: string;
   readonly label: string;
@@ -38,6 +47,7 @@ function readPalette(): IChartPalette {
   const style = window.getComputedStyle(document.documentElement);
   const token = (name: string): string => style.getPropertyValue(name).trim();
   return {
+    family: token('--font-sans'),
     accent: token('--color-accent'),
     text: token('--color-text'),
     label: token('--color-text-secondary'),
@@ -46,6 +56,23 @@ function readPalette(): IChartPalette {
     border: token('--color-border'),
     inactive: token('--color-inactive'),
   };
+}
+
+/**
+ * Settles once the body face can be drawn, or once waiting has stopped being
+ * worthwhile. A canvas keeps whatever it was painted with: a late font swaps in
+ * for all the HTML and leaves the charts in the fallback until they next redraw.
+ * A failed load still settles, because a chart in the fallback is better than
+ * none.
+ */
+function fontLoaded(family: string): Promise<unknown> {
+  if (!family) {
+    return Promise.resolve();
+  }
+  return Promise.race([
+    document.fonts.load(`12px ${family}`).catch(() => undefined),
+    new Promise((resolve) => setTimeout(resolve, FONT_WAIT_MS)),
+  ]);
 }
 
 /** `#rrggbb` at `alpha` in [0, 1], as `#rrggbbaa`; empty stays empty. */
@@ -76,6 +103,44 @@ function tooltipStyle(palette: IChartPalette): ITooltipStyle {
   };
 }
 
+/** Whole dollars, for the revenue axis and its tooltip alike. */
+function dollars(value: number | string): string {
+  return `$${Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+}
+
+/**
+ * Draws the occupancy figure in the doughnut's hole. A plugin rather than an
+ * element laid over the canvas because the hole's centre is not the card's: the
+ * legend takes the bottom of the canvas, and only `chartArea` knows by how much.
+ *
+ * `figure` is read at draw time, so the number is whatever the metric card says
+ * now; the effect in the constructor redraws on every change to the metrics.
+ *
+ * The caption is what stops the figure reading as wrong. Occupancy is measured
+ * against sellable rooms and the ring also holds the out-of-service ones, so
+ * the two are different fractions whenever a room is out of service.
+ */
+function occupancyCentre(palette: IChartPalette, figure: () => string): Plugin<'doughnut'> {
+  return {
+    id: 'occupancyCentre',
+    afterDatasetsDraw: ({ ctx, chartArea: { left, right, top, bottom } }) => {
+      const x = (left + right) / 2;
+      const y = (top + bottom) / 2;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = palette.text;
+      ctx.font = `600 28px ${palette.family}`;
+      ctx.fillText(`${figure()}%`, x, y - 8);
+      ctx.fillStyle = palette.muted;
+      ctx.font = `12px ${palette.family}`;
+      ctx.fillText('of sellable rooms', x, y + 16);
+      ctx.restore();
+    },
+  };
+}
+
 /** A chart-ready daily series: axis labels and the values plotted against them. */
 interface ISeries {
   labels: string[];
@@ -96,7 +161,8 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
 
   private guestsChart?: Chart;
   private revenueChart?: Chart;
-  private roomMixChart?: Chart;
+  private roomMixChart?: Chart<'doughnut'>;
+  private destroyed = false;
 
   /** Guests in house per night, shaped for the line chart. */
   private readonly guestSeries = computed(() => ChartsSection.toSeries(this.historicalGuests()));
@@ -109,6 +175,9 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
     const { occupiedRooms, availableRooms, totalRooms, operationalRooms } = this.metrics();
     return [occupiedRooms, availableRooms, Math.max(totalRooms - operationalRooms, 0)];
   });
+
+  /** The figure in the doughnut's centre, in the metric card's own format. */
+  private readonly occupancy = computed(() => formatOccupancy(this.metrics().occupancy));
 
   /**
    * Text alternatives for the three canvases.
@@ -139,7 +208,10 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
 
   public readonly roomMixChartLabel = computed(() => {
     const [occupied, available, outOfService] = this.roomMix();
-    return `Room inventory tonight: ${occupied} occupied, ${available} available, ${outOfService} out of service.`;
+    return (
+      `Room inventory tonight: ${occupied} occupied, ${available} available, ` +
+      `${outOfService} out of service. Occupancy ${this.occupancy()} percent of sellable rooms.`
+    );
   });
 
   constructor() {
@@ -157,11 +229,12 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
   public ngAfterViewInit(): void {
     // Initialize charts after view is ready
     setTimeout(() => {
-      this.initializeCharts();
+      void this.initializeCharts();
     }, 100);
   }
 
   public ngOnDestroy(): void {
+    this.destroyed = true;
     // Destroy chart instances
     this.guestsChart?.destroy();
     this.revenueChart?.destroy();
@@ -206,26 +279,53 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
     };
   }
 
-  private static gridScales(palette: IChartPalette): ChartConfiguration['options'] {
+  /**
+   * A few faint horizontals to read a value against and nothing else: the days
+   * are named along the axis, so vertical rules only added ink between marks.
+   * `precision: 0` keeps the ticks whole, or an empty series counts 0 to 1 in
+   * tenths and the money axis prints `$0` six times.
+   */
+  private static gridScales(
+    palette: IChartPalette,
+    formatTick: (value: number | string) => string = (value) =>
+      Number(value).toLocaleString('en-US')
+  ): ChartConfiguration['options'] {
     return {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
         y: {
           beginAtZero: true,
-          grid: { color: translucent(palette.border, 0.5) },
-          ticks: { color: palette.muted },
+          border: { display: false },
+          grid: { color: translucent(palette.border, 0.5), drawTicks: false },
+          ticks: {
+            color: palette.muted,
+            padding: 8,
+            precision: 0,
+            maxTicksLimit: 5,
+            callback: formatTick,
+          },
         },
         x: {
-          grid: { color: translucent(palette.border, 0.3) },
+          border: { color: palette.border },
+          grid: { display: false },
           ticks: { color: palette.muted, maxRotation: 0, autoSkipPadding: 12 },
         },
       },
     };
   }
 
-  private initializeCharts(): void {
+  private async initializeCharts(): Promise<void> {
     const palette = readPalette();
+    await fontLoaded(palette.family);
+    // The wait can outlast the route, and a second visit reuses these canvas
+    // ids: building here would put two charts on one canvas, which throws.
+    if (this.destroyed) {
+      return;
+    }
+
+    // Every piece of chart text inherits this: ticks, legend and tooltips.
+    Chart.defaults.font.family = palette.family;
     this.initializeGuestsChart(palette);
     this.initializeRevenueChart(palette);
     this.initializeRoomMixChart(palette);
@@ -268,7 +368,8 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
       options: {
         ...ChartsSection.gridScales(palette),
         plugins: {
-          legend: { display: true, labels: { color: palette.label, font: { size: 12 } } },
+          // One series, already named by the card's title.
+          legend: { display: false },
           tooltip: tooltipStyle(palette),
         },
       },
@@ -300,16 +401,13 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
         ],
       },
       options: {
-        ...ChartsSection.gridScales(palette),
+        ...ChartsSection.gridScales(palette, dollars),
         plugins: {
           legend: { display: false },
           tooltip: {
             ...tooltipStyle(palette),
             callbacks: {
-              label: (context) =>
-                `$${Number(context.parsed.y).toLocaleString('en-US', {
-                  maximumFractionDigits: 0,
-                })}`,
+              label: (context) => dollars(context.parsed.y ?? 0),
             },
           },
         },
@@ -326,7 +424,7 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
       return;
     }
 
-    const config: ChartConfiguration = {
+    const config: ChartConfiguration<'doughnut'> = {
       type: 'doughnut',
       data: {
         labels: ['Occupied', 'Available', 'Out of service'],
@@ -344,13 +442,16 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
           },
         ],
       },
+      plugins: [occupancyCentre(palette, () => this.occupancy())],
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        // A hole wide enough for the figure at 250px tall, the phone height.
+        cutout: '66%',
         plugins: {
           legend: {
             position: 'bottom',
-            labels: { color: palette.label, padding: 15, font: { size: 11 } },
+            labels: { color: palette.label, boxWidth: 12, padding: 15, font: { size: 12 } },
           },
           tooltip: {
             ...tooltipStyle(palette),
@@ -381,7 +482,7 @@ export class ChartsSection implements AfterViewInit, OnDestroy {
    * observer callback ends the initial animation. Those widths had nothing left
    * to overwrite the answer; 390, 1280 and 1442 did.
    */
-  private static redraw(chart: Chart): void {
+  private static redraw(chart: Pick<Chart, 'stop' | 'update'>): void {
     chart.stop();
     chart.update('none'); // no animation — smoother under a 2s feed
   }
