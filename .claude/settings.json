@@ -13,7 +13,8 @@
       "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/6923761c-02d0-4b90-a89d-36c23b0f52d6/scratchpad/measure.mjs\" \"C:/Users/Jacob Miller/forest/ethereal-hotel\")",
       "Bash(grep -v \"^\\\\s*$\")",
       "Bash(curl -sI https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip)",
-      "Bash(grep -n '| `ROADMAP.md`        | 4K' CLAUDE.md)"
+      "Bash(grep -n '| `ROADMAP.md`        | 4K' CLAUDE.md)",
+      "Bash(node scripts/serve-dist.mjs --port 4199)"
     ]
   }
 }
