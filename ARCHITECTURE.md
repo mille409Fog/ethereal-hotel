@@ -33,11 +33,15 @@ the behaviour the whole read path is built around, so it is worth stating precis
 The frontend picks its transport from `wsUrl` in the active environment file — it does not
 discover the absence of a socket by failing to open one:
 
-| `wsUrl`             | Transport                                 | Badge                                             |
-| ------------------- | ----------------------------------------- | ------------------------------------------------- |
-| set                 | WebSocket, pushed every 2s                | Live data · streaming from the API                |
-| `null`              | `GET /api/metrics` every `pollIntervalMs` | Live data · polled from the API every few seconds |
-| — (API unreachable) | none; committed fixture                   | Simulated data · backend unreachable              |
+| `wsUrl`             | Transport                                 | Badge                                            |
+| ------------------- | ----------------------------------------- | ------------------------------------------------ |
+| set                 | WebSocket, pushed every 2s                | Live data · streaming from the API               |
+| `null`              | `GET /api/metrics` every `pollIntervalMs` | Live data · polled from the API every 15 seconds |
+| — (API unreachable) | none; committed fixture                   | Simulated data · backend unreachable             |
+
+The footer's transport sentence follows the same status, and both read the polling interval from
+`pollIntervalMs`. Neither names the socket's cadence on screen, because that is the backend's
+`BROADCAST_INTERVAL_SECONDS` and the frontend cannot know it.
 
 `wsUrl: null` in `src/environments/environment.prod.ts` is not an unfinished config value. It
 is the instruction to poll, because the hosted demo is a serverless function with no process to
@@ -111,7 +115,7 @@ by `takeUntilDestroyed(DestroyRef)` rather than manual `unsubscribe()`.
 | `/ws`    | WebSocket | 2 seconds (one shared broadcast) | `Metrics` |
 
 `/ws` is mounted only when `create_app(live_stream=True)` — the container deployment. The
-health payload carries `liveStream`, which reports whether *this* deployment serves the socket,
+health payload carries `liveStream`, which reports whether _this_ deployment serves the socket,
 and its `endpoints` map omits `/ws` when it does not.
 
 Health is mounted twice on purpose: the container is alone on its origin, so `/` is the natural
@@ -140,7 +144,7 @@ The rule itself lives once, in `backend/services/bookings.py`, and has no counte
 browser. A second implementation in TypeScript would have rendered faster and been one refactor
 away from disagreeing with the server about what a valid booking is.
 
-Note that this is *not* the shape of Pydantic's own 422 — that one is raised before the handler
+Note that this is _not_ the shape of Pydantic's own 422 — that one is raised before the handler
 runs and is a list of issues located by path — so a client has to read both.
 
 ## Layering
@@ -230,7 +234,7 @@ Same-origin is worth more than it looks: no CORS preflight, no `ALLOWED_ORIGINS`
 sync, and no hostname that can rot — every preview deployment gets a working backend at its own
 URL with no edit to `environment.prod.ts`.
 
-The seed is fixed (`api/index.py`) so every cold-started instance derives the *same* hotel —
+The seed is fixed (`api/index.py`) so every cold-started instance derives the _same_ hotel —
 without that, two function instances would serve two different hotels. The bookings are still
 laid out around `date.today()`, so the demo does not decay the way a committed database would.
 The figures are derived from real `Room`/`Guest`/`Booking` rows either way: the seed decides
@@ -253,7 +257,7 @@ persists. Point a frontend at it by setting `apiUrl`/`wsUrl`/`healthUrl` in
 means CORS applies again, which the same-origin demo avoids entirely.
 
 `backend/docker-compose.yml` is the other supported way in, and the one that makes the
-*persistent* and *durable* rows above literally true:
+_persistent_ and _durable_ rows above literally true:
 
 ```bash
 cd backend && docker compose up -d
@@ -334,12 +338,12 @@ Two decisions went against the obvious version:
 
 ## Testing
 
-| Suite                  | Covers                                                                        |
-| ---------------------- | ----------------------------------------------------------------------------- |
-| `npm test`             | Vitest over components and services, with coverage thresholds that fail the build |
+| Suite                  | Covers                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| `npm test`             | Vitest over components and services, with coverage thresholds that fail the build  |
 | `npm run test:backend` | pytest: REST endpoints, the WebSocket stream, broadcaster fan-out, dependency pins |
-| `npm run e2e`          | Playwright smoke tests + the axe audit, against the production build          |
-| `npm run a11y`         | Just the axe audit and the keyboard/reduced-motion checks                      |
+| `npm run e2e`          | Playwright smoke tests + the axe audit, against the production build               |
+| `npm run a11y`         | Just the axe audit and the keyboard/reduced-motion checks                          |
 
 The backend suite runs against an isolated, deterministically seeded SQLite database and needs
 no running server. The Playwright suites run against `dist/` rather than `ng serve`, so they

@@ -68,6 +68,16 @@ export interface IDashboardData {
 }
 
 /**
+ * The polling cadence in the words the page uses, read from the value the timer
+ * runs on so the dashboard cannot state an interval the deployment doesn't use.
+ *
+ * There is no socket equivalent on purpose: `BROADCAST_INTERVAL_SECONDS` belongs
+ * to the backend and can be overridden there, so the frontend cannot know it and
+ * says nothing about it.
+ */
+export const POLL_INTERVAL_SECONDS = environment.pollIntervalMs / 1000;
+
+/**
  * Service to connect to the Python FastAPI backend
  * Provides both REST API and WebSocket connections for real-time data
  */

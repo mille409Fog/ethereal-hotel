@@ -109,7 +109,7 @@ export const PROJECTS: readonly IProject[] = [
   {
     name: 'Hotel Operations Dashboard',
     description:
-      'Occupancy, ADR and RevPAR streamed over a WebSocket, computed from real booking records',
+      'Occupancy, ADR and RevPAR computed from real booking records — polled from a serverless API here, streamed over a WebSocket from the container',
     category: 'Live Demo',
     tech: ['Angular 22', 'RxJS', 'Chart.js', 'FastAPI', 'SQLAlchemy'],
     link: '/dashboard',

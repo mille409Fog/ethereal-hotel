@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { BackendStatus } from '../../services/dashboard-api.service';
+import { BackendStatus, POLL_INTERVAL_SECONDS } from '../../services/dashboard-api.service';
 
 @Component({
   selector: 'app-dashboard-header',
@@ -10,6 +10,8 @@ import { BackendStatus } from '../../services/dashboard-api.service';
 })
 export class DashboardHeader {
   public readonly status = input<BackendStatus>('checking');
+
+  protected readonly pollSeconds = POLL_INTERVAL_SECONDS;
 
   /**
    * The provenance badge, phrased for a listener rather than a reader.
@@ -25,7 +27,7 @@ export class DashboardHeader {
       case 'connected':
         return 'Connected to the API. Hotel metrics are now updating live.';
       case 'polling':
-        return 'Connected to the API. The figures are real, and refresh every few seconds rather than streaming continuously.';
+        return `Connected to the API. The figures are real, and refresh every ${POLL_INTERVAL_SECONDS} seconds rather than streaming continuously.`;
       case 'disconnected':
         return 'The API is unreachable. The figures shown are simulated — a committed snapshot of a seeded database, not live data.';
       default:

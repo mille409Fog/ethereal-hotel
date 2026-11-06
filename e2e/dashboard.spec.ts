@@ -10,6 +10,7 @@
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { IDashboardData, IMetrics } from '../src/app/services/dashboard-api.service';
+import { environment } from '../src/environments/environment.prod';
 import {
   DASHBOARD_PATH,
   LIVE_DASHBOARD,
@@ -121,6 +122,22 @@ test.describe('dashboard with the backend up', () => {
 
     await expectDataSource(page, 'live');
     await expectMetricsRendered(page, LIVE_DASHBOARD.metrics);
+  });
+
+  // The production build is the only place the two claims meet the interval the
+  // deployment really runs on, so this is what holds them to `pollIntervalMs`.
+  test('states one transport and the deployed interval in the badge and the footer', async ({
+    page,
+  }) => {
+    await stubBackendUp(page);
+    await page.goto('/dashboard');
+
+    const interval = `every ${environment.pollIntervalMs / 1000} seconds`;
+    await expect(page.locator('.data-source--live')).toContainText(
+      `polled from the API ${interval}`
+    );
+    await expect(page.locator('.dashboard-note')).toContainText(`Polled over REST ${interval}`);
+    await expect(page.locator('.dashboard-note')).not.toContainText('WebSocket');
   });
 
   test('applies a metrics snapshot read by the polling transport', async ({ page }) => {
@@ -347,6 +364,7 @@ test.describe('dashboard with the backend down', () => {
 
     await expectDataSource(page, 'simulated');
     await expect(page.locator('.data-source')).toContainText('backend unreachable');
+    await expect(page.locator('.dashboard-note')).toContainText('Committed snapshot');
     await expectMetricsRendered(page, OFFLINE_DASHBOARD.metrics);
   });
 });

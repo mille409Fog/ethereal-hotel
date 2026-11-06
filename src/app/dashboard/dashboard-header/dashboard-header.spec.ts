@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DashboardHeader } from './dashboard-header';
-import { BackendStatus } from '../../services/dashboard-api.service';
+import { BackendStatus, POLL_INTERVAL_SECONDS } from '../../services/dashboard-api.service';
 
 /**
  * The header carries the provenance notice. The hosted demo runs on a committed
@@ -37,6 +37,18 @@ describe('DashboardHeader', () => {
     expect(text).toContain('Live data');
     expect(text).not.toContain('Simulated data');
     expect(fixture.nativeElement.querySelector('.data-source--live')).toBeTruthy();
+  });
+
+  it('states the interval the polling timer actually runs on, in the badge and aloud', async () => {
+    const text = await renderWithStatus('polling');
+    const badge: HTMLElement = fixture.nativeElement.querySelector('.data-source--live');
+    const liveRegion: HTMLElement = fixture.nativeElement.querySelector('[role="status"]');
+
+    expect(badge.textContent).toContain(
+      `polled from the API every ${POLL_INTERVAL_SECONDS} seconds`
+    );
+    expect(liveRegion.textContent).toContain(`every ${POLL_INTERVAL_SECONDS} seconds`);
+    expect(text).not.toContain('few seconds');
   });
 
   it('says plainly that the numbers are simulated when the backend is unreachable', async () => {

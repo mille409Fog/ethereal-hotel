@@ -22,7 +22,7 @@
       @case ('polling') {
         <p class="data-source data-source--live">
           <span class="data-source-dot"></span>
-          Live data · polled from the API every few seconds
+          Live data · polled from the API every {{ pollSeconds }} seconds
         </p>
       }
       @case ('disconnected') {
