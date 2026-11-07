@@ -1,0 +1,62 @@
+/* ----- The way back -----
+   The padding is the home page's `.nav` padding, 2rem and 1rem from 480px
+   down, so the name lands where the visitor last saw it. No background and no
+   border: the bar is not a second nav, it is one link, and the page's own
+   `main` starts directly under it. */
+:host {
+  display: block;
+}
+
+.home-link {
+  padding: 0.5rem 2rem 0;
+}
+
+/* 44px tall, the same tap target as the home nav's links, and the same
+   behaviour on hover: the colour changes and the underline takes colour. */
+.home-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-height: 44px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: transparent;
+  transition:
+    color 0.15s ease,
+    text-decoration-color 0.15s ease;
+}
+
+.home-link a:hover {
+  color: var(--color-accent-text);
+  text-decoration-color: var(--color-accent);
+}
+
+@media (max-width: 480px) {
+  .home-link {
+    padding: 0.5rem 1rem 0;
+  }
+}
+
+/* Over a full-viewport canvas. Fixed, so the canvas keeps the whole viewport
+   and the page does not scroll; an opaque surface behind the text, because
+   the picture under it moves and no contrast could be promised against it. */
+:host(.floating) {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1;
+}
+
+:host(.floating) .home-link {
+  padding: 0;
+}
+
+:host(.floating) .home-link a {
+  padding: 0 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}

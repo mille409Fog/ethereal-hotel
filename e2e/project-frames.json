@@ -2,7 +2,7 @@
   "/wanderquest": {
     "clip": {
       "x": 96,
-      "y": 287,
+      "y": 339,
       "width": 1089,
       "height": 681
     },
@@ -20,7 +20,7 @@
   "/dashboard": {
     "clip": {
       "x": 8,
-      "y": 0,
+      "y": 36,
       "width": 1264,
       "height": 790
     },
@@ -29,7 +29,7 @@
   "/booking": {
     "clip": {
       "x": 50,
-      "y": 40,
+      "y": 92,
       "width": 1180,
       "height": 738
     },
@@ -38,7 +38,7 @@
   "/gallery": {
     "clip": {
       "x": 73,
-      "y": 519,
+      "y": 571,
       "width": 1134,
       "height": 709
     },
@@ -47,7 +47,7 @@
   "/aesthetic": {
     "clip": {
       "x": 17,
-      "y": 204,
+      "y": 256,
       "width": 1246,
       "height": 779
     },

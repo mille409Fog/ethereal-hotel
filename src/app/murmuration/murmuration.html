@@ -2,3 +2,6 @@
   <p>browser unable to operate webGL</p>
 }
 <canvas #stage [hidden]="webGLfailure()"></canvas>
+<!-- After the canvas, and floating over its corner rather than above it: the
+     canvas keeps the whole viewport, so the page still does not scroll. -->
+<app-home-link [floating]="true" />

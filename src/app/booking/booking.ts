@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { HomeLink } from '../home-link/home-link';
 import { BookingField } from './booking-field/booking-field';
 import {
   BookingApiError,
@@ -80,7 +81,7 @@ function byNewestStay(a: IBooking, b: IBooking): number {
 
 @Component({
   selector: 'app-booking',
-  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe, BookingField],
+  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe, BookingField, HomeLink],
   templateUrl: './booking.html',
   styleUrl: './booking.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

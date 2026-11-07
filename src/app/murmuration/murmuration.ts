@@ -36,9 +36,10 @@ import {
 } from './murmuration.tokens';
 import { disposeRenderer } from './renderer/dispose-renderer';
 import { calibrateRenderer, REDUCED_MOTION_QUERY } from './renderer/renderer-calibration';
+import { HomeLink } from '../home-link/home-link';
 import { initializeScene } from './scene/initialize-scene';
 @Component({
-  imports: [],
+  imports: [HomeLink],
   selector: 'app-murmuration',
   styleUrl: './murmuration.css',
   templateUrl: './murmuration.html',

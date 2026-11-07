@@ -33,6 +33,7 @@ import {
   unwrap,
   VIEW_RADIUS,
 } from './wheel';
+import { HomeLink } from '../home-link/home-link';
 import { AREA_SPLIT, IAesthetic, IVariation, Structure, variations, warm } from './winnow';
 
 /** A source of chance in [0, 1), like `Math.random`. */
@@ -141,6 +142,7 @@ function annulus(r0: number, r1: number): string {
  */
 @Component({
   selector: 'app-aesthetic',
+  imports: [HomeLink],
   templateUrl: './aesthetic.html',
   styleUrl: './aesthetic.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

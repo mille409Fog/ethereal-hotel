@@ -19,11 +19,12 @@ import { OFFLINE_DASHBOARD } from '../services/offline-dashboard.fixture';
 import { ChartsSection } from './charts-section/charts-section';
 import { DashboardFooter } from './dashboard-footer/dashboard-footer';
 import { DashboardHeader } from './dashboard-header/dashboard-header';
+import { HomeLink } from '../home-link/home-link';
 import { MetricsGrid } from './metrics-grid/metrics-grid';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DashboardHeader, MetricsGrid, ChartsSection, DashboardFooter],
+  imports: [HomeLink, DashboardHeader, MetricsGrid, ChartsSection, DashboardFooter],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

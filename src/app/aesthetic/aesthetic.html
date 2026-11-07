@@ -1,6 +1,7 @@
 <!-- ===== THE AESTHETIC GENERATOR =====
      `main`, matching `/gallery`: this route renders nothing else. The page's
      glow takes the primary's colour through `--glow`. -->
+<app-home-link />
 <main class="aesthetic-page" [style.--glow]="primary()?.hex ?? null">
   <div class="aesthetic-inner">
     <header class="aesthetic-header">

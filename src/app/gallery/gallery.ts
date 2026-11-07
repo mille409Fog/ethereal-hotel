@@ -18,6 +18,7 @@ import {
   ORBS_SHOWN,
   PHONE_FRAME_INSET,
 } from './gallery.data';
+import { HomeLink } from '../home-link/home-link';
 import { offerColours, Random, recommend } from './recommend';
 
 /**
@@ -41,6 +42,7 @@ export const GALLERY_RANDOM = new InjectionToken<Random>('GALLERY_RANDOM', {
  */
 @Component({
   selector: 'app-gallery',
+  imports: [HomeLink],
   templateUrl: './gallery.html',
   styleUrl: './gallery.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

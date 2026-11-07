@@ -478,12 +478,6 @@
   margin: 0 0 0.6rem;
 }
 
-.gallery-back {
-  display: block;
-  text-align: center;
-  color: var(--color-accent-text);
-}
-
 @media (max-width: 860px) {
   .gallery-page {
     padding: 3rem 1rem;

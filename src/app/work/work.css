@@ -170,12 +170,6 @@
   margin: 2.5rem 0 1.5rem;
 }
 
-.work-back {
-  display: block;
-  text-align: center;
-  color: var(--color-accent-text);
-}
-
 @media (max-width: 640px) {
   .work-page {
     padding: 2.5rem 1rem;

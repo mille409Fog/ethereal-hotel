@@ -37,22 +37,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Give the demo routes a way back
-
-**Effort:** small–medium. **Why:** visitors reach the demos from the project cards, and then the
-site stops. `/dashboard`, `/booking`, `/aesthetic`, `/wanderquest` and `/murmuration` have no link
-back at all. `/work` and `/gallery` have one, at the bottom of a long page.
-
-**DoD:**
-
-- Those seven routes reach the home page from the first screen, without scrolling, through one
-  shared component rather than seven copies.
-- It keeps the `/`, `/dashboard` and `/gallery` Lighthouse thresholds and passes the e2e axe run.
-- `/murmuration` gets the smallest version that works, and its canvas stays uninterrupted.
-- `/aubade` and `/aubade/reader` are untouched: that work shares nothing with this one.
-- Bottom-of-page back links are removed if they have become redundant, and frames are re-captured.
-
-### 2. Give an unknown URL a page
+### 1. Give an unknown URL a page
 
 **Effort:** small. **Why:** `app.routes.ts` has no wildcard, so a mistyped address shows a completely
 blank screen on production and rewrites the URL to `/` without showing the home page. For a site sent
@@ -67,7 +52,7 @@ to reviewers, a truncated link in a message is an ordinary way to arrive.
 - `scripts/emit-route-meta.mjs` does not stamp a static file for the wildcard. If the response stays
   HTTP 200 because of the SPA rewrite, a comment says so rather than implying a real 404.
 
-### 3. Make the project cards read as one set, and describe them truthfully
+### 2. Make the project cards read as one set, and describe them truthfully
 
 **Effort:** small. **Why:** the grid is what most visitors judge, and it has three visible seams.
 Buttons don't share a baseline across a row (their bottoms sit at 1581/1581/1638px and
@@ -85,7 +70,7 @@ exists to avoid.
 - The intro describes what is actually in the grid: demos built here, and work under NDA.
 - `npm run resume:check` still passes, and frames are re-captured.
 
-### 4. Stop the booking table hiding its columns on phones
+### 3. Stop the booking table hiding its columns on phones
 
 **Effort:** small. **Why:** at 390px the table is 625px wide inside a 308px scroller, so check-out,
 guests, rate and status are out of view with nothing to suggest they exist. `status` is the column
@@ -100,7 +85,7 @@ that shows a booking was really written and cancelled.
 - The e2e booking assertions and axe run stay green, and frames are re-captured if the desktop frame
   moved.
 
-### 5. Shorten the dashboard on phones
+### 4. Shorten the dashboard on phones
 
 **Effort:** small. **Why:** at 390px the six metric cards stack in one column and the page is about
 3,000px tall, so the charts start well below where most visitors stop. The desktop layout already
@@ -113,7 +98,7 @@ ranks two figures above the other four, and the phone layout could say the same 
 - The DOM order, reading order and throttled `role="status"` digest are unchanged.
 - The charts begin at least one screen higher than they do today.
 
-### 6. Keep the painting beside the words on `/gallery`
+### 5. Keep the painting beside the words on `/gallery`
 
 **Effort:** small. **Why:** on desktop the label runs far longer than the painting, leaving roughly
 700px of empty column under the picture while the visitor reads about details they can no longer
@@ -128,7 +113,7 @@ see. "Up close" asks you to look at the boats while the boats have scrolled away
   nothing animates.
 - Frames re-captured if the Gallery frame moved.
 
-### 7. Remove the glow around the Gallery's panel
+### 6. Remove the glow around the Gallery's panel
 
 **Effort:** small. **Why:** `CLAUDE.md` says no glow, and the check behind it only reads
 `text-shadow`, so a `box-shadow` halo gets through. Two things on `/gallery` use one, and they are not
@@ -146,7 +131,7 @@ tint already carries the colour.
   state, so it is not part of this item.
 - `CLAUDE.md`'s no-glow rule states the new check and its exemptions, and frames are re-captured.
 
-### 8. Tighten the Wanderquest layout
+### 7. Tighten the Wanderquest layout
 
 **Effort:** small. **Why:** the legend explains the map but sits below all six bonus tiles, a long
 way from it. The tiles stack two across and three down, which pushes the checklist further away, when
