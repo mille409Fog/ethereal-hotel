@@ -14,13 +14,15 @@
 }
 
 /* The name is the page's ink, not its accent: the accent is kept for what
-   can be acted on, and the brand is not a link. */
+   can be acted on, and the brand is not a link. It never wraps: at 390px it
+   used to break onto two lines and crowd "Home". */
 .nav-brand {
   font-family: var(--font-serif);
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-text);
   cursor: default;
+  white-space: nowrap;
 }
 
 .nav-links {
@@ -31,31 +33,52 @@
   padding: 0;
 }
 
+/* 44px tall at every width, so the tap target doesn't depend on a breakpoint;
+   the 60px bar has room for it. The text stays centred, so the desktop bar
+   looks as it did when the links were 20px boxes. */
 .nav-links a {
-  text-decoration: none;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: transparent;
   font-size: 0.875rem;
   color: var(--color-text-secondary);
-  transition: color 0.15s ease;
-  position: relative;
-}
-
-.nav-links a:hover {
-  color: var(--color-accent-text);
+  transition:
+    color 0.15s ease,
+    text-decoration-color 0.15s ease;
 }
 
 /* The underline is always there and only takes colour on hover; it used to
-   draw itself across the link from the left. */
-.nav-links a::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background-color: transparent;
-  transition: background-color 0.15s ease;
+   draw itself across the link from the left. It is a text decoration rather
+   than a positioned ::after so it follows the text, not the 44px box. */
+.nav-links a:hover {
+  color: var(--color-accent-text);
+  text-decoration-color: var(--color-accent);
 }
 
-.nav-links a:hover::after {
-  background-color: var(--color-accent);
+/* Phone widths. The brand (~103px) and the four links (~192px of text) need
+   about 347px with their gaps, so one row fits at 390px and up but not at
+   375px or below. The links don't hide behind a menu icon at that point: they
+   wrap onto a second row of their own, which fits easily at 320px. Whether
+   they wrap is decided by the real text width rather than a second
+   breakpoint, so a fallback font that runs wider wraps instead of
+   overflowing. On one row, `flex: 1` plus `space-between` spreads the links
+   over the space after the brand; on two rows, over the full width. */
+@media (max-width: 480px) {
+  .nav {
+    flex-wrap: wrap;
+    column-gap: 1rem;
+    height: auto;
+    min-height: 60px;
+    padding: 0.5rem 1rem;
+  }
+
+  .nav-links {
+    flex: 1 0 auto;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
 }

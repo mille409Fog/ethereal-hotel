@@ -65,6 +65,37 @@ test.describe('landing page', () => {
     }
   });
 
+  // 320 is the narrowest phone worth designing for, 375 the first width at
+  // which the links take a second row, 390 and 430 the iPhones the bug was
+  // photographed on. Before the fix the brand wrapped at all four and the
+  // page scrolled sideways at 320, because the nav needed 360px.
+  for (const width of [320, 375, 390, 430]) {
+    test(`fits the navigation at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto('/');
+
+      const nav = page.getByRole('navigation', { name: 'Primary' });
+      await expect(nav).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+
+      // One line of text has one client rect; a wrapped brand has two.
+      const brandLines = await nav.locator('.nav-brand').evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return range.getClientRects().length;
+      });
+      expect(brandLines).toBe(1);
+
+      for (const link of await nav.getByRole('link').all()) {
+        const box = await link.boundingBox();
+        expect(box?.height).toBeGreaterThanOrEqual(44);
+        expect((box?.x ?? -1) + (box?.width ?? Infinity)).toBeLessThanOrEqual(width);
+      }
+    });
+  }
+
   test('boots without an uncaught runtime error', async ({ page }) => {
     // Both routes are lazily loaded, so a chunk that fails to resolve in the
     // production build — a broken `loadComponent`, a polyfill the bundler
