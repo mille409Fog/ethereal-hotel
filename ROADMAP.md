@@ -37,25 +37,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Make the project cards read as one set, and describe them truthfully
-
-**Effort:** small. **Why:** the grid is what most visitors judge, and it has three visible seams.
-Buttons don't share a baseline across a row (their bottoms sit at 1581/1581/1638px and
-2132/2099/2099px at 1440px). Two cards use lowercase titles, copy and labels ("start the quests")
-beside title case on the rest. And the section intro calls them "enterprise applications I've
-architected and delivered" at scale, above six personal demos, which is the kind of claim this repo
-exists to avoid.
-
-**DoD:**
-
-- In any row, every button's bottom edge is at the same height, using flex or grid rather than fixed
-  heights.
-- All nine cards use one convention for titles, descriptions and button labels. If `wanderquest` and
-  `murmuration` stay lowercase as names, their descriptions and labels still follow it.
-- The intro describes what is actually in the grid: demos built here, and work under NDA.
-- `npm run resume:check` still passes, and frames are re-captured.
-
-### 2. Stop the booking table hiding its columns on phones
+### 1. Stop the booking table hiding its columns on phones
 
 **Effort:** small. **Why:** at 390px the table is 625px wide inside a 308px scroller, so check-out,
 guests, rate and status are out of view with nothing to suggest they exist. `status` is the column
@@ -70,7 +52,7 @@ that shows a booking was really written and cancelled.
 - The e2e booking assertions and axe run stay green, and frames are re-captured if the desktop frame
   moved.
 
-### 3. Shorten the dashboard on phones
+### 2. Shorten the dashboard on phones
 
 **Effort:** small. **Why:** at 390px the six metric cards stack in one column and the page is about
 3,000px tall, so the charts start well below where most visitors stop. The desktop layout already
@@ -83,7 +65,7 @@ ranks two figures above the other four, and the phone layout could say the same 
 - The DOM order, reading order and throttled `role="status"` digest are unchanged.
 - The charts begin at least one screen higher than they do today.
 
-### 4. Keep the painting beside the words on `/gallery`
+### 3. Keep the painting beside the words on `/gallery`
 
 **Effort:** small. **Why:** on desktop the label runs far longer than the painting, leaving roughly
 700px of empty column under the picture while the visitor reads about details they can no longer
@@ -98,7 +80,7 @@ see. "Up close" asks you to look at the boats while the boats have scrolled away
   nothing animates.
 - Frames re-captured if the Gallery frame moved.
 
-### 5. Remove the glow around the Gallery's panel
+### 4. Remove the glow around the Gallery's panel
 
 **Effort:** small. **Why:** `CLAUDE.md` says no glow, and the check behind it only reads
 `text-shadow`, so a `box-shadow` halo gets through. Two things on `/gallery` use one, and they are not
@@ -116,7 +98,7 @@ tint already carries the colour.
   state, so it is not part of this item.
 - `CLAUDE.md`'s no-glow rule states the new check and its exemptions, and frames are re-captured.
 
-### 6. Tighten the Wanderquest layout
+### 5. Tighten the Wanderquest layout
 
 **Effort:** small. **Why:** the legend explains the map but sits below all six bonus tiles, a long
 way from it. The tiles stack two across and three down, which pushes the checklist further away, when

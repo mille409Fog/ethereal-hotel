@@ -83,27 +83,27 @@ function caseStudy(slug: string): ICaseStudy {
 
 export const PROJECTS: readonly IProject[] = [
   {
-    name: 'wanderquest',
-    description: 'three travel quests — every state, every continent, every country',
-    category: 'interactive',
+    name: 'Wanderquest',
+    description: 'Three travel quests — every state, every continent, every country',
+    category: 'Interactive',
     tech: ['Angular 22'],
     link: '/wanderquest',
-    linkLabel: 'start the quests',
+    linkLabel: 'Start the Quests',
     frame: {
       src: '/projects/wanderquest.webp',
       alt: 'The states quest with seven marked, “7 of 50 states visited”, and those seven filled in on the map of the United States.',
     },
   },
   {
-    name: 'murmuration',
-    description: 'watch bats dance in the sky, experience wonder',
+    name: 'Murmuration',
+    description: 'Watch bats dance in the sky, experience wonder',
     category: 'Live Demo',
     tech: ['Angular 22', 'three.js'],
     link: '/murmuration',
-    linkLabel: 'watch the murmuration',
+    linkLabel: 'Watch the Murmuration',
     frame: {
       src: '/projects/murmuration.webp',
-      alt: 'an entire cauldron of batoids flies wildly lit up against the sky, see what shapes the make.',
+      alt: 'An entire cauldron of batoids flies wildly, lit up against the sky; see what shapes they make.',
     },
   },
   {

@@ -67,6 +67,34 @@ describe('Projects', () => {
     expect(el.querySelector('.demo-note')?.textContent).toMatch(/no screenshots/i);
   });
 
+  it('writes every name and button label in title case', () => {
+    const minorWords = new Set(['a', 'an', 'and', 'in', 'of', 'the', 'to']);
+    for (const project of PROJECTS) {
+      for (const phrase of [project.name, project.category, project.linkLabel ?? '']) {
+        const lowercase = phrase
+          .split(/\s+/)
+          .filter((word) => /^[a-z]/.test(word) && !minorWords.has(word));
+        expect(lowercase, `${project.name}: "${phrase}"`).toEqual([]);
+      }
+    }
+  });
+
+  it('starts every description and alt with a capital, and ends no description with a stop', () => {
+    for (const project of PROJECTS) {
+      expect(project.description, project.name).toMatch(/^[A-Z].*[^.]$/);
+      expect(project.frame?.alt ?? 'None', project.name).toMatch(/^[A-Z]/);
+    }
+  });
+
+  it('names in the intro the sector of every NDA card', () => {
+    const intro = el.querySelector('.section-description')?.textContent?.toLowerCase() ?? '';
+    expect(intro).toContain('demos');
+    expect(intro).toContain('under nda');
+    for (const project of PROJECTS.filter((candidate) => candidate.study)) {
+      expect(intro, project.name).toContain(project.category.toLowerCase());
+    }
+  });
+
   it('never describes a frame as a screenshot of something', () => {
     for (const project of PROJECTS) {
       expect(project.frame?.alt ?? '').not.toMatch(/screenshot|image of|picture of/i);

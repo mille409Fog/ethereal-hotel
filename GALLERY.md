@@ -182,8 +182,5 @@ Correct an entry in `gallery.data.ts` and the page follows. Nothing else holds a
 
 ## Open items
 
-- **The home-page card sits in a section headed "enterprise applications".** It goes after the
-  two live demos so the "last three are under NDA" note stays true. The owner may want to move it
-  or reword the heading.
 - **The collection is Western-heavy, with one Japanese print.** Widening it is a content
   decision, not a code one. The 70-year rule is the only hard constraint.

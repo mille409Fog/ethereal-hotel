@@ -96,6 +96,33 @@ test.describe('landing page', () => {
     });
   }
 
+  // Grouped by the card's top rather than by an assumed column count, so this
+  // holds whatever the auto-fill grid decides at this width. 1440 is the width
+  // the seam was measured at, with bottoms 57px apart in one row.
+  test('lines up the project buttons across each row', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    await page.evaluate(() => document.fonts.ready);
+
+    const placed = await page.locator('#projects .room-card').evaluateAll((cards) =>
+      cards.map((card) => ({
+        top: Math.round(card.getBoundingClientRect().top),
+        buttonBottom: card.querySelector('.project-link')?.getBoundingClientRect().bottom,
+      }))
+    );
+    expect(placed).toHaveLength(9);
+
+    const rows = new Map<number, Array<number | undefined>>();
+    for (const { top, buttonBottom } of placed) {
+      rows.set(top, [...(rows.get(top) ?? []), buttonBottom]);
+    }
+    // One card per row would pass every comparison below without testing any.
+    expect(rows.size).toBeLessThan(placed.length);
+    for (const bottoms of rows.values()) {
+      expect(new Set(bottoms).size, `button bottoms in one row: ${bottoms.join(', ')}`).toBe(1);
+    }
+  });
+
   test('boots without an uncaught runtime error', async ({ page }) => {
     // Both routes are lazily loaded, so a chunk that fails to resolve in the
     // production build — a broken `loadComponent`, a polyfill the bundler
