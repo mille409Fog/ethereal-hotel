@@ -17,7 +17,8 @@
       "Bash(node scripts/serve-dist.mjs --port 4199)",
       "Bash(node -e \"const f=require\\('./src/app/services/offline-dashboard.fixture.json'\\);console.log\\(f.metrics, f.historicalGuests.length, f.historicalGuests.slice\\(0,2\\), f.historicalGuests.at\\(-1\\), f.historicalRevenue.slice\\(0,2\\)\\)\")",
       "Bash(grep -n '| `ROADMAP.md`        | 14K' CLAUDE.md)",
-      "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/6a128caa-a924-491b-8d4a-718ecadf012b/scratchpad/measure.cjs\")"
+      "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/6a128caa-a924-491b-8d4a-718ecadf012b/scratchpad/measure.cjs\")",
+      "Bash(powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter 'ProcessId=22468' | Select-Object -ExpandProperty CommandLine\")"
     ]
   }
 }

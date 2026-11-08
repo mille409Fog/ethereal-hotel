@@ -1,0 +1,60 @@
+/* ===== Unknown path =====
+   The page frame of `/work` (page padding, serif title, secondary body text),
+   copied rather than shared for the reason recorded in `work.css`. A narrow
+   column, centred, because there are three sentences and a link. */
+
+.not-found-page {
+  min-height: 100vh;
+  background: var(--color-bg);
+  padding: 6rem 2rem;
+}
+
+.not-found-inner {
+  max-width: 34rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.not-found-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3rem);
+  color: var(--color-text);
+  margin: 0 0 1rem;
+}
+
+.not-found-path,
+.not-found-hint {
+  color: var(--color-text-secondary);
+  font-size: 1.05rem;
+  margin: 0 0 1rem;
+}
+
+/* A long or unbroken path must wrap rather than widen the page on a phone. */
+.not-found-path code {
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+/* 44px tap target, and the same hover as the home link: the colour changes
+   and the underline takes colour. Nothing moves. */
+.not-found-home {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 1rem;
+  color: var(--color-accent-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: color 0.15s ease;
+}
+
+.not-found-home:hover {
+  color: var(--color-accent-hover);
+}
+
+@media (max-width: 480px) {
+  .not-found-page {
+    padding: 4rem 1rem;
+  }
+}

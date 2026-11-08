@@ -74,4 +74,22 @@ export const routes: Routes = [
     loadComponent: () => import('./wanderquest/wanderquest').then((m) => m.Wanderquest),
     title: meta.wanderquest.title,
   },
+  {
+    // Last, because the router matches in order and `**` matches everything.
+    // Without it an unknown path threw NG04002 on the first navigation, the
+    // router reset the address bar to `/`, and no route activated, so the page
+    // was blank under a URL claiming to be home. See `not-found.ts`.
+    //
+    // Deliberately absent from `route-meta.json`. That file is the list
+    // `scripts/emit-route-meta.mjs` stamps a static HTML file for, and there is
+    // no path to stamp. So the title is written here, which is the one place it
+    // is read.
+    //
+    // This is not an HTTP 404. `vercel.json` rewrites every unmatched path to
+    // `/index.html`, so the response is a 200 and only the rendered page says
+    // the path does not exist.
+    path: '**',
+    loadComponent: () => import('./not-found/not-found').then((m) => m.NotFound),
+    title: 'Page not found - Jacob Miller',
+  },
 ];

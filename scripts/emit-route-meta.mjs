@@ -25,6 +25,14 @@
  * trusted from whatever `src/index.html` happened to say, so there is one
  * authority for all four cards instead of one authority and one copy.
  *
+ * The router's `**` route, the page for an unknown path, is not in
+ * `route-meta.json` and gets no file here, because it has no path to give one.
+ * An unknown path falls through to the `/(.*)` rewrite and is served the home
+ * page's document with **HTTP 200**, not 404. Angular then renders the
+ * not-found page into it, so a visitor sees the truth and a crawler that
+ * runs no JavaScript sees the home page's card. A real 404 status would need
+ * Vercel's routing to change, not this script.
+ *
  * Runs from `npm run build`, after `ng build`. A bare `ng build` skips it and
  * silently ships four identical cards.
  *
