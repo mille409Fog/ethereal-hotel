@@ -37,22 +37,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Stop the booking table hiding its columns on phones
-
-**Effort:** small. **Why:** at 390px the table is 625px wide inside a 308px scroller, so check-out,
-guests, rate and status are out of view with nothing to suggest they exist. `status` is the column
-that shows a booking was really written and cancelled.
-
-**DoD:**
-
-- At 390px every column's information is reachable, and it is obvious that it is. Either rows
-  reflow into stacked records or the scroll is clearly signalled. Stacked records are preferred, as
-  long as the table stays a real table to assistive technology.
-- At 1440px the table is unchanged.
-- The e2e booking assertions and axe run stay green, and frames are re-captured if the desktop frame
-  moved.
-
-### 2. Shorten the dashboard on phones
+### 1. Shorten the dashboard on phones
 
 **Effort:** small. **Why:** at 390px the six metric cards stack in one column and the page is about
 3,000px tall, so the charts start well below where most visitors stop. The desktop layout already
@@ -65,7 +50,7 @@ ranks two figures above the other four, and the phone layout could say the same 
 - The DOM order, reading order and throttled `role="status"` digest are unchanged.
 - The charts begin at least one screen higher than they do today.
 
-### 3. Keep the painting beside the words on `/gallery`
+### 2. Keep the painting beside the words on `/gallery`
 
 **Effort:** small. **Why:** on desktop the label runs far longer than the painting, leaving roughly
 700px of empty column under the picture while the visitor reads about details they can no longer
@@ -80,7 +65,7 @@ see. "Up close" asks you to look at the boats while the boats have scrolled away
   nothing animates.
 - Frames re-captured if the Gallery frame moved.
 
-### 4. Remove the glow around the Gallery's panel
+### 3. Remove the glow around the Gallery's panel
 
 **Effort:** small. **Why:** `CLAUDE.md` says no glow, and the check behind it only reads
 `text-shadow`, so a `box-shadow` halo gets through. Two things on `/gallery` use one, and they are not
@@ -98,7 +83,7 @@ tint already carries the colour.
   state, so it is not part of this item.
 - `CLAUDE.md`'s no-glow rule states the new check and its exemptions, and frames are re-captured.
 
-### 5. Tighten the Wanderquest layout
+### 4. Tighten the Wanderquest layout
 
 **Effort:** small. **Why:** the legend explains the map but sits below all six bonus tiles, a long
 way from it. The tiles stack two across and three down, which pushes the checklist further away, when

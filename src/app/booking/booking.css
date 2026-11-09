@@ -309,4 +309,69 @@ app-booking-field {
   .demo-card {
     padding: 1.25rem;
   }
+
+  /* ----- Bookings as stacked records -----
+     The table needs about 705px with this breakpoint's padding, so below it the
+     columns used to slide out of a scroller with nothing to say they existed,
+     and `status` is the one that shows a write really happened. Each row becomes
+     a record instead, in the same reading order as the table.
+
+     The header row is clipped rather than `display: none`, which would remove
+     the column headers from the accessibility tree. Each cell's label comes from
+     `data-label`, and the empty alternative after the slash keeps the label out
+     of the cell's accessible name, or it would be spoken twice: once as the
+     column header and once as content. A browser that does not parse that form
+     keeps the plain declaration before it. */
+  .booking-table,
+  .booking-table tbody {
+    display: block;
+  }
+
+  .booking-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .booking-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .booking-table tbody tr:first-child {
+    padding-top: 0;
+  }
+
+  .booking-table tbody tr:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .booking-table tbody th,
+  .booking-table tbody td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+    color: var(--color-text);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .booking-table tbody th::before,
+  .booking-table tbody td::before {
+    content: attr(data-label);
+    content: attr(data-label) / '';
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+  }
 }

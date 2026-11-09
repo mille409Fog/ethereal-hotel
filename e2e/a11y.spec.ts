@@ -219,6 +219,35 @@ test.describe('accessibility', () => {
   });
 
   /**
+   * The bookings table at phone width, where it is laid out as stacked records.
+   * The route scan above runs at desktop width and never sees that layout, and
+   * restyling a table is the usual way to break what axe checks about one.
+   */
+  test('the booking table has no critical or serious violations on a phone', async ({
+    page,
+  }, testInfo) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await stubBookingApi(page);
+    await page.goto('/booking');
+    await waitForSettledBooking(page);
+    await expect(page.locator('.booking-table')).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+
+    await testInfo.attach('axe-booking-phone.json', {
+      body: JSON.stringify(results.violations, null, 2),
+      contentType: 'application/json',
+    });
+
+    const blocking = results.violations.filter((violation) =>
+      violation.impact ? BLOCKING_IMPACTS.has(violation.impact) : false
+    );
+
+    expect(blocking, `\n${formatViolations(blocking)}\n`).toEqual([]);
+  });
+
+  /**
    * Every gallery room, not just the one the draw happens to offer first.
    *
    * Each colour re-dresses the card: its own surface, type, links and frame,

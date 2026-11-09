@@ -169,6 +169,31 @@ describe('Booking (rendered)', () => {
       expect(text()).toContain('1 on file');
     });
 
+    it('labels each cell of a stacked record with its own column header', () => {
+      const headers = Array.from(el().querySelectorAll('thead th'));
+      const cells = Array.from(el().querySelectorAll('tbody tr > *'));
+
+      // By position: a label on the wrong column renders perfectly well.
+      expect(cells.map((cell) => cell.getAttribute('data-label'))).toEqual(
+        headers.map((header) => header.textContent?.trim())
+      );
+    });
+
+    it('states the table roles the stacked layout would otherwise cost it', () => {
+      // A browser that drops the semantics of a restyled table leaves nothing
+      // for its accessibility tree to read but these, and jsdom and Chromium
+      // cannot show that failure, so the attributes are what is held.
+      const rolesOf = (selector: string): Array<string | null> =>
+        Array.from(el().querySelectorAll(selector)).map((node) => node.getAttribute('role'));
+
+      expect(rolesOf('table')).toEqual(['table']);
+      expect(rolesOf('thead, tbody')).toEqual(['rowgroup', 'rowgroup']);
+      expect(rolesOf('tr')).toEqual(['row', 'row']);
+      expect(new Set(rolesOf('thead th'))).toEqual(new Set(['columnheader']));
+      expect(new Set(rolesOf('tbody th'))).toEqual(new Set(['rowheader']));
+      expect(new Set(rolesOf('tbody td'))).toEqual(new Set(['cell']));
+    });
+
     it('says the data is live, in the badge and in the live region', () => {
       expect($('.data-source--live')).not.toBeNull();
       expect($('.data-source--simulated')).toBeNull();

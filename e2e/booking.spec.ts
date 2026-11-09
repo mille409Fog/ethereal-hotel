@@ -123,6 +123,93 @@ test.describe('booking with the API up', () => {
   });
 });
 
+/**
+ * The reflow is CSS, so only a real layout can show it worked. jsdom has no
+ * widths, and a table that scrolls its columns out of view passes every
+ * assertion above, because `toContainText` does not care where the text is.
+ */
+test.describe('the booking table on a phone', () => {
+  const COLUMNS = ['Room', 'Guest', 'Check-in', 'Check-out', 'Guests', 'Rate', 'Status'];
+
+  for (const width of [390, 320]) {
+    test(`shows every column, labelled, at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await stubBookingApi(page);
+      await page.goto('/booking');
+
+      await expect(bookingRow(page, '101')).toContainText('Checked in');
+
+      const scroller = page.locator('.booking-table-scroll');
+      const hidden = await scroller.evaluate((el) => el.scrollWidth - el.clientWidth);
+      expect(hidden, 'the table still overflows its scroller').toBe(0);
+
+      // Every cell inside the scroller's box, each showing its column's name.
+      const cells = await scroller.evaluate((el) => {
+        const bounds = el.getBoundingClientRect();
+        return Array.from(el.querySelectorAll('tbody tr > *')).map((cell) => {
+          const box = cell.getBoundingClientRect();
+          return {
+            label: window.getComputedStyle(cell, '::before').content,
+            inside: box.width > 0 && box.left >= bounds.left && box.right <= bounds.right,
+          };
+        });
+      });
+      expect(cells).toEqual(
+        COLUMNS.map((column) => ({ label: expect.stringContaining(column), inside: true }))
+      );
+    });
+  }
+
+  test('is still one table to assistive technology, and speaks no label twice', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await stubBookingApi(page);
+    await page.goto('/booking');
+
+    await expect(page.locator('.booking-table')).toMatchAriaSnapshot(`
+      - table "Bookings currently in the database, newest stay first":
+        - caption: Bookings currently in the database, newest stay first
+        - rowgroup:
+          - row "Room Guest Check-in Check-out Guests Rate Status":
+            - columnheader "Room"
+            - columnheader "Guest"
+            - columnheader "Check-in"
+            - columnheader "Check-out"
+            - columnheader "Guests"
+            - columnheader "Rate"
+            - columnheader "Status"
+        - rowgroup:
+          - row "101 Alan Turing Jan 5, 2026 Jan 9, 2026 1 $100 Checked in":
+            - rowheader "101"
+            - cell "Alan Turing"
+            - cell "Jan 5, 2026"
+            - cell "Jan 9, 2026"
+            - cell "1"
+            - cell "$100"
+            - cell "Checked in"
+    `);
+  });
+
+  test('stays an ordinary table at desktop width', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await stubBookingApi(page);
+    await page.goto('/booking');
+    await expect(bookingRow(page, '101')).toContainText('Checked in');
+
+    await expect(page.getByRole('columnheader', { name: 'Status' })).toBeInViewport();
+    const display = await bookingRow(page, '101').evaluate(
+      (el) => window.getComputedStyle(el).display
+    );
+    expect(display).toBe('table-row');
+    const label = await page
+      .locator('tbody td')
+      .first()
+      .evaluate((el) => window.getComputedStyle(el, '::before').content);
+    expect(label).toBe('none');
+  });
+});
+
 test.describe('booking with the API down', () => {
   test('disables the form and says why, rather than faking a hotel', async ({ page }) => {
     await stubBackendDown(page);

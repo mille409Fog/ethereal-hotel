@@ -315,9 +315,12 @@ in both, because `create_app()` builds one application and the container needs i
 Enforced rather than asserted: the `@angular-eslint/template` accessibility rules run at
 **error** severity, and every commit is scanned by **axe** against the production build on `/`,
 `/dashboard` and `/booking`. The CI job fails on any serious or critical finding. `/booking` is
-scanned twice — once at rest, once with a rejected field on screen — because an error message
-is new content inserted after load that has to be associated with its control, and a form that
-scans clean empty can still fail the moment it fails.
+scanned three times. One scan is at rest. One has a rejected field on screen, because an error
+message is new content inserted after load that has to be associated with its control, and a form
+that scans clean empty can still fail the moment it fails. The third is at 390px, where the bookings
+table is laid out as stacked records: its explicit ARIA roles keep it a table to browsers that drop
+the semantics of a restyled one, and CSS alternative text keeps each visible label out of its cell's
+accessible name.
 
 Alongside the scan, Playwright checks what axe cannot: that the first Tab reaches a skip link,
 that the nav is traversable and moves focus to the section it targets, and that under

@@ -179,32 +179,46 @@
       </h2>
 
       @if (bookings().length > 0) {
+        <!-- The roles look redundant and are not. On phones `booking.css` reflows
+             these rows into stacked records with `display`, and some browsers
+             drop an element's table semantics when its `display` changes. Stated
+             explicitly, it stays a table to assistive technology at any width.
+             `data-label` is the visible label on a stacked record; it repeats
+             its column's header, and `booking.render.spec.ts` holds them equal. -->
         <div class="booking-table-scroll">
-          <table class="booking-table">
+          <table class="booking-table" role="table">
             <caption class="visually-hidden">
               Bookings currently in the database, newest stay first
             </caption>
-            <thead>
-              <tr>
-                <th scope="col">Room</th>
-                <th scope="col">Guest</th>
-                <th scope="col">Check-in</th>
-                <th scope="col">Check-out</th>
-                <th scope="col">Guests</th>
-                <th scope="col">Rate</th>
-                <th scope="col">Status</th>
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">Room</th>
+                <th scope="col" role="columnheader">Guest</th>
+                <th scope="col" role="columnheader">Check-in</th>
+                <th scope="col" role="columnheader">Check-out</th>
+                <th scope="col" role="columnheader">Guests</th>
+                <th scope="col" role="columnheader">Rate</th>
+                <th scope="col" role="columnheader">Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               @for (booking of bookings(); track booking.id) {
-                <tr [attr.data-booking-id]="booking.id">
-                  <th scope="row">{{ roomNumber(booking.room_id) }}</th>
-                  <td>{{ guestName(booking.guest_id) }}</td>
-                  <td>{{ booking.check_in | date: 'mediumDate' : 'UTC' }}</td>
-                  <td>{{ booking.check_out | date: 'mediumDate' : 'UTC' }}</td>
-                  <td>{{ booking.adults + booking.children }}</td>
-                  <td>{{ booking.nightly_rate | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
-                  <td>{{ statusLabel(booking.status) }}</td>
+                <tr role="row" [attr.data-booking-id]="booking.id">
+                  <th scope="row" role="rowheader" data-label="Room">
+                    {{ roomNumber(booking.room_id) }}
+                  </th>
+                  <td role="cell" data-label="Guest">{{ guestName(booking.guest_id) }}</td>
+                  <td role="cell" data-label="Check-in">
+                    {{ booking.check_in | date: 'mediumDate' : 'UTC' }}
+                  </td>
+                  <td role="cell" data-label="Check-out">
+                    {{ booking.check_out | date: 'mediumDate' : 'UTC' }}
+                  </td>
+                  <td role="cell" data-label="Guests">{{ booking.adults + booking.children }}</td>
+                  <td role="cell" data-label="Rate">
+                    {{ booking.nightly_rate | currency: 'USD' : 'symbol' : '1.0-0' }}
+                  </td>
+                  <td role="cell" data-label="Status">{{ statusLabel(booking.status) }}</td>
                 </tr>
               }
             </tbody>
