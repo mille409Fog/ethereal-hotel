@@ -2289,6 +2289,123 @@ check('the portfolio stays serene', () => {
   return problems;
 });
 
+// The text-shadow rule above let a halo through by another property: the
+// gallery's panel wore `0 0 80px` of its room's accent, and four of its frames
+// a coloured glow of their own, all as box-shadow. So a box-shadow layer that
+// sits at zero offset, has a blur, and is not black is a glow, and fails here.
+// Drop shadows (an offset) and rings (no blur) are depth and edges, not light.
+// Each exemption names its rule and says why the light is not interface
+// chrome; an exemption that no longer matches anything fails too, so the
+// list cannot outlive the code it excuses.
+const GLOW_EXEMPTIONS = [
+  {
+    file: 'src/app/gallery/gallery.css',
+    selector: '.orb-sphere',
+    reason: "the orb's colour is the choice being offered, so its light is content",
+  },
+  {
+    file: 'src/app/gallery/gallery.css',
+    selector: ".orb[aria-pressed='true'] .orb-sphere",
+    reason: 'the chosen orb glowing brighter is the selection, shown as the content itself',
+  },
+  {
+    file: 'src/app/aesthetic/aesthetic.css',
+    selector: '.triad-card',
+    reason:
+      "the card's glow appears only once a colour is chosen and keeps a dark one visible: it shows state",
+  },
+];
+
+check('no box-shadow glows outside the named exemptions', () => {
+  const sheets = [
+    'src/styles.css',
+    ...readdirSync(path.join(repoRoot, 'src/app'), { recursive: true })
+      .map((file) => `src/app/${String(file).replace(/\\/g, '/')}`)
+      .filter((file) => file.endsWith('.css')),
+  ];
+
+  // Split on commas outside parentheses: `rgba(0, 0, 0, 0.5)` is one colour.
+  const layersOf = (value) => {
+    const layers = [];
+    let depth = 0;
+    let start = 0;
+    for (let i = 0; i < value.length; i++) {
+      if (value[i] === '(') depth++;
+      else if (value[i] === ')') depth--;
+      else if (value[i] === ',' && depth === 0) {
+        layers.push(value.slice(start, i));
+        start = i + 1;
+      }
+    }
+    layers.push(value.slice(start));
+    return layers.map((layer) => layer.trim()).filter(Boolean);
+  };
+  const isLength = (token) => /^-?(\d+\.?\d*|\.\d+)([a-z%]+)?$/i.test(token);
+  const isZero = (token) => /^-?0*\.?0+([a-z%]+)?$/i.test(token);
+  const isNeutral = (colour) =>
+    colour === '' ||
+    /^(black|transparent|#000(000)?([0-9a-f]{2})?|rgba?\(\s*0[\s,]+0[\s,]+0\b[^)]*\))$/i.test(
+      colour
+    );
+  const isGlow = (layer) => {
+    if (/\binset\b|^none$/i.test(layer)) return false;
+    const tokens = layer.match(/[a-z-]+\((?:[^()]|\([^()]*\))*\)|\S+/gi) ?? [];
+    const lengths = tokens.filter(isLength);
+    const colour = tokens.filter((token) => !isLength(token)).join(' ');
+    const [x, y, blur] = lengths;
+    return (
+      x !== undefined &&
+      isZero(x) &&
+      isZero(y) &&
+      blur !== undefined &&
+      !isZero(blur) &&
+      !isNeutral(colour)
+    );
+  };
+
+  const used = new Set();
+  const problems = [];
+  for (const sheet of sheets) {
+    const text = read(sheet).replace(/\/\*[\s\S]*?\*\//g, (comment) =>
+      comment.replace(/[^\n]/g, ' ')
+    );
+    for (const match of text.matchAll(/(?<![\w-])box-shadow\s*:([^;}]*)/g)) {
+      if (!layersOf(match[1]).some(isGlow)) continue;
+      const before = text.slice(0, match.index);
+      const open = before.lastIndexOf('{');
+      const selector = before
+        .slice(
+          Math.max(...['}', ';', '{'].map((mark) => before.lastIndexOf(mark, open - 1))) + 1,
+          open
+        )
+        .trim()
+        .replace(/\s+/g, ' ');
+      const line = before.split('\n').length;
+      const exemption = GLOW_EXEMPTIONS.find(
+        (entry) => entry.file === sheet && entry.selector === selector
+      );
+      if (exemption) {
+        used.add(exemption);
+        continue;
+      }
+      problems.push(
+        `${sheet}:${line} (${selector}) has a coloured zero-offset box-shadow: a glow. ` +
+          `CLAUDE.md allows none on the interface; use an offset dark shadow for depth, ` +
+          `or add an exemption to GLOW_EXEMPTIONS with the reason the light is content or state.`
+      );
+    }
+  }
+  for (const entry of GLOW_EXEMPTIONS) {
+    if (!used.has(entry)) {
+      problems.push(
+        `GLOW_EXEMPTIONS excuses ${entry.selector} in ${entry.file}, which no longer glows ` +
+          `(or moved). Remove the exemption, and its line in CLAUDE.md.`
+      );
+    }
+  }
+  return problems;
+});
+
 // Emoji were the portfolio's icons, and they were the wrong material for it:
 // each OS draws them in its own full colour — the contact card's phone and pin
 // came out a pink close to --color-negative, so the error colour appeared as

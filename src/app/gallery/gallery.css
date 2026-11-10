@@ -78,7 +78,11 @@
 /* The sphere is a radial gradient lit from the upper left, and the glow is a
    separate layer behind it. The glow used to breathe; it is still now,
    because a loop that tells the visitor nothing is decoration, and the site
-   no longer keeps any. */
+   no longer keeps any.
+
+   The glow itself stays, and it is the one coloured halo `check:docs` lets
+   through on this page: the orb's colour is the choice being offered, so the
+   light around it is content, not chrome around a control. */
 .orb-sphere {
   position: relative;
   width: 5.5rem;
@@ -175,12 +179,12 @@
   border: 1px solid var(--room-border, var(--color-border));
   border-radius: 4px;
   padding: 2rem;
-  box-shadow: 0 0 80px -30px var(--room-accent, transparent);
+  /* No halo: the tint already carries the colour, and a glow on the panel is
+     chrome. `check:docs` fails on a coloured zero-offset box-shadow. */
   transition:
     background-color 0.5s ease,
     color 0.5s ease,
-    border-color 0.5s ease,
-    box-shadow 0.5s ease;
+    border-color 0.5s ease;
 }
 
 /* On a desktop the painting stays in view while the text beside it scrolls:
@@ -239,8 +243,7 @@
   border-right-color: #6f0d1d;
   box-shadow:
     0 0 0 2px #2a050b,
-    0 20px 44px rgba(0, 0, 0, 0.65),
-    0 0 52px rgba(208, 35, 60, 0.3);
+    0 20px 44px rgba(0, 0, 0, 0.65);
 }
 
 /* Gold: a gilt moulding with a gold fillet against the picture. The gradient
@@ -260,8 +263,7 @@
     1;
   box-shadow:
     0 0 0 1px #3d2c0c,
-    0 22px 48px rgba(0, 0, 0, 0.6),
-    0 0 64px rgba(217, 165, 58, 0.24);
+    0 22px 48px rgba(0, 0, 0, 0.6);
 }
 
 [data-frame='gilt'] .hung-image {
@@ -276,8 +278,7 @@
   box-shadow:
     0 0 0 5px var(--room-surface, #0a1222),
     0 0 0 6px #3f5479,
-    0 24px 50px rgba(0, 0, 0, 0.6),
-    0 0 72px rgba(74, 120, 224, 0.26);
+    0 24px 50px rgba(0, 0, 0, 0.6);
 }
 
 /* Green: a plain oak frame and a cream mat, the way a landscape hangs in a
@@ -302,8 +303,8 @@
   outline: 1px solid rgba(70, 55, 30, 0.45);
 }
 
-/* Rose: a wide blush mat with softened corners and a halo, the only frame
-   here that is gentle rather than heavy. */
+/* Rose: a wide blush mat with softened corners, the only frame here that is
+   gentle rather than heavy. */
 [data-frame='blush'] .hung-mount {
   padding: clamp(14px, 3vw, 28px);
   border: 3px solid #d79ab3;
@@ -311,8 +312,7 @@
   box-shadow:
     0 0 0 6px var(--room-surface, #26131c),
     0 0 0 7px #a86080,
-    0 18px 40px rgba(0, 0, 0, 0.5),
-    0 0 64px rgba(229, 132, 166, 0.26);
+    0 18px 40px rgba(0, 0, 0, 0.5);
 }
 
 /* Umber: heavy ebonised wood with almost no mat, so the painting sits deep

@@ -20,7 +20,11 @@
       "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/6a128caa-a924-491b-8d4a-718ecadf012b/scratchpad/measure.cjs\")",
       "Bash(powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter 'ProcessId=22468' | Select-Object -ExpandProperty CommandLine\")",
       "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/979d4bdd-cf56-4d7b-857f-efccbe991007/scratchpad/measure.cjs\" \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/979d4bdd-cf56-4d7b-857f-efccbe991007/scratchpad/before\")",
-      "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/979d4bdd-cf56-4d7b-857f-efccbe991007/scratchpad/measure.cjs\" \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/979d4bdd-cf56-4d7b-857f-efccbe991007/scratchpad/after\")"
+      "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/979d4bdd-cf56-4d7b-857f-efccbe991007/scratchpad/measure.cjs\" \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/979d4bdd-cf56-4d7b-857f-efccbe991007/scratchpad/after\")",
+      "PowerShell(npx prettier --check src/app/gallery/gallery.css scripts/check-docs.mjs CLAUDE.md ROADMAP.md 2>&1)",
+      "PowerShell(npx prettier --write scripts/check-docs.mjs CLAUDE.md)",
+      "PowerShell(npm run test:scripts 2>&1)",
+      "PowerShell(npm run frames:capture 2>&1)"
     ]
   }
 }

@@ -37,25 +37,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Remove the glow around the Gallery's panel
-
-**Effort:** small. **Why:** `CLAUDE.md` says no glow, and the check behind it only reads
-`text-shadow`, so a `box-shadow` halo gets through. Two things on `/gallery` use one, and they are not
-the same case. The orbs' colour is the choice being offered, so it is content and stays. The halo
-around the hung painting's panel (`0 0 80px` of `--room-accent`) is interface chrome: the panel's
-tint already carries the colour.
-
-**DoD:**
-
-- The panel's coloured halo and its `box-shadow` transition are gone. Its tint stays, as do the
-  painting's dark drop shadows, which are depth rather than glow.
-- The orbs stay as they are, with a comment saying why they are content.
-- `check:docs` fails on a coloured zero-offset `box-shadow` in `src/app/` and `styles.css`, with the
-  orbs and `/aesthetic` named as exemptions and the reason beside each. `/aesthetic`'s glow shows
-  state, so it is not part of this item.
-- `CLAUDE.md`'s no-glow rule states the new check and its exemptions, and frames are re-captured.
-
-### 2. Tighten the Wanderquest layout
+### 1. Tighten the Wanderquest layout
 
 **Effort:** small. **Why:** the legend explains the map but sits below all six bonus tiles, a long
 way from it. The tiles stack two across and three down, which pushes the checklist further away, when
