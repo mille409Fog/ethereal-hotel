@@ -201,7 +201,10 @@ test.describe('dashboard layout', () => {
     expect(await size('Room Revenue Today')).toBeGreaterThan(await size('ADR'));
   });
 
-  test('stacks every card readably at 390px with no horizontal scroll', async ({ page }) => {
+  // A phone ranks the cards the way the desktop does, in rows short enough
+  // that the whole grid fits the first screen. Six cards in one column used to
+  // put the charts five screens down.
+  test('keeps the primary pair full width and the rest two across at 390px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await stubBackendUp(page);
     await page.goto('/dashboard');
@@ -211,22 +214,48 @@ test.describe('dashboard layout', () => {
     expect(rows.map((r) => r.labels)).toEqual([
       ['Occupancy'],
       ['Room Revenue Today'],
-      ['ADR'],
-      ['RevPAR'],
-      ['Arrivals / Departures'],
-      ['Rooms Available'],
+      ['ADR', 'RevPAR'],
+      ['Arrivals / Departures', 'Rooms Available'],
     ]);
     expect(rows.every((r) => r.filled)).toBe(true);
 
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
-    ).toBe(true);
-    // A value wider than its card is clipped by the card's overflow: hidden,
-    // which no page-level scroll check would notice.
-    for (const value of await page.locator('.metric-value').all()) {
-      expect(await value.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    }
+    // The DOM keeps the order the cards were written in; only CSS moves them.
+    expect(await page.locator('.metric-label').allTextContents()).toEqual([
+      'Occupancy',
+      'ADR',
+      'RevPAR',
+      'Room Revenue Today',
+      'Arrivals / Departures',
+      'Rooms Available',
+    ]);
+
+    const gridBottom = await page
+      .locator('.metrics-grid')
+      .evaluate((el) => el.getBoundingClientRect().bottom + window.scrollY);
+    expect(gridBottom).toBeLessThanOrEqual(844);
   });
+
+  // 320px is the narrowest width the two-across row has to survive.
+  for (const width of [320, 390]) {
+    test(`clips no value, label or detail at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await stubBackendUp(page);
+      await page.goto('/dashboard');
+      await expect(page.locator('.metric-card')).toHaveCount(METRIC_CARDS);
+
+      // Polled: until Chart.js sizes them, the canvases sit at their default
+      // 300px, wider than a chart card at 320px, for a frame or two.
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+        .toBe(true);
+      // Text wider than its card is clipped by the card's overflow: hidden,
+      // which no page-level scroll check would notice. Wrapping is allowed;
+      // a word that cannot wrap is what overflows.
+      for (const text of await page.locator('.metric-value, .metric-label, .metric-detail').all()) {
+        expect(await text.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+      }
+    });
+  }
 });
 
 /**

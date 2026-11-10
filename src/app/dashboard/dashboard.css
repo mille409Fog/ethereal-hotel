@@ -17,3 +17,11 @@
     padding: 3rem 1.5rem;
   }
 }
+
+/* The home link above already separates the title from the top of the screen,
+   so a phone spends that height on the metrics instead. */
+@media (max-width: 600px) {
+  .dashboard-section {
+    padding-top: 1.5rem;
+  }
+}

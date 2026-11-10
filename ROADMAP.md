@@ -37,20 +37,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Shorten the dashboard on phones
-
-**Effort:** small. **Why:** at 390px the six metric cards stack in one column and the page is about
-3,000px tall, so the charts start well below where most visitors stop. The desktop layout already
-ranks two figures above the other four, and the phone layout could say the same thing.
-
-**DoD:**
-
-- At 390px occupancy and revenue stay full width and the other four sit two across, with no truncated
-  value or label at 320px.
-- The DOM order, reading order and throttled `role="status"` digest are unchanged.
-- The charts begin at least one screen higher than they do today.
-
-### 2. Keep the painting beside the words on `/gallery`
+### 1. Keep the painting beside the words on `/gallery`
 
 **Effort:** small. **Why:** on desktop the label runs far longer than the painting, leaving roughly
 700px of empty column under the picture while the visitor reads about details they can no longer
@@ -65,7 +52,7 @@ see. "Up close" asks you to look at the boats while the boats have scrolled away
   nothing animates.
 - Frames re-captured if the Gallery frame moved.
 
-### 3. Remove the glow around the Gallery's panel
+### 2. Remove the glow around the Gallery's panel
 
 **Effort:** small. **Why:** `CLAUDE.md` says no glow, and the check behind it only reads
 `text-shadow`, so a `box-shadow` halo gets through. Two things on `/gallery` use one, and they are not
@@ -83,7 +70,7 @@ tint already carries the colour.
   state, so it is not part of this item.
 - `CLAUDE.md`'s no-glow rule states the new check and its exemptions, and frames are re-captured.
 
-### 4. Tighten the Wanderquest layout
+### 3. Tighten the Wanderquest layout
 
 **Effort:** small. **Why:** the legend explains the map but sits below all six bonus tiles, a long
 way from it. The tiles stack two across and three down, which pushes the checklist further away, when

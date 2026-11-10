@@ -4,6 +4,19 @@
   margin-bottom: 3rem;
 }
 
+/* On a phone the subtitle and the badge each wrap to two lines, and the
+   paragraph line-height of 1.75 is spaced for running prose, not a caption. */
+@media (max-width: 600px) {
+  .dashboard-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .dashboard-subtitle,
+  .data-source {
+    line-height: 1.4;
+  }
+}
+
 .dashboard-title {
   font-family: var(--font-serif);
   font-size: clamp(2rem, 5vw, 3rem);
