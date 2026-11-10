@@ -108,3 +108,69 @@ for (const profile of PROFILES) {
     });
   });
 }
+
+/**
+ * The painting beside the words. In two columns the figure is `position:
+ * sticky`, and that is only worth having if the whole of it, credit included,
+ * is on screen while "Up close" is read. jsdom has no layout, so this is the
+ * only place that can see it. The short window is the case that failed before
+ * the height cap counted the frame and the credit: at 900×480 the credit ended
+ * 3px below the screen for as long as the picture stuck.
+ */
+const DESKTOPS = [
+  { name: 'a desktop', viewport: { width: 1440, height: 900 } },
+  { name: 'a short window', viewport: { width: 900, height: 480 } },
+];
+
+for (const desktop of DESKTOPS) {
+  test.describe(`gallery label on ${desktop.name}`, () => {
+    test.use({ viewport: desktop.viewport });
+
+    test('keeps the whole painting in view while "Up close" is read', async ({ page }) => {
+      await page.goto('/gallery');
+      const image = page.locator('article img');
+      const orbs = page.locator('button.orb');
+      let previous = '';
+      for (let index = 0; index < (await orbs.count()); index++) {
+        await orbs.nth(index).click();
+        await expect
+          .poll(() =>
+            image.evaluate(
+              (img: HTMLImageElement, before: string) =>
+                img.srcset !== before && img.complete && img.naturalWidth > 0,
+              previous
+            )
+          )
+          .toBe(true);
+        previous = await image.evaluate((img: HTMLImageElement) => img.srcset);
+
+        const { title, top, bottom, height } = await page.evaluate(() => {
+          const close = document.querySelectorAll('.hung-lenses dt')[1];
+          window.scrollTo({
+            top: close.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2,
+            behavior: 'instant',
+          });
+          const figure = document.querySelector('.hung-frame')?.getBoundingClientRect();
+          return {
+            title: document.querySelector('#painting-title')?.textContent?.trim(),
+            top: figure?.top ?? NaN,
+            bottom: figure?.bottom ?? NaN,
+            height: window.innerHeight,
+          };
+        });
+        expect(top, `${title}: the painting scrolled away`).toBeGreaterThanOrEqual(0);
+        expect(bottom, `${title}: the credit is below the screen`).toBeLessThanOrEqual(height);
+      }
+    });
+  });
+}
+
+test.describe('gallery label in one column', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('lets the painting scroll with the label', async ({ page }) => {
+    await page.goto('/gallery');
+    await page.locator('button.orb').first().click();
+    await expect(page.locator('.hung-frame')).toHaveCSS('position', 'static');
+  });
+});

@@ -183,7 +183,12 @@
     box-shadow 0.5s ease;
 }
 
-/* On a desktop the painting stays in view while the text beside it scrolls. */
+/* On a desktop the painting stays in view while the text beside it scrolls:
+   the label runs far longer than the picture, and "Up close" asks the reader
+   to look at something that would otherwise have scrolled away. It only works
+   while the whole figure fits under `top`, so `.hung-image` caps its height
+   against the viewport. A figure taller than the window would stick with its
+   foot cut off, and the credit would be unreachable until the label ended. */
 .hung-frame {
   position: sticky;
   top: 2rem;
@@ -203,11 +208,17 @@
 }
 
 /* `width`/`height` attributes give the browser the aspect ratio before the
-   file arrives, so the frame is reserved rather than jumping open. */
+   file arrives, so the frame is reserved rather than jumping open.
+
+   The 12rem is everything the sticky figure stacks around the picture: the
+   2rem `top`, the thickest frame at its widest (gilt, 68px), a credit that
+   wraps to two lines, and a 2rem gutter below it. Above a 640px-tall window
+   the 70vh wins and nothing changes; below it, the painting shrinks rather
+   than the credit leaving the screen. `sizes()` in gallery.ts mirrors this. */
 .hung-image {
   display: block;
   max-width: 100%;
-  max-height: 70vh;
+  max-height: min(70vh, 100vh - 12rem);
   width: auto;
   height: auto;
   margin: 0 auto;

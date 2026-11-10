@@ -37,22 +37,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Keep the painting beside the words on `/gallery`
-
-**Effort:** small. **Why:** on desktop the label runs far longer than the painting, leaving roughly
-700px of empty column under the picture while the visitor reads about details they can no longer
-see. "Up close" asks you to look at the boats while the boats have scrolled away.
-
-**DoD:**
-
-- From the two-column breakpoint up, the painting and its credit stay in view while the label
-  scrolls, using `position: sticky` and no scripted motion.
-- A painting taller than the viewport is still fully viewable.
-- At one column the layout is unchanged, and `prefers-reduced-motion` needs nothing special because
-  nothing animates.
-- Frames re-captured if the Gallery frame moved.
-
-### 2. Remove the glow around the Gallery's panel
+### 1. Remove the glow around the Gallery's panel
 
 **Effort:** small. **Why:** `CLAUDE.md` says no glow, and the check behind it only reads
 `text-shadow`, so a `box-shadow` halo gets through. Two things on `/gallery` use one, and they are not
@@ -70,7 +55,7 @@ tint already carries the colour.
   state, so it is not part of this item.
 - `CLAUDE.md`'s no-glow rule states the new check and its exemptions, and frames are re-captured.
 
-### 3. Tighten the Wanderquest layout
+### 2. Tighten the Wanderquest layout
 
 **Effort:** small. **Why:** the legend explains the map but sits below all six bonus tiles, a long
 way from it. The tiles stack two across and three down, which pushes the checklist further away, when

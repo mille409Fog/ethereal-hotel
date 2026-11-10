@@ -73,7 +73,7 @@ describe('Gallery', () => {
     // Gold hangs in the gilt frame, 20px a side on a phone: 74 + 40 = 114.
     expect(img.getAttribute('sizes')).toBe(
       '(max-width: 860px) min(calc(100vw - 114px), calc(60vh * 0.9964)), ' +
-        'min(36rem, 50vw, calc(70vh * 0.9964))'
+        'min(36rem, 50vw, calc(min(70vh, 100vh - 12rem) * 0.9964))'
     );
 
     const text = el().querySelector('article')?.textContent ?? '';

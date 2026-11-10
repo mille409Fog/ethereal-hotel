@@ -104,7 +104,8 @@ export class Gallery {
    * How wide the painting will be drawn, which is what the browser multiplies
    * by the screen's density to choose from `srcset`. It mirrors `gallery.css`:
    * on a phone the card's width less its padding and frame, on a desktop the
-   * picture column, and in both the height cap (60vh, 70vh) times the
+   * picture column, and in both the height cap (60vh; on a desktop 70vh, or
+   * less on a short window so the sticky figure fits) times the
    * painting's shape, because a tall portrait is held to the height and drawn
    * far narrower than its column. Each figure errs wide, never narrow: wide
    * costs a few bytes, narrow costs a blurred painting.
@@ -125,7 +126,7 @@ export class Gallery {
     const phoneChrome = 74 + 2 * PHONE_FRAME_INSET[frame];
     return (
       `(max-width: 860px) min(calc(100vw - ${phoneChrome}px), calc(60vh * ${shape})), ` +
-      `min(36rem, 50vw, calc(70vh * ${shape}))`
+      `min(36rem, 50vw, calc(min(70vh, 100vh - 12rem) * ${shape}))`
     );
   }
 
