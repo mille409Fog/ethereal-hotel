@@ -75,6 +75,11 @@ export const routes: Routes = [
     title: meta.wanderquest.title,
   },
   {
+    path: meta.watershed.path,
+    loadComponent: () => import('./watershed/watershed').then((m) => m.Watershed),
+    title: meta.watershed.title,
+  },
+  {
     // Last, because the router matches in order and `**` matches everything.
     // Without it an unknown path threw NG04002 on the first navigation, the
     // router reset the address bar to `/`, and no route activated, so the page

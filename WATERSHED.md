@@ -1,9 +1,9 @@
 # WATERSHED — a landscape that erodes while you watch
 
-The second spectacle on this site, after `/murmuration`, and meant to be much larger. Nothing in
-this file is built yet. It is the whole plan: what the piece is, the decisions already taken and
-why, and ten phases with Definitions of Done so that one instance can build a phase and another
-can verify it.
+The second spectacle on this site, after `/murmuration`, and meant to be much larger. This is the
+whole plan: what the piece is, the decisions already taken and why, what has landed, and the
+phases still to do, each with a Definition of Done so that one instance can build a phase and
+another can verify it. The stage has landed; nothing of the simulation or the picture has.
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -125,7 +125,7 @@ measurement.
 - **Two machines do not make the same land from one seed.** GPU float arithmetic differs in the
   last bit and erosion is chaotic. A seed reproduces a land exactly on one machine and in
   character everywhere else. Do not write an e2e test that compares a live land to stored bytes.
-- **The three.js chunk is about 570 kB against a 620 kB warning.** This piece needs nothing from
+- **The shared three.js chunk is 598 kB against a 620 kB warning.** This piece needs nothing from
   `three/examples/jsm` that murmuration does not already import. Keep it that way; no
   `GPUComputationRenderer`, the driver is forty lines over `WebGLRenderTarget`.
 
@@ -133,9 +133,14 @@ measurement.
 
 ```text
 src/app/watershed/
-  watershed.ts  .html  .css  .spec.ts     the component: assembles, owns nothing clever
-  watershed.tokens.ts                     renderer, composer, random (as murmuration.tokens.ts)
-  seed/            seed.ts                mulberry32, parseSeed, HERO_SEED
+  watershed.ts  .html  .css  .spec.ts     the component: assembles, owns nothing clever   (built)
+  watershed.tokens.ts                     renderer, composer, random, search              (built)
+  land-state.ts                           the three states and their sentences            (built)
+  seed/            seed.ts                mulberry32, parseSeed, drawSeed, HERO_SEED      (built)
+  quality/         calibration, meter     the tiers, and the choice from frame time       (built)
+  stage/           calibration, camera    the block's size and vantage; a placeholder slab (built)
+  composer/        calibration, passes    render, bloom, output, grade, grain             (built)
+  canvas/          follow-canvas-size.ts  renderer, composer and lens follow the canvas   (built)
   model/           (leaf modules; the reference, importable by Node)
     erosion-calibration.ts                every simulation constant, with its unit
     fields.ts                             the state arrays and their layout
@@ -146,7 +151,7 @@ src/app/watershed/
     sim-shaders.ts                        the same step as GLSL, and SIM_PASSES (leaf)
     sim-driver.ts                         ping-pong targets over SIM_PASSES
     sim-clock.ts                          fixed-step accumulator, steps per frame by tier
-    sim-support.ts                        the float-target probe; decides `stored`
+    sim-support.ts                        the float-target probe; decides `stored`        (built)
   land/            mesh, light pass, material shader, calibration
   water/           surface mesh, flow-mapped normals, calibration
   air/             sky function, fog, cloud shadow, rain, calibration
@@ -170,44 +175,42 @@ State textures, all `RGBA32F` at `GRID` × `GRID` (512; 1024 on the top tier):
 | `slump` | out left     | out right     | out up              | out down      |
 | `light` | sun shadow   | ambient occl. | humidity (for mist) | unused        |
 
+## What has landed
+
+**The stage** (2026-11-11). `/watershed` loads, unlinked from the home page: a lit slab the size
+of the land, drawn through the full HDR chain, with the state line in the corner. The reasoning
+is in the headers of the files under `src/app/watershed/`; what a later phase needs from it is
+here.
+
+- **Baselines.** The shared three.js chunk is 597.70 kB raw and the route's own is 6.95 kB.
+  Before this route existed three.js sat inside murmuration's chunk at 610.03 kB, so adding the
+  route split the shared code out and made the largest chunk smaller. The `any` budget warns at
+  620 kB.
+- **The probe passes on SwiftShader**: headless Chromium on this box renders to `RGBA32F` and
+  reads the value back exactly, so CI can run the live simulation. **Two readings are still
+  owed**, the Linux CI image and one real phone; `sim-support.ts` says how to take them and is
+  where they are recorded.
+- **There is no dither pass.** Murmuration's grain already adds triangular noise to display
+  values as the last pass, which is a dither. `composer/orchestrate-passes.ts` records it.
+- **Tiers are tried from the top and only step down.** A display paints no faster than its
+  refresh, so frame time can show a tier is too dear and never that a dearer one would fit. Two
+  consequences for the GPU model: the grid size is a tier property, so **the storm must not
+  start until the meter has settled**, and SwiftShader always settles on the lowest tier.
+- **The picture has no antialiasing yet.** The canvas asks for it, but the scene is drawn into
+  the composer's target, which has no samples, so the slab's edges are stair-stepped. Ridgelines
+  against sky will show it far more. Give the target `samples` in the land phase and measure the
+  cost; a multisampled target with a depth texture is the combination to test first.
+- **Two kinds of console noise are not failures**, and the route's e2e spec must filter them
+  rather than assert an empty console: the local server answers 404 for
+  `/_vercel/insights/script.js`, and SwiftShader prints a "GPU stall due to ReadPixels"
+  performance warning for every read-back, the probe's included.
+- **The state line's sentences are provisional.** Nothing is simulated yet, so they say what the
+  device can do, not that a storm is running. So is `HERO_SEED`, and so is the route's
+  description in `src/route-meta.json`, which says "in progress".
+
 ## The phases
 
-### Phase 0 — the stage
-
-Build the route with nothing on it worth looking at, so every later phase is only about the
-picture.
-
-1. Create `src/app/watershed/` with a component shaped like `src/app/murmuration/murmuration.ts`:
-   a `viewChild` canvas, renderer and composer behind injection tokens, a failure signal that
-   swaps the canvas for a sentence, `HomeLink` floating over the corner, and an `ngOnDestroy`
-   that disposes every target, geometry, material and pass it made.
-2. `seed/seed.ts`: mulberry32, `parseSeed(search)` returning a 32-bit integer or null, and
-   `HERO_SEED`. The route's seed is the URL's, else one drawn through the random token, whose
-   default is `Math.random` because the frame spec pins chance by replacing it.
-3. The HDR chain: a half-float colour target with a depth texture (as `MURMURATION_COMPOSER`
-   builds it), `RenderPass`, `UnrealBloomPass`, `OutputPass`, then murmuration's `GradePass` and
-   `GrainPass` imported, not copied. Add a dither of one least-significant bit before output;
-   the fog and sky are smooth gradients and will band without it.
-4. Reduced motion decided once at start: one `composer.render()` and no animation loop.
-5. Quality tiers in a calibration file: internal resolution scale, grid size, simulation steps
-   per frame. The tier is chosen from frame time measured over the first second, never from a
-   user-agent string. Pixel ratio capped as `renderer-calibration.ts` caps it.
-6. `webglcontextlost` stops the loop and shows the failure sentence.
-7. `sim/sim-support.ts`: create a 4×4 `RGBA32F` target, render a known value, read it back.
-   True means `simulating` is possible. This is a real render and read, not an extension query;
-   some drivers advertise the extension and fail the framebuffer.
-8. Wire only what is needed to load the route locally: the `src/route-meta.json` entry and the
-   lazy route in `src/app/app.routes.ts`. The project card and the rest wait for the last phase.
-9. A temporary e2e test that prints what `sim-support` returns under CI's SwiftShader. Read the
-   same value on one real phone. Record both in the header of `sim-support.ts`, then delete the
-   test.
-
-**DoD.** The route draws a lit placeholder plane through the full chain. The component spec
-passes with a stub renderer and composer and covers the failure path, the reduced-motion path
-and disposal. `npm test` coverage has not fallen. The three.js chunk size after this phase is
-written in this file as the baseline for later phases. The probe's two results are recorded.
-
-### Phase 1 — the reference model
+### Phase 0 — the reference model
 
 The simulation in plain TypeScript on plain arrays. No WebGL, no three.js, no Angular. This is
 the specification the shaders will be held to, and it is also what builds the stored land.
@@ -218,7 +221,7 @@ the specification the shaders will be held to, and it is also what builds the st
    pipe area and length, rain rate, evaporation rate, sediment capacity `Kc`, dissolve rate `Ks`,
    deposit rate `Kd`, regolith erodibility multiplier, minimum tilt, maximum erosion depth,
    talus angle, slump rate, velocity clamp, `STORM_STEPS`. Start from the paper's values; every
-   number is provisional until Phase 8. Each carries its unit in a comment.
+   number is provisional until Phase 7. Each carries its unit in a comment.
 3. `uplift.ts`: `uplift(seed, size, constants)` writes `b`. Seeded gradient noise with its own
    permutation table (no dependency), ridged multifractal over a domain warp, multiplied by a
    broad dome so there is an inland divide, and brought down to base level along all four edges
@@ -262,7 +265,7 @@ the specification the shaders will be held to, and it is also what builds the st
 - The timestep satisfies the stability limit implied by the calibrated depth and cell size.
 - Uplift is at base level on all four edges and has its maximum inland.
 
-### Phase 2 — the GPU model
+### Phase 1 — the GPU model
 
 The same six passes as fragment shaders, and the gate that keeps them the same.
 
@@ -283,13 +286,13 @@ The same six passes as fragment shaders, and the gate that keeps them the same.
 5. Add the script to `package.json` as `verify:watershed` and to the e2e job in
    `.github/workflows/code-quality.yml` beside `verify:shader`, carrying
    `if: ${{ !cancelled() }}`. `check:docs` fails a step after the suite that lacks it.
-6. Draw the height as flat greyscale on the Phase 0 plane, so there is something to look at.
+6. Draw the height as flat greyscale on the stage's slab, so there is something to look at.
 
 **DoD.** The parity script passes locally and in CI, and its printed differences are recorded in
 its header. Changing one constant in one shader makes it fail. On this box the route shows
 greyscale valleys cutting in; the steps per second at 512² are recorded.
 
-### Phase 3 — the land
+### Phase 2 — the land
 
 1. `land/`: a plane of `GRID − 1` segments each way, displaced in the vertex shader to `b + r`
    from the `land` texture, with vertical skirts on the four edges down to below the fog deck.
@@ -303,7 +306,7 @@ greyscale valleys cutting in; the steps per second at 512² are recorded.
    - bedrock colour from the strata table at `b + warp`, darker and bluer in shade;
    - regolith over it by `r`: scree grey on steep ground, pale silt where flat;
    - vegetation by a function of slope, altitude, regolith and nearness to water, held back
-     entirely until the storm has passed (it arrives with the light, in Phase 6);
+     entirely until the storm has passed (it arrives with the light, in Phase 5);
    - snow above a line, refused by steep slopes;
    - the skirts shade as a section: strata bands straight through, regolith as a cap.
 4. Direct sun times shadow, sky ambient times occlusion, in linear HDR.
@@ -313,7 +316,7 @@ visible beds, shadowed valleys and scree below cliffs. Pausing the simulation st
 pass (assert it in a spec on the driver's dirty flag). Frame time on this box and from CI is
 recorded.
 
-### Phase 4 — the water
+### Phase 3 — the water
 
 1. A second grid displaced to `b + r + d`, drawn after the land, discarded where `d` is below a
    threshold and faded in just above it so shorelines are not stair-stepped.
@@ -330,11 +333,11 @@ recorded.
 Nothing in `water/` decides where water is; a `check:docs` rule can hold that later by requiring
 that the water shader reads `land` and declares no noise-based mask.
 
-### Phase 5 — the air
+### Phase 4 — the air
 
 1. `air/sky`: one GLSL function, `skyRadiance(direction, sun, weather)`: overcast grey-blue at
    `weather = 0`, a clear gradient with horizon warmth and a sun disc at 1. Used by the dome,
-   by Phase 4's reflection and by the fog below. Export it as a string and interpolate it into
+   by Phase 3's reflection and by the fog below. Export it as a string and interpolate it into
    each shader.
 2. Aerial perspective in the land and water shaders: exponential height fog integrated
    analytically along the view ray, inscattering `skyRadiance` toward the sun.
@@ -350,10 +353,10 @@ that the water shader reads `land` and declares no noise-based mask.
 7. Bloom, grade and grain tuned with everything above running.
 
 **DoD.** Two committed frames in `docs/images/`, storm and golden hour, from the same land. The
-second, set beside Phase 3's, is the argument for the phase. The three users of the sky agree:
+second, set beside Phase 2's, is the argument for the phase. The three users of the sky agree:
 a spec asserts the function's source appears in all three shaders.
 
-### Phase 6 — the storm
+### Phase 5 — the storm
 
 One clock for everything, in `direction/direction.ts`, as pure functions of storm progress `p`
 in [0, 1] and of seconds since the storm ended, `e`.
@@ -362,7 +365,7 @@ in [0, 1] and of seconds since the storm ended, `e`.
    land and the rivers settle to their base flow instead of stopping mid-flood.
 2. `weatherAt(p, e)`, `sunAt(p, e)`: overcast through the storm; the cloud breaks over the first
    seconds of `e` and the sun is low and warm.
-3. `greeningAt(e)`: the vegetation term from Phase 3 comes in after the light does.
+3. `greeningAt(e)`: the vegetation term from Phase 2 comes in after the light does.
 4. `cameraAt(p, e)` in `camera-path.ts`: a high three-quarter view on a very slow arc during the
    storm, where the making is legible; then a descent to a low pass up the main valley. The
    main valley is found, not assumed: read back a quarter-resolution copy of `land` once when
@@ -380,7 +383,7 @@ in [0, 1] and of seconds since the storm ended, `e`.
 and ends on the hero shot. `?seed=` reproduces a land on the same machine. Specs hold the
 curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p = 1`.
 
-### Phase 7 — the stored land
+### Phase 6 — the stored land
 
 1. `scripts/watershed-land.mjs`: pure pack and unpack. A 1024×512 RGB image: left half carries
    bedrock as sixteen bits across R and G and water depth in B; right half carries regolith in R
@@ -404,7 +407,7 @@ curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p 
 `sim-support` forced false it shows the pass over the stored land and says so. Changing any
 erosion constant makes `--check` fail until the land is rebuilt.
 
-### Phase 8 — the look
+### Phase 7 — the look
 
 Tuning, with the whole instrument running. This is a phase and not an afterthought because it
 is where the piece becomes beautiful or does not, and because colour decisions made before the
@@ -412,7 +415,7 @@ air existed were made blind.
 
 1. Erosion constants, for character: enough bedrock hardness contrast that benches form, enough
    slump that cliffs shed scree, a storm long enough to cut and short enough to watch. Re-run
-   Phase 1's specs and the parity script after every change; rebuild the stored land at the end.
+   Phase 0's specs and the parity script after every change; rebuild the stored land at the end.
 2. The hero frame: sun azimuth and elevation, fog density, mist ceiling, bloom threshold, grade.
    Compose it for a 16:10 crop, because that is the shape of the project card.
 3. Try six seeds. A hero that only works for one seed is a painting.
@@ -422,13 +425,15 @@ air existed were made blind.
 **DoD.** Hero frames for six seeds, kept out of the repo, all acceptable. Frame times for each
 tier recorded in the tier calibration file.
 
-### Phase 9 — the wiring
+### Phase 8 — the wiring
 
 Everything a route needs to exist on this site. Each line is a place that fails a gate, or
 degrades silently, if skipped.
 
-1. `vercel.json`: the rewrite to `/watershed/index.html`, beside murmuration's. Build with
-   `npm run build`, never bare `ng build`, or the route's social card is not emitted.
+1. `src/route-meta.json`: replace the "in progress" description with what the piece is. The
+   `vercel.json` rewrite is already there; `check:docs` demanded it the moment the route had a
+   meta entry. Build with `npm run build`, never bare `ng build`, or the social card is not
+   emitted.
 2. `src/app/projects/projects.data.ts`: the card, with a `frame` whose alt describes the still.
    Alt text is checked against the frame's recorded words, so quote only text the route
    actually renders (the state line qualifies).
@@ -465,7 +470,7 @@ route's card, and every gate is green in CI, not only here.
 - **Record frame time at the end of every phase**, from this box and from the CI log. A jump is
   a regression in a shader, not a slow afternoon.
 - **Watch the `any` budget on the first build of every phase.** Do not raise it without a number.
-- **Do not tune before Phase 8.** Phases 3 to 6 build the instrument; make each one correct and
+- **Do not tune before Phase 7.** Phases 2 to 5 build the instrument; make each one correct and
   legible and move on.
 - **Do not loosen the parity tolerance or the conservation bound to get a phase through.** If
   one moves, find out which pass moved it.

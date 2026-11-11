@@ -52,6 +52,11 @@
       "path": "wanderquest",
       "title": "wanderquest - Jacob Miller",
       "description": "three travel quests — every state, every continent, every country"
+    },
+    "watershed": {
+      "path": "watershed",
+      "title": "watershed - Jacob Miller",
+      "description": "in progress — a landscape that will be eroded by a simulation while you watch. today it is an empty stage: one lit slab the size of the land to come"
     }
   }
 }

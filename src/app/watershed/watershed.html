@@ -1,0 +1,10 @@
+@if (webGLfailure()) {
+  <p class="stage-failure">This piece is drawn with WebGL, and this browser could not start it.</p>
+}
+<canvas #stage [hidden]="webGLfailure()" [attr.data-land]="land()"></canvas>
+<!-- Which land this is, in words: the route's counterpart to the dashboard's
+     badge. Fixed over the canvas's corner, so the canvas keeps the viewport. -->
+@if (sentence(); as said) {
+  <p class="land-line">{{ said }} Seed {{ seed() }}.</p>
+}
+<app-home-link [floating]="true" />
