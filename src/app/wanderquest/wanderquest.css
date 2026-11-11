@@ -168,8 +168,9 @@
    the insets with them so all stay one width, break out of the
    measure to 64rem, or the page's whole width where that is less, which
    puts the dot at 21px. Only from a 64rem viewport: below it nothing moves,
-   and at 320px the cap never binds. The bonus tiles keep the measure; they
-   are small multiples, not a projection. */
+   and at 320px the cap never binds. The bonus tiles leave the measure too, for
+   their own reason, a row of six at a legible size; that rule is theirs, in
+   `quest-bonus-map.css`. */
 .quest-panel {
   max-width: 48rem;
   margin: 0 auto;

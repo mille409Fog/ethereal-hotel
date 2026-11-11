@@ -6,10 +6,18 @@ import type { IQuest } from './quest-state';
 /** The most characters a line of a tile's name holds at the size the panel sets. */
 const NAME_LINE = 16;
 
+/**
+ * The band `scripts/build-outline.mjs` leaves under each square for its name
+ * (`TILE.nameBand`), in frame units: two lines of 40 and their descenders.
+ */
+export const NAME_BAND = 110;
+
 /** One tile as the template draws it: its square, its land and its name in lines. */
 export interface IBonusTile extends IOutlineTile {
   readonly d: string;
   readonly lines: readonly string[];
+  /** The tile's own window onto the generated frame: its square and the band under it. */
+  readonly viewBox: string;
 }
 
 /**
@@ -37,6 +45,13 @@ export function nameLines(name: string): string[] {
  * panel's bonus colour, not its visited one, so the key's "Bonus, visited"
  * swatch describes what is on screen. Its own component because the page
  * template sits at the cyclomatic cap.
+ *
+ * The outline is generated as one frame, two tiles to a row, but each tile is
+ * drawn as its own `<svg>` with a viewBox cropped to it. One frame has one
+ * aspect ratio, so it could never be a row of six on a desktop and a grid of
+ * two on a phone; six pictures can, and the stylesheet decides how many share
+ * a row. They are still one image to assistive technology: the wrapper takes
+ * the role and the name, and the pictures inside are hidden from it.
  */
 @Component({
   selector: 'app-quest-bonus-map',
@@ -63,6 +78,7 @@ export class QuestBonusMap {
       ...tile,
       d: shapes.get(tile.id) ?? '',
       lines: nameLines(bonusPlaces?.find((place) => place.id === tile.id)?.name ?? tile.id),
+      viewBox: `${tile.x} ${tile.y} ${tile.size} ${tile.size + NAME_BAND}`,
     }));
   });
 

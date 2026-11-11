@@ -67,13 +67,22 @@
 }
 
 /* The label stretches across the row, so the whole row is the target, and
-   the row is at least 32px tall: WCAG 2.5.8 asks 24. */
+   the row is at least 32px tall: WCAG 2.5.8 asks 24. On a phone it is 44px,
+   the height of every other control here, because a finger is wider than a
+   pointer and one column of rows stacks every neighbour above and below.
+   A pointer keeps 32px, so fifty states stay a block to scan. */
 .quest-checklist-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   min-height: 2rem;
   color: var(--color-text-secondary);
+}
+
+@media (max-width: 480px) {
+  .quest-checklist-item {
+    min-height: 44px;
+  }
 }
 
 .quest-checklist-item input {

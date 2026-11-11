@@ -9,6 +9,7 @@ import { EUROPE_OUTLINE } from './europe.outline';
 import { GUEST_PROGRESS_KEY, GUEST_STORAGE, GuestProgressStore } from './guest-progress';
 import { BONUS, CONTINENTS, COUNTRIES, STATES } from './places.data';
 import { OWNER_PROGRESS } from './progress.data';
+import { NAME_BAND } from './quest-bonus-map';
 import { QUEST_STATE, QUESTS, stepQuest } from './quest-state';
 import { Wanderquest } from './wanderquest';
 
@@ -464,7 +465,7 @@ describe('Wanderquest', () => {
   });
 
   it('draws the bonus on the states panel, below the states, as one named image', () => {
-    const maps = Array.from(host.querySelectorAll('svg.quest-bonus-map'));
+    const maps = Array.from(host.querySelectorAll('.quest-bonus-map'));
     expect(maps.map((map) => map.closest('section')?.id)).toEqual(['quest-panel-states']);
 
     const [map] = maps;
@@ -479,8 +480,34 @@ describe('Wanderquest', () => {
     ).toBeTruthy();
   });
 
+  it('draws each bonus tile as its own picture, cropped to its square and its name', () => {
+    // Six pictures rather than one frame, so the stylesheet can wrap them;
+    // hidden, so the wrapper above stays the one image that is announced.
+    const frames = Array.from(statesPanel().querySelectorAll('.quest-bonus-map > svg'));
+    expect(frames.map((frame) => frame.getAttribute('aria-hidden'))).toEqual(
+      BONUS.map(() => 'true')
+    );
+    expect(frames.map((frame) => frame.getAttribute('viewBox'))).toEqual(
+      (BONUS_OUTLINE.tiles ?? []).map(({ x, y, size }) => `${x} ${y} ${size} ${size + NAME_BAND}`)
+    );
+    // Every name's last line, descenders and all, falls inside its own crop.
+    for (const tile of BONUS_OUTLINE.tiles ?? []) {
+      expect(tile.name.y + 1.2 * 40 + 10, tile.id).toBeLessThanOrEqual(
+        tile.y + tile.size + NAME_BAND
+      );
+    }
+  });
+
+  it('puts the key directly under the map and its enlargements, on every panel', () => {
+    for (const panel of Array.from(host.querySelectorAll('section.quest-panel'))) {
+      const key = panel.querySelector('.quest-key');
+      const outlines = panel.querySelectorAll('app-quest-outline');
+      expect(key?.previousElementSibling, panel.id).toBe(outlines[outlines.length - 1]);
+    }
+  });
+
   it('keys one shape per bonus place in BONUS order, names each tile, and fills none yet', () => {
-    const map = statesPanel().querySelector('svg.quest-bonus-map');
+    const map = statesPanel().querySelector('.quest-bonus-map');
     const keyed = Array.from(map?.querySelectorAll('path[data-id]') ?? []);
     expect(keyed.map((path) => path.getAttribute('data-id'))).toEqual(
       BONUS.map((place) => place.id)
@@ -840,8 +867,8 @@ describe('Wanderquest', () => {
   });
 
   describe('the bonus map', () => {
-    const map = (): SVGSVGElement | null =>
-      statesPanel().querySelector<SVGSVGElement>('svg.quest-bonus-map');
+    const map = (): HTMLElement | null =>
+      statesPanel().querySelector<HTMLElement>('.quest-bonus-map');
     const land = (id: string): SVGPathElement | null =>
       map()?.querySelector<SVGPathElement>(`path[data-id="${id}"]`) ?? null;
     const water = (id: string): Element | null =>

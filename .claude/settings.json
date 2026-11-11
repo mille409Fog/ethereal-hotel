@@ -24,7 +24,8 @@
       "PowerShell(npx prettier --check src/app/gallery/gallery.css scripts/check-docs.mjs CLAUDE.md ROADMAP.md 2>&1)",
       "PowerShell(npx prettier --write scripts/check-docs.mjs CLAUDE.md)",
       "PowerShell(npm run test:scripts 2>&1)",
-      "PowerShell(npm run frames:capture 2>&1)"
+      "PowerShell(npm run frames:capture 2>&1)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 4173 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -Confirm:$false }; npm run frames:capture 2>&1 | Select-Object -Last 12; git status --short)"
     ]
   }
 }

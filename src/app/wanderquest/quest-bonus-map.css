@@ -2,16 +2,50 @@
    properties from the section it sits in, so it fills as the states outline
    does without knowing which quest it belongs to.
 
-   Narrower than the panel on purpose. The frame is 840 units across with names
-   40 units high, so at this width a name is 16px, and at the 288px a 320px
-   screen leaves it is still nearly 14px. Wider, the tiles would be taller
-   than the states outline above them. */
+   A tile is 400 units across with names 40 units high, so a name is a tenth
+   of the tile's width, and every width below is chosen for that: about 16px
+   at three across, 15px at six, and 13.6px on a 320px screen, as before.
+
+   Two across on a phone, three from 40rem, six in one row from 64rem. Grid
+   rather than a wrapping flex row, because a flex row wraps when the next
+   tile does not fit and leaves five and an orphan; these steps divide six. */
+:host {
+  display: block;
+}
+
 .quest-bonus-map {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  max-width: 21rem;
+  margin: 1.5rem auto 0;
+}
+
+@media (min-width: 40rem) {
+  .quest-bonus-map {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 32rem;
+  }
+}
+
+/* Six at 48rem would be 120px tiles and 12px names, so the row leaves the
+   panel's measure as the world maps do, centred on it, against the page
+   container's `100cqi`: 152px tiles on a desktop, 146px at a 64rem window. */
+@media (min-width: 64rem) {
+  .quest-bonus-map {
+    --quest-bonus-width: min(62rem, 100cqi);
+
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    width: var(--quest-bonus-width);
+    max-width: none;
+    margin-inline: calc((100% - var(--quest-bonus-width)) / 2);
+  }
+}
+
+.quest-bonus-frame {
   display: block;
   width: 100%;
-  max-width: 21rem;
   height: auto;
-  margin: 1.5rem auto 0;
 }
 
 .quest-bonus-map rect {
@@ -21,7 +55,7 @@
 /* The square frames the tile, so six scales read as six pictures rather
    than one map with strange gaps in it. Transparent rather than `none`,
    because an unpainted fill takes no clicks, and the water is the larger
-   part of the hit target: about 137px a side at 320px, far over WCAG
+   part of the hit target: about 136px a side at 320px, far over WCAG
    2.5.8's 24. */
 .quest-bonus-tile {
   fill: transparent;

@@ -68,6 +68,35 @@
             (mapClick)="onMapClick($event, quest.list)"
           />
         }
+        <!-- The key sits directly under the map it explains, and its
+             enlargements, before anything else: on the states panel the bonus
+             tiles follow it, and a key under them was a screen from the map. -->
+        <ul class="quest-key" aria-label="Key">
+          <li class="quest-key-item">
+            <span class="quest-swatch quest-swatch-unvisited" aria-hidden="true"></span>
+            Not yet visited
+          </li>
+          <li class="quest-key-item">
+            <span class="quest-swatch quest-swatch-visited" aria-hidden="true"></span>
+            Visited
+          </li>
+          <li class="quest-key-item">
+            <span class="quest-swatch quest-swatch-highlight" aria-hidden="true"></span>
+            Highlighted
+          </li>
+          @if (quest.bonusPlaces) {
+            <li class="quest-key-item">
+              <span class="quest-swatch quest-swatch-bonus" aria-hidden="true"></span>
+              Bonus, visited
+            </li>
+          }
+          @if (outline.unkeyed) {
+            <li class="quest-key-item">
+              <span class="quest-swatch quest-swatch-unkeyed" aria-hidden="true"></span>
+              Not counted
+            </li>
+          }
+        </ul>
         <!-- The outline cannot draw what is too small for its scale, so it
              says so rather than letting the count and the picture disagree. -->
         @let undrawn = quest.places.length - outline.shapes.length;
@@ -84,32 +113,6 @@
         }
       }
       <app-quest-bonus-map [quest]="quest" (mapClick)="onMapClick($event, 'bonus')" />
-      <ul class="quest-key" aria-label="Key">
-        <li class="quest-key-item">
-          <span class="quest-swatch quest-swatch-unvisited" aria-hidden="true"></span>
-          Not yet visited
-        </li>
-        <li class="quest-key-item">
-          <span class="quest-swatch quest-swatch-visited" aria-hidden="true"></span>
-          Visited
-        </li>
-        <li class="quest-key-item">
-          <span class="quest-swatch quest-swatch-highlight" aria-hidden="true"></span>
-          Highlighted
-        </li>
-        @if (quest.bonusPlaces) {
-          <li class="quest-key-item">
-            <span class="quest-swatch quest-swatch-bonus" aria-hidden="true"></span>
-            Bonus, visited
-          </li>
-        }
-        @if (quest.outline?.unkeyed) {
-          <li class="quest-key-item">
-            <span class="quest-swatch quest-swatch-unkeyed" aria-hidden="true"></span>
-            Not counted
-          </li>
-        }
-      </ul>
       <app-quest-checklist [quest]="quest" (highlight)="onHighlight(quest.list, $event)" />
     </section>
   }

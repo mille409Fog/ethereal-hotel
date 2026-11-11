@@ -15,7 +15,7 @@ test.describe('wanderquest bonus map', () => {
 
   test('gives every tile a target of at least 24 × 24 at 320px', async ({ page }) => {
     await page.goto('/wanderquest');
-    const tiles = page.locator('svg.quest-bonus-map rect.quest-bonus-tile');
+    const tiles = page.locator('.quest-bonus-map rect.quest-bonus-tile');
     await expect(tiles).toHaveCount(6);
 
     for (const tile of await tiles.all()) {
@@ -27,16 +27,78 @@ test.describe('wanderquest bonus map', () => {
 
   test("marks American Samoa from a click in its tile's water", async ({ page }) => {
     await page.goto('/wanderquest');
-    const tile = page.locator('svg.quest-bonus-map g[data-id="AS"] rect.quest-bonus-tile');
+    const tile = page.locator('.quest-bonus-map g[data-id="AS"] rect.quest-bonus-tile');
     const checkbox = page.getByRole('checkbox', { name: 'American Samoa' });
     await expect(checkbox).not.toBeChecked();
 
     // The top-left corner of the square: open sea, nowhere near the islands.
     await tile.click({ position: { x: 4, y: 4 } });
     await expect(checkbox).toBeChecked();
-    await expect(page.locator('svg.quest-bonus-map path[data-id="AS"]')).toHaveClass(
-      /quest-visited/
-    );
+    await expect(page.locator('.quest-bonus-map path[data-id="AS"]')).toHaveClass(/quest-visited/);
+  });
+});
+
+/**
+ * Where things sit, which only layout can say: the key beside the map it
+ * explains, the bonus tiles in one row once there is room for six, and the
+ * scale note under the tiles it qualifies.
+ */
+test.describe('wanderquest layout', () => {
+  /** The distinct top edges of the six tiles, to the pixel: one per row. */
+  const rows = async (page: Page): Promise<number[]> => {
+    const tops = await page
+      .locator('.quest-bonus-map rect.quest-bonus-tile')
+      .evaluateAll((tiles) => tiles.map((tile) => Math.round(tile.getBoundingClientRect().top)));
+    return [...new Set(tops)];
+  };
+
+  for (const [width, count] of [
+    [1440, 1],
+    [1024, 1],
+    [768, 2],
+    [390, 3],
+    [320, 3],
+  ] as const) {
+    test(`lays the six bonus tiles in ${count} row(s) at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/wanderquest');
+      expect(await rows(page)).toHaveLength(count);
+      // Inside the page at every width, so a row of six never scrolls sideways.
+      const box = await page.locator('.quest-bonus-map').boundingBox();
+      expect((box?.x ?? -1) >= 0 && (box?.x ?? 0) + (box?.width ?? 0) <= width).toBe(true);
+    });
+  }
+
+  test('keeps the scale note directly under the tiles', async ({ page }) => {
+    await page.goto('/wanderquest');
+    const map = await page.locator('.quest-bonus-map').boundingBox();
+    const note = await page.locator('.quest-bonus-scale').boundingBox();
+    const gap = (note?.y ?? 0) - ((map?.y ?? 0) + (map?.height ?? 0));
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(16);
+  });
+
+  for (const quest of ['States', 'Continents', 'Countries']) {
+    test(`puts the key directly under the ${quest} map`, async ({ page }) => {
+      await page.goto('/wanderquest');
+      await page.getByRole('tab', { name: quest }).click();
+      const panel = page.locator('.quest-panel:not([hidden])');
+      const outline = await panel.locator('app-quest-outline').last().boundingBox();
+      const key = await panel.locator('.quest-key').boundingBox();
+      const gap = (key?.y ?? 0) - ((outline?.y ?? 0) + (outline?.height ?? 0));
+      expect(gap).toBeGreaterThanOrEqual(0);
+      expect(gap).toBeLessThanOrEqual(32);
+    });
+  }
+
+  test('gives every checklist row 44px at phone width', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/wanderquest');
+    const heights = await page
+      .locator('#quest-panel-states .quest-checklist-item')
+      .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
+    expect(heights.length).toBeGreaterThan(50);
+    expect(Math.min(...heights)).toBeGreaterThanOrEqual(44);
   });
 });
 

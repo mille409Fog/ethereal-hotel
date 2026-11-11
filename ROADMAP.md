@@ -37,19 +37,7 @@ or see a tutorial?_ Prefer finishing one thing convincingly over starting three.
 
 ## Items
 
-### 1. Tighten the Wanderquest layout
-
-**Effort:** small. **Why:** the legend explains the map but sits below all six bonus tiles, a long
-way from it. The tiles stack two across and three down, which pushes the checklist further away, when
-a single row would fit at desktop width.
-
-**DoD:**
-
-- The legend sits directly under the map, on all three tabs.
-- At desktop width the six bonus tiles share one row. They wrap as needed on narrower screens.
-- The tile-scale note stays attached to the tiles.
-- Checkbox rows are at least 44px tall at phone width, the map's existing interactions are unchanged,
-  and frames are re-captured.
+None open. The second visual pass is finished.
 
 ## Deliberately not doing
 
