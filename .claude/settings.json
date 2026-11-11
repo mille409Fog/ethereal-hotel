@@ -26,7 +26,11 @@
       "PowerShell(npm run test:scripts 2>&1)",
       "PowerShell(npm run frames:capture 2>&1)",
       "PowerShell(Get-NetTCPConnection -LocalPort 4173 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -Confirm:$false }; npm run frames:capture 2>&1 | Select-Object -Last 12; git status --short)",
-      "Bash(grep -v \"^\\\\s*//\\\\|^\\\\s*\\\\*\\\\|^\\\\s*/\\\\*\")"
+      "Bash(grep -v \"^\\\\s*//\\\\|^\\\\s*\\\\*\\\\|^\\\\s*/\\\\*\")",
+      "Bash(node --test scripts/watershed-model.test.mjs)",
+      "Bash(awk '/^SF:.*watershed.model/{f=$0} /^\\(LF|LH|BRF|BRH|FNF|FNH\\):/{if\\(f\\)printf \"%s \",$0} /^end_of_record/{if\\(f\\)print \" <- \" f; f=\"\"}' coverage/ethereal-hotel/lcov.info)",
+      "Bash(grep -n \"Phase [0-9]\\\\|Phases [0-9]\\\\|\\\\`b\\\\`\\\\|\\\\`b + r\\\\|\\\\`r\\\\`\\\\|bedrock as sixteen\\\\|six passes\\\\|uplift\\(HERO_SEED\\)\\\\|hardness\" WATERSHED.md)",
+      "Bash(grep -n \"run \\\\`uplift\\\\` and\\\\|It will take minutes\\\\|WATERSHED.md\" WATERSHED.md CLAUDE.md)"
     ]
   }
 }

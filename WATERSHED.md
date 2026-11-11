@@ -65,21 +65,32 @@ measurement.
   that altitude; the simulation would be quantisation noise. So the simulation requires
   `EXT_color_buffer_float` with `RGBA32F` targets, and a device without it gets the `stored`
   state. Do not "support" half-float by rescaling heights; it was considered.
-- **Nearest sampling in the simulation, bilinear by hand.** `OES_texture_float_linear` is absent
-  on a real share of phones. The simulation uses `texelFetch` throughout and the one pass that
-  needs interpolation (sediment transport) does it explicitly from four fetches. The drawing
-  shaders do the same when they read state.
+- **Bedrock is stored as the depth cut from it, not as a height.** Even 32-bit float resolves
+  only a quarter of a millimetre at 2,400 m, and a step of erosion on a hillside is smaller. A
+  height would not move while the sediment taken from it was still added to the water, and the
+  model would make rock out of nothing on every slope. So the raised land is a static texture
+  and the state is `cut`, which starts at zero and is small exactly where erosion is slow.
+- **Sediment travels in the pipes.** The paper traces each cell back along the velocity and
+  interpolates, which creates and loses sediment. Here a pipe carrying a tenth of a cell's water
+  carries a tenth of what that water holds. Every pass therefore conserves rock exactly, what
+  crosses the edge is a real number, and no pass interpolates.
+- **Nearest sampling everywhere in the simulation.** `OES_texture_float_linear` is absent on a
+  real share of phones, so the simulation uses `texelFetch` throughout. With sediment in the
+  pipes nothing needs more. The drawing shaders interpolate state by hand where they need to.
+- **Evaporation is a depth per second, not a share of the depth.** A share drains a lake as fast
+  as a film, and the lake is what should still be there when the rain has gone.
 - **Edges drain.** A closed boundary turns the block into a bathtub. Cells outside the grid are
   treated as empty ground at base level: water and sediment that cross the edge are removed, and
   the sediment is tallied as exported. The uplift is shaped so the divide is inland.
-- **Bedrock and regolith are separate layers.** State carries bedrock height `b` and loose
-  material `r`; the surface is `b + r`. Deposition adds to `r`, erosion takes `r` first at a high
-  rate and then bedrock at the rate its stratum allows, and rockfall turns bedrock into `r`. This
-  is what lets the drawing show sediment where sediment actually is.
-- **Strata are a lookup by absolute elevation.** A 256×1 table of hardness and colour, built from
-  the seed on the CPU, read at `b + warp(x, z)` where `warp` is a small 2D texture that tilts and
-  folds the beds. Erosion therefore cuts _through_ layers, and benches and cliffs appear without
-  being placed.
+- **Bedrock and regolith are separate layers.** The surface is `uplift − cut + regolith`.
+  Deposition adds to the regolith, erosion takes regolith first at a high rate and then bedrock
+  at the rate its bed allows, and rockfall turns bedrock into regolith next door. This is what
+  lets the drawing show sediment where sediment actually is.
+- **Strata are a lookup by absolute elevation.** A 256×1 table of erodibility and colour, built
+  from the seed on the CPU, read at the bedrock's height plus `warp(x, z)`, a 2D texture that
+  tilts and folds the beds. Erosion therefore cuts _through_ layers, and benches and cliffs
+  appear without being placed. The same number sets how steep a face the bed holds before it
+  breaks, so a hard bed is both slow to cut and able to stand as a cliff.
 - **The initial land is built once, on the CPU, in TypeScript.** `uplift.ts` fills a
   `Float32Array` and it is uploaded as a texture. There is no GLSL copy of the noise, so the
   reference model and the GPU model start from the same bytes by construction.
@@ -108,18 +119,22 @@ measurement.
 - **A module a script imports must be a leaf.** Node runs `scripts/*.mjs` against the TypeScript
   source directly and its resolver has no extensionless resolution, while the Angular build
   forbids `.ts` specifiers; `hotel.frag.ts` documents the collision. So everything under
-  `model/`, and `sim-shaders.ts`, may use `import type` and nothing else, and takes its constants
-  as arguments. Erasable syntax only: no `enum`, no parameter properties.
+  `model/` except `reference.ts`, and `sim-shaders.ts`, may use `import type` and nothing else,
+  and takes its collaborators as arguments, the way `land.ts` takes its parts. Erasable syntax
+  only: no `enum`, no parameter properties. The app's own suite cannot see this broken, because
+  Vitest bundles; `scripts/watershed-model.test.mjs` imports the model with Node and can.
 - **GLSL is in template literals.** No backtick in a shader comment. GLSL ES 3.00 reserves
   `sample`, `input`, `output`, `half` and more; a sediment variable called `sample` fails with a
   line number and no reason.
 - **The pipe model explodes above its timestep limit**, and it does so beautifully enough to be
-  mistaken for a feature for a few seconds. A spec asserts the limit from the calibrated
-  constants, and the erode pass clamps velocity. If the land turns to spikes, lower the timestep
-  before touching anything else.
-- **Semi-Lagrangian transport does not conserve mass.** The erode and deposit exchange is exactly
-  conservative and is tested as such; advection is not, and is tested as a bounded drift. Do not
-  "fix" the exact test by loosening it when the bounded one is the one that moved.
+  mistaken for a feature for a few seconds. The limit is `cell / (2 · sqrt(gravity · pipeDepth))`
+  and does not depend on the water's depth; `stableTimestep` derives it and a spec runs a
+  checkerboard either side of it. **On the 1,024 grid the limit is 1.25 s and the timestep is
+  1 s**, which is the thinnest margin in the piece: raising the timestep or the pipe depth, or
+  adding a finer tier, breaks it. If the water turns to spikes, look here first.
+- **Rock drift is rounding, about one part in a hundred million of the rock moved.** Every pass
+  conserves, so the specs bound the drift a hundred times above what was measured and no looser.
+  A drift orders of magnitude larger means a pass has stopped conserving; do not widen the bound.
 - **A PNG with an alpha channel is premultiplied on decode** and the low byte of a height is
   destroyed. The stored land is RGB only, decoded with colour-space conversion off.
 - **Two machines do not make the same land from one seed.** GPU float arithmetic differs in the
@@ -141,12 +156,15 @@ src/app/watershed/
   stage/           calibration, camera    the block's size and vantage; a placeholder slab (built)
   composer/        calibration, passes    render, bloom, output, grade, grain             (built)
   canvas/          follow-canvas-size.ts  renderer, composer and lens follow the canvas   (built)
-  model/           (leaf modules; the reference, importable by Node)
-    erosion-calibration.ts                every simulation constant, with its unit
-    fields.ts                             the state arrays and their layout
-    uplift.ts      strata.ts              initial land; hardness and colour table, warp
-    step.ts                               rain, flux, water, erode, transport, slump
-    tally.ts                              totals: water, bedrock, regolith, suspended, exported
+  model/           (leaf modules; the reference, importable by Node)                      (built)
+    erosion-calibration.ts                every constant with its unit; stableTimestep
+    fields.ts                             the state arrays, the ledger, the static terrain
+    noise.ts       uplift.ts              seeded gradient noise; the raised bedrock
+    strata.ts                             erodibility and colour table; the beds' warp
+    step.ts                               rain, pipes, carry, flow, erode, evaporate, slump
+    tally.ts                              volumes on the block, to audit against the ledger
+    land.ts                               raises a land from a seed, given its parts
+    reference.ts                          hands land.ts its parts for the app; not a leaf
   sim/
     sim-shaders.ts                        the same step as GLSL, and SIM_PASSES (leaf)
     sim-driver.ts                         ping-pong targets over SIM_PASSES
@@ -158,6 +176,7 @@ src/app/watershed/
   direction/       direction.ts (the curves), camera-path.ts, calibration
   stored/          stored-land.ts         decode the committed land into the same textures
 scripts/
+  watershed-model.test.mjs                Node imports the model: the leaf rule's gate    (built)
   watershed-land.mjs  (+ .test.mjs)       pack and unpack, pure
   build-watershed-land.mjs                run the reference for HERO_SEED, write the PNG
   verify-watershed.mjs                    GPU against reference, in Chromium
@@ -165,15 +184,19 @@ public/watershed-land.png
 e2e/watershed.spec.ts
 ```
 
-State textures, all `RGBA32F` at `GRID` × `GRID` (512; 1024 on the top tier):
+Textures, all `RGBA32F` at `GRID` × `GRID` (512; 1024 on the top tier) except `strata`, which is
+256×1. One channel is one array in `fields.ts`. `terrain` and `strata` are uploaded once and
+never written.
 
-| Texture | R            | G             | B                   | A             |
-| ------- | ------------ | ------------- | ------------------- | ------------- |
-| `land`  | bedrock `b`  | regolith `r`  | water depth `d`     | suspended `s` |
-| `flux`  | out left     | out right     | out up              | out down      |
-| `flow`  | velocity `u` | velocity `v`  | speed               | unused        |
-| `slump` | out left     | out right     | out up              | out down      |
-| `light` | sun shadow   | ambient occl. | humidity (for mist) | unused        |
+| Texture   | R          | G             | B                   | A           |
+| --------- | ---------- | ------------- | ------------------- | ----------- |
+| `terrain` | uplift     | strata warp   | unused              | unused      |
+| `strata`  | red        | green         | blue                | erodibility |
+| `land`    | cut        | regolith      | water depth         | suspended   |
+| `flux`    | out left   | out right     | out up              | out down    |
+| `flow`    | velocity x | velocity y    | unused              | unused      |
+| `slump`   | out left   | out right     | out up              | out down    |
+| `light`   | sun shadow | ambient occl. | humidity (for mist) | unused      |
 
 ## What has landed
 
@@ -208,70 +231,46 @@ here.
   device can do, not that a storm is running. So is `HERO_SEED`, and so is the route's
   description in `src/route-meta.json`, which says "in progress".
 
+**The reference model** (2026-11-11). `src/app/watershed/model/` is the simulation in plain
+TypeScript on plain arrays: no WebGL, no three.js, no Angular. `step.ts` is the specification
+the shaders will be held to and what will build the stored land; its header says what is the
+paper's and what is not. Nothing draws it yet, so the route looks as it did.
+
+- **It makes a land.** 3,000 steps on a 256 grid from the hero seed cut a connected drainage
+  with lakes in the basins and sediment aprons at the rim, moving 575 million cubic metres of
+  rock and carrying 363 million off the block. That run took 41 s in Node, so the full storm at
+  512 will take about eleven minutes; the stored-land script should say so before it starts.
+- **The books balance.** Rock on the block plus rock exported drifted by 8.8e-9 of the rock
+  moved over a hundred steps, and water by 8.4e-10 of the rain. The specs bound both at 1e-6.
+- **The stability limit was derived wrong, caught by its own spec, then measured.** See §Traps.
+- **Every pass is a gather**, written so each function in `step.ts` is one shader: a cell works
+  out what its neighbours send it by repeating their arithmetic, and reads a snapshot where a
+  pass changes what its neighbours read. Slumping is two functions because it is two passes.
+- **Heights are rounded to 32-bit at each sum**, in a fixed order, because that is where float
+  and double disagree by enough to matter. The shaders must add in the same order:
+  `(uplift − cut) + regolith`, then `+ water`.
+- **Sums are taken in pairs**, `left + right + (up + down)`, so a land mirrored or turned gives
+  the same bits. The cone spec depends on it; the shaders should keep it.
+- **The water hits the speed limit.** `maxSpeed` is 12 m/s and the fastest cell sat on it for
+  the whole run. Erosion is proportional to speed, so the clamp is shaping the land, and the
+  pipes have no friction to stop it. That is a tuning question for the look phase, with adding
+  friction to the pipes as the alternative to moving the clamp.
+- **All the constants are provisional**, and so are the rock colours in `strata.ts`.
+
 ## The phases
 
-### Phase 0 — the reference model
+### Phase 0 — the GPU model
 
-The simulation in plain TypeScript on plain arrays. No WebGL, no three.js, no Angular. This is
-the specification the shaders will be held to, and it is also what builds the stored land.
-
-1. `fields.ts`: `IFields` with `Float32Array`s `b`, `r`, `d`, `s`, the four fluxes, `u`, `v`, the
-   four slump fluxes, and `size`. `createFields(size)`.
-2. `erosion-calibration.ts`: one exported object. Extent 8,000 m, base level, gravity, timestep,
-   pipe area and length, rain rate, evaporation rate, sediment capacity `Kc`, dissolve rate `Ks`,
-   deposit rate `Kd`, regolith erodibility multiplier, minimum tilt, maximum erosion depth,
-   talus angle, slump rate, velocity clamp, `STORM_STEPS`. Start from the paper's values; every
-   number is provisional until Phase 7. Each carries its unit in a comment.
-3. `uplift.ts`: `uplift(seed, size, constants)` writes `b`. Seeded gradient noise with its own
-   permutation table (no dependency), ridged multifractal over a domain warp, multiplied by a
-   broad dome so there is an inland divide, and brought down to base level along all four edges
-   so rivers can leave. `r`, `d`, `s` start at zero.
-4. `strata.ts`: `strataTable(seed)` returns 256 entries of hardness in (0, 1] and a colour,
-   as beds of varying thickness; `strataWarp(seed, size)` returns the 2D offset field.
-5. `step.ts`, as six functions with the signature `(fields, constants, …) => void`, called in
-   this order by `step()`:
-   1. **rain**: `d += dt · rainRate · rain`, where `rain` in [0, 1] is supplied by the caller.
-   2. **flux**: for each of four neighbours, `f = max(0, f + dt · A · g · Δh / l)` with `Δh` the
-      difference in total height `b + r + d`; then scale the four by
-      `min(1, d · cell² / (Σf · dt))` so a cell cannot give more water than it holds. An
-      off-grid neighbour has total height equal to base level.
-   3. **water**: `d += dt · (Σf_in − Σf_out) / cell²`; velocity from the net flux through the
-      cell divided by the mean of the old and new depth, guarded where that depth is near zero,
-      then clamped.
-   4. **erode**: capacity `C = Kc · max(sin(tilt), minTilt) · |v| · ramp(d)`, where `ramp`
-      fades capacity out in very shallow water. If `C > s`, take `Ks · (C − s)` from `r` first
-      (scaled by the regolith multiplier) and the remainder from `b` scaled by the stratum's
-      softness, and add it to `s`. Otherwise move `Kd · (s − C)` from `s` to `r`.
-   5. **transport**: `s(x) = s(x − v · dt)`, bilinear from four cells; then
-      `d *= 1 − evaporation · dt`. Sediment in a cell whose water has evaporated to nothing is
-      dropped into `r`. Sediment advected from off-grid is zero; what leaves is added to the
-      exported tally.
-   6. **slump**: where the surface slope to a lower neighbour exceeds the talus angle, an
-      outflow proportional to the excess goes to `slump`; a second sweep applies it, taking from
-      `r` then `b` and adding to the neighbour's `r`.
-6. `tally.ts`: sums of each layer times cell area, and the running exported total.
-
-**DoD.** Specs, each on a grid of 64² or smaller:
-
-- Determinism: one seed, two runs, identical arrays.
-- The erode exchange is exactly conservative: `b + r + s` summed over the grid is unchanged by
-  `erode` alone, to float rounding.
-- Slump is exactly conservative and never raises a cell above the neighbour it fell from.
-- Flux never drives a depth negative.
-- Over a hundred full steps the solid total plus the exported tally drifts by less than a stated
-  bound, and the bound is a named constant with the measured value beside it.
-- On a tilted plane water moves downhill and leaves by the low edge.
-- A cone under uniform rain keeps four-fold symmetry.
-- The timestep satisfies the stability limit implied by the calibrated depth and cell size.
-- Uplift is at base level on all four edges and has its maximum inland.
-
-### Phase 1 — the GPU model
-
-The same six passes as fragment shaders, and the gate that keeps them the same.
+The model's passes as fragment shaders, and the gate that keeps them the same.
 
 1. `sim-shaders.ts`: one full-screen vertex shader, one fragment source per pass, and
-   `SIM_PASSES`, an ordered array of `{ name, fragment, reads, writes }`. Slump is two entries.
-   Constants arrive as uniforms named after the calibration object's keys. `texelFetch` only.
+   `SIM_PASSES`, an ordered array of `{ name, fragment, reads, writes }`. Start with one pass
+   per function of `step.ts`, in its order: `rainFall`, `pipeFlux`, `carry`, `flow`, `erode`,
+   `evaporate`, `slumpShed`, `slumpSettle`. `flow` writes two textures, so it is two entries or
+   one with two outputs. Merging passes that write the same texture is an optimisation the gate
+   makes safe, so do it after the gate passes and not before. Constants arrive as uniforms named
+   after the calibration object's keys. `texelFetch` only. The ledger has no shader: the readout
+   gets exported rock as the raised total less what a reduction of `land` finds on the block.
 2. `sim-driver.ts`: two `RGBA32F` targets per state texture, `NearestFilter`, no depth, no
    mipmaps. `stepOnce(rain)` walks `SIM_PASSES`, binds what each reads, draws one triangle into
    what it writes and swaps. Uploads `uplift` and the strata textures at creation. Exposes the
@@ -280,7 +279,7 @@ The same six passes as fragment shaders, and the gate that keeps them the same.
    stalled tab does not come back and run four thousand steps at once.
 4. `scripts/verify-watershed.mjs`, on the model of `scripts/verify-shader.mjs`: launch
    Playwright's Chromium, build a raw WebGL2 page from `SIM_PASSES`, run fifty steps on a 64²
-   grid from `uplift(HERO_SEED)`, read back `land`, run the same fifty steps through `step.ts`
+   grid from the hero seed's raised land, read back `land`, run the same fifty steps through `step.ts`
    in Node, and compare layer by layer. Print the worst absolute difference per layer. Fail above
    a tolerance that is stated in the script with the measured value beside it.
 5. Add the script to `package.json` as `verify:watershed` and to the e2e job in
@@ -292,9 +291,9 @@ The same six passes as fragment shaders, and the gate that keeps them the same.
 its header. Changing one constant in one shader makes it fail. On this box the route shows
 greyscale valleys cutting in; the steps per second at 512² are recorded.
 
-### Phase 2 — the land
+### Phase 1 — the land
 
-1. `land/`: a plane of `GRID − 1` segments each way, displaced in the vertex shader to `b + r`
+1. `land/`: a plane of `GRID − 1` segments each way, displaced in the vertex shader to the surface
    from the `land` texture, with vertical skirts on the four edges down to below the fog deck.
 2. The light pass, into the `light` texture at grid resolution: from each texel march toward the
    sun through the height texture for a fixed number of steps, keeping the minimum of
@@ -304,9 +303,9 @@ greyscale valleys cutting in; the steps per second at 512² are recorded.
    - normal by central differences of the height texture, plus a small procedural detail normal
      whose frequency depends on the material, so close ground is not smooth;
    - bedrock colour from the strata table at `b + warp`, darker and bluer in shade;
-   - regolith over it by `r`: scree grey on steep ground, pale silt where flat;
+   - regolith over it by its thickness: scree grey on steep ground, pale silt where flat;
    - vegetation by a function of slope, altitude, regolith and nearness to water, held back
-     entirely until the storm has passed (it arrives with the light, in Phase 5);
+     entirely until the storm has passed (it arrives with the light, in Phase 4);
    - snow above a line, refused by steep slopes;
    - the skirts shade as a section: strata bands straight through, regolith as a cap.
 4. Direct sun times shadow, sky ambient times occlusion, in linear HDR.
@@ -316,9 +315,9 @@ visible beds, shadowed valleys and scree below cliffs. Pausing the simulation st
 pass (assert it in a spec on the driver's dirty flag). Frame time on this box and from CI is
 recorded.
 
-### Phase 3 — the water
+### Phase 2 — the water
 
-1. A second grid displaced to `b + r + d`, drawn after the land, discarded where `d` is below a
+1. A second grid displaced to the water's level, drawn after the land, discarded where the depth is below a
    threshold and faded in just above it so shorelines are not stair-stepped.
 2. Colour by depth with Beer–Lambert absorption over the land colour beneath (read the scene
    colour target, or shade the bed again; choose by measuring), turbid where `s` is high.
@@ -333,11 +332,11 @@ recorded.
 Nothing in `water/` decides where water is; a `check:docs` rule can hold that later by requiring
 that the water shader reads `land` and declares no noise-based mask.
 
-### Phase 4 — the air
+### Phase 3 — the air
 
 1. `air/sky`: one GLSL function, `skyRadiance(direction, sun, weather)`: overcast grey-blue at
    `weather = 0`, a clear gradient with horizon warmth and a sun disc at 1. Used by the dome,
-   by Phase 3's reflection and by the fog below. Export it as a string and interpolate it into
+   by Phase 2's reflection and by the fog below. Export it as a string and interpolate it into
    each shader.
 2. Aerial perspective in the land and water shaders: exponential height fog integrated
    analytically along the view ray, inscattering `skyRadiance` toward the sun.
@@ -353,10 +352,10 @@ that the water shader reads `land` and declares no noise-based mask.
 7. Bloom, grade and grain tuned with everything above running.
 
 **DoD.** Two committed frames in `docs/images/`, storm and golden hour, from the same land. The
-second, set beside Phase 2's, is the argument for the phase. The three users of the sky agree:
+second, set beside Phase 1's, is the argument for the phase. The three users of the sky agree:
 a spec asserts the function's source appears in all three shaders.
 
-### Phase 5 — the storm
+### Phase 4 — the storm
 
 One clock for everything, in `direction/direction.ts`, as pure functions of storm progress `p`
 in [0, 1] and of seconds since the storm ended, `e`.
@@ -365,7 +364,7 @@ in [0, 1] and of seconds since the storm ended, `e`.
    land and the rivers settle to their base flow instead of stopping mid-flood.
 2. `weatherAt(p, e)`, `sunAt(p, e)`: overcast through the storm; the cloud breaks over the first
    seconds of `e` and the sun is low and warm.
-3. `greeningAt(e)`: the vegetation term from Phase 2 comes in after the light does.
+3. `greeningAt(e)`: the vegetation term from Phase 1 comes in after the light does.
 4. `cameraAt(p, e)` in `camera-path.ts`: a high three-quarter view on a very slow arc during the
    storm, where the making is legible; then a descent to a low pass up the main valley. The
    main valley is found, not assumed: read back a quarter-resolution copy of `land` once when
@@ -383,14 +382,16 @@ in [0, 1] and of seconds since the storm ended, `e`.
 and ends on the hero shot. `?seed=` reproduces a land on the same machine. Specs hold the
 curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p = 1`.
 
-### Phase 6 — the stored land
+### Phase 5 — the stored land
 
 1. `scripts/watershed-land.mjs`: pure pack and unpack. A 1024×512 RGB image: left half carries
-   bedrock as sixteen bits across R and G and water depth in B; right half carries regolith in R
+   the cut as sixteen bits across R and G and water depth in B; right half carries regolith in R
    and two spare channels. Ranges are named constants. Tests under `scripts/*.test.mjs`.
-2. `scripts/build-watershed-land.mjs`: run `uplift` and `STORM_STEPS` of `step.ts` at 512² for
-   `HERO_SEED`, write `public/watershed-land.png` and print its size. It will take minutes; say
-   so when it starts. Refuse to write a file over 1 MB.
+2. `scripts/build-watershed-land.mjs`: `raiseLand` for `HERO_SEED` at 512², then `stormSteps` of
+   `step`, with the parts wired as `scripts/watershed-model.test.mjs` wires them. Write
+   `public/watershed-land.png` and print its size. It will take about eleven minutes; say so when
+   it starts. Refuse to write a file over 1 MB. Only the fields are stored: the uplift and the
+   strata are raised again from the seed in the browser, which is why they are not in the image.
 3. `--check`: recompute a digest of the calibration object, `HERO_SEED` and `STORM_STEPS` and
    compare it with the digest recorded beside the image, then assert the image's dimensions and
    that its water channel is not empty. It does not re-run the simulation in CI. Add both
@@ -407,15 +408,15 @@ curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p 
 `sim-support` forced false it shows the pass over the stored land and says so. Changing any
 erosion constant makes `--check` fail until the land is rebuilt.
 
-### Phase 7 — the look
+### Phase 6 — the look
 
 Tuning, with the whole instrument running. This is a phase and not an afterthought because it
 is where the piece becomes beautiful or does not, and because colour decisions made before the
 air existed were made blind.
 
-1. Erosion constants, for character: enough bedrock hardness contrast that benches form, enough
+1. Erosion constants, for character: enough contrast between hard and soft beds that benches form, enough
    slump that cliffs shed scree, a storm long enough to cut and short enough to watch. Re-run
-   Phase 0's specs and the parity script after every change; rebuild the stored land at the end.
+   the model's specs and the parity script after every change; rebuild the stored land at the end.
 2. The hero frame: sun azimuth and elevation, fog density, mist ceiling, bloom threshold, grade.
    Compose it for a 16:10 crop, because that is the shape of the project card.
 3. Try six seeds. A hero that only works for one seed is a painting.
@@ -425,7 +426,7 @@ air existed were made blind.
 **DoD.** Hero frames for six seeds, kept out of the repo, all acceptable. Frame times for each
 tier recorded in the tier calibration file.
 
-### Phase 8 — the wiring
+### Phase 7 — the wiring
 
 Everything a route needs to exist on this site. Each line is a place that fails a gate, or
 degrades silently, if skipped.
@@ -470,7 +471,7 @@ route's card, and every gate is green in CI, not only here.
 - **Record frame time at the end of every phase**, from this box and from the CI log. A jump is
   a regression in a shader, not a slow afternoon.
 - **Watch the `any` budget on the first build of every phase.** Do not raise it without a number.
-- **Do not tune before Phase 7.** Phases 2 to 5 build the instrument; make each one correct and
+- **Do not tune before Phase 6.** Phases 1 to 4 build the instrument; make each one correct and
   legible and move on.
 - **Do not loosen the parity tolerance or the conservation bound to get a phase through.** If
   one moves, find out which pass moved it.
