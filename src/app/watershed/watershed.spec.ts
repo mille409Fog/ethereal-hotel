@@ -8,9 +8,12 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { GradePass } from '../murmuration/grade/grade-pass/grade-pass';
 import { GrainPass } from '../murmuration/grain/grain-pass/grain-pass';
 import { REDUCED_MOTION_QUERY } from '../murmuration/renderer/renderer-calibration';
-import { LAND_SENTENCES } from './land-state';
-import { MEASURE_WINDOW_MS, QUALITY_TIERS } from './quality/quality-calibration';
+import { landLine } from './land-state';
+import { EROSION } from './model/erosion-calibration';
+import { IQualityTier, MEASURE_WINDOW_MS, QUALITY_TIERS } from './quality/quality-calibration';
 import { HERO_SEED, Random, SEED_SPAN } from './seed/seed';
+import { REPORT_EVERY, STORM_SECONDS } from './sim/sim-calibration';
+import { SIM_PASSES, SIM_STATES } from './sim/sim-shaders';
 import { PROBE_VALUE } from './sim/sim-support';
 import { verticalFovFor } from './stage/stage-camera';
 import { CAMERA_POSITION, LAND_EXTENT } from './stage/stage-calibration';
@@ -20,7 +23,17 @@ import {
   WATERSHED_RANDOM,
   WATERSHED_RENDERER,
   WATERSHED_SEARCH,
+  WATERSHED_TIERS,
 } from './watershed.tokens';
+
+/** The calibrated tiers on a grid of a few cells: what these tests prove holds at any size. */
+const SPEC_GRID = 8;
+const SPEC_TIERS: readonly IQualityTier[] = QUALITY_TIERS.map((tier) => ({
+  ...tier,
+  grid: SPEC_GRID,
+}));
+
+const NO_PROGRESS = { steps: 0, total: EROSION.stormSteps };
 
 /**
  * jsdom has no WebGL, so a real `WebGLRenderer` always throws here and only the
@@ -105,7 +118,7 @@ interface IMountOptions {
 }
 
 const mount = async (options: IMountOptions = {}): Promise<ComponentFixture<Watershed>> => {
-  const providers = [];
+  const providers: object[] = [{ provide: WATERSHED_TIERS, useValue: SPEC_TIERS }];
   if (options.random) {
     providers.push({ provide: WATERSHED_RANDOM, useValue: options.random });
   }
@@ -261,6 +274,10 @@ describe('Watershed', () => {
       expect(random()).toBe(0.25);
     });
 
+    it('offers the calibrated tiers unless a spec supplies smaller ones', () => {
+      expect(TestBed.inject(WATERSHED_TIERS)).toBe(QUALITY_TIERS);
+    });
+
     it("reads the seed from the address's query string", () => {
       expect(TestBed.inject(WATERSHED_SEARCH)).toBe(window.location.search);
     });
@@ -272,7 +289,7 @@ describe('Watershed', () => {
 
       expect(canvasOf(fixture).hidden).toBe(false);
       expect(canvasOf(fixture).dataset['land']).toBe('simulating');
-      expect(landLineOf(fixture)).toBe(`${LAND_SENTENCES.simulating} Seed 77.`);
+      expect(landLineOf(fixture)).toBe(landLine('simulating', 77, NO_PROGRESS));
     });
 
     it('draws a seed from chance when the address names none', async () => {
@@ -292,7 +309,7 @@ describe('Watershed', () => {
       const fixture = await mount({ search: '?seed=77' });
 
       expect(canvasOf(fixture).dataset['land']).toBe('stored');
-      expect(landLineOf(fixture)).toBe(`${LAND_SENTENCES.stored} Seed ${HERO_SEED}.`);
+      expect(landLineOf(fixture)).toBe(landLine('stored', HERO_SEED, NO_PROGRESS));
     });
 
     it('holds still under reduced motion, under the stored seed, even on a device that could simulate', async () => {
@@ -300,7 +317,7 @@ describe('Watershed', () => {
       const fixture = await mount({ search: '?seed=77' });
 
       expect(canvasOf(fixture).dataset['land']).toBe('still');
-      expect(landLineOf(fixture)).toBe(`${LAND_SENTENCES.still} Seed ${HERO_SEED}.`);
+      expect(landLineOf(fixture)).toBe(landLine('still', HERO_SEED, NO_PROGRESS));
     });
 
     it('probes the device before building the chain on its renderer', async () => {
@@ -399,6 +416,116 @@ describe('Watershed', () => {
       expect(renderer.setPixelRatio).toHaveBeenLastCalledWith(lowest.resolutionScale);
       expect(onlyComposer().setPixelRatio).toHaveBeenLastCalledWith(lowest.resolutionScale);
       expect(onlyComposer().setPixelRatio).toHaveBeenCalledTimes(QUALITY_TIERS.length - 1);
+    });
+  });
+
+  describe('the storm', () => {
+    /** Draws made by the simulation: every `render` after the one the float-target probe makes. */
+    const simulated = (renderer: FakeRenderer): number => renderer.render.mock.calls.length - 1;
+
+    /** Frames fast enough that the meter settles on the first window, then `afterMs` more. */
+    const settleAndRun = (renderer: FakeRenderer, afterMs: number): void => {
+      runFrames(frameLoopOf(renderer), 16, MEASURE_WINDOW_MS + 16 + afterMs);
+    };
+
+    it('does not start until the quality meter has settled on a tier', async () => {
+      await mount();
+      const renderer = onlyRenderer();
+
+      runFrames(frameLoopOf(renderer), 16, MEASURE_WINDOW_MS / 2);
+
+      expect(simulated(renderer)).toBe(0);
+      expect(placeholderIn(onlyComposer()).material).toBeInstanceOf(THREE.MeshStandardMaterial);
+    });
+
+    it('starts on the settled tier’s grid, and puts the map of its land on the slab', async () => {
+      await mount();
+      const renderer = onlyRenderer();
+
+      settleAndRun(renderer, 200);
+      const map = placeholderIn(onlyComposer()).material as THREE.ShaderMaterial;
+
+      expect(map).toBeInstanceOf(THREE.ShaderMaterial);
+      expect(map.name).toBe('WatershedMap');
+      expect(map.uniforms['texel'].value).toBe(1 / SPEC_GRID);
+      expect(map.uniforms['land'].value).toBeInstanceOf(THREE.Texture);
+    });
+
+    it('runs the model in whole steps, every pass of each', async () => {
+      await mount();
+      const renderer = onlyRenderer();
+
+      settleAndRun(renderer, 500);
+
+      expect(simulated(renderer)).toBeGreaterThan(0);
+      expect(simulated(renderer) % SIM_PASSES.length).toBe(0);
+    });
+
+    it('keeps the pace that finishes a storm in its calibrated time', async () => {
+      await mount();
+      const renderer = onlyRenderer();
+
+      settleAndRun(renderer, 3_000);
+      const steps = simulated(renderer) / SIM_PASSES.length;
+      const expected = (EROSION.stormSteps / STORM_SECONDS) * 3;
+
+      // the storm's first frame runs nothing, and the frames are 16ms where a second is 62.5 of them
+      expect(Math.abs(steps - expected)).toBeLessThan(expected * 0.02);
+    });
+
+    it('keeps the map on the texture the land is in now, which changes every step', async () => {
+      await mount();
+      const renderer = onlyRenderer();
+      settleAndRun(renderer, 200);
+      const map = placeholderIn(onlyComposer()).material as THREE.ShaderMaterial;
+      const written = renderer.setRenderTarget.mock.calls
+        .map(([target]) => target as THREE.WebGLRenderTarget | null)
+        .filter((target): target is THREE.WebGLRenderTarget => target !== null);
+
+      // the last pass of a step writes the land, so the land is in the last target drawn into
+      expect(map.uniforms['land'].value).toBe(written[written.length - 1].texture);
+    });
+
+    it('tells the state line how far it has got, in round numbers', async () => {
+      const fixture = await mount({ search: '?seed=77' });
+      const renderer = onlyRenderer();
+
+      settleAndRun(renderer, 2_000);
+      await fixture.whenStable();
+      const steps = simulated(renderer) / SIM_PASSES.length;
+      const said = steps - (steps % REPORT_EVERY);
+
+      expect(said).toBeGreaterThan(0);
+      expect(landLineOf(fixture)).toBe(
+        landLine('simulating', 77, { steps: said, total: EROSION.stormSteps })
+      );
+    });
+
+    it('simulates nothing on a device that cannot render to float', async () => {
+      rendererState.probeReads = 2400;
+      await mount();
+      const renderer = onlyRenderer();
+
+      settleAndRun(renderer, 1_000);
+
+      expect(simulated(renderer)).toBe(0);
+      expect(placeholderIn(onlyComposer()).material).toBeInstanceOf(THREE.MeshStandardMaterial);
+    });
+
+    it('frees the simulation on destroy and gives the slab its own material back', async () => {
+      const fixture = await mount();
+      const renderer = onlyRenderer();
+      settleAndRun(renderer, 200);
+      const slab = placeholderIn(onlyComposer());
+      const map = vi.spyOn(slab.material as THREE.Material, 'dispose');
+      const targets = vi.spyOn(THREE.WebGLRenderTarget.prototype, 'dispose');
+
+      fixture.destroy();
+
+      expect(map).toHaveBeenCalledTimes(1);
+      expect(slab.material).toBeInstanceOf(THREE.MeshStandardMaterial);
+      // two copies of each state texture; the passes' own targets are freed with them, so at least these
+      expect(targets.mock.calls.length).toBeGreaterThanOrEqual(SIM_STATES.length * 2);
     });
   });
 

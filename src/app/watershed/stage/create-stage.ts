@@ -16,11 +16,14 @@ import {
   SUN_POSITION,
 } from './stage-calibration';
 
-export type Placeholder = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
+/** the slab. its material is whatever is being shown on it: plain rock, or the map of a land */
+export type Placeholder = THREE.Mesh<THREE.PlaneGeometry, THREE.Material>;
 
 export interface IStage {
   readonly scene: THREE.Scene;
   readonly placeholder: Placeholder;
+  /** the slab's own material, kept so it can be put back and so it is freed whatever the slab is wearing */
+  readonly plain: THREE.MeshStandardMaterial;
 }
 
 export function createStage(): IStage {
@@ -35,15 +38,18 @@ export function createStage(): IStage {
   const geometry = new THREE.PlaneGeometry(LAND_EXTENT, LAND_EXTENT);
   // a plane is built facing +z; the land lies in x and z with y up
   geometry.rotateX(-Math.PI / 2);
-  const material = new THREE.MeshStandardMaterial({ color: PLACEHOLDER_COLOUR, roughness: 0.95 });
-  const placeholder: Placeholder = new THREE.Mesh(geometry, material);
+  const plain = new THREE.MeshStandardMaterial({ color: PLACEHOLDER_COLOUR, roughness: 0.95 });
+  const placeholder: Placeholder = new THREE.Mesh<THREE.PlaneGeometry, THREE.Material>(
+    geometry,
+    plain
+  );
   scene.add(placeholder);
 
-  return { scene, placeholder };
+  return { scene, placeholder, plain };
 }
 
-/** frees what the stage holds on the GPU; lights hold nothing */
+/** frees what the stage holds on the GPU; lights hold nothing, and a map on the slab is its storm's to free */
 export function disposeStage(stage: IStage): void {
   stage.placeholder.geometry.dispose();
-  stage.placeholder.material.dispose();
+  stage.plain.dispose();
 }

@@ -150,6 +150,17 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm run verify:shader
 
+      # `/watershed` runs an erosion simulation in fragment shaders, and the
+      # same simulation exists in TypeScript where every pass has a spec. This
+      # compiles the shaders in the Chromium installed above, runs both from one
+      # land and fails when they disagree, then nudges one constant by 1% and
+      # requires the comparison to fail. It is the only compiler these shaders
+      # meet before a visitor's browser, and the only thing that ties the
+      # tested model to the picture.
+      - name: Hold the Watershed shaders to their reference model
+        if: ${{ !cancelled() }}
+        run: npm run verify:watershed
+
       # `if: always()` because these only matter when the step above failed:
       # the config records a trace and a screenshot on failure, and without the
       # upload a red CI run gives you a stack trace and no way to see the page.

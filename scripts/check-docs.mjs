@@ -1510,7 +1510,8 @@ check('quoted config values still match the files they came from', () => {
   return problems;
 });
 
-// The gates that share the e2e job. `resume:check` and `verify:shader` sit after
+// The gates that share the e2e job. `resume:check`, `verify:shader` and
+// `verify:watershed` sit after
 // the Playwright suite because they need the Chromium it installs, and a step in
 // GitHub Actions is skipped once an earlier one fails unless it says otherwise. So
 // a red suite silently switched off both — the shader gate went unrun on every
@@ -1532,7 +1533,7 @@ check('a failing e2e suite cannot switch off the gates behind it', () => {
   }
 
   const after = steps.slice(suite + 1);
-  for (const gate of ['resume:check', 'verify:shader']) {
+  for (const gate of ['resume:check', 'verify:shader', 'verify:watershed']) {
     if (!after.some((step) => step.includes(`npm run ${gate}`))) {
       problems.push(
         `CLAUDE.md says \`npm run ${gate}\` rides in the e2e job; it is no longer after the suite.`

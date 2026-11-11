@@ -42,6 +42,8 @@ import { step } from '../src/app/watershed/model/step.ts';
 import { strataTable, strataWarp } from '../src/app/watershed/model/strata.ts';
 import { tally } from '../src/app/watershed/model/tally.ts';
 import { uplift } from '../src/app/watershed/model/uplift.ts';
+import { packLand, unpackLand } from '../src/app/watershed/sim/sim-layout.ts';
+import { SIM_CONSTANTS, SIM_PASSES } from '../src/app/watershed/sim/sim-shaders.ts';
 
 const PARTS = { random: mulberry32, createNoise, createFields, uplift, strataTable, strataWarp };
 const SIZE = 24;
@@ -86,6 +88,20 @@ describe('the watershed model, imported by Node', () => {
     assert.deepEqual(first.fields.cut, second.fields.cut);
     assert.deepEqual(first.fields.water, second.fields.water);
     assert.deepEqual(first.fields.ledger, second.fields.ledger);
+  });
+
+  // `sim-shaders.ts` and `sim-layout.ts` are leaves for the same reason: `verify-watershed.mjs`
+  // imports them, and it runs in a job that needs a browser. This catches a broken import here,
+  // where nothing needs one.
+  test('imports the shaders and their layout, which the verifying script runs', () => {
+    assert.ok(SIM_PASSES.length > 0);
+    for (const key of SIM_CONSTANTS) {
+      assert.equal(typeof CONSTANTS[key], 'number', `${key} is not a calibration constant`);
+    }
+    const { fields } = run(10);
+    const back = createFields(SIZE);
+    unpackLand(packLand(fields), back);
+    assert.deepEqual(back.water, fields.water);
   });
 
   test('exposes the stability limit a script needs to refuse a bad timestep', () => {

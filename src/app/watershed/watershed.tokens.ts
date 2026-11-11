@@ -2,7 +2,16 @@
 import { InjectionToken } from '@angular/core';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { IQualityTier, QUALITY_TIERS } from './quality/quality-calibration';
 import { Random } from './seed/seed';
+
+/**
+ * the quality tiers, best first. a spec supplies tiers with a grid of a few cells: raising a land is noise at
+ * every cell, and at the calibrated million of them it would be most of a second for every test that starts a storm.
+ */
+export const WATERSHED_TIERS = new InjectionToken<readonly IQualityTier[]>('WATERSHED_TIERS', {
+  factory: () => QUALITY_TIERS,
+});
 
 /**
  * the chance a fresh seed is drawn from. `Math.random` by default, read at each call and not captured, because

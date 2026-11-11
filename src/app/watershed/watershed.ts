@@ -32,11 +32,13 @@ import {
 } from '../murmuration/renderer/renderer-calibration';
 import { followCanvasSize } from './canvas/follow-canvas-size';
 import { orchestratePasses } from './composer/orchestrate-passes';
-import { LAND_SENTENCES, LandState, landStateFor, showsStoredLand } from './land-state';
-import { QUALITY_TIERS } from './quality/quality-calibration';
+import { landLine, LandState, landStateFor, showsStoredLand } from './land-state';
+import { EROSION } from './model/erosion-calibration';
 import { measure, UNMEASURED } from './quality/quality-meter';
 import { drawSeed, HERO_SEED, parseSeed } from './seed/seed';
+import { REPORT_EVERY } from './sim/sim-calibration';
 import { supportsFloatTargets } from './sim/sim-support';
+import { IStorm, startStorm } from './sim/storm';
 import { createStage, disposeStage, IStage } from './stage/create-stage';
 import { aspectOf, createStageCamera } from './stage/stage-camera';
 import {
@@ -44,6 +46,7 @@ import {
   WATERSHED_RANDOM,
   WATERSHED_RENDERER,
   WATERSHED_SEARCH,
+  WATERSHED_TIERS,
 } from './watershed.tokens';
 
 @Component({
@@ -57,18 +60,24 @@ export class Watershed implements AfterViewInit, OnDestroy {
   private readonly search = inject(WATERSHED_SEARCH);
   private readonly createRenderer = inject(WATERSHED_RENDERER);
   private readonly createComposer = inject(WATERSHED_COMPOSER);
+  private readonly tiers = inject(WATERSHED_TIERS);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('stage');
   private renderer?: THREE.WebGLRenderer;
   private composer?: EffectComposer;
   private stage?: IStage;
+  private storm?: IStorm;
   private resizeObserver?: ResizeObserver;
   protected readonly webGLfailure = signal(false);
   /** null until the device has been probed, and again if the context is lost */
   protected readonly land = signal<LandState | null>(null);
   protected readonly seed = signal(HERO_SEED);
-  protected readonly sentence = computed(() => {
+  /** how far the storm has got, to the nearest report; the frame loop knows the exact count */
+  protected readonly steps = signal(0);
+  protected readonly line = computed(() => {
     const land = this.land();
-    return land === null ? null : LAND_SENTENCES[land];
+    return land === null
+      ? null
+      : landLine(land, this.seed(), { steps: this.steps(), total: EROSION.stormSteps });
   });
 
   /** a lost context is not restored: the loop stops and the page owns up, as it does when there never was one */
@@ -107,24 +116,50 @@ export class Watershed implements AfterViewInit, OnDestroy {
       if (reducedMotion) {
         composer.render();
       } else {
-        let meter = UNMEASURED;
-        renderer.setAnimationLoop((nowMs) => {
-          const measured = measure(meter, nowMs, QUALITY_TIERS.length);
-          if (measured.tier !== meter.tier) {
-            this.drawAt(QUALITY_TIERS[measured.tier].resolutionScale);
-          }
-          meter = measured;
-          composer.render();
-        });
+        this.animate(renderer, composer, stage, land === 'simulating');
       }
     } catch {
       this.webGLfailure.set(true);
     }
   }
 
+  /**
+   * the frame loop. it measures first and simulates second: the grid a storm runs on belongs to the quality
+   * tier, so no storm starts until the meter has settled on one, and then it runs on that grid to the end.
+   */
+  private animate(
+    renderer: THREE.WebGLRenderer,
+    composer: EffectComposer,
+    stage: IStage,
+    simulating: boolean
+  ): void {
+    let meter = UNMEASURED;
+    renderer.setAnimationLoop((nowMs) => {
+      const measured = measure(meter, nowMs, this.tiers.length);
+      if (measured.tier !== meter.tier) {
+        this.drawAt(this.tiers[measured.tier].resolutionScale);
+      }
+      meter = measured;
+      if (simulating && meter.settled) {
+        this.storm ??= startStorm(renderer, stage, this.seed(), this.tiers[meter.tier]);
+        this.report(this.storm.advance(nowMs), this.storm.total);
+      }
+      composer.render();
+    });
+  }
+
+  /** tells the state line how far the storm has got, every `REPORT_EVERY` steps and at its last */
+  private report(done: number, total: number): void {
+    const said = done === total ? done : done - (done % REPORT_EVERY);
+    if (said !== this.steps()) {
+      this.steps.set(said);
+    }
+  }
+
   public ngOnDestroy(): void {
     this.canvas().nativeElement.removeEventListener('webglcontextlost', this.onContextLost);
     this.resizeObserver?.disconnect();
+    this.storm?.dispose();
     if (this.stage) {
       disposeStage(this.stage);
     }

@@ -13,6 +13,7 @@
     "frames:capture": "npm run build && playwright test project-frames --update-snapshots",
     "frames:check": "npm run build && playwright test project-frames",
     "verify:shader": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-shader.mjs",
+    "verify:watershed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-watershed.mjs",
     "build:sentence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-sentence-atlas.mjs",
     "check:sentence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-sentence-atlas.mjs --check",
     "gallery:fetch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fetch-gallery.mjs",

@@ -3,7 +3,7 @@
 The second spectacle on this site, after `/murmuration`, and meant to be much larger. This is the
 whole plan: what the piece is, the decisions already taken and why, what has landed, and the
 phases still to do, each with a Definition of Done so that one instance can build a phase and
-another can verify it. The stage has landed; nothing of the simulation or the picture has.
+another can verify it. The simulation runs and can be watched as a grey map; the picture has not been started.
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -165,11 +165,14 @@ src/app/watershed/
     tally.ts                              volumes on the block, to audit against the ledger
     land.ts                               raises a land from a seed, given its parts
     reference.ts                          hands land.ts its parts for the app; not a leaf
-  sim/
+  sim/                                                                                    (built)
     sim-shaders.ts                        the same step as GLSL, and SIM_PASSES (leaf)
+    sim-layout.ts                         fields packed into texels and back (leaf)
     sim-driver.ts                         ping-pong targets over SIM_PASSES
-    sim-clock.ts                          fixed-step accumulator, steps per frame by tier
-    sim-support.ts                        the float-target probe; decides `stored`        (built)
+    sim-clock.ts   sim-calibration.ts     frames into whole steps; the storm's pace
+    storm.ts                              a land, its driver, its clock, its map on the slab
+    sim-support.ts                        the float-target probe; decides `stored`
+  stage/map-material.ts                   the land as a grey map on the slab; a stand-in  (built)
   land/            mesh, light pass, material shader, calibration
   water/           surface mesh, flow-mapped normals, calibration
   air/             sky function, fog, cloud shadow, rain, calibration
@@ -179,7 +182,7 @@ scripts/
   watershed-model.test.mjs                Node imports the model: the leaf rule's gate    (built)
   watershed-land.mjs  (+ .test.mjs)       pack and unpack, pure
   build-watershed-land.mjs                run the reference for HERO_SEED, write the PNG
-  verify-watershed.mjs                    GPU against reference, in Chromium
+  verify-watershed.mjs                    GPU against reference, in Chromium              (built)
 public/watershed-land.png
 e2e/watershed.spec.ts
 ```
@@ -227,9 +230,10 @@ here.
   rather than assert an empty console: the local server answers 404 for
   `/_vercel/insights/script.js`, and SwiftShader prints a "GPU stall due to ReadPixels"
   performance warning for every read-back, the probe's included.
-- **The state line's sentences are provisional.** Nothing is simulated yet, so they say what the
-  device can do, not that a storm is running. So is `HERO_SEED`, and so is the route's
-  description in `src/route-meta.json`, which says "in progress".
+- **Two of the state line's three sentences are provisional.** No land is stored yet, so `still`
+  and `stored` say what the device was found able to do, not what it is shown. So is
+  `HERO_SEED`, and so is the route's description in `src/route-meta.json`, which says "in
+  progress".
 
 **The reference model** (2026-11-11). `src/app/watershed/model/` is the simulation in plain
 TypeScript on plain arrays: no WebGL, no three.js, no Angular. `step.ts` is the specification
@@ -257,44 +261,49 @@ paper's and what is not. Nothing draws it yet, so the route looks as it did.
   friction to the pipes as the alternative to moving the clamp.
 - **All the constants are provisional**, and so are the rock colours in `strata.ts`.
 
+**The GPU model** (2026-11-11). The simulation runs on the GPU and `/watershed` shows it: on a
+device that can render to float, a storm starts once the quality meter settles and the land
+appears on the slab as a grey relief map with its water in blue, cutting as you watch. The state
+line counts the storm's steps.
+
+- **The shaders are the model.** `npm run verify:watershed` runs both from the hero seed's land
+  for fifty steps on a 64 grid: the worst differences were 5.3e-5 m in the cut, 6.3e-5 m in the
+  regolith, 1.7e-5 m in the water and 6.9e-4 m in the suspended sediment, in layers reaching
+  210 m, 136 m, 0.7 m and 31 m. The tolerances are about ten times those. With `capacity` raised
+  1% in the shaders alone every layer fails by a factor of eighty or more, and the script
+  requires that failure on every run.
+- **It is in CI's e2e job but has not run there.** It passed here, on SwiftShader under Windows.
+  The first push is the first reading on Linux; if a layer is over by a little, the tolerance
+  moves, from that reading and with the number written beside it.
+- **Pace.** On SwiftShader at 512 the storm ran 31 steps a second, so a storm there takes about
+  six and a half minutes where the calibration asks for ninety seconds. That is the lowest tier
+  on a software rasteriser and is the floor, not the experience. **A reading on a real GPU is
+  owed**: open the route and time the step count on the state line.
+- **Baselines.** The shared three.js chunk is 597.76 kB and the route's own is 24.98 kB.
+- **Nine passes, none merged.** `flow` is two because a pass has one output. Rain could fold
+  into any pass that writes the land, and evaporation into erosion. Do it on a measurement that
+  says the pass count is what a real GPU is short of; the verifier makes it safe.
+- **The meter measures the empty stage, not the storm.** A device can settle on the top tier
+  with nothing to draw and then struggle with a 1,024 grid. The clock stops that from spiralling,
+  because it forgives the steps a frame could not run, but nothing steps the tier down once the
+  storm has begun. Either measure with a few steps of the simulation running, or let the storm
+  restart once on a smaller grid; decide it in the phase that directs the storm.
+- **The land is raised on the main thread** in the frame the storm starts: noise at every cell,
+  a visible hitch at 1,024. The same phase hides it behind the opening or moves it to a worker.
+- **Sediment has no ceiling but the flow's capacity.** On the verifier's land, which is far
+  steeper than any real one, a cell held 31 m of suspended sediment in 0.7 m of water. Capacity
+  is a thickness and does not know the depth beyond the shallow ramp. Tune it with the look.
+- **Two stand-ins**: `stage/map-material.ts`, which the land phase replaces along with the slab,
+  and `RAIN_SHARE` in `sim-calibration.ts`, which the storm phase replaces with a curve.
+
 ## The phases
 
-### Phase 0 — the GPU model
-
-The model's passes as fragment shaders, and the gate that keeps them the same.
-
-1. `sim-shaders.ts`: one full-screen vertex shader, one fragment source per pass, and
-   `SIM_PASSES`, an ordered array of `{ name, fragment, reads, writes }`. Start with one pass
-   per function of `step.ts`, in its order: `rainFall`, `pipeFlux`, `carry`, `flow`, `erode`,
-   `evaporate`, `slumpShed`, `slumpSettle`. `flow` writes two textures, so it is two entries or
-   one with two outputs. Merging passes that write the same texture is an optimisation the gate
-   makes safe, so do it after the gate passes and not before. Constants arrive as uniforms named
-   after the calibration object's keys. `texelFetch` only. The ledger has no shader: the readout
-   gets exported rock as the raised total less what a reduction of `land` finds on the block.
-2. `sim-driver.ts`: two `RGBA32F` targets per state texture, `NearestFilter`, no depth, no
-   mipmaps. `stepOnce(rain)` walks `SIM_PASSES`, binds what each reads, draws one triangle into
-   what it writes and swaps. Uploads `uplift` and the strata textures at creation. Exposes the
-   current `land`, `flow` and `light` textures for drawing and a `dispose()`.
-3. `sim-clock.ts`: accumulator from frame time to whole steps, capped per frame by the tier so a
-   stalled tab does not come back and run four thousand steps at once.
-4. `scripts/verify-watershed.mjs`, on the model of `scripts/verify-shader.mjs`: launch
-   Playwright's Chromium, build a raw WebGL2 page from `SIM_PASSES`, run fifty steps on a 64²
-   grid from the hero seed's raised land, read back `land`, run the same fifty steps through `step.ts`
-   in Node, and compare layer by layer. Print the worst absolute difference per layer. Fail above
-   a tolerance that is stated in the script with the measured value beside it.
-5. Add the script to `package.json` as `verify:watershed` and to the e2e job in
-   `.github/workflows/code-quality.yml` beside `verify:shader`, carrying
-   `if: ${{ !cancelled() }}`. `check:docs` fails a step after the suite that lacks it.
-6. Draw the height as flat greyscale on the stage's slab, so there is something to look at.
-
-**DoD.** The parity script passes locally and in CI, and its printed differences are recorded in
-its header. Changing one constant in one shader makes it fail. On this box the route shows
-greyscale valleys cutting in; the steps per second at 512² are recorded.
-
-### Phase 1 — the land
+### Phase 0 — the land
 
 1. `land/`: a plane of `GRID − 1` segments each way, displaced in the vertex shader to the surface
    from the `land` texture, with vertical skirts on the four edges down to below the fog deck.
+   It takes the place of the slab and of `stage/map-material.ts`; `sim/storm.ts` is where the
+   map is put on the slab today, and is where the land goes instead.
 2. The light pass, into the `light` texture at grid resolution: from each texel march toward the
    sun through the height texture for a fixed number of steps, keeping the minimum of
    `(ray height − terrain height) / distance` as a soft shadow term; occlusion from the mean
@@ -305,7 +314,7 @@ greyscale valleys cutting in; the steps per second at 512² are recorded.
    - bedrock colour from the strata table at `b + warp`, darker and bluer in shade;
    - regolith over it by its thickness: scree grey on steep ground, pale silt where flat;
    - vegetation by a function of slope, altitude, regolith and nearness to water, held back
-     entirely until the storm has passed (it arrives with the light, in Phase 4);
+     entirely until the storm has passed (it arrives with the light, in Phase 3);
    - snow above a line, refused by steep slopes;
    - the skirts shade as a section: strata bands straight through, regolith as a cap.
 4. Direct sun times shadow, sky ambient times occlusion, in linear HDR.
@@ -315,7 +324,7 @@ visible beds, shadowed valleys and scree below cliffs. Pausing the simulation st
 pass (assert it in a spec on the driver's dirty flag). Frame time on this box and from CI is
 recorded.
 
-### Phase 2 — the water
+### Phase 1 — the water
 
 1. A second grid displaced to the water's level, drawn after the land, discarded where the depth is below a
    threshold and faded in just above it so shorelines are not stair-stepped.
@@ -332,11 +341,11 @@ recorded.
 Nothing in `water/` decides where water is; a `check:docs` rule can hold that later by requiring
 that the water shader reads `land` and declares no noise-based mask.
 
-### Phase 3 — the air
+### Phase 2 — the air
 
 1. `air/sky`: one GLSL function, `skyRadiance(direction, sun, weather)`: overcast grey-blue at
    `weather = 0`, a clear gradient with horizon warmth and a sun disc at 1. Used by the dome,
-   by Phase 2's reflection and by the fog below. Export it as a string and interpolate it into
+   by Phase 1's reflection and by the fog below. Export it as a string and interpolate it into
    each shader.
 2. Aerial perspective in the land and water shaders: exponential height fog integrated
    analytically along the view ray, inscattering `skyRadiance` toward the sun.
@@ -352,19 +361,19 @@ that the water shader reads `land` and declares no noise-based mask.
 7. Bloom, grade and grain tuned with everything above running.
 
 **DoD.** Two committed frames in `docs/images/`, storm and golden hour, from the same land. The
-second, set beside Phase 1's, is the argument for the phase. The three users of the sky agree:
+second, set beside Phase 0's, is the argument for the phase. The three users of the sky agree:
 a spec asserts the function's source appears in all three shaders.
 
-### Phase 4 — the storm
+### Phase 3 — the storm
 
 One clock for everything, in `direction/direction.ts`, as pure functions of storm progress `p`
 in [0, 1] and of seconds since the storm ended, `e`.
 
-1. `rainAt(p)`: rises quickly, holds, and is zero from about 0.85 so the last steps drain the
+1. `rainAt(p)`, replacing the on-off stand-in of that name in `sim/storm.ts`: rises quickly, holds, and is zero from about 0.85 so the last steps drain the
    land and the rivers settle to their base flow instead of stopping mid-flood.
 2. `weatherAt(p, e)`, `sunAt(p, e)`: overcast through the storm; the cloud breaks over the first
    seconds of `e` and the sun is low and warm.
-3. `greeningAt(e)`: the vegetation term from Phase 1 comes in after the light does.
+3. `greeningAt(e)`: the vegetation term from Phase 0 comes in after the light does.
 4. `cameraAt(p, e)` in `camera-path.ts`: a high three-quarter view on a very slow arc during the
    storm, where the making is legible; then a descent to a low pass up the main valley. The
    main valley is found, not assumed: read back a quarter-resolution copy of `land` once when
@@ -382,7 +391,7 @@ in [0, 1] and of seconds since the storm ended, `e`.
 and ends on the hero shot. `?seed=` reproduces a land on the same machine. Specs hold the
 curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p = 1`.
 
-### Phase 5 — the stored land
+### Phase 4 — the stored land
 
 1. `scripts/watershed-land.mjs`: pure pack and unpack. A 1024×512 RGB image: left half carries
    the cut as sixteen bits across R and G and water depth in B; right half carries regolith in R
@@ -408,7 +417,7 @@ curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p 
 `sim-support` forced false it shows the pass over the stored land and says so. Changing any
 erosion constant makes `--check` fail until the land is rebuilt.
 
-### Phase 6 — the look
+### Phase 5 — the look
 
 Tuning, with the whole instrument running. This is a phase and not an afterthought because it
 is where the piece becomes beautiful or does not, and because colour decisions made before the
@@ -426,7 +435,7 @@ air existed were made blind.
 **DoD.** Hero frames for six seeds, kept out of the repo, all acceptable. Frame times for each
 tier recorded in the tier calibration file.
 
-### Phase 7 — the wiring
+### Phase 6 — the wiring
 
 Everything a route needs to exist on this site. Each line is a place that fails a gate, or
 degrades silently, if skipped.
@@ -471,7 +480,7 @@ route's card, and every gate is green in CI, not only here.
 - **Record frame time at the end of every phase**, from this box and from the CI log. A jump is
   a regression in a shader, not a slow afternoon.
 - **Watch the `any` budget on the first build of every phase.** Do not raise it without a number.
-- **Do not tune before Phase 6.** Phases 1 to 4 build the instrument; make each one correct and
+- **Do not tune before Phase 5.** Phases 0 to 3 build the instrument; make each one correct and
   legible and move on.
 - **Do not loosen the parity tolerance or the conservation bound to get a phase through.** If
   one moves, find out which pass moved it.

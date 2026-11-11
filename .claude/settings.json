@@ -30,7 +30,11 @@
       "Bash(node --test scripts/watershed-model.test.mjs)",
       "Bash(awk '/^SF:.*watershed.model/{f=$0} /^\\(LF|LH|BRF|BRH|FNF|FNH\\):/{if\\(f\\)printf \"%s \",$0} /^end_of_record/{if\\(f\\)print \" <- \" f; f=\"\"}' coverage/ethereal-hotel/lcov.info)",
       "Bash(grep -n \"Phase [0-9]\\\\|Phases [0-9]\\\\|\\\\`b\\\\`\\\\|\\\\`b + r\\\\|\\\\`r\\\\`\\\\|bedrock as sixteen\\\\|six passes\\\\|uplift\\(HERO_SEED\\)\\\\|hardness\" WATERSHED.md)",
-      "Bash(grep -n \"run \\\\`uplift\\\\` and\\\\|It will take minutes\\\\|WATERSHED.md\" WATERSHED.md CLAUDE.md)"
+      "Bash(grep -n \"run \\\\`uplift\\\\` and\\\\|It will take minutes\\\\|WATERSHED.md\" WATERSHED.md CLAUDE.md)",
+      "Bash(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-watershed.mjs)",
+      "Bash(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-watershed.mjs --verbose)",
+      "Bash(awk '/^SF:.*watershed/{f=$0} /^\\(LF|LH|BRF|BRH|FNF|FNH\\):/{if\\(f\\)printf \"%s \",$0} /^end_of_record/{if\\(f\\)print \" <- \" f; f=\"\"}' coverage/ethereal-hotel/lcov.info)",
+      "Bash(awk '{split\\($1,a,\":\"\\);split\\($2,b,\":\"\\);split\\($3,c,\":\"\\);split\\($4,d,\":\"\\);split\\($5,e,\":\"\\);split\\($6,g,\":\"\\); if\\(a[2]!=b[2]||c[2]!=d[2]||e[2]!=g[2]\\) print}')"
     ]
   }
 }
