@@ -36,6 +36,17 @@ import {
   stableTimestep,
 } from '../src/app/watershed/model/erosion-calibration.ts';
 import { createFields } from '../src/app/watershed/model/fields.ts';
+import { LAND_LOOK, sunDirection } from '../src/app/watershed/land/land-calibration.ts';
+import { landGeometry } from '../src/app/watershed/land/land-geometry.ts';
+import {
+  LAND_COLOURS,
+  LAND_FLOATS,
+  LAND_FRAGMENT,
+  LAND_VERTEX,
+  LIGHT_COUNTS,
+  LIGHT_FLOATS,
+  LIGHT_FRAGMENT,
+} from '../src/app/watershed/land/land-shaders.ts';
 import { raiseLand } from '../src/app/watershed/model/land.ts';
 import { createNoise } from '../src/app/watershed/model/noise.ts';
 import { step } from '../src/app/watershed/model/step.ts';
@@ -102,6 +113,24 @@ describe('the watershed model, imported by Node', () => {
     const back = createFields(SIZE);
     unpackLand(packLand(fields), back);
     assert.deepEqual(back.water, fields.water);
+  });
+
+  // The land's shaders, its geometry and its numbers are leaves for that reason too.
+  test('imports what draws the land, which the verifying script compiles and draws with', () => {
+    const { positions, indices } = landGeometry(SIZE, CONSTANTS.extent);
+
+    assert.equal(positions.length, (SIZE * SIZE + 8 * SIZE) * 3);
+    assert.ok(indices.every((vertex) => vertex < positions.length / 3));
+    assert.ok(Math.abs(Math.hypot(...sunDirection(LAND_LOOK)) - 1) < 1e-12);
+    for (const key of [...LIGHT_FLOATS, ...LIGHT_COUNTS, ...LAND_FLOATS]) {
+      assert.equal(typeof LAND_LOOK[key], 'number', `${key} is not a number of the land's look`);
+    }
+    for (const key of LAND_COLOURS) {
+      assert.equal(LAND_LOOK[key].length, 3, `${key} is not a colour of the land's look`);
+    }
+    for (const source of [LIGHT_FRAGMENT, LAND_VERTEX, LAND_FRAGMENT]) {
+      assert.match(source, /void main\(\)/);
+    }
   });
 
   test('exposes the stability limit a script needs to refuse a bad timestep', () => {

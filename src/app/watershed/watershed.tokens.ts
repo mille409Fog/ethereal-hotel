@@ -2,6 +2,7 @@
 import { InjectionToken } from '@angular/core';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { COMPOSER_SAMPLES } from './composer/composer-calibration';
 import { IQualityTier, QUALITY_TIERS } from './quality/quality-calibration';
 import { Random } from './seed/seed';
 
@@ -37,6 +38,13 @@ export const WATERSHED_RENDERER = new InjectionToken<
  * the composer, abstracted for the same reason. it is built on a half-float target, so light brighter than white
  * survives until the bloom and the tone mapping have seen it, and one that carries a depth texture, which the
  * water and the fog will read. the composer clones the target for its second buffer and the clone carries its own.
+ *
+ * the target takes `COMPOSER_SAMPLES` samples, and that is 0, so the land's ridgelines are stair-stepped. four
+ * were tried with the land drawn (2026-11-12). on a real GPU they cost nothing that showed: 17 ms a frame with
+ * and without, and the edges were clean, with the depth texture still attached. on SwiftShader the empty stage
+ * went from 117 ms a frame to 420 ms, and past 250 ms the quality meter takes every frame for a hidden tab and
+ * never settles, so the storm never started. so samples want to be a property of the tier, and the meter has to
+ * be able to step down from a frame that slow before they can be; the phase that directs the storm owns the meter.
  */
 export const WATERSHED_COMPOSER = new InjectionToken<
   (renderer: THREE.WebGLRenderer) => EffectComposer
@@ -46,6 +54,7 @@ export const WATERSHED_COMPOSER = new InjectionToken<
     const target = new THREE.WebGLRenderTarget(width, height, {
       type: THREE.HalfFloatType,
       depthTexture: new THREE.DepthTexture(width, height),
+      samples: COMPOSER_SAMPLES,
     });
     const composer = new EffectComposer(renderer, target);
     // a supplied target is taken as already sized; this applies the pixel ratio, as the default target would

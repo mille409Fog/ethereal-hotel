@@ -1,21 +1,27 @@
 /**
- * one storm: a land raised from a seed, the simulation running on it, and the map of it on the stage's slab.
+ * one storm: a land raised from a seed, the simulation running on it, and the land itself standing on the stage.
  *
  * the component decides when a storm starts, which is once the quality meter has settled, because the grid is
  * a property of the tier and a storm cannot change grids halfway. after that the component calls `advance` once
- * a frame and this does the rest: asks the clock how many steps the frame is worth, runs them, and points the
- * map at wherever the land now is.
+ * a frame and this does the rest: asks the clock how many steps the frame is worth, runs them, has the light
+ * worked out again if any ran, and points the mesh at wherever the land now is.
+ *
+ * the light follows the steps and not the frames. a frame worth no step, because the storm is over or the tab
+ * was hidden, tells the light pass nothing, so the pass does not run: `land/light-pass.ts` keeps the flag.
+ *
+ * the stage's slab is what stands there while there is no land. a storm hides it and puts it back.
  *
  * raising the land happens here, on the main thread, in the frame the storm starts. it is noise evaluated at
  * every cell, and it is a visible hitch on the largest grid; the phase that directs the storm is the place to
  * hide it behind the opening, or to move it to a worker if hiding is not enough.
  */
 import * as THREE from 'three';
+import { createLandMesh } from '../land/land-mesh';
+import { createLightPass, ILightPass } from '../land/light-pass';
 import { EROSION, IErosionConstants } from '../model/erosion-calibration';
 import { raise } from '../model/reference';
 import { IQualityTier } from '../quality/quality-calibration';
 import { IStage } from '../stage/create-stage';
-import { createMapMaterial, followLand } from '../stage/map-material';
 import { RAIN_SHARE, STORM_SECONDS } from './sim-calibration';
 import { ISimClock, tick, UNSTARTED } from './sim-clock';
 import { createSimDriver } from './sim-driver';
@@ -23,9 +29,11 @@ import { createSimDriver } from './sim-driver';
 export interface IStorm {
   /** steps in the whole storm */
   readonly total: number;
+  /** the land's light, which is worked out again only in a frame that ran a step */
+  readonly light: ILightPass;
   /** runs the steps the frame at `nowMs` is worth, and returns how many the storm has run in all */
   advance(nowMs: number): number;
-  /** frees the simulation and gives the slab back its own material */
+  /** frees the simulation and the land, and puts the slab back */
   dispose(): void;
 }
 
@@ -43,24 +51,33 @@ export function startStorm(
 ): IStorm {
   const total = constants.stormSteps;
   const driver = createSimDriver(renderer, raise(seed, tier.grid, constants), constants);
-  const map = createMapMaterial(driver, constants);
-  stage.placeholder.material = map;
+  const light = createLightPass(renderer, driver, constants);
+  const land = createLandMesh(driver, light, constants);
+  stage.placeholder.visible = false;
+  stage.scene.add(land.mesh);
   let clock: ISimClock = UNSTARTED;
 
   return {
     total,
+    light,
     advance(nowMs: number): number {
       const ticked = tick(clock, nowMs, total / STORM_SECONDS, tier.stepsPerFrame, total);
       for (let n = 0; n < ticked.steps; n++) {
         driver.step(rainAt(clock.steps + n, total));
       }
       clock = ticked.clock;
-      followLand(map, driver);
+      if (ticked.steps > 0) {
+        light.landMoved();
+      }
+      light.update();
+      land.follow();
       return clock.steps;
     },
     dispose(): void {
-      stage.placeholder.material = stage.plain;
-      map.dispose();
+      stage.scene.remove(land.mesh);
+      stage.placeholder.visible = true;
+      land.dispose();
+      light.dispose();
       driver.dispose();
     },
   };

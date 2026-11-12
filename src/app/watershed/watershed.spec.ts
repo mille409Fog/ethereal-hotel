@@ -8,6 +8,9 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { GradePass } from '../murmuration/grade/grade-pass/grade-pass';
 import { GrainPass } from '../murmuration/grain/grain-pass/grain-pass';
 import { REDUCED_MOTION_QUERY } from '../murmuration/renderer/renderer-calibration';
+import { COMPOSER_SAMPLES } from './composer/composer-calibration';
+import { LAND_MESH } from './land/land-mesh';
+import { LIGHT_PASS } from './land/light-pass';
 import { landLine } from './land-state';
 import { EROSION } from './model/erosion-calibration';
 import { IQualityTier, MEASURE_WINDOW_MS, QUALITY_TIERS } from './quality/quality-calibration';
@@ -182,6 +185,13 @@ const placeholderIn = (composer: FakeComposer): THREE.Mesh<THREE.PlaneGeometry> 
   return slab as THREE.Mesh<THREE.PlaneGeometry>;
 };
 
+type Land = THREE.Mesh<THREE.BufferGeometry, THREE.RawShaderMaterial>;
+
+/** The land in the scene drawn, once a storm has stood one there. */
+const landIn = (composer: FakeComposer): Land | undefined =>
+  passOf(composer, RenderPass).scene.children.find((child) => child.name === LAND_MESH) as
+    Land | undefined;
+
 const hostOf = (fixture: ComponentFixture<Watershed>): HTMLElement =>
   fixture.nativeElement as HTMLElement;
 
@@ -264,6 +274,8 @@ describe('Watershed', () => {
       expect(composer.readBuffer.depthTexture).toBeInstanceOf(THREE.DepthTexture);
       expect(composer.writeBuffer.depthTexture).not.toBe(composer.readBuffer.depthTexture);
       expect(composer.readBuffer.width).toBe(8);
+      expect(composer.readBuffer.samples).toBe(COMPOSER_SAMPLES);
+      expect(composer.writeBuffer.samples).toBe(COMPOSER_SAMPLES);
       composer.dispose();
     });
 
@@ -420,8 +432,20 @@ describe('Watershed', () => {
   });
 
   describe('the storm', () => {
-    /** Draws made by the simulation: every `render` after the one the float-target probe makes. */
-    const simulated = (renderer: FakeRenderer): number => renderer.render.mock.calls.length - 1;
+    /** The name of the material each `render` drew with: a pass of the simulation, the light, or the probe. */
+    const drawn = (renderer: FakeRenderer): string[] =>
+      renderer.render.mock.calls.map(
+        ([scene]) => ((scene as THREE.Scene).children[0] as Land).material.name
+      );
+
+    const PASSES = new Set(SIM_PASSES.map((pass) => pass.name));
+
+    /** Draws made by the simulation, which is not the only thing that draws off screen. */
+    const simulated = (renderer: FakeRenderer): number =>
+      drawn(renderer).filter((name) => PASSES.has(name)).length;
+
+    const lit = (renderer: FakeRenderer): number =>
+      drawn(renderer).filter((name) => name === LIGHT_PASS).length;
 
     /** Frames fast enough that the meter settles on the first window, then `afterMs` more. */
     const settleAndRun = (renderer: FakeRenderer, afterMs: number): void => {
@@ -435,20 +459,39 @@ describe('Watershed', () => {
       runFrames(frameLoopOf(renderer), 16, MEASURE_WINDOW_MS / 2);
 
       expect(simulated(renderer)).toBe(0);
-      expect(placeholderIn(onlyComposer()).material).toBeInstanceOf(THREE.MeshStandardMaterial);
+      expect(landIn(onlyComposer())).toBeUndefined();
+      expect(placeholderIn(onlyComposer()).visible).toBe(true);
     });
 
-    it('starts on the settled tier’s grid, and puts the map of its land on the slab', async () => {
+    it('starts on the settled tier’s grid, and stands its land where the slab was', async () => {
       await mount();
       const renderer = onlyRenderer();
 
       settleAndRun(renderer, 200);
-      const map = placeholderIn(onlyComposer()).material as THREE.ShaderMaterial;
+      const land = landIn(onlyComposer());
 
-      expect(map).toBeInstanceOf(THREE.ShaderMaterial);
-      expect(map.name).toBe('WatershedMap');
-      expect(map.uniforms['texel'].value).toBe(1 / SPEC_GRID);
-      expect(map.uniforms['land'].value).toBeInstanceOf(THREE.Texture);
+      // one vertex a cell, and two down each of the four walls
+      expect(land?.geometry.getAttribute('position').count).toBe(SPEC_GRID ** 2 + 8 * SPEC_GRID);
+      expect(land?.material.uniforms['land'].value).toBeInstanceOf(THREE.Texture);
+      expect(placeholderIn(onlyComposer()).visible).toBe(false);
+    });
+
+    it('lights the land only in frames that moved it', async () => {
+      await mount();
+      const renderer = onlyRenderer();
+      const loop = frameLoopOf(renderer);
+      settleAndRun(renderer, 200);
+      const before = lit(renderer);
+      const steps = simulated(renderer);
+
+      // the same instant again: no time has passed, so no step is due and nothing has moved
+      const last = 1_000 + Math.floor((MEASURE_WINDOW_MS + 16 + 200) / 16) * 16;
+      loop(last);
+      loop(last);
+
+      expect(before).toBeGreaterThan(1);
+      expect(simulated(renderer)).toBe(steps);
+      expect(lit(renderer)).toBe(before);
     });
 
     it('runs the model in whole steps, every pass of each', async () => {
@@ -473,17 +516,20 @@ describe('Watershed', () => {
       expect(Math.abs(steps - expected)).toBeLessThan(expected * 0.02);
     });
 
-    it('keeps the map on the texture the land is in now, which changes every step', async () => {
+    it('keeps the land on the texture it is in now, which changes every step', async () => {
       await mount();
       const renderer = onlyRenderer();
       settleAndRun(renderer, 200);
-      const map = placeholderIn(onlyComposer()).material as THREE.ShaderMaterial;
+      const land = landIn(onlyComposer());
+      // the simulation's targets are the float ones; the light's is not
       const written = renderer.setRenderTarget.mock.calls
         .map(([target]) => target as THREE.WebGLRenderTarget | null)
-        .filter((target): target is THREE.WebGLRenderTarget => target !== null);
+        .filter(
+          (target): target is THREE.WebGLRenderTarget => target?.texture.type === THREE.FloatType
+        );
 
-      // the last pass of a step writes the land, so the land is in the last target drawn into
-      expect(map.uniforms['land'].value).toBe(written[written.length - 1].texture);
+      // the last pass of a step writes the land, so the land is in the last of them drawn into
+      expect(land?.material.uniforms['land'].value).toBe(written[written.length - 1].texture);
     });
 
     it('tells the state line how far it has got, in round numbers', async () => {
@@ -509,23 +555,28 @@ describe('Watershed', () => {
       settleAndRun(renderer, 1_000);
 
       expect(simulated(renderer)).toBe(0);
-      expect(placeholderIn(onlyComposer()).material).toBeInstanceOf(THREE.MeshStandardMaterial);
+      expect(lit(renderer)).toBe(0);
+      expect(landIn(onlyComposer())).toBeUndefined();
+      expect(placeholderIn(onlyComposer()).visible).toBe(true);
     });
 
-    it('frees the simulation on destroy and gives the slab its own material back', async () => {
+    it('frees the simulation and the land on destroy, and takes the land off the stage', async () => {
       const fixture = await mount();
       const renderer = onlyRenderer();
       settleAndRun(renderer, 200);
-      const slab = placeholderIn(onlyComposer());
-      const map = vi.spyOn(slab.material as THREE.Material, 'dispose');
+      const composer = onlyComposer();
+      const land = landIn(composer) as Land;
+      const material = vi.spyOn(land.material, 'dispose');
+      const geometry = vi.spyOn(land.geometry, 'dispose');
       const targets = vi.spyOn(THREE.WebGLRenderTarget.prototype, 'dispose');
 
       fixture.destroy();
 
-      expect(map).toHaveBeenCalledTimes(1);
-      expect(slab.material).toBeInstanceOf(THREE.MeshStandardMaterial);
-      // two copies of each state texture; the passes' own targets are freed with them, so at least these
-      expect(targets.mock.calls.length).toBeGreaterThanOrEqual(SIM_STATES.length * 2);
+      expect(material).toHaveBeenCalledTimes(1);
+      expect(geometry).toHaveBeenCalledTimes(1);
+      expect(landIn(composer)).toBeUndefined();
+      // two copies of each state texture and the light's one; the passes' own are freed with them, so at least these
+      expect(targets.mock.calls.length).toBeGreaterThanOrEqual(SIM_STATES.length * 2 + 1);
     });
   });
 

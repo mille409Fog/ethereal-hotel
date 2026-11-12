@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { LAND_MESH } from '../land/land-mesh';
+import { LIGHT_PASS } from '../land/light-pass';
 import { EROSION, IErosionConstants } from '../model/erosion-calibration';
 import { IQualityTier } from '../quality/quality-calibration';
 import { HERO_SEED } from '../seed/seed';
@@ -17,10 +19,10 @@ const TIER: IQualityTier = { name: 'spec', resolutionScale: 1, grid: 8, stepsPer
 /** the frame length at which exactly one step is due */
 const STEP_MS = (STORM_SECONDS * 1000) / CONSTANTS.stormSteps;
 
-/** records the rain's strength at each step: the first pass of every nine */
+/** records the rain's strength at each step, from the first pass of every step, and counts the light's draws */
 class FakeRenderer {
   public readonly strengths: number[] = [];
-  private draws = 0;
+  public lit = 0;
 
   public getRenderTarget(): null {
     return null;
@@ -31,16 +33,21 @@ class FakeRenderer {
   }
 
   public render(scene: THREE.Scene): void {
-    if (this.draws % SIM_PASSES.length === 0) {
-      const { material } = scene.children[0] as THREE.Mesh<
-        THREE.BufferGeometry,
-        THREE.RawShaderMaterial
-      >;
+    const { material } = scene.children[0] as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.RawShaderMaterial
+    >;
+    if (material.name === SIM_PASSES[0].name) {
       this.strengths.push(material.uniforms[SIM_STRENGTH].value as number);
     }
-    this.draws++;
+    if (material.name === LIGHT_PASS) {
+      this.lit++;
+    }
   }
 }
+
+const landIn = (stage: IStage): THREE.Object3D | undefined =>
+  stage.scene.children.find((child) => child.name === LAND_MESH);
 
 const begin = (): {
   renderer: FakeRenderer;
@@ -73,11 +80,58 @@ describe('storm', () => {
     expect(begin().storm.total).toBe(CONSTANTS.stormSteps);
   });
 
-  it('puts the map of its land on the slab as soon as it starts', () => {
+  it('stands its land on the stage in the slab’s place as soon as it starts', () => {
     const { stage } = begin();
 
-    expect(stage.placeholder.material).toBeInstanceOf(THREE.ShaderMaterial);
-    expect(stage.placeholder.material).not.toBe(stage.plain);
+    expect(landIn(stage)).toBeInstanceOf(THREE.Mesh);
+    expect(stage.placeholder.visible).toBe(false);
+  });
+
+  it('lights the land in its first frame, before any step has run', () => {
+    const { renderer, storm } = begin();
+    storm.advance(1_000);
+
+    expect(renderer.strengths).toHaveLength(0);
+    expect(renderer.lit).toBe(1);
+    expect(storm.light.dirty).toBe(false);
+  });
+
+  it('works the light out once in a frame that ran steps, however many', () => {
+    const { renderer, storm } = begin();
+    storm.advance(1_000);
+    storm.advance(1_000 + STEP_MS * 4);
+
+    expect(renderer.strengths).toHaveLength(4);
+    expect(renderer.lit).toBe(2);
+  });
+
+  it('leaves the light alone in a frame that ran no step: a paused land is lit already', () => {
+    const { renderer, storm } = begin();
+    storm.advance(1_000);
+    storm.advance(1_000 + STEP_MS * 2);
+    const lit = renderer.lit;
+    // three frames with no time between them: nothing is due, as when the simulation is paused
+    storm.advance(1_000 + STEP_MS * 2);
+    storm.advance(1_000 + STEP_MS * 2);
+    storm.advance(1_000 + STEP_MS * 2);
+
+    expect(renderer.strengths).toHaveLength(2);
+    expect(storm.light.dirty).toBe(false);
+    expect(renderer.lit).toBe(lit);
+  });
+
+  it('stops lighting the land when the storm is over', () => {
+    const { renderer, storm } = begin();
+    storm.advance(0);
+    for (let frame = 1; frame <= CONSTANTS.stormSteps + 5; frame++) {
+      storm.advance(frame * STEP_MS);
+    }
+    const lit = renderer.lit;
+    storm.advance((CONSTANTS.stormSteps + 50) * STEP_MS);
+    storm.advance((CONSTANTS.stormSteps + 100) * STEP_MS);
+
+    expect(storm.light.dirty).toBe(false);
+    expect(renderer.lit).toBe(lit);
   });
 
   it('runs the steps each frame is worth, and says how many it has run in all', () => {
@@ -111,12 +165,18 @@ describe('storm', () => {
     expect(renderer.strengths).toHaveLength(TIER.stepsPerFrame);
   });
 
-  it('gives the slab its own material back when it is over, and frees its map', () => {
+  it('takes its land off the stage when it is over, frees it, and puts the slab back', () => {
     const { stage, storm } = begin();
-    const map = vi.spyOn(stage.placeholder.material, 'dispose');
+    const land = landIn(stage) as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+    const geometry = vi.spyOn(land.geometry, 'dispose');
+    const material = vi.spyOn(land.material, 'dispose');
+    const light = vi.spyOn(storm.light, 'dispose');
     storm.dispose();
 
-    expect(stage.placeholder.material).toBe(stage.plain);
-    expect(map).toHaveBeenCalledTimes(1);
+    expect(landIn(stage)).toBeUndefined();
+    expect(stage.placeholder.visible).toBe(true);
+    expect(geometry).toHaveBeenCalledTimes(1);
+    expect(material).toHaveBeenCalledTimes(1);
+    expect(light).toHaveBeenCalledTimes(1);
   });
 });

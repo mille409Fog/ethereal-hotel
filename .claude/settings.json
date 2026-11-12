@@ -34,7 +34,11 @@
       "Bash(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-watershed.mjs)",
       "Bash(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-watershed.mjs --verbose)",
       "Bash(awk '/^SF:.*watershed/{f=$0} /^\\(LF|LH|BRF|BRH|FNF|FNH\\):/{if\\(f\\)printf \"%s \",$0} /^end_of_record/{if\\(f\\)print \" <- \" f; f=\"\"}' coverage/ethereal-hotel/lcov.info)",
-      "Bash(awk '{split\\($1,a,\":\"\\);split\\($2,b,\":\"\\);split\\($3,c,\":\"\\);split\\($4,d,\":\"\\);split\\($5,e,\":\"\\);split\\($6,g,\":\"\\); if\\(a[2]!=b[2]||c[2]!=d[2]||e[2]!=g[2]\\) print}')"
+      "Bash(awk '{split\\($1,a,\":\"\\);split\\($2,b,\":\"\\);split\\($3,c,\":\"\\);split\\($4,d,\":\"\\);split\\($5,e,\":\"\\);split\\($6,g,\":\"\\); if\\(a[2]!=b[2]||c[2]!=d[2]||e[2]!=g[2]\\) print}')",
+      "Bash(grep -v \"^ *✓\\\\|^$\")",
+      "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/1a585906-9590-4f01-9dae-7ed5fead54a3/scratchpad/route.mjs\" \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/1a585906-9590-4f01-9dae-7ed5fead54a3/scratchpad/route\" 300)",
+      "Bash(awk '{print $5}')",
+      "Bash(grep -n \"WATERSHED.md\\\\`\" CLAUDE.md)"
     ]
   }
 }

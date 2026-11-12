@@ -3,6 +3,7 @@
  *
  *     npm run verify:watershed
  *     npm run verify:watershed -- --verbose   # also print the nudged run's differences
+ *     npm run verify:watershed -- --out land.png   # also draw a land, to look at
  *
  * ## What this is for
  *
@@ -62,7 +63,31 @@
  * far past what rock holds and most of what moves in fifty steps is rockfall.
  * That is deliberate: it puts every branch of every pass to work in a run
  * short enough to compare.
+ *
+ * ## The land's shaders
+ *
+ * The light pass and the mesh's two shaders (`land/land-shaders.ts`) draw the
+ * land; they are a picture, and there is no model to hold a picture to. They
+ * are compiled here for the same reason as the rest, and two claims about them
+ * that a number can carry are checked on the reference model's land:
+ *
+ * - ground that faces away from the sun is in shadow, every cell of it. This
+ *   is the check on the conventions, which is where a light pass goes wrong:
+ *   which way a texture's rows run, which way the march walks, what sign the
+ *   sun's vector has. Get one backwards and the lit side of every ridge is the
+ *   shaded one, in a picture that still looks like a landscape.
+ * - a flat land is fully lit and sees the whole sky.
+ *
+ * Then one frame of the mesh is drawn and required not to be one flat colour.
+ *
+ * `--out` draws a land worth looking at instead of the gate's: the whole block
+ * on a coarse grid, eroded by the shaders for `--steps` steps (1,500 unless
+ * given, on a `--grid` of 256), from the route's own vantage. It is
+ * tone-mapped by a few lines appended here and not by the route's chain, and
+ * it is drawn by SwiftShader, so it shows whether the land reads and says
+ * nothing about the final colour or about speed.
  */
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -70,6 +95,29 @@ import { chromium } from '@playwright/test';
 import { mulberry32, HERO_SEED } from '../src/app/watershed/seed/seed.ts';
 import { EROSION, STRATA_ENTRIES } from '../src/app/watershed/model/erosion-calibration.ts';
 import { createFields } from '../src/app/watershed/model/fields.ts';
+import { LAND_LOOK, sunDirection } from '../src/app/watershed/land/land-calibration.ts';
+import { landGeometry } from '../src/app/watershed/land/land-geometry.ts';
+import {
+  GREENING,
+  LAND_COLOURS,
+  LAND_EROSION,
+  LAND_FLOATS,
+  LAND_FRAGMENT,
+  LAND_VERTEX,
+  LIGHT_COUNTS,
+  LIGHT_EROSION,
+  LIGHT_FLOATS,
+  LIGHT_FRAGMENT,
+  SUN_DIRECTION,
+} from '../src/app/watershed/land/land-shaders.ts';
+import {
+  CAMERA_FAR,
+  CAMERA_FOV,
+  CAMERA_NEAR,
+  CAMERA_POSITION,
+  CAMERA_REFERENCE_ASPECT,
+  CAMERA_TARGET,
+} from '../src/app/watershed/stage/stage-calibration.ts';
 import { raiseLand } from '../src/app/watershed/model/land.ts';
 import { createNoise } from '../src/app/watershed/model/noise.ts';
 import { step } from '../src/app/watershed/model/step.ts';
@@ -114,8 +162,8 @@ const NUDGE = 1.01;
 const LAYERS = ['cut', 'regolith', 'water', 'suspended'];
 
 /** The land both sides start from. Raised twice, so neither run can see the other's state. */
-function raise() {
-  return raiseLand(HERO_SEED, SIZE, CONSTANTS, STRATA_ENTRIES, PARTS);
+function raise(size = SIZE, constants = CONSTANTS) {
+  return raiseLand(HERO_SEED, size, constants, STRATA_ENTRIES, PARTS);
 }
 
 /** The model's answer: the fields after `STEPS` steps of full rain. */
@@ -208,7 +256,8 @@ function simulateInPage(job) {
         for (const [key, value] of Object.entries(job.uniforms)) {
           const location = gl.getUniformLocation(program, key);
           if (location !== null) {
-            gl.uniform1f(location, value);
+            // the rain's strength is the one uniform that changes: full for the wet steps, none after
+            gl.uniform1f(location, key === job.strength && n >= job.wet ? 0 : value);
           }
         }
         pass.reads.forEach((name, unit) => {
@@ -251,16 +300,21 @@ function simulateInPage(job) {
   }
 }
 
-/** The shaders' answer, with the constants given. */
-async function simulate(page, constants) {
-  const land = raise();
+/**
+ * The shaders' answer, with the constants given: `steps` steps on a grid of
+ * `size`, raining for the first `wet` of them.
+ */
+async function simulate(page, constants, size = SIZE, steps = STEPS, wet = steps) {
+  const land = raise(size, constants);
   const uniforms = Object.fromEntries(SIM_CONSTANTS.map((key) => [key, constants[key]]));
   uniforms[SIM_STRENGTH] = 1;
   const outcome = await page.evaluate(simulateInPage, {
-    size: SIZE,
+    size,
     beds: STRATA_ENTRIES,
     channels: CHANNELS,
-    steps: STEPS,
+    steps,
+    wet,
+    strength: SIM_STRENGTH,
     vertex: SIM_VERTEX,
     triangle: [...SIM_TRIANGLE],
     passes: SIM_PASSES.map(({ name, fragment, reads, writes }) => ({
@@ -279,7 +333,401 @@ async function simulate(page, constants) {
     throw new Error(outcome.error);
   }
   unpackLand(outcome.texels, land.fields);
-  return { fields: land.fields, renderer: outcome.renderer };
+  return { fields: land.fields, renderer: outcome.renderer, land };
+}
+
+/**
+ * The mesh's fragment shader with a display transform after it, so a frame
+ * drawn straight to a canvas can be looked at. The route does this in its
+ * output pass; the curve here is the usual short fit to ACES and is close to
+ * that, not equal to it.
+ */
+function forDisplay(fragment) {
+  const renamed = fragment.replace('void main()', 'void shade()');
+  if (renamed === fragment) {
+    throw new Error('LAND_FRAGMENT has no `void main()` to wrap.');
+  }
+  return `${renamed}
+void main() {
+  shade();
+  // three.js exposes its ACES curve by 1 / 0.6, so a frame from here is as bright as one from the route
+  vec3 c = result.rgb / 0.6;
+  c = clamp((c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14), 0.0, 1.0);
+  result = vec4(pow(c, vec3(1.0 / 2.2)), 1.0);
+}`;
+}
+
+/** Column-major, as WebGL takes them. */
+function perspective(fovDegrees, aspect, near, far) {
+  const f = 1 / Math.tan((fovDegrees * Math.PI) / 360);
+  const depth = 1 / (near - far);
+  // prettier-ignore
+  return [
+    f / aspect, 0, 0, 0,
+    0, f, 0, 0,
+    0, 0, (far + near) * depth, -1,
+    0, 0, 2 * far * near * depth, 0,
+  ];
+}
+
+function lookAt(eye, target) {
+  const unit = (v) => {
+    const length = Math.hypot(...v);
+    return v.map((part) => part / length);
+  };
+  const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const back = unit(eye.map((part, axis) => part - target[axis]));
+  const right = unit(cross([0, 1, 0], back));
+  const up = cross(back, right);
+  // prettier-ignore
+  return [
+    right[0], up[0], back[0], 0,
+    right[1], up[1], back[1], 0,
+    right[2], up[2], back[2], 0,
+    -dot(right, eye), -dot(up, eye), -dot(back, eye), 1,
+  ];
+}
+
+/**
+ * Runs in the page. Compiles the light pass and the mesh, works the light out
+ * for the land given, draws one frame of the mesh, and returns the light's
+ * texels and what the frame looks like in numbers. Self-contained, as above.
+ */
+function drawInPage(job) {
+  const canvas = document.createElement('canvas');
+  canvas.width = job.width;
+  canvas.height = job.height;
+  const gl = canvas.getContext('webgl2', { antialias: true, premultipliedAlpha: false });
+  if (!gl) {
+    return { error: 'This Chromium has no WebGL2.' };
+  }
+
+  const compile = (type, source, name) => {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, `#version 300 es\n${source}`);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      throw new Error(`${name} did not compile:\n${gl.getShaderInfoLog(shader)}`);
+    }
+    return shader;
+  };
+  const link = (vertex, fragment, name) => {
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex, `${name}'s vertex shader`));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment, `${name}'s fragment shader`));
+    gl.bindAttribLocation(program, 0, 'position');
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(`${name} did not link:\n${gl.getProgramInfoLog(program)}`);
+    }
+    return program;
+  };
+  const texture = (format, width, height, type, data, filter) => {
+    const made = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, made);
+    gl.texImage2D(gl.TEXTURE_2D, 0, format, width, height, 0, gl.RGBA, type, data);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return made;
+  };
+  const float = (width, height, data) =>
+    texture(gl.RGBA32F, width, height, gl.FLOAT, new Float32Array(data), gl.NEAREST);
+
+  try {
+    const lightProgram = link(job.triangleVertex, job.lightFragment, 'the light pass');
+    // the source the route ships, compiled as it is; then the copy with a display transform, to draw with
+    link(job.landVertex, job.landFragment, 'the land');
+    const landProgram = link(job.landVertex, job.displayFragment, 'the land, for display');
+
+    const textures = {
+      terrain: float(job.size, job.size, job.terrain),
+      strata: float(job.beds, 1, job.strata),
+      land: float(job.size, job.size, job.land),
+      light: texture(gl.RGBA8, job.size, job.size, gl.UNSIGNED_BYTE, null, gl.LINEAR),
+    };
+    const use = (program, samplers) => {
+      gl.useProgram(program);
+      const at = (name) => gl.getUniformLocation(program, name);
+      for (const [name, value] of Object.entries(job.floats)) {
+        gl.uniform1f(at(name), value);
+      }
+      for (const [name, value] of Object.entries(job.counts)) {
+        gl.uniform1i(at(name), value);
+      }
+      for (const [name, value] of Object.entries(job.vectors)) {
+        gl.uniform3fv(at(name), value);
+      }
+      for (const [name, value] of Object.entries(job.matrices)) {
+        gl.uniformMatrix4fv(at(name), false, value);
+      }
+      samplers.forEach((name, unit) => {
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, textures[name]);
+        gl.uniform1i(at(name), unit);
+      });
+    };
+
+    // the light, into its own texture
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(job.triangle), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    const framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textures.light, 0);
+    gl.viewport(0, 0, job.size, job.size);
+    use(lightProgram, ['land', 'terrain']);
+    // a read-back waits for the draw before it, so the clock stops on finished work
+    const lightBegan = performance.now();
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    const light = new Uint8Array(job.size * job.size * 4);
+    gl.readPixels(0, 0, job.size, job.size, gl.RGBA, gl.UNSIGNED_BYTE, light);
+    const lightMs = performance.now() - lightBegan;
+
+    // the mesh, to the canvas, culled and depth-tested as three.js would draw it
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, job.width, job.height);
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(job.positions), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(job.indices), gl.STATIC_DRAW);
+    use(landProgram, ['land', 'terrain', 'strata', 'light']);
+    const frame = new Uint8Array(job.width * job.height * 4);
+    // drawn twice and the second timed: the first pays for the upload and the driver's own compile
+    gl.drawElements(gl.TRIANGLES, job.indices.length, gl.UNSIGNED_INT, 0);
+    gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    const meshBegan = performance.now();
+    gl.drawElements(gl.TRIANGLES, job.indices.length, gl.UNSIGNED_INT, 0);
+    gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+    const meshMs = performance.now() - meshBegan;
+    const glError = gl.getError();
+    if (glError !== gl.NO_ERROR) {
+      throw new Error(`WebGL reported error ${glError}`);
+    }
+
+    // the cleared canvas has no alpha; a pixel with any is the land
+    let covered = 0;
+    let sum = 0;
+    let squares = 0;
+    for (let i = 0; i < frame.length; i += 4) {
+      if (frame[i + 3] > 0) {
+        const luma = (0.2126 * frame[i] + 0.7152 * frame[i + 1] + 0.0722 * frame[i + 2]) / 255;
+        covered++;
+        sum += luma;
+        squares += luma * luma;
+      }
+    }
+    const mean = covered > 0 ? sum / covered : 0;
+    return {
+      light: Array.from(light),
+      covered: covered / (job.width * job.height),
+      mean,
+      deviation: covered > 0 ? Math.sqrt(Math.max(0, squares / covered - mean * mean)) : 0,
+      image: job.image ? canvas.toDataURL('image/png') : null,
+      lightMs,
+      meshMs,
+    };
+  } catch (error) {
+    return { error: String(error?.message ?? error) };
+  }
+}
+
+/** Lights and draws the land given: its terrain and beds, and the fields it has come to. */
+async function draw(page, land, constants, view, image = false) {
+  const { size } = land.terrain;
+  const geometry = landGeometry(size, constants.extent);
+  const pick = (keys, from) => Object.fromEntries(keys.map((key) => [key, from[key]]));
+  const outcome = await page.evaluate(drawInPage, {
+    size,
+    beds: STRATA_ENTRIES,
+    width: view.width,
+    height: view.height,
+    image,
+    triangleVertex: SIM_VERTEX,
+    triangle: [...SIM_TRIANGLE],
+    lightFragment: LIGHT_FRAGMENT,
+    landVertex: LAND_VERTEX,
+    landFragment: LAND_FRAGMENT,
+    displayFragment: forDisplay(LAND_FRAGMENT),
+    terrain: Array.from(packTerrain(land.terrain)),
+    strata: Array.from(packStrata(land.strata)),
+    land: Array.from(packLand(land.fields)),
+    positions: Array.from(geometry.positions),
+    indices: Array.from(geometry.indices),
+    floats: {
+      ...pick([...LIGHT_EROSION, ...LAND_EROSION], constants),
+      ...pick([...LIGHT_FLOATS, ...LAND_FLOATS], LAND_LOOK),
+      [GREENING]: 0,
+    },
+    counts: pick(LIGHT_COUNTS, LAND_LOOK),
+    vectors: { ...pick(LAND_COLOURS, LAND_LOOK), [SUN_DIRECTION]: sunDirection(LAND_LOOK) },
+    matrices: {
+      viewMatrix: lookAt(view.eye, view.target),
+      projectionMatrix: perspective(view.fov, view.width / view.height, CAMERA_NEAR, CAMERA_FAR),
+    },
+  });
+  if (outcome.error) {
+    throw new Error(outcome.error);
+  }
+  return outcome;
+}
+
+/**
+ * Holds the light to the land it was worked out for. Returns what is wrong,
+ * as sentences, and the shares the summary line prints.
+ */
+function judgeLight(land, constants, light) {
+  const { size, uplift } = land.terrain;
+  const cell = constants.extent / size;
+  const surface = uplift.map((raised, i) => raised - land.fields.cut[i] + land.fields.regolith[i]);
+  const sun = sunDirection(LAND_LOOK);
+  // the two neighbours a ray toward the sun passes between: one straight along the axis it mostly
+  // travels, one diagonal. x is a texture's column and z its row, which is the convention on trial
+  const alongX = Math.abs(sun[0]) >= Math.abs(sun[2]);
+  const stepX = Math.sign(sun[0]) || 1;
+  const stepY = Math.sign(sun[2]) || 1;
+  const straight = alongX ? stepX : stepY * size;
+  const diagonal = stepX + stepY * size;
+  // the most a ray can have climbed by the time it is over either of them, and a metre to spare
+  const climbed = (Math.SQRT2 * cell * sun[1]) / Math.hypot(sun[0], sun[2]) + 1;
+  let away = 0;
+  let awayLit = 0;
+  let lit = 0;
+  let dark = 0;
+  let leastSky = 255;
+  for (let y = 1; y < size - 1; y++) {
+    for (let x = 1; x < size - 1; x++) {
+      const i = y * size + x;
+      const shadow = light[i * 4];
+      lit += shadow > 250 ? 1 : 0;
+      dark += shadow < 5 ? 1 : 0;
+      leastSky = Math.min(leastSky, light[i * 4 + 1]);
+      // ground that rises toward the sun faster than the sun does: its own slope hides it
+      if (Math.min(surface[i + straight], surface[i + diagonal]) > surface[i] + climbed) {
+        away++;
+        awayLit += shadow > 0 ? 1 : 0;
+      }
+    }
+  }
+  const cells = (size - 2) ** 2;
+  const problems = [];
+  if (away < cells / 50) {
+    problems.push(
+      `only ${away} of ${cells} cells face away from the sun, too few to check a shadow against. ` +
+        `The gate's land or its sun has changed; choose ones that disagree more.`
+    );
+  }
+  if (awayLit > 0) {
+    problems.push(
+      `${awayLit} of the ${away} cells that face away from the sun are lit. The light pass and ` +
+        `the land disagree about a direction: the sun's sign, the march's, or which way rows run.`
+    );
+  }
+  if (lit < cells / 50 || dark < cells / 50) {
+    problems.push(
+      `${lit} cells are fully lit and ${dark} fully shadowed, of ${cells}; a land this steep ` +
+        `under a low sun has plenty of both.`
+    );
+  }
+  if (leastSky > 230) {
+    problems.push(
+      `no cell sees less than ${Math.round((leastSky / 255) * 100)}% of the sky, on a land ` +
+        `of gorges. The occlusion term is not being worked out.`
+    );
+  }
+  return { problems, lit: lit / cells, dark: dark / cells, leastSky: leastSky / 255 };
+}
+
+/** The view the gate's frame is drawn from: the little land is taller than it is wide. */
+const GATE_VIEW = {
+  width: 320,
+  height: 200,
+  fov: CAMERA_FOV,
+  eye: [1.9 * CONSTANTS.extent, 3 * CONSTANTS.extent, 2.4 * CONSTANTS.extent],
+  target: [0, 0.8 * CONSTANTS.extent, 0],
+};
+
+/** The route's own vantage, at the aspect it was composed for. */
+const ROUTE_VIEW = {
+  width: 1280,
+  height: 1280 / CAMERA_REFERENCE_ASPECT,
+  fov: CAMERA_FOV,
+  eye: [...CAMERA_POSITION],
+  target: [...CAMERA_TARGET],
+};
+
+/** Compiles the land's shaders and holds them to the claims in the header. True when something is wrong. */
+async function verifyLand(page, expected) {
+  const land = { ...raise(), fields: expected };
+  const drawn = await draw(page, land, CONSTANTS, GATE_VIEW);
+  const judged = judgeLight(land, CONSTANTS, drawn.light);
+  const problems = [...judged.problems];
+
+  const level = raise();
+  level.terrain.uplift.fill(100);
+  const plain = await draw(page, level, CONSTANTS, GATE_VIEW);
+  const dimmed = plain.light.filter((value, i) => i % 4 < 2 && value !== 255).length;
+  if (dimmed > 0) {
+    problems.push(
+      `on a flat land ${dimmed} values of the light are below full. Nothing stands on a flat ` +
+        `land to shade it or to hide its sky.`
+    );
+  }
+
+  if (drawn.covered < 0.1 || drawn.deviation < 0.02) {
+    problems.push(
+      `the frame of the mesh has the land on ${(drawn.covered * 100).toFixed(1)}% of it with a ` +
+        `spread in brightness of ${drawn.deviation.toFixed(3)}: nothing was drawn, or one flat ` +
+        `colour was.`
+    );
+  }
+
+  console.log(
+    `  the land: the light pass and the mesh compiled; ${(judged.dark * 100).toFixed(0)}% of the ` +
+      `reference land in full shadow, ${(judged.lit * 100).toFixed(0)}% in full sun, the deepest ` +
+      `cell seeing ${(judged.leastSky * 100).toFixed(0)}% of the sky; the frame covers ` +
+      `${(drawn.covered * 100).toFixed(0)}% of the canvas, brightness ${drawn.mean.toFixed(2)} ` +
+      `± ${drawn.deviation.toFixed(2)}`
+  );
+  for (const problem of problems) {
+    console.error(`\nThe land: ${problem}`);
+  }
+  return problems.length > 0;
+}
+
+/** `--name value` from the command line, or the fallback. */
+function option(name, fallback) {
+  const at = process.argv.indexOf(`--${name}`);
+  return at === -1 ? fallback : process.argv[at + 1];
+}
+
+/** Erodes the whole block on a coarse grid and writes a picture of it. To look at; it asserts nothing. */
+async function picture(page, file) {
+  const size = Number(option('grid', 256));
+  const steps = Number(option('steps', 1500));
+  const began = Date.now();
+  // it stops raining for the last share, as the storm does, so the land is seen drained
+  const eroded = await simulate(page, EROSION, size, steps, Math.round(steps * 0.85));
+  const drawn = await draw(page, eroded.land, EROSION, ROUTE_VIEW, true);
+  fs.writeFileSync(file, Buffer.from(drawn.image.split(',')[1], 'base64'));
+  console.log(
+    `  wrote ${file}: ${steps} steps on a ${size} grid, in ` +
+      `${((Date.now() - began) / 1000).toFixed(1)}s; the light pass took ` +
+      `${drawn.lightMs.toFixed(0)} ms and the mesh ${drawn.meshMs.toFixed(0)} ms`
+  );
 }
 
 /** The worst difference in each layer, where it is, and how large the layer itself is there. */
@@ -360,6 +808,14 @@ try {
       `  and with ${NUDGED} nudged ${Math.round((NUDGE - 1) * 100)}% in the shaders alone it ` +
         `fails, in ${caught.map((row) => row.layer).join(', ')}: the gate can fail.`
     );
+  }
+
+  if (await verifyLand(page, expected)) {
+    failed = true;
+  }
+  const out = option('out', null);
+  if (out) {
+    await picture(page, out);
   }
 } catch (error) {
   failed = true;

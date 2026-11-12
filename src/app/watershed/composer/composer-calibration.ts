@@ -5,6 +5,9 @@
  */
 import { IGrade } from '../../murmuration/grade/grade-pass/grade-pass';
 
+/** samples a pixel of the buffer the scene is drawn into; see `watershed.tokens.ts` */
+export const COMPOSER_SAMPLES = 0;
+
 /** only light brighter than display white blooms: the sun on water, later, and nothing on the placeholder */
 export const BLOOM_THRESHOLD = 1;
 export const BLOOM_STRENGTH = 0.35;

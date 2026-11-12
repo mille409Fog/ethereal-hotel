@@ -1,7 +1,10 @@
 /**
- * the stage before there is anything on it: a flat slab the size of the land, a sun and a sky light. it exists so
- * the renderer, the post-processing chain and the route can be proved end to end before the first shader of the
- * simulation is written; the land replaces the slab, and the sky and the light pass replace the two lights.
+ * the stage while there is no land on it: a flat slab the size of the land, a sun and a sky light.
+ *
+ * a storm hides the slab and stands its land in the scene (`sim/storm.ts`); the land is lit by its own shader and
+ * takes nothing from these two lights. so the slab is what a visitor sees while the quality meter is still
+ * measuring, and all a device that cannot simulate sees until a land is stored for it. the phase that stores one
+ * is where the slab and both lights go.
  */
 import * as THREE from 'three';
 import {
@@ -16,14 +19,12 @@ import {
   SUN_POSITION,
 } from './stage-calibration';
 
-/** the slab. its material is whatever is being shown on it: plain rock, or the map of a land */
-export type Placeholder = THREE.Mesh<THREE.PlaneGeometry, THREE.Material>;
+/** the slab: plain rock, hidden while a land stands in its place */
+export type Placeholder = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
 
 export interface IStage {
   readonly scene: THREE.Scene;
   readonly placeholder: Placeholder;
-  /** the slab's own material, kept so it can be put back and so it is freed whatever the slab is wearing */
-  readonly plain: THREE.MeshStandardMaterial;
 }
 
 export function createStage(): IStage {
@@ -38,18 +39,17 @@ export function createStage(): IStage {
   const geometry = new THREE.PlaneGeometry(LAND_EXTENT, LAND_EXTENT);
   // a plane is built facing +z; the land lies in x and z with y up
   geometry.rotateX(-Math.PI / 2);
-  const plain = new THREE.MeshStandardMaterial({ color: PLACEHOLDER_COLOUR, roughness: 0.95 });
-  const placeholder: Placeholder = new THREE.Mesh<THREE.PlaneGeometry, THREE.Material>(
+  const placeholder: Placeholder = new THREE.Mesh(
     geometry,
-    plain
+    new THREE.MeshStandardMaterial({ color: PLACEHOLDER_COLOUR, roughness: 0.95 })
   );
   scene.add(placeholder);
 
-  return { scene, placeholder, plain };
+  return { scene, placeholder };
 }
 
-/** frees what the stage holds on the GPU; lights hold nothing, and a map on the slab is its storm's to free */
+/** frees what the stage holds on the GPU; lights hold nothing, and a land in the scene is its storm's to free */
 export function disposeStage(stage: IStage): void {
   stage.placeholder.geometry.dispose();
-  stage.plain.dispose();
+  stage.placeholder.material.dispose();
 }
