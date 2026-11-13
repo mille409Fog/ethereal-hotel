@@ -38,7 +38,16 @@ import {
 import { createFields } from '../src/app/watershed/model/fields.ts';
 import { LAND_LOOK, sunDirection } from '../src/app/watershed/land/land-calibration.ts';
 import { landGeometry } from '../src/app/watershed/land/land-geometry.ts';
+import { ripplePhase, WATER_LOOK } from '../src/app/watershed/water/water-calibration.ts';
 import {
+  WATER_COLOURS,
+  WATER_FLOATS,
+  waterFragment,
+  waterVertex,
+} from '../src/app/watershed/water/water-shaders.ts';
+import {
+  GROUND_FRAGMENT,
+  GROUND_VERTEX,
   LAND_COLOURS,
   LAND_FLOATS,
   LAND_FRAGMENT,
@@ -131,6 +140,24 @@ describe('the watershed model, imported by Node', () => {
     for (const source of [LIGHT_FRAGMENT, LAND_VERTEX, LAND_FRAGMENT]) {
       assert.match(source, /void main\(\)/);
     }
+  });
+
+  // And the water's: its shaders are handed the ground's chunks, because a leaf cannot import them.
+  test('imports what draws the water, and builds its shaders from the ground’s chunks', () => {
+    for (const key of WATER_FLOATS) {
+      assert.equal(typeof WATER_LOOK[key], 'number', `${key} is not a number of the water's look`);
+    }
+    for (const key of WATER_COLOURS) {
+      assert.equal(WATER_LOOK[key].length, 3, `${key} is not a colour of the water's look`);
+    }
+    const vertex = waterVertex(GROUND_VERTEX);
+    const fragment = waterFragment(GROUND_FRAGMENT);
+    assert.ok(vertex.startsWith(GROUND_VERTEX));
+    assert.ok(fragment.startsWith(GROUND_FRAGMENT));
+    for (const source of [vertex, fragment]) {
+      assert.equal(source.match(/void main\(\)/g)?.length, 1);
+    }
+    assert.ok(Math.abs(ripplePhase(WATER_LOOK.ripplePeriod * 2.5, WATER_LOOK) - 0.5) < 1e-12);
   });
 
   test('exposes the stability limit a script needs to refuse a bad timestep', () => {

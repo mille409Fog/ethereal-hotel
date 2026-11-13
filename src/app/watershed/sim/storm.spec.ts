@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { LAND_MESH } from '../land/land-mesh';
+import { RAIN } from '../land/land-shaders';
 import { LIGHT_PASS } from '../land/light-pass';
 import { EROSION, IErosionConstants } from '../model/erosion-calibration';
 import { IQualityTier } from '../quality/quality-calibration';
 import { HERO_SEED } from '../seed/seed';
 import { createStage, IStage } from '../stage/create-stage';
+import { WATER_LOOK } from '../water/water-calibration';
+import { WATER_MESH } from '../water/water-mesh';
+import { RIPPLE } from '../water/water-shaders';
 import { RAIN_SHARE, STORM_SECONDS } from './sim-calibration';
 import { SIM_PASSES, SIM_STRENGTH } from './sim-shaders';
 import { rainAt, startStorm } from './storm';
@@ -85,6 +89,42 @@ describe('storm', () => {
 
     expect(landIn(stage)).toBeInstanceOf(THREE.Mesh);
     expect(stage.placeholder.visible).toBe(false);
+  });
+
+  it('lays the water’s mesh over the land, to be drawn after it', () => {
+    const { stage } = begin();
+    const water = stage.scene.children.find((child) => child.name === WATER_MESH);
+
+    expect(water).toBeInstanceOf(THREE.Mesh);
+    expect(water?.renderOrder).toBeGreaterThan(landIn(stage)?.renderOrder ?? Infinity);
+  });
+
+  it('tells the ground it is raining while it is, and that it has stopped when it has', () => {
+    const { stage, storm } = begin();
+    const { uniforms } = (
+      landIn(stage) as THREE.Mesh<THREE.BufferGeometry, THREE.RawShaderMaterial>
+    ).material;
+    storm.advance(0);
+
+    expect(uniforms[RAIN].value).toBe(1);
+
+    for (let frame = 1; frame <= CONSTANTS.stormSteps + 5; frame++) {
+      storm.advance(frame * STEP_MS);
+    }
+
+    expect(uniforms[RAIN].value).toBe(0);
+  });
+
+  it('keeps the water’s ripples running on the frame’s clock, step or no step', () => {
+    const { stage, storm } = begin();
+    const water = stage.scene.children.find((child) => child.name === WATER_MESH) as THREE.Mesh<
+      THREE.BufferGeometry,
+      THREE.RawShaderMaterial
+    >;
+    storm.advance(WATER_LOOK.ripplePeriod * 250);
+    storm.advance(WATER_LOOK.ripplePeriod * 1250);
+
+    expect(water.material.uniforms[RIPPLE].value).toBeCloseTo(0.25, 9);
   });
 
   it('lights the land in its first frame, before any step has run', () => {
@@ -173,6 +213,7 @@ describe('storm', () => {
     const light = vi.spyOn(storm.light, 'dispose');
     storm.dispose();
 
+    expect(stage.scene.children.some((child) => child.name === WATER_MESH)).toBe(false);
     expect(landIn(stage)).toBeUndefined();
     expect(stage.placeholder.visible).toBe(true);
     expect(geometry).toHaveBeenCalledTimes(1);

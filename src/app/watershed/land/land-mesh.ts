@@ -8,6 +8,9 @@
  * on how many passes do: today that is six, an even number, and a step ends where it began. `follow` asks once a
  * frame anyway, so merging two passes cannot leave the mesh drawing the land of half a step ago.
  *
+ * the water's mesh (`water/water-mesh.ts`) shades the bed under it with this material's own uniforms, the same
+ * objects and not copies, so what `follow` sets here it sets for the water too.
+ *
  * the mesh is never culled. its vertices carry a kind where a height would be, so the box three.js would cull
  * against is a sheet at the origin, and the block is the whole picture anyway.
  */
@@ -23,6 +26,7 @@ import {
   LAND_FLOATS,
   LAND_FRAGMENT,
   LAND_VERTEX,
+  RAIN,
   SUN_DIRECTION,
 } from './land-shaders';
 import { ILightPass } from './light-pass';
@@ -31,8 +35,8 @@ export const LAND_MESH = 'WatershedLand';
 
 export interface ILandMesh {
   readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.RawShaderMaterial>;
-  /** points the mesh at the texture the land is in now */
-  follow(): void;
+  /** points the mesh at the texture the land is in now, and tells it how hard it is raining, in [0, 1] */
+  follow(rain: number): void;
   dispose(): void;
 }
 
@@ -55,6 +59,7 @@ export function createLandMesh(
     [SUN_DIRECTION]: { value: light.sun },
     // nothing grows until the storm has passed; the phase that directs the storm raises this
     [GREENING]: { value: 0 },
+    [RAIN]: { value: 0 },
   };
   for (const key of LAND_EROSION) {
     uniforms[key] = { value: constants[key] };
@@ -78,8 +83,9 @@ export function createLandMesh(
 
   return {
     mesh,
-    follow(): void {
+    follow(rain: number): void {
       material.uniforms['land'].value = sim.current('land');
+      material.uniforms[RAIN].value = rain;
     },
     dispose(): void {
       geometry.dispose();

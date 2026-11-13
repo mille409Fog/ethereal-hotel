@@ -102,3 +102,16 @@ export function landGeometry(size: number, extent: number): ILandGeometry {
 
   return { positions, indices };
 }
+
+/**
+ * the ground alone, without the walls: the same vertices and the same triangles, for the water that lies on it.
+ * the ground comes first in both of `landGeometry`'s arrays, so this is the front of each. sharing the triangles
+ * is the point: a height interpolated across the water's triangle is the height the land was drawn at there.
+ */
+export function surfaceGeometry(size: number, extent: number): ILandGeometry {
+  const { positions, indices } = landGeometry(size, extent);
+  return {
+    positions: positions.slice(0, size * size * 3),
+    indices: indices.slice(0, (size - 1) * (size - 1) * 6),
+  };
+}

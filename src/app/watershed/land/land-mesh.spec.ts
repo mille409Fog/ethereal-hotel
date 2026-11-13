@@ -6,7 +6,14 @@ import { createSimDriver, ISimDriver } from '../sim/sim-driver';
 import { LAND_LOOK } from './land-calibration';
 import { landGeometry } from './land-geometry';
 import { createLandMesh, ILandMesh, LAND_MESH } from './land-mesh';
-import { GREENING, LAND_FRAGMENT, LAND_VERTEX, SUN_DIRECTION } from './land-shaders';
+import {
+  CAMERA_UNIFORMS,
+  GREENING,
+  LAND_FRAGMENT,
+  LAND_VERTEX,
+  RAIN,
+  SUN_DIRECTION,
+} from './land-shaders';
 import { createLightPass, ILightPass } from './light-pass';
 
 const SIZE = 8;
@@ -59,9 +66,19 @@ describe('land mesh', () => {
     const { sim, land } = build();
     const elsewhere = new THREE.Texture();
     vi.spyOn(sim, 'current').mockReturnValue(elsewhere);
-    land.follow();
+    land.follow(0);
 
     expect(land.mesh.material.uniforms['land'].value).toBe(elsewhere);
+  });
+
+  it('is dry until it is told it is raining, and then as wet as it is told', () => {
+    const { land } = build();
+
+    expect(land.mesh.material.uniforms[RAIN].value).toBe(0);
+
+    land.follow(1);
+
+    expect(land.mesh.material.uniforms[RAIN].value).toBe(1);
   });
 
   it('grows nothing yet', () => {
@@ -73,8 +90,8 @@ describe('land mesh', () => {
     const { uniforms } = land.mesh.material;
     const declared = [...`${LAND_VERTEX}\n${LAND_FRAGMENT}`.matchAll(/^uniform \w+ (\w+);/gm)]
       .map((match) => match[1])
-      // three.js supplies the camera's two
-      .filter((name) => !['viewMatrix', 'projectionMatrix'].includes(name));
+      // three.js supplies the camera's three
+      .filter((name) => !CAMERA_UNIFORMS.includes(name));
 
     expect(declared.length).toBeGreaterThan(30);
     for (const name of declared) {

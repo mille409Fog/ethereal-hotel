@@ -4,6 +4,7 @@
  *     npm run verify:watershed
  *     npm run verify:watershed -- --verbose   # also print the nudged run's differences
  *     npm run verify:watershed -- --out land.png   # also draw a land, to look at
+ *     npm run verify:watershed -- --out wet.png --raining   # the same land, still in the rain
  *
  * ## What this is for
  *
@@ -80,9 +81,28 @@
  *
  * Then one frame of the mesh is drawn and required not to be one flat colour.
  *
+ * ## The water's shaders
+ *
+ * `water/water-shaders.ts` is a second mesh over the land, compiled here too.
+ * The plan's rule for it is that nothing in it decides where water is, and
+ * that is a claim a number can carry: the mesh is drawn alone on a cleared
+ * canvas, where every pixel with any alpha is a pixel of water, and
+ *
+ * - on the reference land, which has cells deeper than `waterFrom`, it draws
+ *   some;
+ * - on the same land with every cell's water capped at `waterFrom`, it draws
+ *   none at all. A mask, a noise or a constant in the shader would leave
+ *   pixels behind; so would a depth carried past a triangle's edge, which is
+ *   what a multisampled canvas does to a varying not marked `centroid`, and
+ *   that one was found by this count.
+ *
  * `--out` draws a land worth looking at instead of the gate's: the whole block
  * on a coarse grid, eroded by the shaders for `--steps` steps (1,500 unless
- * given, on a `--grid` of 256), from the route's own vantage. It is
+ * given, on a `--grid` of 256), from the route's own vantage. It stops raining
+ * for the last share of the steps, as the storm does; `--raining` keeps it up,
+ * and the two pictures side by side are the water's Definition of Done. The
+ * line it prints times the light pass, the mesh, the water and a copy of the
+ * frame; `--gpu` takes those on this machine's own graphics card. It is
  * tone-mapped by a few lines appended here and not by the route's chain, and
  * it is drawn by SwiftShader, so it shows whether the land reads and says
  * nothing about the final colour or about speed.
@@ -99,6 +119,8 @@ import { LAND_LOOK, sunDirection } from '../src/app/watershed/land/land-calibrat
 import { landGeometry } from '../src/app/watershed/land/land-geometry.ts';
 import {
   GREENING,
+  GROUND_FRAGMENT,
+  GROUND_VERTEX,
   LAND_COLOURS,
   LAND_EROSION,
   LAND_FLOATS,
@@ -108,8 +130,17 @@ import {
   LIGHT_EROSION,
   LIGHT_FLOATS,
   LIGHT_FRAGMENT,
+  RAIN,
   SUN_DIRECTION,
 } from '../src/app/watershed/land/land-shaders.ts';
+import { WATER_LOOK } from '../src/app/watershed/water/water-calibration.ts';
+import {
+  RIPPLE,
+  WATER_COLOURS,
+  WATER_FLOATS,
+  waterFragment,
+  waterVertex,
+} from '../src/app/watershed/water/water-shaders.ts';
 import {
   CAMERA_FAR,
   CAMERA_FOV,
@@ -290,11 +321,20 @@ function simulateInPage(job) {
     );
     const texels = new Float32Array(job.size * job.size * job.channels);
     gl.readPixels(0, 0, job.size, job.size, gl.RGBA, gl.FLOAT, texels);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      state.flow.front,
+      0
+    );
+    const flow = new Float32Array(job.size * job.size * job.channels);
+    gl.readPixels(0, 0, job.size, job.size, gl.RGBA, gl.FLOAT, flow);
     const glError = gl.getError();
     if (glError !== gl.NO_ERROR) {
       throw new Error(`WebGL reported error ${glError}`);
     }
-    return { renderer, texels: Array.from(texels) };
+    return { renderer, texels: Array.from(texels), flow: Array.from(flow) };
   } catch (error) {
     return { error: String(error?.message ?? error) };
   }
@@ -333,6 +373,10 @@ async function simulate(page, constants, size = SIZE, steps = STEPS, wet = steps
     throw new Error(outcome.error);
   }
   unpackLand(outcome.texels, land.fields);
+  for (let i = 0; i < land.fields.water.length; i++) {
+    land.fields.velocityX[i] = outcome.flow[i * CHANNELS];
+    land.fields.velocityY[i] = outcome.flow[i * CHANNELS + 1];
+  }
   return { fields: land.fields, renderer: outcome.renderer, land };
 }
 
@@ -345,7 +389,7 @@ async function simulate(page, constants, size = SIZE, steps = STEPS, wet = steps
 function forDisplay(fragment) {
   const renamed = fragment.replace('void main()', 'void shade()');
   if (renamed === fragment) {
-    throw new Error('LAND_FRAGMENT has no `void main()` to wrap.');
+    throw new Error('A fragment shader to be displayed has no `void main()` to wrap.');
   }
   return `${renamed}
 void main() {
@@ -355,6 +399,16 @@ void main() {
   c = clamp((c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14), 0.0, 1.0);
   result = vec4(pow(c, vec3(1.0 / 2.2)), 1.0);
 }`;
+}
+
+/** `flow`: the water's velocity along x and along y, and two spare channels. */
+function packFlow(fields) {
+  const packed = new Float32Array(fields.water.length * CHANNELS);
+  for (let i = 0; i < fields.water.length; i++) {
+    packed[i * CHANNELS] = fields.velocityX[i];
+    packed[i * CHANNELS + 1] = fields.velocityY[i];
+  }
+  return packed;
 }
 
 /** Column-major, as WebGL takes them. */
@@ -445,11 +499,14 @@ function drawInPage(job) {
     // the source the route ships, compiled as it is; then the copy with a display transform, to draw with
     link(job.landVertex, job.landFragment, 'the land');
     const landProgram = link(job.landVertex, job.displayFragment, 'the land, for display');
+    link(job.waterVertex, job.waterFragment, 'the water');
+    const waterProgram = link(job.waterVertex, job.displayWaterFragment, 'the water, for display');
 
     const textures = {
       terrain: float(job.size, job.size, job.terrain),
       strata: float(job.beds, 1, job.strata),
       land: float(job.size, job.size, job.land),
+      flow: float(job.size, job.size, job.flow),
       light: texture(gl.RGBA8, job.size, job.size, gl.UNSIGNED_BYTE, null, gl.LINEAR),
     };
     const use = (program, samplers) => {
@@ -513,6 +570,40 @@ function drawInPage(job) {
     gl.drawElements(gl.TRIANGLES, job.indices.length, gl.UNSIGNED_INT, 0);
     gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
     const meshMs = performance.now() - meshBegan;
+
+    // what the land's frame is judged on is counted before the water is drawn into it
+    const landFrame = frame.slice();
+
+    // the water over the land, drawn after it and a little nearer, as the route draws it. timed against
+    // the alternative it was chosen over: a copy of the frame for the water to read the bed out of
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(job.offset[0], job.offset[1]);
+    use(waterProgram, ['land', 'terrain', 'strata', 'light', 'flow']);
+    gl.drawElements(gl.TRIANGLES, job.waterCount, gl.UNSIGNED_INT, 0);
+    gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+    const image = job.image ? canvas.toDataURL('image/png') : null;
+    const waterBegan = performance.now();
+    gl.drawElements(gl.TRIANGLES, job.waterCount, gl.UNSIGNED_INT, 0);
+    gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+    const waterMs = performance.now() - waterBegan;
+    const copy = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + 7);
+    gl.bindTexture(gl.TEXTURE_2D, copy);
+    gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, job.width, job.height, 0);
+    const copyBegan = performance.now();
+    gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, job.width, job.height, 0);
+    gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+    const copyMs = performance.now() - copyBegan;
+
+    // the water alone, on a cleared canvas: every pixel with any alpha is a pixel of water
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.drawElements(gl.TRIANGLES, job.waterCount, gl.UNSIGNED_INT, 0);
+    gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+    let watered = 0;
+    for (let i = 3; i < frame.length; i += 4) {
+      watered += frame[i] > 0 ? 1 : 0;
+    }
+    frame.set(landFrame);
     const glError = gl.getError();
     if (glError !== gl.NO_ERROR) {
       throw new Error(`WebGL reported error ${glError}`);
@@ -536,9 +627,12 @@ function drawInPage(job) {
       covered: covered / (job.width * job.height),
       mean,
       deviation: covered > 0 ? Math.sqrt(Math.max(0, squares / covered - mean * mean)) : 0,
-      image: job.image ? canvas.toDataURL('image/png') : null,
+      image,
+      watered,
       lightMs,
       meshMs,
+      waterMs,
+      copyMs,
     };
   } catch (error) {
     return { error: String(error?.message ?? error) };
@@ -562,6 +656,12 @@ async function draw(page, land, constants, view, image = false) {
     landVertex: LAND_VERTEX,
     landFragment: LAND_FRAGMENT,
     displayFragment: forDisplay(LAND_FRAGMENT),
+    waterVertex: waterVertex(GROUND_VERTEX),
+    waterFragment: waterFragment(GROUND_FRAGMENT),
+    displayWaterFragment: forDisplay(waterFragment(GROUND_FRAGMENT)),
+    waterCount: (size - 1) * (size - 1) * 6,
+    offset: [WATER_LOOK.offsetFactor, WATER_LOOK.offsetUnits],
+    flow: Array.from(packFlow(land.fields)),
     terrain: Array.from(packTerrain(land.terrain)),
     strata: Array.from(packStrata(land.strata)),
     land: Array.from(packLand(land.fields)),
@@ -570,10 +670,18 @@ async function draw(page, land, constants, view, image = false) {
     floats: {
       ...pick([...LIGHT_EROSION, ...LAND_EROSION], constants),
       ...pick([...LIGHT_FLOATS, ...LAND_FLOATS], LAND_LOOK),
+      ...pick(WATER_FLOATS, WATER_LOOK),
       [GREENING]: 0,
+      [RAIN]: view.rain ?? 0,
+      [RIPPLE]: 0.25,
     },
     counts: pick(LIGHT_COUNTS, LAND_LOOK),
-    vectors: { ...pick(LAND_COLOURS, LAND_LOOK), [SUN_DIRECTION]: sunDirection(LAND_LOOK) },
+    vectors: {
+      ...pick(LAND_COLOURS, LAND_LOOK),
+      ...pick(WATER_COLOURS, WATER_LOOK),
+      [SUN_DIRECTION]: sunDirection(LAND_LOOK),
+      cameraPosition: view.eye,
+    },
     matrices: {
       viewMatrix: lookAt(view.eye, view.target),
       projectionMatrix: perspective(view.fov, view.width / view.height, CAMERA_NEAR, CAMERA_FAR),
@@ -695,8 +803,35 @@ async function verifyLand(page, expected) {
     );
   }
 
+  // the water: drawn where the model has water over the threshold, and nowhere else
+  const deep = land.fields.water.filter((depth) => depth > WATER_LOOK.waterFrom).length;
+  if (deep < 10) {
+    problems.push(
+      `only ${deep} cells of the reference land hold water deeper than waterFrom, too few to ` +
+        `check the water against. Lengthen the run or lower the threshold.`
+    );
+  }
+  if (drawn.watered === 0) {
+    problems.push(
+      `the reference land has ${deep} cells of water deep enough to draw and the water's mesh ` +
+        `drew none of it.`
+    );
+  }
+  const shallow = { ...land, fields: { ...land.fields } };
+  shallow.fields.water = land.fields.water.map((depth) => Math.min(depth, WATER_LOOK.waterFrom));
+  const film = await draw(page, shallow, CONSTANTS, GATE_VIEW);
+  if (film.watered > 0) {
+    problems.push(
+      `with no cell holding more than waterFrom, ${film.watered} pixels of water were drawn. ` +
+        `Something other than the depth in the land texture is deciding where water is.`
+    );
+  }
+
   console.log(
-    `  the land: the light pass and the mesh compiled; ${(judged.dark * 100).toFixed(0)}% of the ` +
+    `  the water: compiled; ${deep} cells deep enough to draw, on ${drawn.watered} pixels of the ` +
+      `reference land's frame, and on ` +
+      `${film.watered} once no cell holds more than ${WATER_LOOK.waterFrom} m\n` +
+      `  the land: the light pass and the mesh compiled; ${(judged.dark * 100).toFixed(0)}% of the ` +
       `reference land in full shadow, ${(judged.lit * 100).toFixed(0)}% in full sun, the deepest ` +
       `cell seeing ${(judged.leastSky * 100).toFixed(0)}% of the sky; the frame covers ` +
       `${(drawn.covered * 100).toFixed(0)}% of the canvas, brightness ${drawn.mean.toFixed(2)} ` +
@@ -719,14 +854,20 @@ async function picture(page, file) {
   const size = Number(option('grid', 256));
   const steps = Number(option('steps', 1500));
   const began = Date.now();
-  // it stops raining for the last share, as the storm does, so the land is seen drained
-  const eroded = await simulate(page, EROSION, size, steps, Math.round(steps * 0.85));
-  const drawn = await draw(page, eroded.land, EROSION, ROUTE_VIEW, true);
+  // it stops raining for the last share, as the storm does, so the land is seen drained; `--raining`
+  // keeps it up to the end, so the land is seen as it is in the storm
+  const raining = process.argv.includes('--raining');
+  const wet = raining ? steps : Math.round(steps * 0.85);
+  const eroded = await simulate(page, EROSION, size, steps, wet);
+  const view = { ...ROUTE_VIEW, rain: raining ? 1 : 0 };
+  const drawn = await draw(page, eroded.land, EROSION, view, true);
   fs.writeFileSync(file, Buffer.from(drawn.image.split(',')[1], 'base64'));
   console.log(
     `  wrote ${file}: ${steps} steps on a ${size} grid, in ` +
       `${((Date.now() - began) / 1000).toFixed(1)}s; the light pass took ` +
-      `${drawn.lightMs.toFixed(0)} ms and the mesh ${drawn.meshMs.toFixed(0)} ms`
+      `${drawn.lightMs.toFixed(0)} ms, the mesh ${drawn.meshMs.toFixed(0)} ms and the water ` +
+      `${drawn.waterMs.toFixed(0)} ms, on ${drawn.watered} pixels; copying the frame took ` +
+      `${drawn.copyMs.toFixed(0)} ms`
   );
 }
 
@@ -770,7 +911,13 @@ if (!LAYERS.every((layer) => expected[layer].some((value) => value > 0))) {
   process.exit(1);
 }
 
-const browser = await chromium.launch();
+// `--gpu` asks for this machine's own graphics card where the default is the software rasteriser.
+// It is for taking a timing with `--out`; the gate's tolerances were measured on SwiftShader.
+const browser = await chromium.launch(
+  process.argv.includes('--gpu')
+    ? { args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] }
+    : {}
+);
 let failed = false;
 try {
   const page = await browser.newPage();

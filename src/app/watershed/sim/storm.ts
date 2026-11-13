@@ -1,10 +1,13 @@
 /**
- * one storm: a land raised from a seed, the simulation running on it, and the land itself standing on the stage.
+ * one storm: a land raised from a seed, the simulation running on it, and the land and its water standing on
+ * the stage.
  *
  * the component decides when a storm starts, which is once the quality meter has settled, because the grid is
  * a property of the tier and a storm cannot change grids halfway. after that the component calls `advance` once
  * a frame and this does the rest: asks the clock how many steps the frame is worth, runs them, has the light
- * worked out again if any ran, and points the mesh at wherever the land now is.
+ * worked out again if any ran, points the two meshes at wherever the land and its flow now are, and tells the
+ * land how hard it is raining. the water is told the time and not the step, so a river still runs when the
+ * storm that made it is over.
  *
  * the light follows the steps and not the frames. a frame worth no step, because the storm is over or the tab
  * was hidden, tells the light pass nothing, so the pass does not run: `land/light-pass.ts` keeps the flag.
@@ -22,6 +25,7 @@ import { EROSION, IErosionConstants } from '../model/erosion-calibration';
 import { raise } from '../model/reference';
 import { IQualityTier } from '../quality/quality-calibration';
 import { IStage } from '../stage/create-stage';
+import { createWaterMesh } from '../water/water-mesh';
 import { RAIN_SHARE, STORM_SECONDS } from './sim-calibration';
 import { ISimClock, tick, UNSTARTED } from './sim-clock';
 import { createSimDriver } from './sim-driver';
@@ -53,8 +57,9 @@ export function startStorm(
   const driver = createSimDriver(renderer, raise(seed, tier.grid, constants), constants);
   const light = createLightPass(renderer, driver, constants);
   const land = createLandMesh(driver, light, constants);
+  const water = createWaterMesh(driver, land, constants);
   stage.placeholder.visible = false;
-  stage.scene.add(land.mesh);
+  stage.scene.add(land.mesh, water.mesh);
   let clock: ISimClock = UNSTARTED;
 
   return {
@@ -70,12 +75,15 @@ export function startStorm(
         light.landMoved();
       }
       light.update();
-      land.follow();
+      // the rain the next step will fall with
+      land.follow(rainAt(clock.steps, total));
+      water.follow(nowMs / 1000);
       return clock.steps;
     },
     dispose(): void {
-      stage.scene.remove(land.mesh);
+      stage.scene.remove(land.mesh, water.mesh);
       stage.placeholder.visible = true;
+      water.dispose();
       land.dispose();
       light.dispose();
       driver.dispose();

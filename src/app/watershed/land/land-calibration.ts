@@ -81,6 +81,18 @@ export interface ILandLook {
   readonly rockRough: number;
   readonly screeRough: number;
   readonly siltRough: number;
+
+  /**
+   * ground is wholly wet under water this deep, metres. it is a film's depth and far below what is drawn as
+   * water: the film a cell keeps after its water has run off, until evaporation takes it, is the model's own
+   * record of where water lately was
+   */
+  readonly wetDepth: number;
+  /** what wet ground's colour is multiplied by */
+  readonly wetDarken: number;
+  /** how tight the sun's glint on wet ground is, as a specular exponent, and the share of the sun it sends back */
+  readonly wetGloss: number;
+  readonly wetShine: number;
 }
 
 export const LAND_LOOK: ILandLook = {
@@ -126,6 +138,11 @@ export const LAND_LOOK: ILandLook = {
   rockRough: 0.5,
   screeRough: 0.7,
   siltRough: 0.12,
+
+  wetDepth: 2e-3,
+  wetDarken: 0.6,
+  wetGloss: 60,
+  wetShine: 0.05,
 };
 
 const DEGREES = 180 / Math.PI;

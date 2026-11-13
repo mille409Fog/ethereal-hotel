@@ -3,7 +3,7 @@
 The second spectacle on this site, after `/murmuration`, and meant to be much larger. This is the
 whole plan: what the piece is, the decisions already taken and why, what has landed, and the
 phases still to do, each with a Definition of Done so that one instance can build a phase and
-another can verify it. The simulation runs and the land it makes is drawn, lit by a fixed sun; the water, the air and the direction are not.
+another can verify it. The simulation runs and the land it makes is drawn with its water on it, lit by a fixed sun; the air and the direction are not.
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -175,10 +175,13 @@ src/app/watershed/
   land/                                                                                   (built)
     land-calibration.ts                   the sun, the light pass's reach, the ground's colours (leaf)
     land-geometry.ts                      one vertex a cell and four walls, as plain arrays (leaf)
-    land-shaders.ts                       the light pass and the mesh's two shaders (leaf)
+    land-shaders.ts                       the light pass, the ground's two chunks, the mesh's shaders (leaf)
     light-pass.ts                         runs the light pass, and only when the land or sun moved
     land-mesh.ts                          the geometry and the material as a mesh in the scene
-  water/           surface mesh, flow-mapped normals, calibration
+  water/                                                                                  (built)
+    water-calibration.ts                  how deep water is before it is drawn, and its look (leaf)
+    water-shaders.ts                      the water's two shaders, built on the ground's chunks (leaf)
+    water-mesh.ts                         the ground's vertices and that material as a mesh
   air/             sky function, fog, cloud shadow, rain, calibration
   direction/       direction.ts (the curves), camera-path.ts, calibration
   stored/          stored-land.ts         decode the committed land into the same textures
@@ -307,8 +310,7 @@ running through them. The reasoning is in the headers of the files under `land/`
   bands round every flank, the valleys are in shadow and the basins are pale with silt. By the
   end the slopes are close-set gullies under scree and the beds show mostly on the walls and
   where rock is bare. That is the erosion constants and `regolithFull`, and it is the look
-  phase's to settle. **The water is not drawn**, so a lake is a pale flat and a river is a
-  groove; the grey map this replaced showed water and the land will not until the next phase.
+  phase's to settle. The water was not drawn when this landed; it is now, and is the next entry.
 - **The gate.** `npm run verify:watershed` now compiles the light pass and the mesh too and
   holds two claims: every cell whose ground rises toward the sun faster than the sun does is in
   full shadow (1,471 such cells on the gate's land, none lit), and a flat land is fully lit.
@@ -347,32 +349,58 @@ running through them. The reasoning is in the headers of the files under `land/`
   replaces, and the plants' nearness to water, which is the depth of water on the cell itself
   until the light pass writes humidity.
 
+**The water** (2026-11-13). The simulation's water is drawn where the simulation has it: a second
+mesh on the land's own vertices, lifted to the water's level, coloured by its depth over the bed
+and by the sediment it carries, rippled where it moves, white where it is fast and falling, and
+reflecting the sky and the sun. The ground is dark and glints where a film lies on it or rain is
+falling. The reasoning is in the headers of the files under `water/` and of `land-shaders.ts`.
+
+- **The Definition of Done, in numbers.** The rain stops and the rivers go. On the reference
+  model's 128 grid, at the end of the storm's rain 1,280 cells hold water deep enough to draw;
+  50 steps later, which is under half a second of the storm, 872 do; 150 steps later 474; at the
+  storm's end 312, of which 166 are over a metre deep and the deepest is 35 m. Drawn, on a 256
+  grid after 1,500 steps, the water is on 14,718 pixels in the rain and 5,029 once it has
+  drained. `npm run verify:watershed -- --out a.png` and the same with `--raining` are the pair.
+- **The lakes that are left are small**, about one cell in a hundred. The wide basins fill with
+  silt and drain, so what a visitor sees at the end is pale flats with a few dark teal ponds in
+  them. That is the erosion constants and the look phase's to settle, with the water's colours.
+- **The gate.** `verify:watershed` compiles the water's shaders and holds the rule that nothing
+  in `water/` decides where water is: it draws water on the reference land, and with every cell
+  capped at `waterFrom` it draws not one pixel. That count found a bug on its first day: on a
+  multisampled target the depth was carried on past the edge of a triangle, and a steep dry bank
+  drew water that was not there, four pixels in ten of all the water counted. The depth is
+  `centroid` now. The route's own target has no samples, so it never showed there, and would
+  have the day the samples became a tier property.
+- **The bed is shaded again, not read back**, by measurement and then by judgement: the two cost
+  the same on a real card and within 8 ms on the software rasteriser, and a copy of the frame
+  cannot be taken from a multisampled target. `water-shaders.ts` has the readings.
+- **Wet ground has no state of its own.** It is wet under a film of water, and the film a cell
+  keeps after its water has run off is the model's own record of where water lately was. A
+  wetness channel with a drying rate chosen here would be a second, invented one.
+- **Frame time, on a real GPU.** 16.6 ms from the first step to after the last on the 1,024 grid,
+  and the storm on pace. It was not at first: the water's mesh rasterised the whole dry land a
+  second time to throw it away, and the frame was 22 to 27 ms through the second half of the
+  storm. Vertices with no water near them are now put outside the view.
+- **Frame time, on SwiftShader**, timed alone at 512 in the rain: the light pass 70 ms, the land
+  126 ms and the water 107 ms, so a storm's frame there is about a third dearer than it was.
+  This box read the land at 243 ms a day earlier, so compare within a day and not across two.
+  **The reading from CI is still owed**, as it was for the land.
+- **Baselines.** The shared three.js chunk is 597.81 kB, unchanged, and the route's own is
+  44.94 kB. The build's total-scripts warning (1.75 MB) is over by 36.69 kB; this phase added 9.
+- **Three stand-ins**: the sky the water reflects is the land's two flat lights
+  (`reflected()` in `water-shaders.ts`), a lake reflects no mountain, and the ripples run on the
+  frame's clock, so they move when the storm is over and will move when it is paused. The phase
+  that directs the storm owns the last.
+
 ## The phases
 
-### Phase 0 — the water
-
-1. A second grid displaced to the water's level, drawn after the land, discarded where the depth is below a
-   threshold and faded in just above it so shorelines are not stair-stepped.
-2. Colour by depth with Beer–Lambert absorption over the land colour beneath (read the scene
-   colour target, or shade the bed again; choose by measuring), turbid where `s` is high.
-3. Normals from two phases of a scrolling noise advected along `flow`, cross-faded so the
-   pattern never stretches; amplitude proportional to speed, so lakes are glass and rapids are
-   not. Whitewater where speed and slope are both high.
-4. Fresnel reflection of the sky function along the reflected ray, and the sun's specular lobe
-   left bright enough for bloom to take.
-5. Wet ground: darken and gloss the land where `d` was recently above zero or rain is falling.
-
-**DoD.** Setting rain to zero dries the rivers on screen within seconds and leaves the lake.
-Nothing in `water/` decides where water is; a `check:docs` rule can hold that later by requiring
-that the water shader reads `land` and declares no noise-based mask.
-
-### Phase 1 — the air
+### Phase 0 — the air
 
 1. `air/sky`: one GLSL function, `skyRadiance(direction, sun, weather)`: overcast grey-blue at
    `weather = 0`, a clear gradient with horizon warmth and a sun disc at 1. Used by the dome,
-   by Phase 0's reflection and by the fog below. The land's three flat lights in
+   by the water's reflection, where it replaces `reflected()` in `water-shaders.ts`, and by the fog below. The land's three flat lights in
    `land-calibration.ts` (sun, sky, ground) are what it replaces there. Export it as a string and interpolate it into
-   each shader.
+   each shader; `water-shaders.ts` is a leaf, so it takes the string as an argument, as it takes the ground's chunks.
 2. Aerial perspective in the land and water shaders: exponential height fog integrated
    analytically along the view ray, inscattering `skyRadiance` toward the sun.
 3. Mist: the light pass's third channel is humidity, a wide blur of water depth; the pass writes
@@ -393,7 +421,7 @@ that the water shader reads `land` and declares no noise-based mask.
 second, set beside a frame of the same land drawn without the air, is the argument for the phase. The three users of the sky agree:
 a spec asserts the function's source appears in all three shaders.
 
-### Phase 2 — the storm
+### Phase 1 — the storm
 
 One clock for everything, in `direction/direction.ts`, as pure functions of storm progress `p`
 in [0, 1] and of seconds since the storm ended, `e`.
@@ -423,7 +451,7 @@ in [0, 1] and of seconds since the storm ended, `e`.
 and ends on the hero shot. `?seed=` reproduces a land on the same machine. Specs hold the
 curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p = 1`.
 
-### Phase 3 — the stored land
+### Phase 2 — the stored land
 
 1. `scripts/watershed-land.mjs`: pure pack and unpack. A 1024×512 RGB image: left half carries
    the cut as sixteen bits across R and G and water depth in B; right half carries regolith in R
@@ -452,7 +480,7 @@ curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p 
 `sim-support` forced false it shows the pass over the stored land and says so. Changing any
 erosion constant makes `--check` fail until the land is rebuilt.
 
-### Phase 4 — the look
+### Phase 3 — the look
 
 Tuning, with the whole instrument running. This is a phase and not an afterthought because it
 is where the piece becomes beautiful or does not, and because colour decisions made before the
@@ -470,7 +498,7 @@ air existed were made blind.
 **DoD.** Hero frames for six seeds, kept out of the repo, all acceptable. Frame times for each
 tier recorded in the tier calibration file.
 
-### Phase 5 — the wiring
+### Phase 4 — the wiring
 
 Everything a route needs to exist on this site. Each line is a place that fails a gate, or
 degrades silently, if skipped.
@@ -515,7 +543,7 @@ route's card, and every gate is green in CI, not only here.
 - **Record frame time at the end of every phase**, from this box and from the CI log. A jump is
   a regression in a shader, not a slow afternoon.
 - **Watch the `any` budget on the first build of every phase.** Do not raise it without a number.
-- **Do not tune before Phase 4.** Phases 0 to 2 build the instrument; make each one correct and
+- **Do not tune before Phase 3.** Phases 0 and 1 build the instrument; make each one correct and
   legible and move on.
 - **Do not loosen the parity tolerance or the conservation bound to get a phase through.** If
   one moves, find out which pass moved it.

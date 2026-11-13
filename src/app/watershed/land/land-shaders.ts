@@ -43,6 +43,20 @@
  *   ground; from the high vantage a pixel covers more than a lump of it, and it is faded out by the pixel's own
  *   footprint so it never aliases.
  *
+ * ## the ground is two chunks, because the water draws it too
+ *
+ * `GROUND_VERTEX` reads the column under a vertex and `GROUND_FRAGMENT` turns it into the light the ground sends
+ * to the eye, as the function `ground()`. the land's two shaders are those chunks and a `main` each. the water's
+ * are the same chunks and a `main` of its own (`water/water-shaders.ts`, which is handed them as arguments): the
+ * bed seen through water is `ground()` called again on the same vertices, so it is the land's colour to the bit
+ * and a shoreline has no seam to hide. a change to how the ground looks is made here once and both follow.
+ *
+ * - **wet ground has no memory of its own.** it is wet where a film of water lies on it, or while rain falls.
+ *   the film is the memory: a cell the water has left keeps a little until evaporation takes it, and that is
+ *   the simulation's account of where water lately was. a wetness channel that decayed by a rate chosen here
+ *   would be a second, invented one. wet ground is darker, and the sun glints on it; snow and the walls are not
+ *   wetted.
+ *
  * colour leaves here linear and unbounded. the composer's output pass does the tone mapping and the encoding.
  *
  * every number is a uniform named for its key in a calibration object, and the lists below say which shader
@@ -63,6 +77,16 @@ export const SUN_DIRECTION = 'sunDirection';
 
 /** how far the plants have come in, in [0, 1]; the mesh's one uniform that is neither a constant nor a texture */
 export const GREENING = 'greening';
+
+/** the rain's strength this frame, in [0, 1]: all the ground is wet while it falls */
+export const RAIN = 'rain';
+
+/** three.js supplies these three to a raw material that declares them; a harness supplies them by hand */
+export const CAMERA_UNIFORMS: readonly string[] = [
+  'viewMatrix',
+  'projectionMatrix',
+  'cameraPosition',
+];
 
 /** what the light pass reads: floats, whole numbers, and the model's constants */
 export const LIGHT_FLOATS: ReadonlyArray<LookKeys<number>> = [
@@ -97,6 +121,10 @@ export const LAND_FLOATS: ReadonlyArray<LookKeys<number>> = [
   'rockRough',
   'screeRough',
   'siltRough',
+  'wetDepth',
+  'wetDarken',
+  'wetGloss',
+  'wetShine',
 ];
 export const LAND_COLOURS: ReadonlyArray<LookKeys<Colour>> = [
   'sunColour',
@@ -227,7 +255,13 @@ ${direction} vec2 vUv;
 ${direction} float vSkirt;
 `;
 
-export const LAND_VERTEX = /* glsl */ `
+/**
+ * the head of any vertex shader that stands on the land's grid: it reads the column under the vertex and the
+ * four round it, once, hands the fragment shader everything about the ground but where the vertex is, and
+ * leaves what it read in the globals below for the main that follows. the main sets vWorld, vSkirt and
+ * gl_Position
+ */
+export const GROUND_VERTEX = /* glsl */ `
 precision highp float;
 precision highp int;
 precision highp sampler2D;
@@ -240,42 +274,73 @@ uniform mat4 projectionMatrix;
 uniform sampler2D land;
 uniform sampler2D terrain;
 uniform float extent;
-uniform float skirtFloor;
 ${VARYINGS('out')}
 
-float surfaceOf(ivec2 p) {
+// the cell under the vertex, and its state: cut, regolith, water depth, suspended sediment
+ivec2 cellHere;
+vec4 stateHere;
+// the height of its ground
+float surfaceHere;
+// toward left, right, up and down: the ground's height there, and the depth of water standing on it
+vec4 surfaceRound;
+vec4 waterRound;
+// metres between the two cells each slope is taken over, in x and in z
+vec2 spanRound;
+
+vec2 columnOf(ivec2 p) {
   vec4 state = texelFetch(land, p, 0);
-  return texelFetch(terrain, p, 0).r - state.r + state.g;
+  return vec2(texelFetch(terrain, p, 0).r - state.r + state.g, state.b);
 }
 
-void main() {
+void column() {
   int n = textureSize(land, 0).x;
   int last = n - 1;
   float cell = extent / float(n);
   vec2 across = position.xz / extent + 0.5;
-  ivec2 p = clamp(ivec2(floor(across * float(n))), ivec2(0), ivec2(last));
-  vec4 state = texelFetch(land, p, 0);
-  vec4 raised = texelFetch(terrain, p, 0);
-  float bedrock = raised.r - state.r;
-  float surface = bedrock + state.g;
+  cellHere = clamp(ivec2(floor(across * float(n))), ivec2(0), ivec2(last));
+  stateHere = texelFetch(land, cellHere, 0);
+  vec4 raised = texelFetch(terrain, cellHere, 0);
+  float bedrock = raised.r - stateHere.r;
+  surfaceHere = bedrock + stateHere.g;
 
   // at the rim the difference is taken over the one cell there is
-  ivec2 left = ivec2(max(p.x - 1, 0), p.y);
-  ivec2 right = ivec2(min(p.x + 1, last), p.y);
-  ivec2 up = ivec2(p.x, max(p.y - 1, 0));
-  ivec2 down = ivec2(p.x, min(p.y + 1, last));
-  float slopeX = (surfaceOf(right) - surfaceOf(left)) / (cell * float(right.x - left.x));
-  float slopeY = (surfaceOf(down) - surfaceOf(up)) / (cell * float(down.y - up.y));
+  ivec2 left = ivec2(max(cellHere.x - 1, 0), cellHere.y);
+  ivec2 right = ivec2(min(cellHere.x + 1, last), cellHere.y);
+  ivec2 up = ivec2(cellHere.x, max(cellHere.y - 1, 0));
+  ivec2 down = ivec2(cellHere.x, min(cellHere.y + 1, last));
+  vec2 atLeft = columnOf(left);
+  vec2 atRight = columnOf(right);
+  vec2 atUp = columnOf(up);
+  vec2 atDown = columnOf(down);
+  surfaceRound = vec4(atLeft.x, atRight.x, atUp.x, atDown.x);
+  waterRound = vec4(atLeft.y, atRight.y, atUp.y, atDown.y);
+  spanRound = cell * vec2(float(right.x - left.x), float(down.y - up.y));
 
-  vWorld = vec3(position.x, position.y > 1.5 ? skirtFloor : surface, position.z);
-  vNormal = normalize(vec3(-slopeX, 1.0, -slopeY));
-  vLayers = vec4(bedrock, raised.g, state.g, state.b);
+  vNormal = normalize(vec3(
+    -(surfaceRound.y - surfaceRound.x) / spanRound.x,
+    1.0,
+    -(surfaceRound.w - surfaceRound.z) / spanRound.y
+  ));
+  vLayers = vec4(bedrock, raised.g, stateHere.g, stateHere.b);
   vUv = across;
+}
+`;
+
+export const LAND_VERTEX = /* glsl */ `${GROUND_VERTEX}
+uniform float skirtFloor;
+
+void main() {
+  column();
+  vWorld = vec3(position.x, position.y > 1.5 ? skirtFloor : surfaceHere, position.z);
   vSkirt = position.y;
   gl_Position = projectionMatrix * viewMatrix * vec4(vWorld, 1.0);
 }`;
 
-export const LAND_FRAGMENT = /* glsl */ `
+/**
+ * the head of any fragment shader that draws the ground or looks through something at it: everything
+ * `ground()` reads, and `ground()`. it declares no output; the main that follows does
+ */
+export const GROUND_FRAGMENT = /* glsl */ `
 precision highp float;
 precision highp int;
 precision highp sampler2D;
@@ -284,13 +349,13 @@ precision highp sampler2D;
 uniform sampler2D strata;
 // light: sun shadow, sky occlusion
 uniform sampler2D light;
+uniform vec3 cameraPosition;
 uniform vec3 ${SUN_DIRECTION};
 uniform float ${GREENING};
+uniform float ${RAIN};
 ${declare('float', [...LAND_EROSION.filter((key) => key !== 'extent'), ...LAND_FLOATS.filter((key) => key !== 'skirtFloor')])}
 ${declare('vec3', LAND_COLOURS)}
 ${VARYINGS('in')}
-
-out vec4 result;
 
 // the colour of the bed at this height. beds are runs of equal entries, so only their edges are mixed
 vec3 bedAt(float height) {
@@ -330,7 +395,15 @@ float seen(float grain, float footprint) {
   return clamp((0.5 * grain) / footprint - 0.5, 0.0, 1.0);
 }
 
-void main() {
+// the sun's glint off a surface this tight, for a sun that would light a white one to 1. it is normalised,
+// so a tighter glint is a brighter one and the light sent back is the same
+float glintOf(vec3 normal, vec3 toEye, float gloss) {
+  vec3 between = normalize(toEye + ${SUN_DIRECTION});
+  return ((gloss + 8.0) / 8.0) * pow(max(dot(normal, between), 0.0), gloss);
+}
+
+// the light the ground under this fragment sends toward the eye
+vec3 ground() {
   bool wall = vSkirt > 0.5;
   vec3 normal = normalize(vNormal);
   float steep = 1.0 - normal.y;
@@ -339,6 +412,7 @@ void main() {
   vec3 loose = mix(siltColour, screeColour, scree);
   vec3 albedo;
   vec2 lit;
+  float wet = 0.0;
 
   if (wall) {
     // a section through the block: the beds straight through, and the loose ground as a cap on them
@@ -370,9 +444,24 @@ void main() {
     );
     normal = normalize(normal - (1.0 - snow) * vec3(fine.x, 0.0, fine.y));
     lit = texture(light, vUv).rg;
+
+    // wet under a film of water, and everywhere while it rains; snow stays as it is
+    wet = max(${RAIN}, clamp(vLayers.a / wetDepth, 0.0, 1.0)) * (1.0 - snow);
+    albedo *= mix(1.0, wetDarken, wet);
   }
 
-  vec3 sun = sunColour * max(dot(normal, ${SUN_DIRECTION}), 0.0) * lit.x;
+  float facing = max(dot(normal, ${SUN_DIRECTION}), 0.0);
+  vec3 sun = sunColour * facing * lit.x;
   vec3 sky = mix(groundColour, skyColour, normal.y * 0.5 + 0.5) * lit.y;
-  result = vec4(albedo * (sun + sky), 1.0);
+  vec3 toEye = normalize(cameraPosition - vWorld);
+  vec3 shine = sun * glintOf(normal, toEye, wetGloss) * wetShine * wet;
+  return albedo * (sun + sky) + shine;
+}
+`;
+
+export const LAND_FRAGMENT = /* glsl */ `${GROUND_FRAGMENT}
+out vec4 result;
+
+void main() {
+  result = vec4(ground(), 1.0);
 }`;

@@ -1,4 +1,4 @@
-import { LAND, landGeometry, SKIRT_FOOT, SKIRT_TOP } from './land-geometry';
+import { LAND, landGeometry, SKIRT_FOOT, SKIRT_TOP, surfaceGeometry } from './land-geometry';
 
 const SIZE = 5;
 const EXTENT = 100;
@@ -89,6 +89,14 @@ describe('land geometry', () => {
     );
 
     expect(tops).toHaveLength(4 * SIZE);
+  });
+
+  it('offers the ground alone, for the water: the same vertices and triangles and no wall', () => {
+    const surface = surfaceGeometry(SIZE, EXTENT);
+
+    expect(surface.positions).toEqual(positions.slice(0, SIZE * SIZE * 3));
+    expect(trianglesOf(surface.indices)).toEqual(ground);
+    expect(surface.indices.every((vertex) => vertex < SIZE * SIZE)).toBe(true);
   });
 
   it('gives every wall triangle both a top and a foot, so the kind runs from one to the other across it', () => {
