@@ -13,13 +13,15 @@
  *
  * water shows the ground under it, dimmed by the depth in between. the ground's colour can come from the picture
  * already drawn, read back as a texture, or from working it out a second time. it is worked out a second time:
- * the fragment shader begins with the land's own `GROUND_FRAGMENT` and calls `ground()`.
+ * the fragment shader begins with the land's own ground chunk (`groundFragment`) and calls `ground()`.
  *
  * - **it is exact.** the water stands on the land's vertices and triangles (`surfaceGeometry`), so what
  *   `ground()` is handed here is what it was handed when the land drew this pixel, and it returns the same
  *   colour. the water therefore fades in from *precisely* the land's colour, which is what lets it be an opaque
  *   mesh: nothing is blended, nothing is sorted, and where the depth buffer cannot tell shallow water from its
- *   bed the two candidates for the pixel are the same colour.
+ *   bed the two candidates for the pixel are the same colour. the air is then laid over both, at the water's
+ *   surface here and at the ground there: the same function, the same humidity, and a ray longer by however
+ *   deep the water is, which where the water is fading in is a few centimetres.
  * - **it was measured, and the measurement did not settle it.** on this box's graphics card, 512 grid, in the
  *   rain, the whole of the water's draw took 8 ms and a copy of the frame alone took 11 ms, each mostly the
  *   read-back that stops the clock: no difference to be had. on the software rasteriser the second `ground()`
@@ -56,16 +58,20 @@
  * their amplitude is the water's speed over `rippleSpeed`: a lake is still, so it is glass, and that is the
  * simulation's doing and not a mask.
  *
- * ## two stand-ins
+ * ## the sky it reflects is the one sky
  *
- * the sky the water reflects is the land's two flat lights, `skyColour` above the horizon and `groundColour`
- * below it, dimmed by how much sky the cell can see. the phase that makes the air replaces `reflected()` with
- * the one sky function. and the reflection is of the sky alone: a lake does not show the mountain behind it.
+ * what the water reflects is `skyRadiance`, the function the dome is drawn with and the fog takes its colour
+ * from (`air/air-shaders.ts`), dimmed by how much of the sky the cell can see. the sun's disc is in it, so a
+ * still lake shows the sun sharp; the glint is the same sun spread by the ripples. the water is lit by the
+ * same sun through the same air as the ground, and under the same clouds.
  *
- * the names the ground's chunks declare are used freely below: `column()` and its globals in the vertex shader,
- * `ground()`, `glintOf`, `lumps`, `seen`, the three lights, `sunDirection`, `light` and `cameraPosition` in the
- * fragment's. a leaf cannot import the constants those names are kept in, so they are written out here, and the
- * verifying script's compile is what catches one that has been renamed.
+ * one stand-in is left: the reflection is of the sky alone, so a lake does not show the mountain behind it.
+ *
+ * the names the ground's chunk declares are used freely below: `column()` and its globals in the vertex shader;
+ * `ground()`, `humidity()`, `glintOf`, `lumps`, `seen`, `sunDirection`, `light` and `cameraPosition` in the
+ * fragment's, with the air's `weather`, `sunLight`, `skyLight`, `skyRadiance`, `cloudShade` and `fogged`,
+ * which the ground's chunk carries. a leaf cannot import the constants those names are kept in, so they are
+ * written out here, and the verifying script's compile is what catches one that has been renamed.
  *
  * this lives inside template literals, so a backtick in a comment ends the string, and GLSL ES 3.00 reserves a
  * long list of ordinary words: the obvious name for a level surface's normal is one of them.
@@ -179,7 +185,10 @@ void main() {
 }`;
 }
 
-/** `groundFragment` is `GROUND_FRAGMENT` from `land/land-shaders.ts` */
+/**
+ * `groundFragment` is the ground's chunk from `land/land-shaders.ts`, built round the air's: so the sky the
+ * water reflects and the fog it is seen through arrive with it, and are the land's to the character
+ */
 export function waterFragment(groundFragment: string): string {
   return /* glsl */ `${groundFragment}
 uniform float ${RIPPLE};
@@ -194,17 +203,13 @@ vec2 rippleAt(float carried, vec2 shift) {
   return lumps((vWorld.xz - vFlow * (carried - 0.5) * ripplePeriod) / rippleGrain + shift);
 }
 
-// the sky along a ray off the water. a stand-in: the land's two flat lights, until there is a sky function
-vec3 reflected(vec3 ray) {
-  return mix(groundColour, skyColour, smoothstep(-0.1, 0.1, ray.y));
-}
-
 void main() {
   float depth = vWater.y;
   if (depth <= waterFrom) {
     discard;
   }
   float present = smoothstep(waterFrom, waterFull, depth);
+  // the bed as the land draws it, before the air
   vec3 bed = ground();
   vec2 lit = texture(light, vUv).rg;
 
@@ -221,27 +226,36 @@ void main() {
   float rough = rippleStrength * clamp(speed / rippleSpeed, 0.0, 1.0) * seen(rippleGrain, footprint);
   vec3 normal = normalize(level - rough * vec3(tilt.x, 0.0, tilt.y));
 
+  // the sun through the air and past the clouds overhead, as the ground has it
+  vec3 surface = vec3(vWorld.x, vWater.x, vWorld.z);
+  vec3 sunlight = sunLight(sunDirection, weather) * cloudShade(surface, sunDirection, weather) * lit.x;
+
   // through the water: the bed, dimmed by the depth, and the light the water itself sends back
   float turbid = clamp(vWater.z / turbidFull, 0.0, 1.0);
   vec3 passed = exp(-mix(absorption, vec3(turbidExtinction), turbid) * depth);
-  vec3 daylight = sunColour * max(sunDirection.y, 0.0) * lit.x + skyColour * lit.y;
+  vec3 daylight =
+    sunlight * max(sunDirection.y, 0.0) + skyLight(vec3(0.0, 1.0, 0.0), sunDirection, weather) * lit.y;
   vec3 within = mix(mix(deepColour, turbidColour, turbid) * daylight, bed, passed);
 
   // off the water: the sky, more of it the shallower the look, and the sun
-  vec3 toEye = normalize(cameraPosition - vec3(vWorld.x, vWater.x, vWorld.z));
+  vec3 toEye = normalize(cameraPosition - surface);
   float mirror = reflectance + (1.0 - reflectance) * pow(1.0 - max(dot(normal, toEye), 0.0), 5.0);
-  vec3 sky = reflected(reflect(-toEye, normal)) * lit.y;
-  vec3 sun = sunColour * glintOf(normal, toEye, sunGloss) * lit.x;
+  vec3 sky = skyRadiance(reflect(-toEye, normal), sunDirection, weather) * lit.y;
+  vec3 sun = sunlight * glintOf(normal, toEye, sunGloss);
   vec3 water = mix(within, sky, mirror) + sun * mirror;
 
   // whitewater, where the model's water is both fast and falling
   float foam =
     smoothstep(foamSpeedFrom, foamSpeedTo, speed) *
     smoothstep(foamSlopeFrom, foamSlopeTo, 1.0 - level.y);
-  vec3 lather = foamColour * (sunColour * max(dot(normal, sunDirection), 0.0) * lit.x + skyColour * lit.y);
+  vec3 lather = foamColour * (
+    sunlight * max(dot(normal, sunDirection), 0.0) + skyLight(normal, sunDirection, weather) * lit.y
+  );
   water = mix(water, lather, foam);
 
-  result = vec4(mix(bed, water, present), 1.0);
+  // and the air between it and the eye, once, over the water and the bed alike
+  vec3 leaving = mix(bed, water, present);
+  result = vec4(fogged(leaving, cameraPosition, surface, sunDirection, weather, humidity()), 1.0);
 }`;
 }
 

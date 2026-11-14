@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { createAir, IAir } from '../air/air';
+import { AIR_FRAGMENT, WEATHER } from '../air/air-shaders';
 import { EROSION, IErosionConstants } from '../model/erosion-calibration';
 import { raise } from '../model/reference';
 import { HERO_SEED } from '../seed/seed';
@@ -9,8 +11,8 @@ import { createLandMesh, ILandMesh, LAND_MESH } from './land-mesh';
 import {
   CAMERA_UNIFORMS,
   GREENING,
-  LAND_FRAGMENT,
   LAND_VERTEX,
+  landFragment,
   RAIN,
   SUN_DIRECTION,
 } from './land-shaders';
@@ -26,10 +28,11 @@ const RENDERER = {
   render: (): void => undefined,
 } as unknown as THREE.WebGLRenderer;
 
-const build = (): { sim: ISimDriver; light: ILightPass; land: ILandMesh } => {
+const build = (): { sim: ISimDriver; light: ILightPass; land: ILandMesh; air: IAir } => {
   const sim = createSimDriver(RENDERER, raise(HERO_SEED, SIZE, CONSTANTS), CONSTANTS);
   const light = createLightPass(RENDERER, sim, CONSTANTS);
-  return { sim, light, land: createLandMesh(sim, light, CONSTANTS) };
+  const air = createAir();
+  return { sim, light, air, land: createLandMesh(sim, light, CONSTANTS, air.uniforms) };
 };
 
 describe('land mesh', () => {
@@ -81,6 +84,12 @@ describe('land mesh', () => {
     expect(land.mesh.material.uniforms[RAIN].value).toBe(1);
   });
 
+  it('is lit and fogged under the air’s own weather, the same object and not a copy', () => {
+    const { air, land } = build();
+
+    expect(land.mesh.material.uniforms[WEATHER]).toBe(air.uniforms[WEATHER]);
+  });
+
   it('grows nothing yet', () => {
     expect(build().land.mesh.material.uniforms[GREENING].value).toBe(0);
   });
@@ -88,7 +97,8 @@ describe('land mesh', () => {
   it('supplies every uniform its shaders declare, at the calibrated value', () => {
     const { land } = build();
     const { uniforms } = land.mesh.material;
-    const declared = [...`${LAND_VERTEX}\n${LAND_FRAGMENT}`.matchAll(/^uniform \w+ (\w+);/gm)]
+    const fragment = landFragment(AIR_FRAGMENT);
+    const declared = [...`${LAND_VERTEX}\n${fragment}`.matchAll(/^uniform \w+ (\w+);/gm)]
       .map((match) => match[1])
       // three.js supplies the camera's three
       .filter((name) => !CAMERA_UNIFORMS.includes(name));

@@ -1,10 +1,12 @@
 import * as THREE from 'three';
+import { createAir } from '../air/air';
+import { AIR_FRAGMENT } from '../air/air-shaders';
 import { surfaceGeometry } from '../land/land-geometry';
 import { createLandMesh, ILandMesh } from '../land/land-mesh';
 import {
   CAMERA_UNIFORMS,
-  GROUND_FRAGMENT,
   GROUND_VERTEX,
+  groundFragment,
   RAIN,
   SUN_DIRECTION,
 } from '../land/land-shaders';
@@ -28,12 +30,13 @@ const RENDERER = {
 
 const build = (): { sim: ISimDriver; land: ILandMesh; water: IWaterMesh } => {
   const sim = createSimDriver(RENDERER, raise(HERO_SEED, SIZE, CONSTANTS), CONSTANTS);
-  const land = createLandMesh(sim, createLightPass(RENDERER, sim, CONSTANTS), CONSTANTS);
+  const light = createLightPass(RENDERER, sim, CONSTANTS);
+  const land = createLandMesh(sim, light, CONSTANTS, createAir().uniforms);
   return { sim, land, water: createWaterMesh(sim, land, CONSTANTS) };
 };
 
 const VERTEX = waterVertex(GROUND_VERTEX);
-const FRAGMENT = waterFragment(GROUND_FRAGMENT);
+const FRAGMENT = waterFragment(groundFragment(AIR_FRAGMENT));
 
 describe('water mesh', () => {
   it('stands on the land’s own ground: the same vertices and triangles, and no walls', () => {

@@ -9,12 +9,14 @@
  * frame anyway, so merging two passes cannot leave the mesh drawing the land of half a step ago.
  *
  * the water's mesh (`water/water-mesh.ts`) shades the bed under it with this material's own uniforms, the same
- * objects and not copies, so what `follow` sets here it sets for the water too.
+ * objects and not copies, so what `follow` sets here it sets for the water too. the air's uniforms
+ * (`air/air.ts`) are taken the same way, so the land is lit and fogged under the weather the sky is drawn in.
  *
  * the mesh is never culled. its vertices carry a kind where a height would be, so the box three.js would cull
  * against is a sheet at the origin, and the block is the whole picture anyway.
  */
 import * as THREE from 'three';
+import { AIR_FRAGMENT } from '../air/air-shaders';
 import { IErosionConstants } from '../model/erosion-calibration';
 import { ISimDriver } from '../sim/sim-driver';
 import { ILandLook, LAND_LOOK } from './land-calibration';
@@ -24,8 +26,8 @@ import {
   LAND_COLOURS,
   LAND_EROSION,
   LAND_FLOATS,
-  LAND_FRAGMENT,
   LAND_VERTEX,
+  landFragment,
   RAIN,
   SUN_DIRECTION,
 } from './land-shaders';
@@ -40,10 +42,12 @@ export interface ILandMesh {
   dispose(): void;
 }
 
+/** `air` is `IAir.uniforms` from `air/air.ts`: the air's own objects, which this material shares */
 export function createLandMesh(
   sim: ISimDriver,
   light: ILightPass,
   constants: IErosionConstants,
+  air: Readonly<Record<string, THREE.IUniform>>,
   look: ILandLook = LAND_LOOK
 ): ILandMesh {
   const { positions, indices } = landGeometry(sim.size, constants.extent);
@@ -52,6 +56,7 @@ export function createLandMesh(
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
 
   const uniforms: Record<string, THREE.IUniform> = {
+    ...air,
     land: { value: sim.current('land') },
     terrain: { value: sim.terrain },
     strata: { value: sim.strata },
@@ -74,7 +79,7 @@ export function createLandMesh(
     name: LAND_MESH,
     glslVersion: THREE.GLSL3,
     vertexShader: LAND_VERTEX,
-    fragmentShader: LAND_FRAGMENT,
+    fragmentShader: landFragment(AIR_FRAGMENT),
     uniforms,
   });
   const mesh = new THREE.Mesh(geometry, material);

@@ -18,8 +18,6 @@ export const CAMERA_REFERENCE_ASPECT = 16 / 10;
 export const CAMERA_NEAR = 20;
 export const CAMERA_FAR = 80000;
 
-/** what is behind the block until the sky exists */
-export const BACKDROP_COLOUR = 0x1b2530;
 /** the placeholder's surface, a mid rock grey */
 export const PLACEHOLDER_COLOUR = 0x8d8a82;
 

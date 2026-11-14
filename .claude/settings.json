@@ -38,7 +38,10 @@
       "Bash(grep -v \"^ *✓\\\\|^$\")",
       "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/1a585906-9590-4f01-9dae-7ed5fead54a3/scratchpad/route.mjs\" \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/1a585906-9590-4f01-9dae-7ed5fead54a3/scratchpad/route\" 300)",
       "Bash(awk '{print $5}')",
-      "Bash(grep -n \"WATERSHED.md\\\\`\" CLAUDE.md)"
+      "Bash(grep -n \"WATERSHED.md\\\\`\" CLAUDE.md)",
+      "Bash(cd \"/c/Users/Jacob Miller/forest/ethereal-hotel/src/app/watershed\" && cat land/land-calibration.spec.ts water/water-calibration.spec.ts land/land-mesh.spec.ts water/water-mesh.spec.ts && wc -l */*.spec.ts *.spec.ts ../../../scripts/watershed-model.test.mjs)",
+      "Read(//c/Users/scripts/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4173/watershed)"
     ]
   }
 }

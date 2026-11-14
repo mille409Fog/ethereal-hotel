@@ -96,16 +96,44 @@
  *   what a multisampled canvas does to a varying not marked `centroid`, and
  *   that one was found by this count.
  *
+ * ## The air's shaders
+ *
+ * `air/air-shaders.ts` is the sky dome, the deck of cloud, and the rain's
+ * streaks; the fog and the sky's light are inside the land's and the water's
+ * shaders already. All three are compiled on every run, though only `--out`
+ * draws them. The light pass now writes humidity, a blur of the water's depth,
+ * and that carries the water's rule over: on a land with no water it is zero
+ * everywhere, and on the reference land with only its pools left it reaches
+ * past them and is zero on every cell with no pool within its reach. (In the
+ * rain every cell holds a film, so the reference land as it is would make the
+ * second claim about nothing.) Mist that lay where the model had no water
+ * would show here.
+ *
+ * ## Pictures
+ *
  * `--out` draws a land worth looking at instead of the gate's: the whole block
  * on a coarse grid, eroded by the shaders for `--steps` steps (1,500 unless
- * given, on a `--grid` of 256), from the route's own vantage. It stops raining
- * for the last share of the steps, as the storm does; `--raining` keeps it up,
- * and the two pictures side by side are the water's Definition of Done. The
- * line it prints times the light pass, the mesh, the water and a copy of the
- * frame; `--gpu` takes those on this machine's own graphics card. It is
- * tone-mapped by a few lines appended here and not by the route's chain, and
- * it is drawn by SwiftShader, so it shows whether the land reads and says
- * nothing about the final colour or about speed.
+ * given, on a `--grid` of 256), from the route's own vantage, under its sky
+ * and in its air. It stops raining for the last share of the steps, as the
+ * storm does; `--raining` keeps it up, and the two pictures side by side are
+ * the water's Definition of Done. `--air` chooses the weather, and its three
+ * values are the air's:
+ *
+ *     --air storm --raining   overcast, and the rain falling
+ *     --air golden            the land drained, under a low sun in a clear sky
+ *     --air bare              the same, with no air at all: no dome, haze,
+ *                             mist, deck, cloud shadows or rain
+ *
+ * The second beside the third is the argument for the air. `--view low` draws
+ * from low over the block, looking to the horizon, which is the one place the
+ * sky is seen; the route's own vantage looks down past it. A name ending in
+ * `.webp` is written as one; `docs/images/watershed-*.webp` were drawn so.
+ *
+ * The line it prints times the light pass, the mesh, the water and a copy of
+ * the frame; `--gpu` takes those on this machine's own graphics card. It is
+ * tone-mapped by a few lines appended here and not by the route's chain, so it
+ * has no bloom, grade or grain, and it is drawn by SwiftShader, so it shows
+ * whether the land reads and says nothing about the final colour or about speed.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -115,17 +143,33 @@ import { chromium } from '@playwright/test';
 import { mulberry32, HERO_SEED } from '../src/app/watershed/seed/seed.ts';
 import { EROSION, STRATA_ENTRIES } from '../src/app/watershed/model/erosion-calibration.ts';
 import { createFields } from '../src/app/watershed/model/fields.ts';
+import { AIR_LOOK } from '../src/app/watershed/air/air-calibration.ts';
+import {
+  AIR_CLOCK,
+  AIR_COLOURS,
+  AIR_FLOATS,
+  AIR_FRAGMENT,
+  DECK_FRAGMENT,
+  DECK_VERTEX,
+  DOME_FRAGMENT,
+  DOME_VERTEX,
+  RAIN_COLOURS,
+  RAIN_COUNTS,
+  RAIN_FLOATS,
+  RAIN_STREAKS,
+  WEATHER,
+} from '../src/app/watershed/air/air-shaders.ts';
 import { LAND_LOOK, sunDirection } from '../src/app/watershed/land/land-calibration.ts';
 import { landGeometry } from '../src/app/watershed/land/land-geometry.ts';
 import {
   GREENING,
-  GROUND_FRAGMENT,
   GROUND_VERTEX,
+  groundFragment,
   LAND_COLOURS,
   LAND_EROSION,
   LAND_FLOATS,
-  LAND_FRAGMENT,
   LAND_VERTEX,
+  landFragment,
   LIGHT_COUNTS,
   LIGHT_EROSION,
   LIGHT_FLOATS,
@@ -501,6 +545,12 @@ function drawInPage(job) {
     const landProgram = link(job.landVertex, job.displayFragment, 'the land, for display');
     link(job.waterVertex, job.waterFragment, 'the water');
     const waterProgram = link(job.waterVertex, job.displayWaterFragment, 'the water, for display');
+    // the air's, compiled on every run and drawn only for a picture
+    link(job.domeVertex, job.domeFragment, 'the dome');
+    const domeProgram = link(job.domeVertex, job.displayDomeFragment, 'the dome, for display');
+    link(job.deckVertex, job.deckFragment, 'the deck');
+    const deckProgram = link(job.deckVertex, job.displayDeckFragment, 'the deck, for display');
+    const rainProgram = link(job.triangleVertex, job.rainFragment, 'the rain');
 
     const textures = {
       terrain: float(job.size, job.size, job.terrain),
@@ -532,7 +582,8 @@ function drawInPage(job) {
     };
 
     // the light, into its own texture
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    const triangleBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, triangleBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(job.triangle), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
@@ -553,13 +604,21 @@ function drawInPage(job) {
     gl.viewport(0, 0, job.width, job.height);
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
-    gl.clearColor(0, 0, 0, 0);
+    // a picture drawn with no air has the backdrop the stage had before there was one
+    gl.clearColor(...(job.backdrop ?? [0, 0, 0, 0]));
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    const meshBuffer = gl.createBuffer();
+    const meshIndices = gl.createBuffer();
+    const bindMesh = () => {
+      gl.bindBuffer(gl.ARRAY_BUFFER, meshBuffer);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, meshIndices);
+    };
+    gl.bindBuffer(gl.ARRAY_BUFFER, meshBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(job.positions), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, meshIndices);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(job.indices), gl.STATIC_DRAW);
+    bindMesh();
     use(landProgram, ['land', 'terrain', 'strata', 'light']);
     const frame = new Uint8Array(job.width * job.height * 4);
     // drawn twice and the second timed: the first pays for the upload and the driver's own compile
@@ -580,8 +639,59 @@ function drawInPage(job) {
     gl.polygonOffset(job.offset[0], job.offset[1]);
     use(waterProgram, ['land', 'terrain', 'strata', 'light', 'flow']);
     gl.drawElements(gl.TRIANGLES, job.waterCount, gl.UNSIGNED_INT, 0);
+
+    // the air, as the route draws it: the deck, then the dome wherever nothing stands, then the rain over all.
+    // each is timed as the others are, by a read-back that waits for it
+    const airMs = { deck: 0, dome: 0, rain: 0 };
+    const timed = (name, drawing) => {
+      const began = performance.now();
+      drawing();
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+      airMs[name] = performance.now() - began;
+    };
+    if (job.air) {
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+      gl.disable(gl.POLYGON_OFFSET_FILL);
+      const deckBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, deckBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(job.deckPositions), gl.STATIC_DRAW);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+      const deckIndices = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, deckIndices);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(job.deckIndices), gl.STATIC_DRAW);
+      use(deckProgram, []);
+      timed('deck', () =>
+        gl.drawElements(gl.TRIANGLES, job.deckIndices.length, gl.UNSIGNED_INT, 0)
+      );
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, triangleBuffer);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+      gl.depthFunc(gl.LEQUAL);
+      gl.depthMask(false);
+      use(domeProgram, []);
+      timed('dome', () => gl.drawArrays(gl.TRIANGLES, 0, 3));
+      gl.depthMask(true);
+      gl.depthFunc(gl.LESS);
+
+      if (job.floats[job.rainName] > 0) {
+        const behind = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, behind);
+        gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 0, 0, job.width, job.height, 0);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.disable(gl.DEPTH_TEST);
+        use(rainProgram, []);
+        gl.uniform1i(gl.getUniformLocation(rainProgram, 'frame'), 0);
+        timed('rain', () => gl.drawArrays(gl.TRIANGLES, 0, 3));
+        gl.enable(gl.DEPTH_TEST);
+      }
+      gl.enable(gl.POLYGON_OFFSET_FILL);
+      bindMesh();
+      use(waterProgram, ['land', 'terrain', 'strata', 'light', 'flow']);
+    }
     gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
-    const image = job.image ? canvas.toDataURL('image/png') : null;
+    const image = job.image ? canvas.toDataURL(job.imageType, 0.92) : null;
     const waterBegan = performance.now();
     gl.drawElements(gl.TRIANGLES, job.waterCount, gl.UNSIGNED_INT, 0);
     gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
@@ -596,6 +706,7 @@ function drawInPage(job) {
     const copyMs = performance.now() - copyBegan;
 
     // the water alone, on a cleared canvas: every pixel with any alpha is a pixel of water
+    gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.drawElements(gl.TRIANGLES, job.waterCount, gl.UNSIGNED_INT, 0);
     gl.readPixels(0, 0, job.width, job.height, gl.RGBA, gl.UNSIGNED_BYTE, frame);
@@ -633,16 +744,55 @@ function drawInPage(job) {
       meshMs,
       waterMs,
       copyMs,
+      airMs,
     };
   } catch (error) {
     return { error: String(error?.message ?? error) };
   }
 }
 
+/** The short fit to ACES that `forDisplay` appends, for a colour that is not drawn by a shader of its own. */
+function displayed(colour) {
+  return colour.map((part) => {
+    const c = part / 0.6;
+    const mapped = Math.min(
+      1,
+      Math.max(0, (c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14))
+    );
+    return mapped ** (1 / 2.2);
+  });
+}
+
+/**
+ * The rain's streaks over a frame already on the canvas, which arrives in
+ * `frame`. The route mixes them in linear light before tone mapping; here the
+ * frame is already for display, so the rain's colour is mapped to match.
+ */
+const RAIN_FOR_DISPLAY = /* glsl */ `
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+uniform sampler2D frame;
+uniform float ${RAIN};
+uniform float ${AIR_CLOCK};
+uniform vec3 rainShown;
+${RAIN_STREAKS}
+out vec4 result;
+void main() {
+  vec3 behind = texelFetch(frame, ivec2(gl_FragCoord.xy), 0).rgb;
+  float covered = streaksAt(gl_FragCoord.xy, ${RAIN}, ${AIR_CLOCK}) * rainOpacity;
+  result = vec4(mix(behind, rainShown, covered), 1.0);
+}`;
+
+/** The colour the stage stood against before it had a sky, for a picture drawn with no air. */
+const BARE_BACKDROP = [0x1b / 255, 0x25 / 255, 0x30 / 255, 1];
+
 /** Lights and draws the land given: its terrain and beds, and the fields it has come to. */
 async function draw(page, land, constants, view, image = false) {
   const { size } = land.terrain;
   const geometry = landGeometry(size, constants.extent);
+  const air = view.airLook ?? AIR_LOOK;
+  const reach = air.deckReach;
   const pick = (keys, from) => Object.fromEntries(keys.map((key) => [key, from[key]]));
   const outcome = await page.evaluate(drawInPage, {
     size,
@@ -650,15 +800,29 @@ async function draw(page, land, constants, view, image = false) {
     width: view.width,
     height: view.height,
     image,
+    imageType: view.imageType ?? 'image/png',
+    air: view.air ?? false,
+    backdrop: view.backdrop,
+    rainName: RAIN,
     triangleVertex: SIM_VERTEX,
     triangle: [...SIM_TRIANGLE],
     lightFragment: LIGHT_FRAGMENT,
     landVertex: LAND_VERTEX,
-    landFragment: LAND_FRAGMENT,
-    displayFragment: forDisplay(LAND_FRAGMENT),
+    landFragment: landFragment(AIR_FRAGMENT),
+    displayFragment: forDisplay(landFragment(AIR_FRAGMENT)),
     waterVertex: waterVertex(GROUND_VERTEX),
-    waterFragment: waterFragment(GROUND_FRAGMENT),
-    displayWaterFragment: forDisplay(waterFragment(GROUND_FRAGMENT)),
+    waterFragment: waterFragment(groundFragment(AIR_FRAGMENT)),
+    displayWaterFragment: forDisplay(waterFragment(groundFragment(AIR_FRAGMENT))),
+    domeVertex: DOME_VERTEX,
+    domeFragment: DOME_FRAGMENT,
+    displayDomeFragment: forDisplay(DOME_FRAGMENT),
+    deckVertex: DECK_VERTEX,
+    deckFragment: DECK_FRAGMENT,
+    displayDeckFragment: forDisplay(DECK_FRAGMENT),
+    rainFragment: RAIN_FOR_DISPLAY,
+    // as `air/air.ts` builds it: one sheet, anticlockwise seen from above
+    deckPositions: [-reach, 0, -reach, reach, 0, -reach, reach, 0, reach, -reach, 0, reach],
+    deckIndices: [0, 3, 2, 0, 2, 1],
     waterCount: (size - 1) * (size - 1) * 6,
     offset: [WATER_LOOK.offsetFactor, WATER_LOOK.offsetUnits],
     flow: Array.from(packFlow(land.fields)),
@@ -671,15 +835,21 @@ async function draw(page, land, constants, view, image = false) {
       ...pick([...LIGHT_EROSION, ...LAND_EROSION], constants),
       ...pick([...LIGHT_FLOATS, ...LAND_FLOATS], LAND_LOOK),
       ...pick(WATER_FLOATS, WATER_LOOK),
+      ...pick([...AIR_FLOATS, ...RAIN_FLOATS], air),
       [GREENING]: 0,
       [RAIN]: view.rain ?? 0,
       [RIPPLE]: 0.25,
+      // a clear sky unless the view says otherwise: the gate's claims are about the land, under the sun
+      [WEATHER]: view.weather ?? 1,
+      [AIR_CLOCK]: view.clock ?? 0,
     },
-    counts: pick(LIGHT_COUNTS, LAND_LOOK),
+    counts: { ...pick(LIGHT_COUNTS, LAND_LOOK), ...pick(RAIN_COUNTS, air) },
     vectors: {
       ...pick(LAND_COLOURS, LAND_LOOK),
       ...pick(WATER_COLOURS, WATER_LOOK),
-      [SUN_DIRECTION]: sunDirection(LAND_LOOK),
+      ...pick([...AIR_COLOURS, ...RAIN_COLOURS], air),
+      rainShown: displayed(air.rainColour),
+      [SUN_DIRECTION]: view.sun ?? sunDirection(LAND_LOOK),
       cameraPosition: view.eye,
     },
     matrices: {
@@ -759,6 +929,61 @@ function judgeLight(land, constants, light) {
   return { problems, lit: lit / cells, dark: dark / cells, leastSky: leastSky / 255 };
 }
 
+/**
+ * Holds the light pass's humidity to the water it blurs: some on the
+ * reference land, none on a cell with no water anywhere within the pass's
+ * reach, and none at all on a land with no water. Returns what is wrong, and
+ * the count the summary line prints.
+ */
+function humidityProblems(land, constants, light, dryLight) {
+  const { size } = land.terrain;
+  const cell = constants.extent / size;
+  // the furthest a look reaches is the radius rounded to the nearest cell, so one cell more is beyond it
+  const reach = LAND_LOOK.humidityRadius / cell + 1;
+  const wet = [];
+  for (let i = 0; i < size * size; i++) {
+    if (land.fields.water[i] > 0) {
+      wet.push([i % size, Math.floor(i / size)]);
+    }
+  }
+  let humid = 0;
+  let stray = 0;
+  for (let i = 0; i < size * size; i++) {
+    const value = light[i * 4 + 2];
+    humid += value > 0 ? 1 : 0;
+    const x = i % size;
+    const y = Math.floor(i / size);
+    const nearWater = wet.some(([wx, wy]) => Math.hypot(wx - x, wy - y) <= reach);
+    stray += value > 0 && !nearWater ? 1 : 0;
+  }
+  const problems = [];
+  if (humid <= wet.length) {
+    problems.push(
+      `the land has ${wet.length} cells holding water and only ${humid} humid cells. Humidity is ` +
+        `a blur, so it reaches past the water; the light pass is not writing it into blue, or ` +
+        `not spreading it.`
+    );
+  }
+  if (humid > (size * size) / 2) {
+    problems.push(
+      `${humid} of ${size * size} cells are humid round only ${wet.length} cells of water. ` +
+        `Either humidity is not a blur of the water, or the gate's land has so many pools that ` +
+        `the claim below would hold of almost anything.`
+    );
+  }
+  if (stray > 0) {
+    problems.push(
+      `${stray} cells are humid with no water within ${LAND_LOOK.humidityRadius} m of them. ` +
+        `Something other than the water's depth is deciding where the mist lies.`
+    );
+  }
+  const dryHumid = dryLight.filter((value, i) => i % 4 === 2 && value > 0).length;
+  if (dryHumid > 0) {
+    problems.push(`on a land with no water ${dryHumid} cells are humid.`);
+  }
+  return { problems, humid, stray, dryHumid, pools: wet.length, cells: size * size };
+}
+
 /** The view the gate's frame is drawn from: the little land is taller than it is wide. */
 const GATE_VIEW = {
   width: 320,
@@ -775,6 +1000,18 @@ const ROUTE_VIEW = {
   fov: CAMERA_FOV,
   eye: [...CAMERA_POSITION],
   target: [...CAMERA_TARGET],
+};
+
+/**
+ * Low over the block, looking across it to the horizon, with the sun off to
+ * the left: where the camera's pass at golden hour will be, roughly, and the
+ * one view here with sky in it. The phase that directs the storm owns the real
+ * path; this is only somewhere to stand.
+ */
+const LOW_VIEW = {
+  ...ROUTE_VIEW,
+  eye: [9500, 2300, 7000],
+  target: [-500, 300, -800],
 };
 
 /** Compiles the land's shaders and holds them to the claims in the header. True when something is wrong. */
@@ -794,6 +1031,14 @@ async function verifyLand(page, expected) {
         `land to shade it or to hide its sky.`
     );
   }
+
+  // humidity: the water's depth blurred, and nothing else. in the rain every cell holds a film, so the claim is
+  // made on the same land with only its pools left: humid near them, and nowhere out of their reach
+  const pools = { ...land, fields: { ...land.fields } };
+  pools.fields.water = land.fields.water.map((depth) => (depth > WATER_LOOK.waterFrom ? depth : 0));
+  const pooled = await draw(page, pools, CONSTANTS, GATE_VIEW);
+  const humid = humidityProblems(pools, CONSTANTS, pooled.light, plain.light);
+  problems.push(...humid.problems);
 
   if (drawn.covered < 0.1 || drawn.deviation < 0.02) {
     problems.push(
@@ -828,7 +1073,10 @@ async function verifyLand(page, expected) {
   }
 
   console.log(
-    `  the water: compiled; ${deep} cells deep enough to draw, on ${drawn.watered} pixels of the ` +
+    `  the air: the dome, the deck and the rain compiled; with only its ${humid.pools} pools left, ` +
+      `the land is humid on ${humid.humid} cells of ${humid.cells}, ${humid.stray} of them out of ` +
+      `reach of water, and a land with none on ${humid.dryHumid}\n` +
+      `  the water: compiled; ${deep} cells deep enough to draw, on ${drawn.watered} pixels of the ` +
       `reference land's frame, and on ` +
       `${film.watered} once no cell holds more than ${WATER_LOOK.waterFrom} m\n` +
       `  the land: the light pass and the mesh compiled; ${(judged.dark * 100).toFixed(0)}% of the ` +
@@ -849,6 +1097,44 @@ function option(name, fallback) {
   return at === -1 ? fallback : process.argv[at + 1];
 }
 
+/**
+ * The sun of a golden hour, degrees above the horizon, at the calibrated
+ * bearing. The phase that directs the storm will own where the sun goes; until
+ * then this is only where `--air golden` puts it. At 7 every lump of scree on
+ * the high ground threw its own shadow and the plateau read as noise.
+ */
+const GOLDEN_ELEVATION = 10;
+
+/** What each `--air` draws under: the weather, the sun, and whether there is any air at all. */
+function airFor(name, raining) {
+  const low = sunDirection({ ...LAND_LOOK, sunElevation: GOLDEN_ELEVATION });
+  switch (name) {
+    case 'storm':
+      return { air: true, weather: 0 };
+    case 'golden':
+      return { air: true, weather: 1, sun: low };
+    case 'bare':
+      return {
+        air: false,
+        weather: 1,
+        sun: low,
+        backdrop: BARE_BACKDROP,
+        airLook: {
+          ...AIR_LOOK,
+          hazeStorm: 0,
+          hazeClear: 0,
+          mistDensity: 0,
+          deckDensity: 0,
+          cloudShadow: 0,
+        },
+      };
+    case undefined:
+      return { air: true, weather: raining ? 0 : 1 };
+    default:
+      throw new Error(`--air takes storm, golden or bare, not "${name}".`);
+  }
+}
+
 /** Erodes the whole block on a coarse grid and writes a picture of it. To look at; it asserts nothing. */
 async function picture(page, file) {
   const size = Number(option('grid', 256));
@@ -857,9 +1143,30 @@ async function picture(page, file) {
   // it stops raining for the last share, as the storm does, so the land is seen drained; `--raining`
   // keeps it up to the end, so the land is seen as it is in the storm
   const raining = process.argv.includes('--raining');
+  const weather = airFor(option('air', undefined), raining);
+  // `--set key=value`, as often as wanted: a number of the air's look, changed for this picture alone
+  const set = process.argv.flatMap((arg, at) => (process.argv[at - 1] === '--set' ? [arg] : []));
+  for (const pair of set) {
+    const [key, value] = pair.split('=');
+    if (typeof AIR_LOOK[key] !== 'number') {
+      throw new Error(`--set takes a number of the air's look; "${key}" is not one.`);
+    }
+    weather.airLook = { ...(weather.airLook ?? AIR_LOOK), [key]: Number(value) };
+  }
   const wet = raining ? steps : Math.round(steps * 0.85);
   const eroded = await simulate(page, EROSION, size, steps, wet);
-  const view = { ...ROUTE_VIEW, rain: raining ? 1 : 0 };
+  const views = { route: ROUTE_VIEW, low: LOW_VIEW };
+  const seenFrom = views[option('view', 'route')];
+  if (!seenFrom) {
+    throw new Error(`--view takes ${Object.keys(views).join(' or ')}.`);
+  }
+  const view = {
+    ...seenFrom,
+    ...weather,
+    rain: raining ? 1 : 0,
+    clock: Number(option('clock', 0)),
+    imageType: file.endsWith('.webp') ? 'image/webp' : 'image/png',
+  };
   const drawn = await draw(page, eroded.land, EROSION, view, true);
   fs.writeFileSync(file, Buffer.from(drawn.image.split(',')[1], 'base64'));
   console.log(
@@ -867,7 +1174,11 @@ async function picture(page, file) {
       `${((Date.now() - began) / 1000).toFixed(1)}s; the light pass took ` +
       `${drawn.lightMs.toFixed(0)} ms, the mesh ${drawn.meshMs.toFixed(0)} ms and the water ` +
       `${drawn.waterMs.toFixed(0)} ms, on ${drawn.watered} pixels; copying the frame took ` +
-      `${drawn.copyMs.toFixed(0)} ms`
+      `${drawn.copyMs.toFixed(0)} ms` +
+      (view.air
+        ? `; the deck ${drawn.airMs.deck.toFixed(0)} ms, the dome ` +
+          `${drawn.airMs.dome.toFixed(0)} ms and the rain ${drawn.airMs.rain.toFixed(0)} ms`
+        : '')
   );
 }
 

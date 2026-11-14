@@ -9,9 +9,11 @@ import { createStage, IStage } from '../stage/create-stage';
 import { WATER_LOOK } from '../water/water-calibration';
 import { WATER_MESH } from '../water/water-mesh';
 import { RIPPLE } from '../water/water-shaders';
+import { AIR_CLOCK, WEATHER } from '../air/air-shaders';
+import { SUN_DIRECTION } from '../land/land-shaders';
 import { RAIN_SHARE, STORM_SECONDS } from './sim-calibration';
 import { SIM_PASSES, SIM_STRENGTH } from './sim-shaders';
-import { rainAt, startStorm } from './storm';
+import { rainAt, startStorm, weatherAt } from './storm';
 
 /**
  * a storm of nine thousand steps on a grid of eight cells. the count is not free: a storm always lasts
@@ -78,6 +80,39 @@ describe('storm', () => {
     expect(rainAt(lastWet, 20)).toBe(1);
     expect(rainAt(lastWet + 1, 20)).toBe(0);
     expect(rainAt(19, 20)).toBe(0);
+  });
+
+  it('is overcast while it rains and clear once it has stopped', () => {
+    for (let step = 0; step < 20; step++) {
+      expect(weatherAt(step, 20)).toBe(1 - rainAt(step, 20));
+    }
+    expect(weatherAt(0, 20)).toBe(0);
+    expect(weatherAt(19, 20)).toBe(1);
+  });
+
+  it('tells the air the weather, the rain and the time, every frame', () => {
+    const { stage, storm } = begin();
+    storm.advance(2_500);
+
+    expect(stage.air.uniforms[WEATHER].value).toBe(0);
+    expect(stage.air.uniforms[AIR_CLOCK].value).toBe(2.5);
+    expect(stage.air.rain.enabled).toBe(true);
+
+    for (let frame = 1; frame <= CONSTANTS.stormSteps + 5; frame++) {
+      storm.advance(2_500 + frame * STEP_MS);
+    }
+
+    expect(stage.air.uniforms[WEATHER].value).toBe(1);
+    expect(stage.air.rain.enabled).toBe(false);
+  });
+
+  it('marches the light along the air’s own sun, so the sky and the shadows agree', () => {
+    const { stage, storm } = begin();
+    const land = landIn(stage) as THREE.Mesh<THREE.BufferGeometry, THREE.RawShaderMaterial>;
+
+    expect(storm.light.sun).toBe(stage.air.sun);
+    expect(land.material.uniforms[SUN_DIRECTION].value).toBe(stage.air.sun);
+    expect(land.material.uniforms[WEATHER]).toBe(stage.air.uniforms[WEATHER]);
   });
 
   it('is as long as the calibration says', () => {

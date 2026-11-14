@@ -1,14 +1,17 @@
 /**
- * the stage while there is no land on it: a flat slab the size of the land, a sun and a sky light.
+ * the stage: the air, and while there is no land on it a flat slab the size of the land, a sun and a sky light.
+ *
+ * the air (`air/air.ts`) is the sky behind the block and the deck of cloud below its rim. it is the stage's
+ * from the first frame, so the sky is there while the quality meter measures and before any land is.
  *
  * a storm hides the slab and stands its land in the scene (`sim/storm.ts`); the land is lit by its own shader and
- * takes nothing from these two lights. so the slab is what a visitor sees while the quality meter is still
+ * takes nothing from the slab's two lights. so the slab is what a visitor sees while the quality meter is still
  * measuring, and all a device that cannot simulate sees until a land is stored for it. the phase that stores one
  * is where the slab and both lights go.
  */
 import * as THREE from 'three';
+import { createAir, IAir } from '../air/air';
 import {
-  BACKDROP_COLOUR,
   GROUND_LIGHT_COLOUR,
   LAND_EXTENT,
   PLACEHOLDER_COLOUR,
@@ -25,11 +28,11 @@ export type Placeholder = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMate
 export interface IStage {
   readonly scene: THREE.Scene;
   readonly placeholder: Placeholder;
+  readonly air: IAir;
 }
 
 export function createStage(): IStage {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(BACKDROP_COLOUR);
 
   const sun = new THREE.DirectionalLight(SUN_COLOUR, SUN_INTENSITY);
   sun.position.set(...SUN_POSITION);
@@ -45,11 +48,15 @@ export function createStage(): IStage {
   );
   scene.add(placeholder);
 
-  return { scene, placeholder };
+  const air = createAir();
+  scene.add(air.deck, air.dome);
+
+  return { scene, placeholder, air };
 }
 
 /** frees what the stage holds on the GPU; lights hold nothing, and a land in the scene is its storm's to free */
 export function disposeStage(stage: IStage): void {
   stage.placeholder.geometry.dispose();
   stage.placeholder.material.dispose();
+  stage.air.dispose();
 }

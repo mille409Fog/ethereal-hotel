@@ -8,6 +8,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { GradePass } from '../murmuration/grade/grade-pass/grade-pass';
 import { GrainPass } from '../murmuration/grain/grain-pass/grain-pass';
 import { REDUCED_MOTION_QUERY } from '../murmuration/renderer/renderer-calibration';
+import { DECK_MESH, DOME_MESH } from './air/air';
+import { RainPass } from './air/rain-pass';
 import { COMPOSER_SAMPLES } from './composer/composer-calibration';
 import { LAND_MESH } from './land/land-mesh';
 import { LIGHT_PASS } from './land/light-pass';
@@ -340,12 +342,25 @@ describe('Watershed', () => {
   });
 
   describe('post-processing', () => {
-    it('draws the scene, blooms it, tone-maps it, grades it, and only then grains it', async () => {
+    it('draws the scene, rains on it, blooms it, tone-maps it, grades it, and only then grains it', async () => {
       // the grain is last because it is also the dither: see orchestrate-passes.ts
       await mount();
       const kinds = onlyComposer().passes.map((pass) => pass.constructor);
 
-      expect(kinds).toEqual([RenderPass, UnrealBloomPass, OutputPass, GradePass, GrainPass]);
+      expect(kinds).toEqual([
+        RenderPass,
+        RainPass,
+        UnrealBloomPass,
+        OutputPass,
+        GradePass,
+        GrainPass,
+      ]);
+    });
+
+    it('draws no rain until a storm says it is raining', async () => {
+      await mount();
+
+      expect(passOf(onlyComposer(), RainPass).enabled).toBe(false);
     });
 
     it('builds the composer on the renderer, after the renderer is sized', async () => {
@@ -380,6 +395,31 @@ describe('Watershed', () => {
       await mount();
 
       expect(cameraOf(onlyComposer()).position.toArray()).toEqual([...CAMERA_POSITION]);
+    });
+
+    it('stands under a sky and in a deck of cloud from the first frame, before there is a land', async () => {
+      await mount();
+      const names = passOf(onlyComposer(), RenderPass).scene.children.map((child) => child.name);
+
+      expect(names).toEqual(expect.arrayContaining([DOME_MESH, DECK_MESH]));
+      expect(passOf(onlyComposer(), RenderPass).scene.background).toBeNull();
+    });
+
+    it('releases the air’s dome and deck on destroy', async () => {
+      const fixture = await mount();
+      const scene = passOf(onlyComposer(), RenderPass).scene;
+      const meshes = scene.children.filter(
+        (child): child is THREE.Mesh<THREE.BufferGeometry, THREE.Material> =>
+          child.name === DOME_MESH || child.name === DECK_MESH
+      );
+      const freed = meshes.map((mesh) => vi.spyOn(mesh.material, 'dispose'));
+
+      fixture.destroy();
+
+      expect(freed).toHaveLength(2);
+      for (const spy of freed) {
+        expect(spy).toHaveBeenCalledTimes(1);
+      }
     });
   });
 
@@ -708,7 +748,7 @@ describe('Watershed', () => {
 
       fixture.destroy();
 
-      expect(passes).toHaveLength(5);
+      expect(passes).toHaveLength(6);
       for (const pass of passes) {
         expect(pass).toHaveBeenCalledTimes(1);
       }

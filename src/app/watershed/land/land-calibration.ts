@@ -4,9 +4,9 @@
  * only how it is seen.
  *
  * all of it is provisional until the phase that tunes the look, and was set to be legible and no more: rock that
- * reads as rock, a sun low enough to throw a valley into shade. colours are linear. the three lights are what a
- * white surface facing them sends back, so the division by pi that a physical material makes is already in them:
- * they are the stage's old sun and sky, the ones the slab is still lit by, divided by it.
+ * reads as rock, a sun low enough to throw a valley into shade. colours are linear, and they are what a surface
+ * sends back, not lights: the ground is lit by the air (`air/air-calibration.ts`), whose sun and sky replaced the
+ * three flat lights that stood here.
  *
  * each key is a uniform of the same name; `land-shaders.ts` lists which shader reads which. so a number added
  * here does nothing until it is added to a list there, and the land's spec fails on a key no list names.
@@ -21,11 +21,6 @@ export interface ILandLook {
   /** where the sun is: degrees round from +x toward +z, and degrees above the horizon */
   readonly sunBearing: number;
   readonly sunElevation: number;
-  /** the sun's light on a surface that faces it, and the sky's on one that faces up */
-  readonly sunColour: Colour;
-  readonly skyColour: Colour;
-  /** what a surface facing down is lit by: the sky's light come back off the ground */
-  readonly groundColour: Colour;
 
   /** how many times the march toward the sun looks at the land, and how far it goes, metres */
   readonly shadowSteps: number;
@@ -39,6 +34,13 @@ export interface ILandLook {
   readonly occlusionSteps: number;
   /** how much of the sky a full horizon is taken to hide */
   readonly occlusionStrength: number;
+  /**
+   * humidity, which the mist and the plants read: water this deep makes a cell wholly wet, metres, and the
+   * wetness is averaged over a disc this wide, metres, in this many rings of eight looks
+   */
+  readonly humidityDepth: number;
+  readonly humidityRadius: number;
+  readonly humiditySteps: number;
 
   /**
    * the bottom of the block's cut sides, metres. it is about where the stack of beds ends, so the whole wall is
@@ -67,10 +69,9 @@ export interface ILandLook {
   /** none on ground steeper than the second, as 1 − normal.y */
   readonly greenSlopeFrom: number;
   readonly greenSlopeTo: number;
-  /** soil this deep carries full cover, metres, and water this deep counts as a bank, metres */
+  /** soil this deep carries full cover, metres */
   readonly greenSoil: number;
-  readonly greenWater: number;
-  /** the share of full cover that ground away from water gets */
+  /** the share of full cover that ground away from water gets; humid ground gets all of it */
   readonly greenDry: number;
   readonly greenColour: Colour;
 
@@ -98,9 +99,6 @@ export interface ILandLook {
 export const LAND_LOOK: ILandLook = {
   sunBearing: 153,
   sunElevation: 28,
-  sunColour: [1.02, 0.77, 0.52],
-  skyColour: [0.078, 0.107, 0.147],
-  groundColour: [0.01, 0.008, 0.006],
 
   shadowSteps: 48,
   shadowReach: 3600,
@@ -109,6 +107,9 @@ export const LAND_LOOK: ILandLook = {
   occlusionRadius: 220,
   occlusionSteps: 4,
   occlusionStrength: 1,
+  humidityDepth: 0.3,
+  humidityRadius: 360,
+  humiditySteps: 3,
 
   skirtFloor: -450,
 
@@ -129,7 +130,6 @@ export const LAND_LOOK: ILandLook = {
   greenSlopeFrom: 0.08,
   greenSlopeTo: 0.3,
   greenSoil: 0.5,
-  greenWater: 0.05,
   greenDry: 0.35,
   greenColour: [0.07, 0.12, 0.04],
 

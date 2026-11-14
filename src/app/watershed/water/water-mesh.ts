@@ -8,7 +8,8 @@
  * - **the bed is shaded with the land's own uniforms.** the fragment shader calls the land's `ground()`, and
  *   the uniforms that function reads are taken from the land's material as the same objects, not as copies.
  *   so the land texture `ILandMesh.follow` points at, the sun, the rain and every colour are one value read by
- *   two materials, and the bed under the water cannot be lit differently from the bank beside it.
+ *   two materials, and the bed under the water cannot be lit differently from the bank beside it. the air's
+ *   uniforms are among them, since the land's material holds the air's own.
  * - **it is opaque, and drawn after the land.** the shader fades the water in from the land's exact colour, so
  *   nothing is blended. `renderOrder` puts it after the land so that the sheet under a bank, and every dry
  *   triangle hidden behind a ridge, fails the depth test before its fragment shader runs.
@@ -18,10 +19,11 @@
  * the storm has left behind still runs.
  */
 import * as THREE from 'three';
+import { AIR_FRAGMENT } from '../air/air-shaders';
 import { IErosionConstants } from '../model/erosion-calibration';
 import { surfaceGeometry } from '../land/land-geometry';
 import { ILandMesh } from '../land/land-mesh';
-import { GROUND_FRAGMENT, GROUND_VERTEX } from '../land/land-shaders';
+import { GROUND_VERTEX, groundFragment } from '../land/land-shaders';
 import { ISimDriver } from '../sim/sim-driver';
 import { IWaterLook, ripplePhase, WATER_LOOK } from './water-calibration';
 import { RIPPLE, WATER_COLOURS, WATER_FLOATS, waterFragment, waterVertex } from './water-shaders';
@@ -62,7 +64,7 @@ export function createWaterMesh(
     name: WATER_MESH,
     glslVersion: THREE.GLSL3,
     vertexShader: waterVertex(GROUND_VERTEX),
-    fragmentShader: waterFragment(GROUND_FRAGMENT),
+    fragmentShader: waterFragment(groundFragment(AIR_FRAGMENT)),
     uniforms,
     polygonOffset: true,
     polygonOffsetFactor: look.offsetFactor,

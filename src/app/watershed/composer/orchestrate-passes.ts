@@ -1,6 +1,10 @@
 /**
- * the chain every frame is drawn through: the scene in linear HDR, bloom on what exceeds white, then tone
- * mapping and encoding, then the grade and the grain on the finished picture.
+ * the chain every frame is drawn through: the scene in linear HDR, the rain over it, bloom on what exceeds
+ * white, then tone mapping and encoding, then the grade and the grain on the finished picture.
+ *
+ * the rain is a pass of its own (`air/rain-pass.ts`) because it is in front of everything at once, and it sits
+ * before the bloom so that it is light like the rest of the scene and is tone-mapped with it. it switches itself
+ * off when it is not raining.
  *
  * the grade and the grain are murmuration's passes, imported and not copied; only their numbers are this piece's.
  *
@@ -17,6 +21,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { GradePass } from '../../murmuration/grade/grade-pass/grade-pass';
 import { GrainPass } from '../../murmuration/grain/grain-pass/grain-pass';
+import { RainPass } from '../air/rain-pass';
 import {
   BLOOM_RADIUS,
   BLOOM_STRENGTH,
@@ -30,9 +35,11 @@ export function orchestratePasses(
   composer: EffectComposer,
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
-  resolution: THREE.Vector2
+  resolution: THREE.Vector2,
+  rain: RainPass
 ): void {
   composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(rain);
   composer.addPass(new UnrealBloomPass(resolution, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD));
   composer.addPass(new OutputPass());
   composer.addPass(new GradePass(GRADE));

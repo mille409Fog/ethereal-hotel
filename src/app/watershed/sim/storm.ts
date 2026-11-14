@@ -14,11 +14,15 @@
  *
  * the stage's slab is what stands there while there is no land. a storm hides it and puts it back.
  *
+ * the air is the stage's, and the storm tells it the weather, the rain and the time each frame. the light pass
+ * marches along the air's own sun, so the sky and the shadows cannot disagree about where it is.
+ *
  * raising the land happens here, on the main thread, in the frame the storm starts. it is noise evaluated at
  * every cell, and it is a visible hitch on the largest grid; the phase that directs the storm is the place to
  * hide it behind the opening, or to move it to a worker if hiding is not enough.
  */
 import * as THREE from 'three';
+import { LAND_LOOK } from '../land/land-calibration';
 import { createLandMesh } from '../land/land-mesh';
 import { createLightPass, ILightPass } from '../land/light-pass';
 import { EROSION, IErosionConstants } from '../model/erosion-calibration';
@@ -46,6 +50,14 @@ export function rainAt(step: number, total: number): number {
   return step < total * RAIN_SHARE ? 1 : 0;
 }
 
+/**
+ * how clear the sky is at a step: overcast while it rains and clear once it has stopped. a stand-in, as the
+ * rain's own on-off is, until the phase that directs the storm breaks the cloud over the seconds after it
+ */
+export function weatherAt(step: number, total: number): number {
+  return 1 - rainAt(step, total);
+}
+
 export function startStorm(
   renderer: THREE.WebGLRenderer,
   stage: IStage,
@@ -55,8 +67,8 @@ export function startStorm(
 ): IStorm {
   const total = constants.stormSteps;
   const driver = createSimDriver(renderer, raise(seed, tier.grid, constants), constants);
-  const light = createLightPass(renderer, driver, constants);
-  const land = createLandMesh(driver, light, constants);
+  const light = createLightPass(renderer, driver, constants, LAND_LOOK, stage.air.sun);
+  const land = createLandMesh(driver, light, constants, stage.air.uniforms);
   const water = createWaterMesh(driver, land, constants);
   stage.placeholder.visible = false;
   stage.scene.add(land.mesh, water.mesh);
@@ -75,8 +87,10 @@ export function startStorm(
         light.landMoved();
       }
       light.update();
-      // the rain the next step will fall with
-      land.follow(rainAt(clock.steps, total));
+      // the rain the next step will fall with, and the sky it falls from
+      const rain = rainAt(clock.steps, total);
+      land.follow(rain);
+      stage.air.follow(weatherAt(clock.steps, total), rain, nowMs / 1000);
       water.follow(nowMs / 1000);
       return clock.steps;
     },

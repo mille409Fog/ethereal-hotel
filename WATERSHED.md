@@ -3,7 +3,7 @@
 The second spectacle on this site, after `/murmuration`, and meant to be much larger. This is the
 whole plan: what the piece is, the decisions already taken and why, what has landed, and the
 phases still to do, each with a Definition of Done so that one instance can build a phase and
-another can verify it. The simulation runs and the land it makes is drawn with its water on it, lit by a fixed sun; the air and the direction are not.
+another can verify it. The simulation runs, and the land it makes is drawn with its water on it, under a sky, in haze and mist, standing in a deck of cloud, with the rain falling; the direction is not built, so the weather follows the rain and the sun stands still.
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -182,7 +182,10 @@ src/app/watershed/
     water-calibration.ts                  how deep water is before it is drawn, and its look (leaf)
     water-shaders.ts                      the water's two shaders, built on the ground's chunks (leaf)
     water-mesh.ts                         the ground's vertices and that material as a mesh
-  air/             sky function, fog, cloud shadow, rain, calibration
+  air/                                                                                    (built)
+    air-calibration.ts                    the sky, the sun through the air, haze, mist, deck, clouds, rain (leaf)
+    air-shaders.ts                        the one sky, the fog, the dome, the deck, the rain's streaks (leaf)
+    air.ts         rain-pass.ts           the dome, the deck and the air's shared uniforms; the rain's post pass
   direction/       direction.ts (the curves), camera-path.ts, calibration
   stored/          stored-land.ts         decode the committed land into the same textures
 scripts/
@@ -345,9 +348,8 @@ running through them. The reasoning is in the headers of the files under `land/`
   needs. The second replaced reading the nearest cell, which shades a smooth slope in stripes.
 - **Baselines.** The shared three.js chunk is 597.81 kB and the route's own is 35.91 kB. The
   build's total-scripts warning (1.75 MB) is over by 27.66 kB; this phase added about 11 of it.
-- **Two stand-ins**: the three flat lights in `land-calibration.ts`, which the sky function
-  replaces, and the plants' nearness to water, which is the depth of water on the cell itself
-  until the light pass writes humidity.
+- **Two stand-ins**, both gone with the air: the three flat lights in `land-calibration.ts`, and
+  the plants' nearness to water, which was the depth of water on the cell itself.
 
 **The water** (2026-11-13). The simulation's water is drawn where the simulation has it: a second
 mesh on the land's own vertices, lifted to the water's level, coloured by its depth over the bed
@@ -387,50 +389,76 @@ falling. The reasoning is in the headers of the files under `water/` and of `lan
   **The reading from CI is still owed**, as it was for the land.
 - **Baselines.** The shared three.js chunk is 597.81 kB, unchanged, and the route's own is
   44.94 kB. The build's total-scripts warning (1.75 MB) is over by 36.69 kB; this phase added 9.
-- **Three stand-ins**: the sky the water reflects is the land's two flat lights
-  (`reflected()` in `water-shaders.ts`), a lake reflects no mountain, and the ripples run on the
-  frame's clock, so they move when the storm is over and will move when it is paused. The phase
-  that directs the storm owns the last.
+- **Three stand-ins**: the sky the water reflects was the land's two flat lights, which went with
+  the air; a lake reflects no mountain; and the ripples run on the frame's clock, so they move
+  when the storm is over and will move when it is paused. The phase that directs the storm owns
+  the last.
+
+**The air** (2026-11-14). The land stands under a sky and in its weather: overcast and raining
+through the storm, clear when the rain stops. One GLSL function draws the dome, is what the
+water reflects, is the colour the fog scatters, and lights the ground; haze thickens toward the
+ground and in the storm; mist lies where the light pass finds the ground humid; the block's walls
+go down into a deck of cloud; clouds overhead cast shadows; rain falls across the screen. The
+reasoning is in the headers of the files under `air/`.
+
+- **The Definition of Done.** `docs/images/watershed-storm.webp` and
+  `docs/images/watershed-golden.webp` are the two frames, the same seed and the same 1,500 steps
+  on a 256 grid, the storm's still raining and the golden hour's drained.
+  `docs/images/watershed-bare.webp` is the golden hour's land and sun with no air at all, and
+  beside the golden frame it is the argument. They are drawn by `verify:watershed`; its header
+  has the three commands. `air.spec.ts` asserts the sky's source is in the dome's, the deck's,
+  the land's and the water's shaders exactly once each.
+- **The frames are the verifier's, not the route's**, and so have no bloom, grade or grain, a
+  sun put low by hand (`GOLDEN_ELEVATION`) and a camera put low by hand (`--view low`). The route
+  can show neither until the storm is directed. The route itself was run on this box's card
+  through a whole storm: overcast and raining to the end of the rain, then clear.
+- **The gate.** The light pass's humidity is held to the water's rule: none on a land with no
+  water, and on the gate's land with only its 27 pools left, humid on 290 cells and on none out
+  of reach of a pool. With 0.05 added to the shader's humidity it failed on all three counts.
+  The dome, the deck and the rain are compiled on every run.
+- **Two looks went wrong first, both in humidity, and both were the mist.** Each cell's wetness
+  taken straight made a drained hillside's film count; the square root of the mean turned the
+  first look to land on a pool from nothing into a fifth. Either one laid the mist across the
+  high ground in hard-edged patches. Wetness is eased now and humidity is the plain mean;
+  `--set key=value` on the verifier's picture is how they were found, one term at a time.
+- **The clouds stand 4,500 m up, above the land by more than its relief**, and a spec holds it.
+  At 2,600 m, just over the peaks, a low sun cast every few metres of height to somewhere else.
+- **Frame time, on a real GPU.** 16.7 ms from the first step to after the last on the 1,024
+  grid, the storm on pace, and the only console error the known 404.
+- **Frame time, on SwiftShader**, which this phase made the dearest yet. Back to back with the
+  commit before it, timed alone at 512 in the rain: the land from 146 ms to 292, the water from
+  128 to 275, and the deck 151, the dome 31 and the rain 33 on top. The route's storm frame there
+  went from about 690 ms to 840; it still settles and runs. Branching on the weather and on each
+  fog layer is exact and changed nothing there, because a software rasteriser runs both sides;
+  `air-shaders.ts` has the readings. **The reading from CI is still owed.**
+- **Baselines.** The shared three.js chunk is 597.83 kB and the route's own is 59.45 kB. The
+  build's total-scripts warning (1.75 MB) is over by 51.22 kB; this phase added 14.5.
+- **The grade, the bloom and the grain were looked at with all of this running and left as they
+  were.** The bloom catches the sun's disc and its glints and nothing else, and what the grade
+  should do is a choice about the hero frame, whose sun, camera and weather do not exist until
+  the storm is directed. That item moved to the look phase rather than being decided blind.
+- **Four stand-ins**: the weather is `1 − rain` (`weatherAt` in `sim/storm.ts`), so the cloud
+  breaks the instant the rain stops; the golden sun and the low view live in the verifier; the
+  deck is shaded as a surface, so a low sun barely lights its top, where real cloud scatters it;
+  and the mist is taken to lie along the whole ray as it does at the point drawn, which holds
+  from the storm's vantage and is generous from a low one.
 
 ## The phases
 
-### Phase 0 — the air
-
-1. `air/sky`: one GLSL function, `skyRadiance(direction, sun, weather)`: overcast grey-blue at
-   `weather = 0`, a clear gradient with horizon warmth and a sun disc at 1. Used by the dome,
-   by the water's reflection, where it replaces `reflected()` in `water-shaders.ts`, and by the fog below. The land's three flat lights in
-   `land-calibration.ts` (sun, sky, ground) are what it replaces there. Export it as a string and interpolate it into
-   each shader; `water-shaders.ts` is a leaf, so it takes the string as an argument, as it takes the ground's chunks.
-2. Aerial perspective in the land and water shaders: exponential height fog integrated
-   analytically along the view ray, inscattering `skyRadiance` toward the sun.
-3. Mist: the light pass's third channel is humidity, a wide blur of water depth; the pass writes
-   0 there today. The land's plants should then read it for nearness to water, in place of the
-   depth of the water standing on the cell itself. Fog density
-   rises with it below a ceiling above the local surface, so mist lies in the valleys the water
-   cut and follows the rivers.
-4. The fog deck: a noise-surfaced layer below the block's rim, lit by the same sun, which is
-   what the skirts descend into. `skirtFloor` is where they end, 450 m below base level, which
-   is where the stack of beds does; the deck has to lie above that.
-5. Cloud shadows: scrolling noise projected along the sun's direction, multiplying direct light
-   only, fading out as `weather` falls (under overcast there is no direct light to shadow).
-6. Rain: a post pass of slanted streaks whose density is the current rain value, and nothing
-   else. No lightning; it would be the only effect here that shows no state.
-7. Bloom, grade and grain tuned with everything above running.
-
-**DoD.** Two committed frames in `docs/images/`, storm and golden hour, from the same land. The
-second, set beside a frame of the same land drawn without the air, is the argument for the phase. The three users of the sky agree:
-a spec asserts the function's source appears in all three shaders.
-
-### Phase 1 — the storm
+### Phase 0 — the storm
 
 One clock for everything, in `direction/direction.ts`, as pure functions of storm progress `p`
 in [0, 1] and of seconds since the storm ended, `e`.
 
 1. `rainAt(p)`, replacing the on-off stand-in of that name in `sim/storm.ts`: rises quickly, holds, and is zero from about 0.85 so the last steps drain the
    land and the rivers settle to their base flow instead of stopping mid-flood.
-2. `weatherAt(p, e)`, `sunAt(p, e)`: overcast through the storm; the cloud breaks over the first
-   seconds of `e` and the sun is low and warm. The sun is moved with the light pass's `sunTo`,
-   which is what makes the light be worked out again; the mesh reads the same vector.
+2. `weatherAt(p, e)`, replacing the stand-in of that name in `sim/storm.ts`, which is `1 − rain`
+   and breaks the cloud the instant the rain stops; and `sunAt(p, e)`: overcast through the
+   storm; the cloud breaks over the first seconds of `e` and the sun is low and warm. The sun is
+   moved with the light pass's `sunTo`, which is what makes the light be worked out again; the
+   pass marches along the air's own vector, which the dome, the deck and both meshes read, so
+   the sky and the shadows move together. The verifier's `GOLDEN_ELEVATION` and `--view low` are
+   where the golden frame put the sun and the camera by hand; retire both for these curves.
 3. `greeningAt(e)`: the plants are already in the land's shader, multiplied by its `greening`
    uniform, which is 0. This raises it after the light has come.
 4. `cameraAt(p, e)` in `camera-path.ts`: a high three-quarter view on a very slow arc during the
@@ -451,7 +479,7 @@ in [0, 1] and of seconds since the storm ended, `e`.
 and ends on the hero shot. `?seed=` reproduces a land on the same machine. Specs hold the
 curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p = 1`.
 
-### Phase 2 — the stored land
+### Phase 1 — the stored land
 
 1. `scripts/watershed-land.mjs`: pure pack and unpack. A 1024×512 RGB image: left half carries
    the cut as sixteen bits across R and G and water depth in B; right half carries regolith in R
@@ -480,7 +508,7 @@ curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p 
 `sim-support` forced false it shows the pass over the stored land and says so. Changing any
 erosion constant makes `--check` fail until the land is rebuilt.
 
-### Phase 3 — the look
+### Phase 2 — the look
 
 Tuning, with the whole instrument running. This is a phase and not an afterthought because it
 is where the piece becomes beautiful or does not, and because colour decisions made before the
@@ -490,15 +518,21 @@ air existed were made blind.
    slump that cliffs shed scree, a storm long enough to cut and short enough to watch. Re-run
    the model's specs and the parity script after every change; rebuild the stored land at the end.
 2. The hero frame: sun azimuth and elevation, fog density, mist ceiling, bloom threshold, grade.
-   Compose it for a 16:10 crop, because that is the shape of the project card.
+   Compose it for a 16:10 crop, because that is the shape of the project card. Bloom, grade and
+   grain were left untouched when the air landed, for want of a hero frame to set them against;
+   they are this item's. So are the air's numbers (`air-calibration.ts`), and two things in its
+   shading that are crude on purpose: the deck is shaded as a surface, so a low sun barely lights
+   its top, and one stream through a valley makes little mist (`humidityDepth`, `mistDensity`).
 3. Try six seeds. A hero that only works for one seed is a painting.
 4. Tiers: confirm the lowest tier holds its frame rate on a phone and still reads as the same
-   place.
+   place. The air doubled the land's and the water's cost on the software rasteriser, where
+   branching saves nothing; if the lowest tier is short, less arithmetic in `fogged` and in the
+   sky is where to look first.
 
 **DoD.** Hero frames for six seeds, kept out of the repo, all acceptable. Frame times for each
 tier recorded in the tier calibration file.
 
-### Phase 4 — the wiring
+### Phase 3 — the wiring
 
 Everything a route needs to exist on this site. Each line is a place that fails a gate, or
 degrades silently, if skipped.
@@ -543,7 +577,7 @@ route's card, and every gate is green in CI, not only here.
 - **Record frame time at the end of every phase**, from this box and from the CI log. A jump is
   a regression in a shader, not a slow afternoon.
 - **Watch the `any` budget on the first build of every phase.** Do not raise it without a number.
-- **Do not tune before Phase 3.** Phases 0 and 1 build the instrument; make each one correct and
+- **Do not tune before Phase 2.** Phases 0 and 1 build the instrument; make each one correct and
   legible and move on.
 - **Do not loosen the parity tolerance or the conservation bound to get a phase through.** If
   one moves, find out which pass moved it.

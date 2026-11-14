@@ -28,7 +28,7 @@ import {
 export const LIGHT_PASS = 'light';
 
 export interface ILightPass {
-  /** sun shadow in red, sky occlusion in green. one texture for the pass's whole life */
+  /** sun shadow in red, sky occlusion in green, humidity in blue. one texture for the pass's whole life */
   readonly texture: THREE.Texture;
   /** toward the sun. the mesh reads this same vector, so the light and the shading cannot disagree about it */
   readonly sun: THREE.Vector3;
@@ -43,11 +43,16 @@ export interface ILightPass {
   dispose(): void;
 }
 
+/**
+ * `sun` is the vector the pass marches along and `sunTo` moves. hand it the air's (`air/air.ts`), and the sky
+ * and the shadows are of one sun; left out, the pass makes its own, where the calibration puts it
+ */
 export function createLightPass(
   renderer: THREE.WebGLRenderer,
   sim: ISimDriver,
   constants: IErosionConstants,
-  look: ILandLook = LAND_LOOK
+  look: ILandLook = LAND_LOOK,
+  sun: THREE.Vector3 = new THREE.Vector3(...sunDirection(look))
 ): ILightPass {
   const target = new THREE.WebGLRenderTarget(sim.size, sim.size, {
     type: THREE.UnsignedByteType,
@@ -58,7 +63,6 @@ export function createLightPass(
     stencilBuffer: false,
     generateMipmaps: false,
   });
-  const sun = new THREE.Vector3(...sunDirection(look));
 
   const uniforms: Record<string, THREE.IUniform> = {
     land: { value: sim.current('land') },

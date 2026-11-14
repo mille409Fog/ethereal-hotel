@@ -36,6 +36,18 @@ import {
   stableTimestep,
 } from '../src/app/watershed/model/erosion-calibration.ts';
 import { createFields } from '../src/app/watershed/model/fields.ts';
+import { AIR_LOOK } from '../src/app/watershed/air/air-calibration.ts';
+import {
+  AIR_COLOURS,
+  AIR_FLOATS,
+  AIR_FRAGMENT,
+  DECK_FRAGMENT,
+  DOME_FRAGMENT,
+  RAIN_COUNTS,
+  RAIN_FLOATS,
+  RAIN_STREAKS,
+  SKY_RADIANCE,
+} from '../src/app/watershed/air/air-shaders.ts';
 import { LAND_LOOK, sunDirection } from '../src/app/watershed/land/land-calibration.ts';
 import { landGeometry } from '../src/app/watershed/land/land-geometry.ts';
 import { ripplePhase, WATER_LOOK } from '../src/app/watershed/water/water-calibration.ts';
@@ -46,12 +58,12 @@ import {
   waterVertex,
 } from '../src/app/watershed/water/water-shaders.ts';
 import {
-  GROUND_FRAGMENT,
   GROUND_VERTEX,
+  groundFragment,
   LAND_COLOURS,
   LAND_FLOATS,
-  LAND_FRAGMENT,
   LAND_VERTEX,
+  landFragment,
   LIGHT_COUNTS,
   LIGHT_FLOATS,
   LIGHT_FRAGMENT,
@@ -137,9 +149,24 @@ describe('the watershed model, imported by Node', () => {
     for (const key of LAND_COLOURS) {
       assert.equal(LAND_LOOK[key].length, 3, `${key} is not a colour of the land's look`);
     }
-    for (const source of [LIGHT_FRAGMENT, LAND_VERTEX, LAND_FRAGMENT]) {
+    for (const source of [LIGHT_FRAGMENT, LAND_VERTEX, landFragment(AIR_FRAGMENT)]) {
       assert.match(source, /void main\(\)/);
     }
+  });
+
+  // And the air's: the ground's chunk is built round it, so the land and the water arrive with the sky in them.
+  test('imports the air, whose one sky every drawing shader carries', () => {
+    for (const key of [...AIR_FLOATS, ...RAIN_FLOATS, ...RAIN_COUNTS]) {
+      assert.equal(typeof AIR_LOOK[key], 'number', `${key} is not a number of the air's look`);
+    }
+    for (const key of AIR_COLOURS) {
+      assert.equal(AIR_LOOK[key].length, 3, `${key} is not a colour of the air's look`);
+    }
+    const ground = groundFragment(AIR_FRAGMENT);
+    for (const source of [DOME_FRAGMENT, DECK_FRAGMENT, ground, waterFragment(ground)]) {
+      assert.equal(source.split(SKY_RADIANCE).length, 2, 'the sky is not in it exactly once');
+    }
+    assert.match(RAIN_STREAKS, /float streaksAt\(/);
   });
 
   // And the water's: its shaders are handed the ground's chunks, because a leaf cannot import them.
@@ -151,9 +178,10 @@ describe('the watershed model, imported by Node', () => {
       assert.equal(WATER_LOOK[key].length, 3, `${key} is not a colour of the water's look`);
     }
     const vertex = waterVertex(GROUND_VERTEX);
-    const fragment = waterFragment(GROUND_FRAGMENT);
+    const ground = groundFragment(AIR_FRAGMENT);
+    const fragment = waterFragment(ground);
     assert.ok(vertex.startsWith(GROUND_VERTEX));
-    assert.ok(fragment.startsWith(GROUND_FRAGMENT));
+    assert.ok(fragment.startsWith(ground));
     for (const source of [vertex, fragment]) {
       assert.equal(source.match(/void main\(\)/g)?.length, 1);
     }

@@ -1,8 +1,8 @@
 /**
  * `/watershed`: a landscape eroded by a simulation while the visitor watches. `WATERSHED.md` is the plan.
  *
- * this is the stage and nothing on it yet. the component assembles a renderer, the post-processing chain, a
- * camera and a placeholder slab, finds out whether the device can run the simulation, chooses a quality tier from
+ * the component assembles a renderer, the post-processing chain, a camera, and the stage with its air and its
+ * placeholder slab, finds out whether the device can run the simulation, chooses a quality tier from
  * measured frame time, and says on screen which of the three land states the visitor is in. it owns nothing clever:
  * each of those is a module with its own spec, and this file is the order they happen in.
  *
@@ -103,7 +103,7 @@ export class Watershed implements AfterViewInit, OnDestroy {
       const composer = this.createComposer(renderer);
       this.composer = composer;
       const resolution = new THREE.Vector2(canvas.clientWidth, canvas.clientHeight);
-      orchestratePasses(composer, stage.scene, camera, resolution);
+      orchestratePasses(composer, stage.scene, camera, resolution, stage.air.rain);
       this.resizeObserver = followCanvasSize(canvas, renderer, composer, camera, reducedMotion);
       canvas.addEventListener('webglcontextlost', this.onContextLost);
 

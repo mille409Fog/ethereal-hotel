@@ -25,6 +25,11 @@
  *   device can render to it and filter it, including the ones that cannot render to float and will be shown a
  *   stored land.
  * - **beyond the block there is nothing**, so a ray that leaves it is in the clear and a horizon stops at the edge.
+ * - **blue is humidity**: the mean, over a disc `humidityRadius` across, of how near each cell's water comes to
+ *   `humidityDepth`. it is what the mist lies by and what the plants grow by. it is the simulation's water and
+ *   nothing else, blurred, and it changes when the land does, which is when this pass runs. a film counts for
+ *   almost nothing, so a drained hillside is dry; one stream through the disc is only a little damp, and how
+ *   much mist that makes is `mistDensity`, which is the look phase's.
  *
  * ## the mesh fetches in the vertex shader and nowhere else
  *
@@ -33,20 +38,28 @@
  * two textures: the beds, and the light.
  *
  * - **"darker and bluer in shade" is not a term.** shade is where the sun's warm light is gone and the sky's blue
- *   light is what is left, so the colour of shade is the sum on the last line and nothing has to tint it.
+ *   light is what is left, so the colour of shade is the sum on the last line and nothing has to tint it. both
+ *   lights are the air's (`air/air-shaders.ts`): the sun through the air it crosses, and the sky function. so a
+ *   storm's ground is lit by a grey sky alone, and a low sun's by gold, and neither is a colour chosen here.
  * - **the walls are a section.** a fragment of a wall takes its bed from its own height, so the beds run straight
  *   through the block's cut sides, and anything above the column's bedrock is drawn as the loose ground it is.
  *   a wall's normal comes from the screen-space derivatives of its position, which are exact on a flat triangle.
  * - **nothing is green yet.** the plants are written, and multiplied by `greening`, which is 0 until the phase
- *   that directs the storm brings them in after the light.
+ *   that directs the storm brings them in after the light. they grow thickest where the light pass finds the
+ *   ground humid, which is near water and not only on it.
+ * - **the air is applied once, last.** `ground()` is the light the ground sends; what reaches the eye is that
+ *   through the haze, the mist and the deck, which the main does with `fogged`. the water does the same to its
+ *   own colour, so the bed under water is not fogged twice.
  * - **the fine relief fades before it can shimmer.** it is noise a few metres across, there for a camera near the
  *   ground; from the high vantage a pixel covers more than a lump of it, and it is faded out by the pixel's own
  *   footprint so it never aliases.
  *
  * ## the ground is two chunks, because the water draws it too
  *
- * `GROUND_VERTEX` reads the column under a vertex and `GROUND_FRAGMENT` turns it into the light the ground sends
- * to the eye, as the function `ground()`. the land's two shaders are those chunks and a `main` each. the water's
+ * `GROUND_VERTEX` reads the column under a vertex and `groundFragment` turns it into the light the ground sends
+ * to the eye, as the function `ground()`. the fragment's chunk is built round the air's (`AIR_FRAGMENT`, handed
+ * in, since a leaf cannot import it), so whatever is built on the ground has the one sky in it, once. the land's
+ * two shaders are those chunks and a `main` each. the water's
  * are the same chunks and a `main` of its own (`water/water-shaders.ts`, which is handed them as arguments): the
  * bed seen through water is `ground()` called again on the same vertices, so it is the land's colour to the bit
  * and a shoreline has no seam to hide. a change to how the ground looks is made here once and both follow.
@@ -95,8 +108,14 @@ export const LIGHT_FLOATS: ReadonlyArray<LookKeys<number>> = [
   'shadowBias',
   'occlusionRadius',
   'occlusionStrength',
+  'humidityRadius',
+  'humidityDepth',
 ];
-export const LIGHT_COUNTS: ReadonlyArray<LookKeys<number>> = ['shadowSteps', 'occlusionSteps'];
+export const LIGHT_COUNTS: ReadonlyArray<LookKeys<number>> = [
+  'shadowSteps',
+  'occlusionSteps',
+  'humiditySteps',
+];
 export const LIGHT_EROSION: ReadonlyArray<keyof IErosionConstants> = ['extent'];
 
 /** what the mesh reads: floats, colours, and the model's constants */
@@ -114,7 +133,6 @@ export const LAND_FLOATS: ReadonlyArray<LookKeys<number>> = [
   'greenSlopeFrom',
   'greenSlopeTo',
   'greenSoil',
-  'greenWater',
   'greenDry',
   'rockGrain',
   'looseGrain',
@@ -127,9 +145,6 @@ export const LAND_FLOATS: ReadonlyArray<LookKeys<number>> = [
   'wetShine',
 ];
 export const LAND_COLOURS: ReadonlyArray<LookKeys<Colour>> = [
-  'sunColour',
-  'skyColour',
-  'groundColour',
   'screeColour',
   'siltColour',
   'snowColour',
@@ -144,7 +159,7 @@ export const LAND_EROSION: ReadonlyArray<keyof IErosionConstants> = [
 const declare = (kind: string, names: readonly string[]): string =>
   names.map((name) => `uniform ${kind} ${name};`).join('\n');
 
-/** drawn with the simulation's one triangle; writes sun shadow in red and sky occlusion in green */
+/** drawn with the simulation's one triangle; writes sun shadow in red, sky occlusion in green, humidity in blue */
 export const LIGHT_FRAGMENT = /* glsl */ `
 precision highp float;
 precision highp int;
@@ -234,12 +249,38 @@ float skyAt(ivec2 p, float here, float cell) {
   return 1.0 - (occlusionStrength * hidden) / 8.0;
 }
 
+// how near a cell's water comes to humidityDepth, in [0, 1]. eased, not straight: it starts flat, so the film a
+// drained hillside keeps counts for almost nothing and a channel for nearly all it holds
+float wetnessOf(ivec2 p) {
+  return smoothstep(0.0, humidityDepth, texelFetch(land, p, 0).b);
+}
+
+// how humid the ground round p is: the wetness of the cells over a disc, averaged. each ring of looks is turned
+// half a step from the last, so the looks do not line up into spokes. it is the plain mean: its square root was
+// tried, to make one stream a damp valley, and it turned the first look to land on water from nothing into a
+// fifth, so the mist lay in patches with hard edges wherever a look crossed a pool
+float humidityAt(ivec2 p, float cell) {
+  float wet = wetnessOf(p);
+  float looks = 1.0;
+  for (int ring = 1; ring <= humiditySteps; ring++) {
+    float reach = (humidityRadius * float(ring)) / float(humiditySteps);
+    for (int d = 0; d < 8; d++) {
+      float angle = (float(d) + 0.5 * float(ring)) * 0.7853982;
+      ivec2 q = p + ivec2(round((vec2(cos(angle), sin(angle)) * reach) / cell));
+      if (onBlock(q)) {
+        wet += wetnessOf(q);
+        looks += 1.0;
+      }
+    }
+  }
+  return wet / looks;
+}
+
 void main() {
   ivec2 p = ivec2(gl_FragCoord.xy);
   float cell = extent / float(textureSize(land, 0).x);
   float here = surfaceOf(p);
-  // blue is kept for the air: humidity, which the mist will read
-  result = vec4(sunAt(p, here, cell), skyAt(p, here, cell), 0.0, 1.0);
+  result = vec4(sunAt(p, here, cell), skyAt(p, here, cell), humidityAt(p, cell), 1.0);
 }`;
 
 /** the names the two halves of the mesh's shader share */
@@ -336,18 +377,11 @@ void main() {
   gl_Position = projectionMatrix * viewMatrix * vec4(vWorld, 1.0);
 }`;
 
-/**
- * the head of any fragment shader that draws the ground or looks through something at it: everything
- * `ground()` reads, and `ground()`. it declares no output; the main that follows does
- */
-export const GROUND_FRAGMENT = /* glsl */ `
-precision highp float;
-precision highp int;
-precision highp sampler2D;
-
+/** everything `ground()` reads, and `ground()`: the ground's chunk without the air it is built round */
+const GROUND = /* glsl */ `
 // strata: red, green, blue, erodibility; one row, lowest bed first
 uniform sampler2D strata;
-// light: sun shadow, sky occlusion
+// light: sun shadow, sky occlusion, humidity
 uniform sampler2D light;
 uniform vec3 cameraPosition;
 uniform vec3 ${SUN_DIRECTION};
@@ -402,7 +436,12 @@ float glintOf(vec3 normal, vec3 toEye, float gloss) {
   return ((gloss + 8.0) / 8.0) * pow(max(dot(normal, between), 0.0), gloss);
 }
 
-// the light the ground under this fragment sends toward the eye
+// how humid the ground under this fragment is, from the light pass; a wall is a section, and dry
+float humidity() {
+  return vSkirt > 0.5 ? 0.0 : texture(light, vUv).b;
+}
+
+// the light the ground under this fragment sends toward the eye, before the air between them
 vec3 ground() {
   bool wall = vSkirt > 0.5;
   vec3 normal = normalize(vNormal);
@@ -422,7 +461,8 @@ vec3 ground() {
   } else {
     albedo = mix(bedAt(vLayers.x + vLayers.y), loose, cover);
 
-    float banks = clamp(vLayers.a / greenWater, 0.0, 1.0);
+    // plants grow thickest by water, which is where the light pass finds the ground humid
+    float banks = humidity();
     float green =
       ${GREENING} *
       (1.0 - smoothstep(greenSlopeFrom, greenSlopeTo, steep)) *
@@ -450,18 +490,32 @@ vec3 ground() {
     albedo *= mix(1.0, wetDarken, wet);
   }
 
+  // the sun through the air and past the clouds overhead, and the sky; both are the air's
   float facing = max(dot(normal, ${SUN_DIRECTION}), 0.0);
-  vec3 sun = sunColour * facing * lit.x;
-  vec3 sky = mix(groundColour, skyColour, normal.y * 0.5 + 0.5) * lit.y;
+  float shade = cloudShade(vWorld, ${SUN_DIRECTION}, weather);
+  vec3 sun = sunLight(${SUN_DIRECTION}, weather) * facing * lit.x * shade;
+  vec3 sky = skyLight(normal, ${SUN_DIRECTION}, weather) * lit.y;
   vec3 toEye = normalize(cameraPosition - vWorld);
   vec3 shine = sun * glintOf(normal, toEye, wetGloss) * wetShine * wet;
   return albedo * (sun + sky) + shine;
 }
 `;
 
-export const LAND_FRAGMENT = /* glsl */ `${GROUND_FRAGMENT}
+/**
+ * the head of any fragment shader that draws the ground or looks through something at it: the air, everything
+ * `ground()` reads, and `ground()`. it declares no output; the main that follows does. `air` is
+ * `AIR_FRAGMENT` from `air/air-shaders.ts`
+ */
+export const groundFragment = (air: string): string => /* glsl */ `
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+${air}${GROUND}`;
+
+/** `air` is `AIR_FRAGMENT` from `air/air-shaders.ts` */
+export const landFragment = (air: string): string => /* glsl */ `${groundFragment(air)}
 out vec4 result;
 
 void main() {
-  result = vec4(ground(), 1.0);
+  result = vec4(fogged(ground(), cameraPosition, vWorld, ${SUN_DIRECTION}, weather, humidity()), 1.0);
 }`;
