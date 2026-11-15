@@ -1,4 +1,10 @@
-import { MEASURE_WINDOW_MS, QUALITY_TIERS, SLOW_FRAME_MS, STALL_MS } from './quality-calibration';
+import {
+  MEASURE_WINDOW_MS,
+  QUALITY_TIERS,
+  SLOW_FRAME_MS,
+  SLOW_STALLS,
+  STALL_MS,
+} from './quality-calibration';
 import { IQualityMeter, measure, UNMEASURED } from './quality-meter';
 
 const TIERS = QUALITY_TIERS.length;
@@ -81,6 +87,33 @@ describe('quality meter', () => {
     expect(afterStall.tier).toBe(0);
     expect(afterStall.settled).toBe(false);
     expect(afterStall.frames).toBe(0);
+  });
+
+  it('takes a run of long frames for a slow device, not a hidden tab, and steps down to the lowest and settles', () => {
+    const long = STALL_MS * 2;
+    let meter = run(UNMEASURED, 0, long, long * (SLOW_STALLS - 2));
+
+    expect(meter.tier).toBe(0);
+
+    meter = run(meter, long * (SLOW_STALLS - 1), long, long * SLOW_STALLS * TIERS);
+
+    expect(meter.tier).toBe(TIERS - 1);
+    expect(meter.settled).toBe(true);
+  });
+
+  it('forgives long gaps once an ordinary frame comes between them', () => {
+    let meter = run(UNMEASURED, 0, FAST_MS, FAST_MS * 3);
+    let now = FAST_MS * 3;
+    for (let k = 0; k < SLOW_STALLS * 3; k++) {
+      // a long gap, then an ordinary frame: a tab hidden and shown, over and over
+      now += STALL_MS * 2;
+      meter = measure(meter, now, TIERS);
+      now += FAST_MS;
+      meter = measure(meter, now, TIERS);
+    }
+
+    expect(meter.tier).toBe(0);
+    expect(meter.stalls).toBe(0);
   });
 
   it('draws the line at the calibrated frame time', () => {

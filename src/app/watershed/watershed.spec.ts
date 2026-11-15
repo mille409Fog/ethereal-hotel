@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -17,13 +18,16 @@ import { landLine } from './land-state';
 import { EROSION } from './model/erosion-calibration';
 import { IQualityTier, MEASURE_WINDOW_MS, QUALITY_TIERS } from './quality/quality-calibration';
 import { HERO_SEED, Random, SEED_SPAN } from './seed/seed';
-import { REPORT_EVERY, STORM_SECONDS } from './sim/sim-calibration';
+import { heroSeconds } from './direction/camera-path';
+import { DIRECTION } from './direction/direction-calibration';
+import { ANNOUNCE_EVERY_MS, REPORT_EVERY, STORM_SECONDS } from './sim/sim-calibration';
 import { SIM_PASSES, SIM_STATES } from './sim/sim-shaders';
 import { PROBE_VALUE } from './sim/sim-support';
 import { verticalFovFor } from './stage/stage-camera';
 import { CAMERA_POSITION, LAND_EXTENT } from './stage/stage-calibration';
 import { Watershed } from './watershed';
 import {
+  WATERSHED_ADDRESS,
   WATERSHED_COMPOSER,
   WATERSHED_RANDOM,
   WATERSHED_RENDERER,
@@ -37,8 +41,6 @@ const SPEC_TIERS: readonly IQualityTier[] = QUALITY_TIERS.map((tier) => ({
   ...tier,
   grid: SPEC_GRID,
 }));
-
-const NO_PROGRESS = { steps: 0, total: EROSION.stormSteps };
 
 /**
  * jsdom has no WebGL, so a real `WebGLRenderer` always throws here and only the
@@ -61,6 +63,13 @@ class FakeRenderer {
   public readonly readRenderTargetPixels = vi.fn(
     (_target: unknown, _x: number, _y: number, _w: number, _h: number, buffer: Float32Array) => {
       buffer.fill(rendererState.probeReads);
+    }
+  );
+  /** the readout's sums: cut, regolith, water, suspended, over every cell */
+  public readonly readRenderTargetPixelsAsync = vi.fn(
+    (_target: unknown, _x: number, _y: number, _w: number, _h: number, buffer: Float32Array) => {
+      buffer.set([3, 1.5, 7, 0.5]);
+      return Promise.resolve(buffer);
     }
   );
 }
@@ -92,6 +101,8 @@ const rendererState = {
   probeReads: PROBE_VALUE,
   instances: [] as FakeRenderer[],
   composers: [] as FakeComposer[],
+  /** every seed the component wrote into the address */
+  addressed: [] as number[],
 };
 
 const fakeRendererFactory = (): THREE.WebGLRenderer => {
@@ -123,7 +134,10 @@ interface IMountOptions {
 }
 
 const mount = async (options: IMountOptions = {}): Promise<ComponentFixture<Watershed>> => {
-  const providers: object[] = [{ provide: WATERSHED_TIERS, useValue: SPEC_TIERS }];
+  const providers: object[] = [
+    { provide: WATERSHED_TIERS, useValue: SPEC_TIERS },
+    { provide: WATERSHED_ADDRESS, useValue: (seed: number) => rendererState.addressed.push(seed) },
+  ];
   if (options.random) {
     providers.push({ provide: WATERSHED_RANDOM, useValue: options.random });
   }
@@ -208,6 +222,27 @@ const canvasOf = (fixture: ComponentFixture<Watershed>): HTMLCanvasElement => {
 const landLineOf = (fixture: ComponentFixture<Watershed>): string | undefined =>
   hostOf(fixture).querySelector('.land-line')?.textContent?.trim();
 
+/** the readout's rows as label and value, as a visitor reads them */
+const readoutOf = (fixture: ComponentFixture<Watershed>): string[][] =>
+  Array.from(hostOf(fixture).querySelectorAll('.readout-row')).map((row) => [
+    row.querySelector('dt')?.textContent?.trim() ?? '',
+    row.querySelector('dd')?.textContent?.trim() ?? '',
+  ]);
+
+/** the button whose words are these */
+const buttonOf = (fixture: ComponentFixture<Watershed>, words: string): HTMLButtonElement => {
+  const button = Array.from(hostOf(fixture).querySelectorAll('button')).find(
+    (candidate) => candidate.textContent?.trim() === words
+  );
+  if (!button) {
+    throw new Error(`no button says "${words}"`);
+  }
+  return button;
+};
+
+/** lets every read already handed back be taken in */
+const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
 /** Feeds the loop frames `frameMs` apart for `forMs`. */
 const runFrames = (loop: FrameCallback, frameMs: number, forMs: number): void => {
   for (let now = 1_000; now <= 1_000 + forMs; now += frameMs) {
@@ -221,6 +256,7 @@ describe('Watershed', () => {
     rendererState.probeReads = PROBE_VALUE;
     rendererState.instances = [];
     rendererState.composers = [];
+    rendererState.addressed = [];
     stubReducedMotion(false);
   });
 
@@ -295,6 +331,16 @@ describe('Watershed', () => {
     it("reads the seed from the address's query string", () => {
       expect(TestBed.inject(WATERSHED_SEARCH)).toBe(window.location.search);
     });
+
+    it('writes a seed into the address in place, keeping the path and naming one seed only', () => {
+      const location = TestBed.inject(Location);
+      location.replaceState('/watershed', 'seed=7');
+      const write = TestBed.inject(WATERSHED_ADDRESS);
+      write(42);
+      write(43);
+
+      expect(location.path()).toBe('/watershed?seed=43');
+    });
   });
 
   describe('the land it says it shows', () => {
@@ -303,7 +349,7 @@ describe('Watershed', () => {
 
       expect(canvasOf(fixture).hidden).toBe(false);
       expect(canvasOf(fixture).dataset['land']).toBe('simulating');
-      expect(landLineOf(fixture)).toBe(landLine('simulating', 77, NO_PROGRESS));
+      expect(landLineOf(fixture)).toBe(landLine('simulating', 77));
     });
 
     it('draws a seed from chance when the address names none', async () => {
@@ -323,7 +369,8 @@ describe('Watershed', () => {
       const fixture = await mount({ search: '?seed=77' });
 
       expect(canvasOf(fixture).dataset['land']).toBe('stored');
-      expect(landLineOf(fixture)).toBe(landLine('stored', HERO_SEED, NO_PROGRESS));
+      expect(landLineOf(fixture)).toBe(landLine('stored', HERO_SEED));
+      expect(hostOf(fixture).querySelector('.controls')).toBeNull();
     });
 
     it('holds still under reduced motion, under the stored seed, even on a device that could simulate', async () => {
@@ -331,7 +378,8 @@ describe('Watershed', () => {
       const fixture = await mount({ search: '?seed=77' });
 
       expect(canvasOf(fixture).dataset['land']).toBe('still');
-      expect(landLineOf(fixture)).toBe(landLine('still', HERO_SEED, NO_PROGRESS));
+      expect(landLineOf(fixture)).toBe(landLine('still', HERO_SEED));
+      expect(hostOf(fixture).querySelector('.controls')).toBeNull();
     });
 
     it('probes the device before building the chain on its renderer', async () => {
@@ -572,19 +620,234 @@ describe('Watershed', () => {
       expect(land?.material.uniforms['land'].value).toBe(written[written.length - 1].texture);
     });
 
-    it('tells the state line how far it has got, in round numbers', async () => {
+    it('tells the readout how far it has got, in round numbers, and what the land read back says', async () => {
       const fixture = await mount({ search: '?seed=77' });
       const renderer = onlyRenderer();
 
       settleAndRun(renderer, 2_000);
+      await settle();
+      // a read is taken in by the frame after it comes back, so one more, at the same instant: no step
+      const last = 1_000 + Math.floor((MEASURE_WINDOW_MS + 16 + 2_000) / 16) * 16;
+      frameLoopOf(renderer)(last);
       await fixture.whenStable();
       const steps = simulated(renderer) / SIM_PASSES.length;
       const said = steps - (steps % REPORT_EVERY);
 
       expect(said).toBeGreaterThan(0);
-      expect(landLineOf(fixture)).toBe(
-        landLine('simulating', 77, { steps: said, total: EROSION.stormSteps })
-      );
+      expect(renderer.readRenderTargetPixelsAsync).toHaveBeenCalled();
+      // the fake's sums on a grid of eight across eight kilometres, a square kilometre a cell
+      expect(readoutOf(fixture)).toEqual([
+        ['Step', `${said.toLocaleString('en-US')} of 12,000`],
+        ['Rain', expect.stringMatching(/^\d\.\d\d m$/)],
+        ['Rock moved', '3 million m³'],
+        ['Carried off', '1 million m³'],
+      ]);
+      expect(landLineOf(fixture)).toBe(landLine('simulating', 77));
+    });
+
+    it('shows no readout until a storm has run', async () => {
+      const fixture = await mount();
+
+      expect(readoutOf(fixture)).toEqual([]);
+    });
+
+    it('stands the camera where the path says, turning slowly off the vantage as the storm runs', async () => {
+      await mount();
+      const camera = cameraOf(onlyComposer());
+
+      settleAndRun(onlyRenderer(), 3_000);
+      const [x, y, z] = CAMERA_POSITION;
+
+      expect(camera.position.toArray()).not.toEqual([x, y, z]);
+      expect(camera.position.y).toBe(y);
+      expect(Math.hypot(camera.position.x, camera.position.z)).toBeCloseTo(Math.hypot(x, z), 6);
+    });
+
+    describe('Pause', () => {
+      it('holds the storm: no step runs, the button says how to go on, and the line says it is paused', async () => {
+        const fixture = await mount({ search: '?seed=77' });
+        const renderer = onlyRenderer();
+        const loop = frameLoopOf(renderer);
+        settleAndRun(renderer, 200);
+        buttonOf(fixture, 'Pause').click();
+        await fixture.whenStable();
+        const steps = simulated(renderer);
+        for (let now = 3_000; now < 5_000; now += 16) {
+          loop(now);
+        }
+
+        expect(simulated(renderer)).toBe(steps);
+        expect(landLineOf(fixture)).toBe(landLine('simulating', 77, true));
+
+        buttonOf(fixture, 'Resume').click();
+        await fixture.whenStable();
+        loop(5_016);
+        loop(5_032);
+
+        expect(simulated(renderer)).toBeGreaterThan(steps);
+        expect(landLineOf(fixture)).toBe(landLine('simulating', 77));
+      });
+    });
+
+    describe('New land', () => {
+      it('draws a seed, writes it into the address, and starts a storm on it in place of the old', async () => {
+        let draws = 0;
+        const fixture = await mount({ search: '?seed=77', random: () => [0.5, 0.25][draws++] });
+        const renderer = onlyRenderer();
+        const loop = frameLoopOf(renderer);
+        settleAndRun(renderer, 2_000);
+        const before = landIn(onlyComposer());
+        const freed = vi.spyOn((before as Land).material, 'dispose');
+
+        buttonOf(fixture, 'New land').click();
+        await fixture.whenStable();
+
+        expect(rendererState.addressed).toEqual([SEED_SPAN / 2]);
+        expect(landLineOf(fixture)).toBe(landLine('simulating', SEED_SPAN / 2));
+        expect(freed).toHaveBeenCalledTimes(1);
+        expect(landIn(onlyComposer())).toBeUndefined();
+        expect(readoutOf(fixture)).toEqual([]);
+
+        loop(4_000);
+        await fixture.whenStable();
+
+        expect(landIn(onlyComposer())).toBeDefined();
+        expect(landIn(onlyComposer())).not.toBe(before);
+        expect(readoutOf(fixture)[0]).toEqual(['Step', '0 of 12,000']);
+      });
+
+      it('unpauses: a new land is a new storm, and a storm starts by raining', async () => {
+        const fixture = await mount();
+        settleAndRun(onlyRenderer(), 200);
+        buttonOf(fixture, 'Pause').click();
+        await fixture.whenStable();
+        buttonOf(fixture, 'New land').click();
+        await fixture.whenStable();
+
+        expect(buttonOf(fixture, 'Pause')).toBeInstanceOf(HTMLButtonElement);
+      });
+    });
+
+    describe('the status a screen reader hears', () => {
+      it('is a status region and not the readout, and says nothing until the first digest is due', async () => {
+        const fixture = await mount();
+        settleAndRun(onlyRenderer(), 2_000);
+        await fixture.whenStable();
+        const status = hostOf(fixture).querySelectorAll('[role="status"]');
+
+        expect(status).toHaveLength(1);
+        expect(status[0].textContent?.trim()).toBe('');
+        expect(hostOf(fixture).querySelector('[aria-live]')).toBeNull();
+        expect(hostOf(fixture).querySelector('.readout')?.getAttribute('role')).toBeNull();
+      });
+
+      it('is the readout in one sentence, rewritten every thirty seconds and no oftener', async () => {
+        const intervals = vi.spyOn(window, 'setInterval');
+        const fixture = await mount();
+        settleAndRun(onlyRenderer(), 2_000);
+        await settle();
+        frameLoopOf(onlyRenderer())(10_000);
+        await fixture.whenStable();
+        const [announce, every] =
+          intervals.mock.calls.find(([, ms]) => ms === ANNOUNCE_EVERY_MS) ?? [];
+        (announce as () => void)();
+        await fixture.whenStable();
+
+        expect(every).toBe(ANNOUNCE_EVERY_MS);
+        expect(hostOf(fixture).querySelector('[role="status"]')?.textContent?.trim()).toMatch(
+          /^Step [\d,]+ of 12,000; \d\.\d\d m of rain\. 3 million m³ of rock moved, 1 million m³ carried off the block\.$/
+        );
+      });
+
+      it('is never started where no storm runs', async () => {
+        stubReducedMotion(true);
+        const intervals = vi.spyOn(window, 'setInterval');
+        await mount();
+
+        expect(intervals.mock.calls.some(([, ms]) => ms === ANNOUNCE_EVERY_MS)).toBe(false);
+      });
+    });
+
+    describe('turning the orbit', () => {
+      const arrow = (key: string): KeyboardEvent => {
+        const event = new KeyboardEvent('keydown', { key, cancelable: true });
+        document.dispatchEvent(event);
+        return event;
+      };
+
+      /** the whole storm, the descent and the settle, at the pace a device that keeps up runs them */
+      const runToTheOrbit = (renderer: FakeRenderer): number => {
+        const loop = frameLoopOf(renderer);
+        const until = 1_000 + (STORM_SECONDS + heroSeconds(DIRECTION) + 3) * 1_000;
+        let now = 1_000;
+        for (; now <= until; now += 16) {
+          loop(now);
+        }
+        return now;
+      };
+
+      it('is left to the page while the storm runs and the camera is on its path', async () => {
+        await mount();
+        settleAndRun(onlyRenderer(), 2_000);
+        const camera = cameraOf(onlyComposer());
+        const before = camera.position.clone();
+
+        expect(arrow('ArrowLeft').defaultPrevented).toBe(false);
+        expect(camera.position.equals(before)).toBe(true);
+      });
+
+      it('turns with the arrow keys once the orbit has begun, at once and on a paused orbit too', async () => {
+        const fixture = await mount();
+        runToTheOrbit(onlyRenderer());
+        buttonOf(fixture, 'Pause').click();
+        await fixture.whenStable();
+        const camera = cameraOf(onlyComposer());
+        const before = camera.position.clone();
+
+        expect(arrow('ArrowLeft').defaultPrevented).toBe(true);
+        expect(camera.position.equals(before)).toBe(false);
+        expect(camera.position.length()).toBeCloseTo(before.length(), 0);
+        expect(arrow('a').defaultPrevented).toBe(false);
+
+        const lifted = camera.position.y;
+        arrow('ArrowUp');
+
+        expect(camera.position.y).toBeGreaterThan(lifted);
+      });
+
+      it('turns with a drag once the orbit has begun, and stops when the pointer lets go', async () => {
+        const fixture = await mount();
+        runToTheOrbit(onlyRenderer());
+        buttonOf(fixture, 'Pause').click();
+        await fixture.whenStable();
+        const camera = cameraOf(onlyComposer());
+        const canvas = canvasOf(fixture);
+        const at = (type: string, x: number): void => {
+          canvas.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: 100 }));
+        };
+        const before = camera.position.clone();
+
+        at('pointerdown', 100);
+        at('pointermove', 160);
+        const turned = camera.position.clone();
+        at('pointerup', 160);
+        at('pointermove', 400);
+
+        expect(turned.equals(before)).toBe(false);
+        expect(camera.position.equals(turned)).toBe(true);
+      });
+
+      it('ignores a drag begun before the orbit', async () => {
+        const fixture = await mount();
+        settleAndRun(onlyRenderer(), 2_000);
+        const camera = cameraOf(onlyComposer());
+        const canvas = canvasOf(fixture);
+        const before = camera.position.clone();
+        canvas.dispatchEvent(new MouseEvent('pointerdown', { clientX: 0 }));
+        canvas.dispatchEvent(new MouseEvent('pointermove', { clientX: 300 }));
+
+        expect(camera.position.equals(before)).toBe(true);
+      });
     });
 
     it('simulates nothing on a device that cannot render to float', async () => {

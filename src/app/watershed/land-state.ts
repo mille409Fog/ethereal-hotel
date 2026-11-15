@@ -4,17 +4,11 @@
  * earlier by the same model and is shown as one still frame, or made earlier and shown moving.
  *
  * the sentences say what is true today and no more. a storm really is simulated on a device that can, so that
- * one says so and counts its steps. no land is stored yet, so the other two say what the device was found able
+ * one says so, and says when the visitor has paused it. no land is stored yet, so the other two say what the device was found able
  * to do, and the phase that stores a land rewrites them to say what is shown.
  */
 
 export type LandState = 'simulating' | 'still' | 'stored';
-
-/** how far a storm has got, in steps of the model */
-export interface IProgress {
-  readonly steps: number;
-  readonly total: number;
-}
 
 /**
  * reduced motion wins over capability: a visitor who asked for stillness gets the still frame whether or not
@@ -38,16 +32,14 @@ export const LAND_SENTENCES: Readonly<Record<LandState, string>> = {
   stored: 'This device cannot render to 32-bit float, so it is shown a stored land.',
 };
 
-const COUNT = new Intl.NumberFormat('en-US');
+/** said after the sentence while a running storm is held */
+export const PAUSED = 'Paused.';
 
 /**
- * the whole line: the state's sentence, how far the storm has got when there is one, and the seed. steps, not
- * years or hours: the model has no calendar, and a count of its own steps is the one measure of progress it has.
+ * the whole line: the state's sentence, whether a storm is paused, and the seed. how far the storm has got is the
+ * readout's to say (`direction/readout.ts`), in steps and not in years or hours: the model has no calendar.
  */
-export function landLine(state: LandState, seed: number, progress: IProgress): string {
-  const storm =
-    state === 'simulating'
-      ? ` Step ${COUNT.format(progress.steps)} of ${COUNT.format(progress.total)}.`
-      : '';
-  return `${LAND_SENTENCES[state]}${storm} Seed ${seed}.`;
+export function landLine(state: LandState, seed: number, paused = false): string {
+  const held = state === 'simulating' && paused ? ` ${PAUSED}` : '';
+  return `${LAND_SENTENCES[state]}${held} Seed ${seed}.`;
 }

@@ -37,8 +37,11 @@ export const LAND_MESH = 'WatershedLand';
 
 export interface ILandMesh {
   readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.RawShaderMaterial>;
-  /** points the mesh at the texture the land is in now, and tells it how hard it is raining, in [0, 1] */
-  follow(rain: number): void;
+  /**
+   * points the mesh at the texture the land is in now, and tells it how hard it is raining and how much of the
+   * plants to draw, each in [0, 1]
+   */
+  follow(rain: number, greening: number): void;
   dispose(): void;
 }
 
@@ -62,7 +65,7 @@ export function createLandMesh(
     strata: { value: sim.strata },
     light: { value: light.texture },
     [SUN_DIRECTION]: { value: light.sun },
-    // nothing grows until the storm has passed; the phase that directs the storm raises this
+    // nothing grows until the storm has passed and the light has come: `greeningAt` in `direction/direction.ts`
     [GREENING]: { value: 0 },
     [RAIN]: { value: 0 },
   };
@@ -88,9 +91,10 @@ export function createLandMesh(
 
   return {
     mesh,
-    follow(rain: number): void {
+    follow(rain: number, greening: number): void {
       material.uniforms['land'].value = sim.current('land');
       material.uniforms[RAIN].value = rain;
+      material.uniforms[GREENING].value = greening;
     },
     dispose(): void {
       geometry.dispose();

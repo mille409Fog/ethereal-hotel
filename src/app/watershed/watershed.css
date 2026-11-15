@@ -1,29 +1,84 @@
 /* the whole viewport: the route has no nav or footer, so nothing else competes for it.
-   dvh follows a phone's address bar as it slides away; vh is the fallback for browsers without it */
+   dvh follows a phone's address bar as it slides away; vh is the fallback for browsers without it.
+   touch-action: none so a drag turns the orbit rather than scrolling a page that does not scroll */
 canvas {
   display: block;
   width: 100%;
   height: 100vh;
   height: 100dvh;
+  touch-action: none;
 }
 
 /* The canvas is spectacle; everything else on the route is interface and is
    dressed as the rest of the site is. An opaque surface behind the words,
    because the picture under them moves and no contrast could be promised
    against it: the same reasoning as the floating home link. */
-.land-line {
+.panel {
   position: fixed;
   left: 1rem;
   bottom: 1rem;
   z-index: 1;
   max-width: calc(100vw - 2rem);
-  margin: 0;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   line-height: 1.4;
   color: var(--color-text-secondary);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+}
+
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* The accent is on what can be clicked and nowhere else; hover is a colour
+   change and nothing moves. */
+.control {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-accent-text);
+  background: transparent;
+  border: 1px solid var(--color-accent);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.control:hover {
+  color: var(--color-accent-hover);
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--color-accent-text);
+  outline-offset: 2px;
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.readout-row {
+  display: contents;
+}
+
+.readout dt {
+  color: var(--color-text-secondary);
+}
+
+/* Figures that change every second sit still if every digit is as wide. */
+.readout dd {
+  margin: 0;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.land-line {
+  margin: 0;
 }
 
 /* Clear of the home link, which floats over the top-left corner. */

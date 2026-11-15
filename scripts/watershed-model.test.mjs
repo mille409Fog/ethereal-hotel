@@ -68,6 +68,11 @@ import {
   LIGHT_FLOATS,
   LIGHT_FRAGMENT,
 } from '../src/app/watershed/land/land-shaders.ts';
+import { cameraAt, heroSeconds, UNSTEERED } from '../src/app/watershed/direction/camera-path.ts';
+import { DIRECTION } from '../src/app/watershed/direction/direction-calibration.ts';
+import { greeningAt, rainAt, sunAt, weatherAt } from '../src/app/watershed/direction/direction.ts';
+import { BLOCK_SUM_FRAGMENT, QUARTER } from '../src/app/watershed/direction/readback-shaders.ts';
+import { coarsen, findValley, waterSurface } from '../src/app/watershed/direction/valley.ts';
 import { raiseLand } from '../src/app/watershed/model/land.ts';
 import { createNoise } from '../src/app/watershed/model/noise.ts';
 import { step } from '../src/app/watershed/model/step.ts';
@@ -186,6 +191,29 @@ describe('the watershed model, imported by Node', () => {
       assert.equal(source.match(/void main\(\)/g)?.length, 1);
     }
     assert.ok(Math.abs(ripplePhase(WATER_LOOK.ripplePeriod * 2.5, WATER_LOOK) - 0.5) < 1e-12);
+  });
+
+  // And the storm's direction: the verifying script draws the golden hour from the curves and stands its
+  // camera where the route's would be, over the valley it finds on the land it eroded.
+  test('imports the storm’s clock, its camera, its valley and its read-back, and finds a valley on a land', () => {
+    assert.equal(rainAt(1, DIRECTION), 0);
+    assert.equal(weatherAt(1, DIRECTION.clearSeconds, DIRECTION), 1);
+    assert.equal(greeningAt(DIRECTION.greenTo, DIRECTION), 1);
+    assert.ok(Math.abs(Math.hypot(...sunAt(1, 0, DIRECTION)) - 1) < 1e-12);
+    assert.match(BLOCK_SUM_FRAGMENT, /void main\(\)/);
+
+    const { fields, terrain } = run(10);
+    const quarterSize = SIZE / QUARTER;
+    const quarter = new Float32Array(quarterSize * quarterSize * 4);
+    const surface = waterSurface(quarter, coarsen(terrain.uplift, SIZE, QUARTER));
+    const valley = findValley(surface, quarterSize, CONSTANTS.extent, DIRECTION);
+    assert.ok(fields.size === SIZE);
+    assert.ok(valley && valley.points.length > 1, 'no valley on the raised land');
+
+    const vantage = { eye: [0, 5000, 9000], target: [0, 0, 0] };
+    const hero = cameraAt(1, heroSeconds(DIRECTION), valley, UNSTEERED, vantage, DIRECTION);
+    const distance = Math.hypot(...hero.eye.map((v, k) => v - hero.target[k]));
+    assert.ok(Math.abs(distance - DIRECTION.heroDistance) < 1e-6);
   });
 
   test('exposes the stability limit a script needs to refuse a bad timestep', () => {

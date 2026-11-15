@@ -44,9 +44,9 @@
  * - **the walls are a section.** a fragment of a wall takes its bed from its own height, so the beds run straight
  *   through the block's cut sides, and anything above the column's bedrock is drawn as the loose ground it is.
  *   a wall's normal comes from the screen-space derivatives of its position, which are exact on a flat triangle.
- * - **nothing is green yet.** the plants are written, and multiplied by `greening`, which is 0 until the phase
- *   that directs the storm brings them in after the light. they grow thickest where the light pass finds the
- *   ground humid, which is near water and not only on it.
+ * - **nothing is green until the light has come.** the plants are multiplied by `greening`, which is 0 through
+ *   the storm and rises after it, once the cloud has broken (`greeningAt` in `direction/direction.ts`). they grow
+ *   thickest where the light pass finds the ground humid, which is near water and not only on it.
  * - **the air is applied once, last.** `ground()` is the light the ground sends; what reaches the eye is that
  *   through the haze, the mist and the deck, which the main does with `fogged`. the water does the same to its
  *   own colour, so the bed under water is not fogged twice.

@@ -41,7 +41,15 @@
       "Bash(grep -n \"WATERSHED.md\\\\`\" CLAUDE.md)",
       "Bash(cd \"/c/Users/Jacob Miller/forest/ethereal-hotel/src/app/watershed\" && cat land/land-calibration.spec.ts water/water-calibration.spec.ts land/land-mesh.spec.ts water/water-mesh.spec.ts && wc -l */*.spec.ts *.spec.ts ../../../scripts/watershed-model.test.mjs)",
       "Read(//c/Users/scripts/**)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4173/watershed)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4173/watershed)",
+      "Bash(xargs wc -l)",
+      "Bash(node -e \"console.log\\(require\\('three/package.json'\\).version\\)\")",
+      "Bash(sort -k5 -n)",
+      "Read(//c/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/18bb6c6a-c518-4e88-bc37-57654ff0535a/scratchpad/**)",
+      "Bash(node run-storm.cjs \"C:/Users/Jacob Miller/forest/ethereal-hotel\" 4127 hero-a.png)",
+      "Bash(node run-storm.cjs \"C:/Users/Jacob Miller/forest/ethereal-hotel\" 4127 hero-b.png)",
+      "Bash(node -e \"for \\(const f of ['WATERSHED.md']\\) console.log\\(f, \\(require\\('fs'\\).readFileSync\\(f\\).length/1024\\).toFixed\\(2\\)\\)\")",
+      "Bash(grep -n \"WATERSHED.md\\\\` *|\" CLAUDE.md)"
     ]
   }
 }

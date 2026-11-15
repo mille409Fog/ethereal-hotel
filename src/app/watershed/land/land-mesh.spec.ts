@@ -69,7 +69,7 @@ describe('land mesh', () => {
     const { sim, land } = build();
     const elsewhere = new THREE.Texture();
     vi.spyOn(sim, 'current').mockReturnValue(elsewhere);
-    land.follow(0);
+    land.follow(0, 0);
 
     expect(land.mesh.material.uniforms['land'].value).toBe(elsewhere);
   });
@@ -79,9 +79,16 @@ describe('land mesh', () => {
 
     expect(land.mesh.material.uniforms[RAIN].value).toBe(0);
 
-    land.follow(1);
+    land.follow(1, 0);
 
     expect(land.mesh.material.uniforms[RAIN].value).toBe(1);
+  });
+
+  it('draws as much of the plants as it is told to', () => {
+    const { land } = build();
+    land.follow(0, 0.4);
+
+    expect(land.mesh.material.uniforms[GREENING].value).toBe(0.4);
   });
 
   it('is lit and fogged under the air’s own weather, the same object and not a copy', () => {
@@ -90,7 +97,7 @@ describe('land mesh', () => {
     expect(land.mesh.material.uniforms[WEATHER]).toBe(air.uniforms[WEATHER]);
   });
 
-  it('grows nothing yet', () => {
+  it('grows nothing until it is told to', () => {
     expect(build().land.mesh.material.uniforms[GREENING].value).toBe(0);
   });
 

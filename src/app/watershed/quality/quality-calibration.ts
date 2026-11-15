@@ -38,3 +38,9 @@ export const SLOW_FRAME_MS = 1000 / 45;
  * blaming the tier for it.
  */
 export const STALL_MS = 250;
+
+/**
+ * this many such gaps in a row, with no ordinary frame between, are not a hidden tab but a device that slow, and
+ * are judged as a slow window would be. a tab comes back once; a slow device never stops taking this long.
+ */
+export const SLOW_STALLS = 4;

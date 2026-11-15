@@ -61,7 +61,7 @@ describe('water mesh', () => {
     const { sim, land, water } = build();
     const elsewhere = new THREE.Texture();
     vi.spyOn(sim, 'current').mockReturnValue(elsewhere);
-    land.follow(0.5);
+    land.follow(0.5, 0);
 
     expect(water.mesh.material.uniforms['land'].value).toBe(elsewhere);
     expect(water.mesh.material.uniforms[RAIN].value).toBe(0.5);

@@ -1,5 +1,6 @@
 /** injection tokens used by the watershed component, each a seam a spec replaces */
-import { InjectionToken } from '@angular/core';
+import { Location } from '@angular/common';
+import { inject, InjectionToken } from '@angular/core';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { COMPOSER_SAMPLES } from './composer/composer-calibration';
@@ -25,6 +26,20 @@ export const WATERSHED_RANDOM = new InjectionToken<Random>('WATERSHED_RANDOM', {
 /** the address's query string, which may name a seed */
 export const WATERSHED_SEARCH = new InjectionToken<string>('WATERSHED_SEARCH', {
   factory: () => window.location.search,
+});
+
+/**
+ * writes a seed into the address, replacing the entry rather than adding one, so the address bar always names the
+ * land on screen and the back button still leaves the route. a spec records the seed instead
+ */
+export const WATERSHED_ADDRESS = new InjectionToken<(seed: number) => void>('WATERSHED_ADDRESS', {
+  factory: () => {
+    const location = inject(Location);
+    return (seed: number): void => {
+      const [path] = location.path().split('?');
+      location.replaceState(path, `seed=${seed}`);
+    };
+  },
 });
 
 /** jsdom has no WebGL, so a spec supplies a renderer that records what was asked of it */

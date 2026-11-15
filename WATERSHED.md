@@ -3,7 +3,7 @@
 The second spectacle on this site, after `/murmuration`, and meant to be much larger. This is the
 whole plan: what the piece is, the decisions already taken and why, what has landed, and the
 phases still to do, each with a Definition of Done so that one instance can build a phase and
-another can verify it. The simulation runs, and the land it makes is drawn with its water on it, under a sky, in haze and mist, standing in a deck of cloud, with the rain falling; the direction is not built, so the weather follows the rain and the sun stands still.
+another can verify it. The simulation runs, and the land it makes is drawn with its water on it, under a sky, in haze and mist, standing in a deck of cloud, with the rain falling; and the storm is directed, on one clock, from the first drop to the hero shot and the orbit after it. No land is stored yet, so a device that cannot simulate is shown the slab, and nothing has been tuned for its look.
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -186,7 +186,14 @@ src/app/watershed/
     air-calibration.ts                    the sky, the sun through the air, haze, mist, deck, clouds, rain (leaf)
     air-shaders.ts                        the one sky, the fog, the dome, the deck, the rain's streaks (leaf)
     air.ts         rain-pass.ts           the dome, the deck and the air's shared uniforms; the rain's post pass
-  direction/       direction.ts (the curves), camera-path.ts, calibration
+  direction/                                                                              (built)
+    direction-calibration.ts              when it rains, clears, greens; where the sun and the camera go (leaf)
+    direction.ts                          rainAt, weatherAt, sunAt, greeningAt: pure in p and e (leaf)
+    camera-path.ts                        cameraAt: the storm's arc, the descent, the pass, the orbit (leaf)
+    valley.ts                             the main valley, by priority-flood and flow accumulation (leaf)
+    readback-shaders.ts                   one block-sum shader: the totals and the quarter copy (leaf)
+    readback.ts                           runs it, and reads the totals back without a stall
+    readout.ts                            the readout's rows and its one-sentence digest
   stored/          stored-land.ts         decode the committed land into the same textures
 scripts/
   watershed-model.test.mjs                Node imports the model: the leaf rule's gate    (built)
@@ -443,43 +450,68 @@ reasoning is in the headers of the files under `air/`.
   and the mist is taken to lie along the whole ray as it does at the point drawn, which holds
   from the storm's vantage and is generous from a low one.
 
+**The storm** (2026-11-15). The storm is directed, on one clock: it rains, drains under its own
+cloud, clears, the sun comes down to golden hour and the plants come in, while the camera turns
+slowly over the block, comes down to the main valley's mouth, flies up it, and rises out to the
+hero shot and an orbit the visitor can turn. **New land** and **Pause** are buttons; the readout
+shows steps, rain, rock moved and rock carried off. The reasoning is in the headers of the files
+under `direction/` and of `sim/storm.ts`.
+
+- **The Definition of Done.** On this box's RTX 3070 Ti, headless Chromium through D3D11, a run
+  needed no input: the 12,000 steps took 89.6 s and 89.9 s on two runs, at 16.7 ms a frame
+  (median and 95th percentile alike) through the storm and after it, and ended in the orbit on
+  the hero shot. The meter settled on the top tier there, a 1,024 grid, not the middle tier the
+  DoD named: nothing outside the meter chooses a tier and it only steps down, so the tier
+  measured is the dearer one. Seed 4127 run twice read the same rain (1.36 m), rock moved
+  (1.71 billion m³) and carried off (918 million m³), which is as fine as the readout's three
+  figures can see. `direction.spec.ts` holds every curve's ends and monotonic sections, and
+  `rainAt(1, …)` exactly 0.
+- **Two clocks and no third.** `p` is steps over steps, so the rain, the arc of the high view and
+  the pause all follow the simulation, not the wall. `e` is the piece's own seconds since the
+  last step, at most `CLOCK_STALL_MS` a frame and none while paused, and the air's clock and the
+  ripples run on the same seconds now: a paused piece is still, which retires the water's third
+  stand-in.
+- **The cloud breaks after the storm, not when the rain stops.** The rain is zero from
+  `p = 0.85`, so the last steps drain; the weather stays overcast until `p = 1` and clears over
+  `clearSeconds`. The land is seen draining under the cloud that rained on it, and the clearing
+  is an event of its own rather than the rain's last step.
+- **The sun stands still except while the cloud breaks.** Through the storm it is the land's
+  calibrated sun, so the storm costs no extra light pass; over `sunSeconds` it comes down to 10°
+  and stops. The light pass runs every frame for those seconds and never again, and
+  `storm.spec.ts` holds both halves.
+- **The valley is a priority-flood.** A quarter copy of `land` is read once, synchronously, in the
+  frame the last step runs; the uplift is averaged to the same grid on the CPU. Barnes, Lehman
+  and Mulla's priority-flood routes every cell to an edge over pits and lakes, flow accumulation
+  is drainage area, and the stem is traced up from the mouth with the most behind it. It is a
+  leaf, so `verify:watershed --view hero` finds the valley on its own land the way the route does.
+- **The readout is measured, except the rain.** One block-sum shader serves both reads: summed to
+  one texel and read with three.js's asynchronous read once a second, only after a step has run;
+  and the quarter copy. Rock moved is the summed cut and rock carried off is what was cut and is
+  not on the block, which every pass's conservation makes exact. The rain is counted step by
+  step on the CPU. `verify:watershed` compiles the shader and holds both reads to sums taken in
+  Node; with the weight off by a tenth of a percent it failed in every layer.
+- **The verifier places nothing by hand.** `GOLDEN_ELEVATION` and `--view low` are gone:
+  `--air golden` is the curves at the hero moment and `--view hero` stands where `cameraAt` does,
+  and `--out` rains each step by `rainAt`. `docs/images/watershed-golden.webp` and
+  `watershed-bare.webp` were drawn from the low view before this and were not redrawn; the look
+  phase redraws its hero frames anyway.
+- **The meter counts a run of long frames as slowness.** Four gaps over `STALL_MS` with no
+  ordinary frame between them step the tier down, or settle the lowest, so a device slower than
+  four frames a second now starts a storm. The other two questions left to this phase, measuring
+  with the simulation running and a restart on a smaller grid, were decided against for now: the
+  clock forgives the steps a frame cannot run, so a tier too dear makes a slower storm and the
+  same land, not a broken one. It moved to the look phase's tier item with a phone to measure on.
+- **Baselines.** The shared three.js chunk is 597.83 kB, unchanged, and the route's own is
+  74.68 kB. The build's total-scripts warning (1.75 MB) is over by 66.49 kB; this phase added 15.3.
+- **Frame time on SwiftShader, and from CI, were not taken.** Both are still owed, as they were
+  for the land, the water and the air.
+- **Two stand-ins**: the hero shot's composition, which looks nearly into the sun and leaves the
+  land a silhouette; and a land with no valley, which only a grid too small for one has, where
+  the camera skips the pass and reaches the hero shot at the same moment.
+
 ## The phases
 
-### Phase 0 — the storm
-
-One clock for everything, in `direction/direction.ts`, as pure functions of storm progress `p`
-in [0, 1] and of seconds since the storm ended, `e`.
-
-1. `rainAt(p)`, replacing the on-off stand-in of that name in `sim/storm.ts`: rises quickly, holds, and is zero from about 0.85 so the last steps drain the
-   land and the rivers settle to their base flow instead of stopping mid-flood.
-2. `weatherAt(p, e)`, replacing the stand-in of that name in `sim/storm.ts`, which is `1 − rain`
-   and breaks the cloud the instant the rain stops; and `sunAt(p, e)`: overcast through the
-   storm; the cloud breaks over the first seconds of `e` and the sun is low and warm. The sun is
-   moved with the light pass's `sunTo`, which is what makes the light be worked out again; the
-   pass marches along the air's own vector, which the dome, the deck and both meshes read, so
-   the sky and the shadows move together. The verifier's `GOLDEN_ELEVATION` and `--view low` are
-   where the golden frame put the sun and the camera by hand; retire both for these curves.
-3. `greeningAt(e)`: the plants are already in the land's shader, multiplied by its `greening`
-   uniform, which is 0. This raises it after the light has come.
-4. `cameraAt(p, e)` in `camera-path.ts`: a high three-quarter view on a very slow arc during the
-   storm, where the making is legible; then a descent to a low pass up the main valley. The
-   main valley is found, not assumed: read back a quarter-resolution copy of `land` once when
-   the storm ends and take the path of greatest accumulated water. After the pass the camera
-   settles into a slow orbit and the visitor may drag or use the arrow keys, within bounds.
-5. Controls, as real DOM over the canvas: **New land** (a new seed, the URL updated, the storm
-   restarted) and **Pause**. A paused storm runs no step, so it already draws no light pass;
-   `storm.spec.ts` holds that. Both keyboard-operable, both obeying the interface rules: no
-   `text-shadow`, no hover motion, the accent only where something can be clicked.
-6. The readout and the state line. Totals come from a reduction of `land` to one texel, read
-   back once a second with the asynchronous read so it never stalls a frame. Step count, rain as
-   a depth, rock moved and rock exported as volumes. It is not a live region; a throttled
-   `role="status"` summary carries it, for the reason ARCHITECTURE gives for the dashboard.
-
-**DoD.** A full run needs no input, takes about ninety seconds on the middle tier on this box,
-and ends on the hero shot. `?seed=` reproduces a land on the same machine. Specs hold the
-curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p = 1`.
-
-### Phase 1 — the stored land
+### Phase 0 — the stored land
 
 1. `scripts/watershed-land.mjs`: pure pack and unpack. A 1024×512 RGB image: left half carries
    the cut as sixteen bits across R and G and water depth in B; right half carries regolith in R
@@ -500,7 +532,9 @@ curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p 
    for nothing else, and the light's own target is eight-bit, so a stored land that offers the
    same four is lit and drawn by the code that draws a live one. The stage's slab and its two
    lights go when this does.
-5. The `still` state: stored land, `p = 1`, `e` at the hero moment, one frame.
+5. The `still` state: stored land, `p = 1`, `e` at the hero moment (`heroSeconds` in
+   `direction/camera-path.ts`), one frame. The valley the camera's pass needs comes from the
+   stored land the way the live one's does: `valley.ts` takes a quarter copy and the uplift.
 6. The `stored` state: stored land, the camera pass and the orbit, no storm, no **New land**.
 7. The state line's three sentences.
 
@@ -508,7 +542,7 @@ curves' end points and monotonic sections, and that `rainAt` is exactly 0 at `p 
 `sim-support` forced false it shows the pass over the stored land and says so. Changing any
 erosion constant makes `--check` fail until the land is rebuilt.
 
-### Phase 2 — the look
+### Phase 1 — the look
 
 Tuning, with the whole instrument running. This is a phase and not an afterthought because it
 is where the piece becomes beautiful or does not, and because colour decisions made before the
@@ -518,6 +552,11 @@ air existed were made blind.
    slump that cliffs shed scree, a storm long enough to cut and short enough to watch. Re-run
    the model's specs and the parity script after every change; rebuild the stored land at the end.
 2. The hero frame: sun azimuth and elevation, fog density, mist ceiling, bloom threshold, grade.
+   The sun and the camera are curves now, so this is `direction-calibration.ts` (the golden sun,
+   `heroSunOffset`, `heroDistance`, `heroElevation`, the pass's numbers); as directed, the hero
+   shot looks nearly into the sun and the land is a dark silhouette, so start there.
+   `npm run verify:watershed -- --out hero.png --air golden --view hero` draws it, and
+   `--after <seconds>` any other moment after the storm.
    Compose it for a 16:10 crop, because that is the shape of the project card. Bloom, grade and
    grain were left untouched when the air landed, for want of a hero frame to set them against;
    they are this item's. So are the air's numbers (`air-calibration.ts`), and two things in its
@@ -527,12 +566,17 @@ air existed were made blind.
 4. Tiers: confirm the lowest tier holds its frame rate on a phone and still reads as the same
    place. The air doubled the land's and the water's cost on the software rasteriser, where
    branching saves nothing; if the lowest tier is short, less arithmetic in `fogged` and in the
-   sky is where to look first.
+   sky is where to look first. Three things about tiers were left here by the storm phase: the
+   meter still measures the empty stage, so a device can settle on a grid it cannot keep up with
+   (the storm is then slower, not different); the land is raised on the main thread, a hitch on
+   the 1,024 grid at the start and at every **New land**; and `COMPOSER_SAMPLES` wants to be a
+   tier property, which the meter can now support since it steps down from frames too slow to
+   measure.
 
 **DoD.** Hero frames for six seeds, kept out of the repo, all acceptable. Frame times for each
 tier recorded in the tier calibration file.
 
-### Phase 3 — the wiring
+### Phase 2 — the wiring
 
 Everything a route needs to exist on this site. Each line is a place that fails a gate, or
 degrades silently, if skipped.
@@ -577,7 +621,7 @@ route's card, and every gate is green in CI, not only here.
 - **Record frame time at the end of every phase**, from this box and from the CI log. A jump is
   a regression in a shader, not a slow afternoon.
 - **Watch the `any` budget on the first build of every phase.** Do not raise it without a number.
-- **Do not tune before Phase 2.** Phases 0 and 1 build the instrument; make each one correct and
+- **Do not tune before Phase 1.** Phase 0 finishes the instrument; make it correct and
   legible and move on.
 - **Do not loosen the parity tolerance or the conservation bound to get a phase through.** If
   one moves, find out which pass moved it.

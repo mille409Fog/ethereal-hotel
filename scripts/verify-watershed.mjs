@@ -114,20 +114,26 @@
  * `--out` draws a land worth looking at instead of the gate's: the whole block
  * on a coarse grid, eroded by the shaders for `--steps` steps (1,500 unless
  * given, on a `--grid` of 256), from the route's own vantage, under its sky
- * and in its air. It stops raining for the last share of the steps, as the
- * storm does; `--raining` keeps it up, and the two pictures side by side are
- * the water's Definition of Done. `--air` chooses the weather, and its three
- * values are the air's:
+ * and in its air. Each step rains as the storm's curve says (`rainAt` in
+ * `direction/direction.ts`), so it stops for the last share and the land is
+ * seen drained; `--raining` holds the rain full to the end, and the two
+ * pictures side by side are the water's Definition of Done. `--air` chooses
+ * the weather, and its three values are the air's:
  *
  *     --air storm --raining   overcast, and the rain falling
- *     --air golden            the land drained, under a low sun in a clear sky
+ *     --air golden            the storm's own hour after it: the cloud broken,
+ *                             the sun low, the plants in
  *     --air bare              the same, with no air at all: no dome, haze,
  *                             mist, deck, cloud shadows or rain
  *
- * The second beside the third is the argument for the air. `--view low` draws
- * from low over the block, looking to the horizon, which is the one place the
- * sky is seen; the route's own vantage looks down past it. A name ending in
- * `.webp` is written as one; `docs/images/watershed-*.webp` were drawn so.
+ * The second beside the third is the argument for the air. The golden hour is
+ * the hero moment, `heroSeconds` after the storm, unless `--after <seconds>`
+ * names another. `--view hero` draws from where the route's camera stands at
+ * that moment (`direction/camera-path.ts`), over the valley found on this
+ * land, which is the one view with sky in it; the route's own vantage looks
+ * down past it. Neither the sun nor the camera is put anywhere by hand. A name
+ * ending in `.webp` is written as one; `docs/images/watershed-*.webp` were
+ * drawn so.
  *
  * The line it prints times the light pass, the mesh, the water and a copy of
  * the frame; `--gpu` takes those on this machine's own graphics card. It is
@@ -193,6 +199,19 @@ import {
   CAMERA_REFERENCE_ASPECT,
   CAMERA_TARGET,
 } from '../src/app/watershed/stage/stage-calibration.ts';
+import { cameraAt, heroSeconds, UNSTEERED } from '../src/app/watershed/direction/camera-path.ts';
+import { DIRECTION } from '../src/app/watershed/direction/direction-calibration.ts';
+import { greeningAt, rainAt, sunAt, weatherAt } from '../src/app/watershed/direction/direction.ts';
+import {
+  BLOCK_MOST,
+  BLOCK_SIDE,
+  BLOCK_SOURCE,
+  BLOCK_SUM_FRAGMENT,
+  BLOCK_WEIGHT,
+  QUARTER,
+  reductionSizes,
+} from '../src/app/watershed/direction/readback-shaders.ts';
+import { coarsen, findValley, waterSurface } from '../src/app/watershed/direction/valley.ts';
 import { raiseLand } from '../src/app/watershed/model/land.ts';
 import { createNoise } from '../src/app/watershed/model/noise.ts';
 import { step } from '../src/app/watershed/model/step.ts';
@@ -331,8 +350,8 @@ function simulateInPage(job) {
         for (const [key, value] of Object.entries(job.uniforms)) {
           const location = gl.getUniformLocation(program, key);
           if (location !== null) {
-            // the rain's strength is the one uniform that changes: full for the wet steps, none after
-            gl.uniform1f(location, key === job.strength && n >= job.wet ? 0 : value);
+            // the rain's strength is the one uniform that changes, step by step
+            gl.uniform1f(location, key === job.strength ? job.rains[n] : value);
           }
         }
         pass.reads.forEach((name, unit) => {
@@ -386,9 +405,9 @@ function simulateInPage(job) {
 
 /**
  * The shaders' answer, with the constants given: `steps` steps on a grid of
- * `size`, raining for the first `wet` of them.
+ * `size`, the rain at `rains[n]` on step `n`, full on every step unless given.
  */
-async function simulate(page, constants, size = SIZE, steps = STEPS, wet = steps) {
+async function simulate(page, constants, size = SIZE, steps = STEPS, rains = Array(steps).fill(1)) {
   const land = raise(size, constants);
   const uniforms = Object.fromEntries(SIM_CONSTANTS.map((key) => [key, constants[key]]));
   uniforms[SIM_STRENGTH] = 1;
@@ -397,7 +416,7 @@ async function simulate(page, constants, size = SIZE, steps = STEPS, wet = steps
     beds: STRATA_ENTRIES,
     channels: CHANNELS,
     steps,
-    wet,
+    rains,
     strength: SIM_STRENGTH,
     vertex: SIM_VERTEX,
     triangle: [...SIM_TRIANGLE],
@@ -836,7 +855,8 @@ async function draw(page, land, constants, view, image = false) {
       ...pick([...LIGHT_FLOATS, ...LAND_FLOATS], LAND_LOOK),
       ...pick(WATER_FLOATS, WATER_LOOK),
       ...pick([...AIR_FLOATS, ...RAIN_FLOATS], air),
-      [GREENING]: 0,
+      // nothing grows unless the view is of an hour after the storm, when the curve says how much
+      [GREENING]: view.greening ?? 0,
       [RAIN]: view.rain ?? 0,
       [RIPPLE]: 0.25,
       // a clear sky unless the view says otherwise: the gate's claims are about the land, under the sun
@@ -1003,16 +1023,26 @@ const ROUTE_VIEW = {
 };
 
 /**
- * Low over the block, looking across it to the horizon, with the sun off to
- * the left: where the camera's pass at golden hour will be, roughly, and the
- * one view here with sky in it. The phase that directs the storm owns the real
- * path; this is only somewhere to stand.
+ * Where the route's camera stands `e` seconds after the storm on this land,
+ * from `direction/camera-path.ts`, over the valley found on a quarter copy of
+ * the land as the route finds it: the hero shot by default, and the one view
+ * here with sky in it.
  */
-const LOW_VIEW = {
-  ...ROUTE_VIEW,
-  eye: [9500, 2300, 7000],
-  target: [-500, 300, -800],
-};
+function directedView(land, e) {
+  const { fields, terrain } = land;
+  const quarterSize = Math.floor(fields.size / QUARTER);
+  const quarter = new Float32Array(quarterSize * quarterSize * 4);
+  LAYERS.forEach((layer, channel) => {
+    coarsen(fields[layer], fields.size, QUARTER).forEach((mean, i) => {
+      quarter[i * 4 + channel] = mean;
+    });
+  });
+  const surface = waterSurface(quarter, coarsen(terrain.uplift, fields.size, QUARTER));
+  const valley = findValley(surface, quarterSize, EROSION.extent, DIRECTION);
+  const vantage = { eye: CAMERA_POSITION, target: CAMERA_TARGET };
+  const pose = cameraAt(1, e, valley, UNSTEERED, vantage, DIRECTION);
+  return { ...ROUTE_VIEW, eye: [...pose.eye], target: [...pose.target] };
+}
 
 /** Compiles the land's shaders and holds them to the claims in the header. True when something is wrong. */
 async function verifyLand(page, expected) {
@@ -1091,6 +1121,133 @@ async function verifyLand(page, expected) {
   return problems.length > 0;
 }
 
+/**
+ * Runs in the page. Compiles the read-back shader, sums `job.land` down to one
+ * texel a block at a time as the storm's readout does, and copies it at a
+ * quarter of its side as the storm does for the valley. Self-contained.
+ */
+function readbackInPage(job) {
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl2');
+  if (!gl || !gl.getExtension('EXT_color_buffer_float')) {
+    return { error: 'This Chromium cannot render to float textures.' };
+  }
+  const compile = (type, source) => {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, `#version 300 es\n${source}`);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      throw new Error(`the read-back shader did not compile:\n${gl.getShaderInfoLog(shader)}`);
+    }
+    return shader;
+  };
+  const texture = (size, data) => {
+    const made = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, made);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, size, size, 0, gl.RGBA, gl.FLOAT, data);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    return made;
+  };
+  try {
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, job.vertex));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, job.fragment));
+    gl.bindAttribLocation(program, 0, 'position');
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(`the read-back shader did not link:\n${gl.getProgramInfoLog(program)}`);
+    }
+    gl.useProgram(program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(job.triangle), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    const framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+
+    const block = (source, size, side, weight) => {
+      const target = texture(size, null);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0);
+      gl.viewport(0, 0, size, size);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, source);
+      gl.uniform1i(gl.getUniformLocation(program, job.names.source), 0);
+      gl.uniform1i(gl.getUniformLocation(program, job.names.side), side);
+      gl.uniform1f(gl.getUniformLocation(program, job.names.weight), weight);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      return target;
+    };
+    const read = (size) => {
+      const texels = new Float32Array(size * size * 4);
+      gl.readPixels(0, 0, size, size, gl.RGBA, gl.FLOAT, texels);
+      return Array.from(texels);
+    };
+
+    const land = texture(job.size, new Float32Array(job.land));
+    let source = land;
+    for (const size of job.sums) {
+      source = block(source, size, job.most, 1);
+    }
+    const sums = read(1);
+    block(land, job.quarterSize, job.quarter, 1 / (job.quarter * job.quarter));
+    const quarter = read(job.quarterSize);
+    return { sums, quarter };
+  } catch (error) {
+    return { error: String(error?.message ?? error) };
+  }
+}
+
+/**
+ * Compiles the read-back shader and holds its two reads of the reference
+ * land to the same sums taken here: the totals the readout shows, and the
+ * quarter copy the camera's valley is found on. True when something is wrong.
+ */
+async function verifyReadback(page, fields) {
+  const size = fields.size;
+  const quarterSize = Math.floor(size / QUARTER);
+  const outcome = await page.evaluate(readbackInPage, {
+    size,
+    vertex: SIM_VERTEX,
+    fragment: BLOCK_SUM_FRAGMENT,
+    triangle: [...SIM_TRIANGLE],
+    names: { source: BLOCK_SOURCE, side: BLOCK_SIDE, weight: BLOCK_WEIGHT },
+    land: Array.from(packLand(fields)),
+    sums: reductionSizes(size, BLOCK_MOST),
+    most: BLOCK_MOST,
+    quarter: QUARTER,
+    quarterSize,
+  });
+  if (outcome.error) {
+    throw new Error(outcome.error);
+  }
+  const problems = [];
+  // the sum is 32-bit on the GPU and double here; a part in a hundred thousand is far inside what the readout shows
+  const close = (a, b) => Math.abs(a - b) <= 1e-5 * Math.max(1, Math.abs(b));
+  LAYERS.forEach((layer, channel) => {
+    const cpu = fields[layer].reduce((sum, value) => sum + value, 0);
+    if (!close(outcome.sums[channel], cpu)) {
+      problems.push(`the ${layer} summed to ${outcome.sums[channel]} on the GPU and ${cpu} here.`);
+    }
+    const means = coarsen(fields[layer], size, QUARTER);
+    const worst = means.reduce(
+      (most, mean, i) => Math.max(most, Math.abs(outcome.quarter[i * 4 + channel] - mean)),
+      0
+    );
+    if (!(worst <= 1e-5 * Math.max(1, ...means.map(Math.abs)))) {
+      problems.push(`the quarter copy's ${layer} is off its block means by up to ${worst}.`);
+    }
+  });
+  console.log(
+    `  the read-back: compiled; the land summed in ${reductionSizes(size, BLOCK_MOST).length} ` +
+      `passes and copied at a quarter, both agreeing with the sums taken here`
+  );
+  for (const problem of problems) {
+    console.error(`\nThe read-back: ${problem}`);
+  }
+  return problems.length > 0;
+}
+
 /** `--name value` from the command line, or the fallback. */
 function option(name, fallback) {
   const at = process.argv.indexOf(`--${name}`);
@@ -1098,26 +1255,26 @@ function option(name, fallback) {
 }
 
 /**
- * The sun of a golden hour, degrees above the horizon, at the calibrated
- * bearing. The phase that directs the storm will own where the sun goes; until
- * then this is only where `--air golden` puts it. At 7 every lump of scree on
- * the high ground threw its own shadow and the plateau read as noise.
+ * What each `--air` draws under: the weather, the sun, the plants, and whether
+ * there is any air at all. The golden hour is the storm's own curves at `e`
+ * seconds after it (`direction/direction.ts`), the hero moment unless `--after`
+ * says otherwise; the sun and the weather are no longer put anywhere by hand.
  */
-const GOLDEN_ELEVATION = 10;
-
-/** What each `--air` draws under: the weather, the sun, and whether there is any air at all. */
-function airFor(name, raining) {
-  const low = sunDirection({ ...LAND_LOOK, sunElevation: GOLDEN_ELEVATION });
+function airFor(name, raining, e) {
+  const after = {
+    weather: weatherAt(1, e, DIRECTION),
+    sun: [...sunAt(1, e, DIRECTION)],
+    greening: greeningAt(e, DIRECTION),
+  };
   switch (name) {
     case 'storm':
-      return { air: true, weather: 0 };
+      return { air: true, weather: 0, sun: [...sunAt(0.5, 0, DIRECTION)] };
     case 'golden':
-      return { air: true, weather: 1, sun: low };
+      return { air: true, ...after };
     case 'bare':
       return {
         air: false,
-        weather: 1,
-        sun: low,
+        ...after,
         backdrop: BARE_BACKDROP,
         airLook: {
           ...AIR_LOOK,
@@ -1140,10 +1297,15 @@ async function picture(page, file) {
   const size = Number(option('grid', 256));
   const steps = Number(option('steps', 1500));
   const began = Date.now();
-  // it stops raining for the last share, as the storm does, so the land is seen drained; `--raining`
-  // keeps it up to the end, so the land is seen as it is in the storm
+  // the rain is the storm's own curve, step by step, so the land is seen drained; `--raining` holds it full
+  // from where the curve first reaches full to the end, so the land is seen as it is in the storm
   const raining = process.argv.includes('--raining');
-  const weather = airFor(option('air', undefined), raining);
+  const rains = Array.from({ length: steps }, (_, n) => {
+    const p = n / steps;
+    return raining && p >= DIRECTION.rainFull ? 1 : rainAt(p, DIRECTION);
+  });
+  const after = Number(option('after', heroSeconds(DIRECTION)));
+  const weather = airFor(option('air', undefined), raining, after);
   // `--set key=value`, as often as wanted: a number of the air's look, changed for this picture alone
   const set = process.argv.flatMap((arg, at) => (process.argv[at - 1] === '--set' ? [arg] : []));
   for (const pair of set) {
@@ -1153,10 +1315,9 @@ async function picture(page, file) {
     }
     weather.airLook = { ...(weather.airLook ?? AIR_LOOK), [key]: Number(value) };
   }
-  const wet = raining ? steps : Math.round(steps * 0.85);
-  const eroded = await simulate(page, EROSION, size, steps, wet);
-  const views = { route: ROUTE_VIEW, low: LOW_VIEW };
-  const seenFrom = views[option('view', 'route')];
+  const eroded = await simulate(page, EROSION, size, steps, rains);
+  const views = { route: () => ROUTE_VIEW, hero: () => directedView(eroded.land, after) };
+  const seenFrom = views[option('view', 'route')]?.();
   if (!seenFrom) {
     throw new Error(`--view takes ${Object.keys(views).join(' or ')}.`);
   }
@@ -1269,6 +1430,9 @@ try {
   }
 
   if (await verifyLand(page, expected)) {
+    failed = true;
+  }
+  if (await verifyReadback(page, expected)) {
     failed = true;
   }
   const out = option('out', null);

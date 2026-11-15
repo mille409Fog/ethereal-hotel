@@ -1,10 +1,41 @@
 @if (webGLfailure()) {
   <p class="stage-failure">This piece is drawn with WebGL, and this browser could not start it.</p>
 }
-<canvas #stage [hidden]="webGLfailure()" [attr.data-land]="land()"></canvas>
-<!-- Which land this is, in words: the route's counterpart to the dashboard's
-     badge. Fixed over the canvas's corner, so the canvas keeps the viewport. -->
+<canvas
+  #stage
+  [hidden]="webGLfailure()"
+  [attr.data-land]="land()"
+  (pointerdown)="grab($event)"
+  (pointermove)="drag($event)"
+  (pointerup)="letGo()"
+  (pointercancel)="letGo()"
+></canvas>
+<!-- The controls, the readout and which land this is, in words: the route's
+     counterpart to the dashboard's badge. Fixed over the canvas's corner, so
+     the canvas keeps the viewport. -->
 @if (line(); as said) {
-  <p class="land-line">{{ said }}</p>
+  <section class="panel" aria-label="The storm">
+    @if (land() === 'simulating') {
+      <div class="controls">
+        <button type="button" class="control" (click)="newLand()">New land</button>
+        <button type="button" class="control" (click)="togglePause()">
+          {{ paused() ? 'Resume' : 'Pause' }}
+        </button>
+      </div>
+      @if (rows(); as shown) {
+        <!-- Not a live region: it changes every second. The status below is. -->
+        <dl class="readout">
+          @for (row of shown; track row[0]) {
+            <div class="readout-row">
+              <dt>{{ row[0] }}</dt>
+              <dd>{{ row[1] }}</dd>
+            </div>
+          }
+        </dl>
+      }
+      <p class="visually-hidden" role="status">{{ announcement() }}</p>
+    }
+    <p class="land-line">{{ said }}</p>
+  </section>
 }
 <app-home-link [floating]="true" />
