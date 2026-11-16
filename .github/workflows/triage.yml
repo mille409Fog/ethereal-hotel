@@ -55,18 +55,18 @@ jobs:
     steps:
       # Full history: the investigation reads the repository at the failing commit.
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       # The standard library only (ADR 0002), so no install step.
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
       - name: Setup Node.js (from .nvmrc)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
 
@@ -95,7 +95,7 @@ jobs:
       # restores the newest by prefix.
       - name: Restore checkpoints
         if: steps.token.outputs.present == 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: triage/state
           key: ci-triage-state-${{ env.TARGET_RUN }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -114,14 +114,14 @@ jobs:
       # here, and its re-run starts over (ADR 0008).
       - name: Save checkpoints
         if: always() && steps.token.outputs.present == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: triage/state
           key: ci-triage-state-${{ env.TARGET_RUN }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload records and traces
         if: always() && steps.token.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ci-triage-${{ env.TARGET_RUN }}
           path: triage/state
