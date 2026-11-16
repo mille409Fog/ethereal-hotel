@@ -53,7 +53,9 @@
       "Bash(time node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-watershed-land.mjs --size 128 --out \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/00a4a37f-8887-4aad-ab7f-8408fc7e4cbd/scratchpad/land128.png\")",
       "Bash(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-watershed-land.mjs)",
       "Bash(node --test scripts/watershed-land.test.mjs)",
-      "Bash(echo \"exit $?\")"
+      "Bash(echo \"exit $?\")",
+      "PowerShell(npm run build 2>&1 | Select-String -Pattern \"WARNING|exceeded\"; \"exit: $LASTEXITCODE\"; npm run check:docs 2>&1 | Select-Object -Last 5)",
+      "PowerShell(npx prettier --check README.md)"
     ]
   }
 }

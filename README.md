@@ -113,9 +113,9 @@ kilobytes failed Vercel deploys that passed locally. The warnings sit just above
 growth shows up long before it fails. `npm run check:docs` fails if these numbers and the configs
 that enforce them disagree.
 
-The initial payload is the number to watch: 263 kB (76 kB over the wire), Angular and the router
+The initial payload is the number to watch: 267 kB (77 kB over the wire), Angular and the router
 included. Every piece of work above is a lazy route, so a visitor to `/` downloads none of them.
-The largest is `/murmuration`'s three.js, about 570 kB in a chunk of its own. `/aubade` puts its
+The largest is `/murmuration`'s three.js, about 600 kB in a chunk of its own. `/aubade` puts its
 renderer behind a second dynamic import, so its shaders reach a browser only when someone opens
 that page, and its Reader's Edition at `/aubade/reader` creates no WebGL context at all.
 `npm run verify:shader` compiles the GLSL in headless Chromium and renders a frame. Without it,
