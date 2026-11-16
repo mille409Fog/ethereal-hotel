@@ -24,7 +24,7 @@ import { IErosionConstants } from '../model/erosion-calibration';
 import { surfaceGeometry } from '../land/land-geometry';
 import { ILandMesh } from '../land/land-mesh';
 import { GROUND_VERTEX, groundFragment } from '../land/land-shaders';
-import { ISimDriver } from '../sim/sim-driver';
+import { ISimTextures } from '../sim/sim-driver';
 import { IWaterLook, ripplePhase, WATER_LOOK } from './water-calibration';
 import { RIPPLE, WATER_COLOURS, WATER_FLOATS, waterFragment, waterVertex } from './water-shaders';
 
@@ -38,7 +38,7 @@ export interface IWaterMesh {
 }
 
 export function createWaterMesh(
-  sim: ISimDriver,
+  sim: ISimTextures,
   land: ILandMesh,
   constants: IErosionConstants,
   look: IWaterLook = WATER_LOOK

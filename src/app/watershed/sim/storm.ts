@@ -21,45 +21,33 @@
  *   last read, so a paused or finished storm reads nothing more. what comes back after the storm is disposed is
  *   dropped.
  *
- * the stage's slab is what stands there while there is no land. a storm hides it and puts it back.
- *
- * the light pass marches along the air's own sun (`air/air.ts`), and `sunTo` moves that one vector, so the sky
- * and the shadows cannot disagree about where it is.
+ * the land, its light and its water are stood on the stage by `stage/stand-land.ts`, which a stored land uses
+ * too; this file is what a storm adds to that: the steps, the readout, and the valley read at the end.
  *
  * raising the land happens here, on the main thread, in the frame the storm starts. it is noise evaluated at
  * every cell, and it is a visible hitch on the largest grid, once a visit and again for each new land.
  */
 import * as THREE from 'three';
 import { DIRECTION, IDirection } from '../direction/direction-calibration';
-import { greeningAt, rainAt, sunAt, weatherAt } from '../direction/direction';
+import { rainAt } from '../direction/direction';
 import { createLandReader, ILandReader } from '../direction/readback';
 import { QUARTER } from '../direction/readback-shaders';
 import { IReadout, volumesOf } from '../direction/readout';
 import { coarsen, findValley, IValley, waterSurface } from '../direction/valley';
-import { LAND_LOOK } from '../land/land-calibration';
-import { createLandMesh } from '../land/land-mesh';
-import { createLightPass, ILightPass } from '../land/light-pass';
+import { ILightPass } from '../land/light-pass';
 import { EROSION, IErosionConstants } from '../model/erosion-calibration';
 import { ILand } from '../model/land';
 import { raise } from '../model/reference';
 import { IQualityTier } from '../quality/quality-calibration';
 import { IStage } from '../stage/create-stage';
-import { createWaterMesh } from '../water/water-mesh';
-import { CLOCK_STALL_MS, READ_EVERY_MS, STORM_SECONDS } from './sim-calibration';
+import { ILandShow, IStormFrame, pieceClock, standLand } from '../stage/stand-land';
+import { READ_EVERY_MS, STORM_SECONDS } from './sim-calibration';
 import { ISimClock, tick, UNSTARTED } from './sim-clock';
 import { createSimDriver } from './sim-driver';
 
-/** where the storm's clocks stand after a frame */
-export interface IStormFrame {
-  /** steps run in all */
-  readonly steps: number;
-  /** `p`: steps run over steps in all, in [0, 1] */
-  readonly progress: number;
-  /** `e`: seconds since the last step ran, on the piece's clock; 0 until it has */
-  readonly ended: number;
-}
+export type { IStormFrame } from '../stage/stand-land';
 
-export interface IStorm {
+export interface IStorm extends ILandShow {
   /** steps in the whole storm */
   readonly total: number;
   /** the land's light, which is worked out again only in a frame that ran a step or moved the sun */
@@ -70,7 +58,7 @@ export interface IStorm {
   readonly readout: IReadout;
   /** runs the steps the frame at `nowMs` is worth, none while `paused`, and says where the clocks stand */
   advance(nowMs: number, paused?: boolean): IStormFrame;
-  /** frees the simulation and the land, and puts the slab back */
+  /** frees the simulation and the land, and takes the land off the stage */
   dispose(): void;
 }
 
@@ -148,17 +136,13 @@ export function startStorm(
   const total = constants.stormSteps;
   const raised = raise(seed, tier.grid, constants);
   const driver = createSimDriver(renderer, raised, constants);
-  const light = createLightPass(renderer, driver, constants, LAND_LOOK, stage.air.sun);
-  const land = createLandMesh(driver, light, constants, stage.air.uniforms);
-  const water = createWaterMesh(driver, land, constants);
+  const standing = standLand(renderer, stage, driver, constants, direction);
+  const { light } = standing;
   const reader = createLandReader(renderer, driver);
   const volumes = followVolumes(reader, driver.size, constants);
-  stage.placeholder.visible = false;
-  stage.scene.add(land.mesh, water.mesh);
+  const piece = pieceClock();
 
   let clock: ISimClock = UNSTARTED;
-  let lastMs: number | null = null;
-  let seconds = 0;
   let endedAt: number | null = null;
   let valley: IValley | null = null;
   let rained = 0;
@@ -187,10 +171,7 @@ export function startStorm(
         rained += strength * constants.rainRate * constants.timestep;
       }
       clock = ticked.clock;
-      if (lastMs !== null && !paused) {
-        seconds += Math.min(Math.max(0, nowMs - lastMs), CLOCK_STALL_MS) / 1000;
-      }
-      lastMs = nowMs;
+      const seconds = piece.tick(nowMs, paused);
       if (ticked.steps > 0) {
         light.landMoved();
       }
@@ -200,26 +181,14 @@ export function startStorm(
       }
       const progress = clock.steps / total;
       const ended = endedAt === null ? 0 : seconds - endedAt;
-
-      const [x, y, z] = sunAt(progress, ended, direction);
-      light.sunTo(x, y, z);
-      light.update();
-      // the rain the next step will fall with, and the sky it falls from
-      const rain = rainAt(progress, direction);
-      land.follow(rain, greeningAt(ended, direction));
-      stage.air.follow(weatherAt(progress, ended, direction), rain, seconds);
-      water.follow(seconds);
+      standing.follow(progress, ended, seconds);
       volumes.read(nowMs, clock.steps);
       return { steps: clock.steps, progress, ended };
     },
     dispose(): void {
       volumes.stop();
-      stage.scene.remove(land.mesh, water.mesh);
-      stage.placeholder.visible = true;
       reader.dispose();
-      water.dispose();
-      land.dispose();
-      light.dispose();
+      standing.dispose();
       driver.dispose();
     },
   };

@@ -14,7 +14,7 @@ import { RainPass } from './air/rain-pass';
 import { COMPOSER_SAMPLES } from './composer/composer-calibration';
 import { LAND_MESH } from './land/land-mesh';
 import { LIGHT_PASS } from './land/light-pass';
-import { landLine } from './land-state';
+import { landLine, UNLOADED } from './land-state';
 import { EROSION } from './model/erosion-calibration';
 import { IQualityTier, MEASURE_WINDOW_MS, QUALITY_TIERS } from './quality/quality-calibration';
 import { HERO_SEED, Random, SEED_SPAN } from './seed/seed';
@@ -24,7 +24,7 @@ import { ANNOUNCE_EVERY_MS, REPORT_EVERY, STORM_SECONDS } from './sim/sim-calibr
 import { SIM_PASSES, SIM_STATES } from './sim/sim-shaders';
 import { PROBE_VALUE } from './sim/sim-support';
 import { verticalFovFor } from './stage/stage-camera';
-import { CAMERA_POSITION, LAND_EXTENT } from './stage/stage-calibration';
+import { CAMERA_POSITION } from './stage/stage-calibration';
 import { Watershed } from './watershed';
 import {
   WATERSHED_ADDRESS,
@@ -32,8 +32,10 @@ import {
   WATERSHED_RANDOM,
   WATERSHED_RENDERER,
   WATERSHED_SEARCH,
+  WATERSHED_STORED_LAND,
   WATERSHED_TIERS,
 } from './watershed.tokens';
+import { IStoredLand } from './stored/stored-land';
 
 /** The calibrated tiers on a grid of a few cells: what these tests prove holds at any size. */
 const SPEC_GRID = 8;
@@ -103,6 +105,35 @@ const rendererState = {
   composers: [] as FakeComposer[],
   /** every seed the component wrote into the address */
   addressed: [] as number[],
+  /** whether the stored land arrives, and how many times it was asked for */
+  storedFails: false,
+  storedAsked: 0,
+  /** when set, the stored land waits for `release` to be called, as a slow network makes it */
+  storedHeld: false,
+  release: (): void => undefined,
+};
+
+/** A stored land of a few cells, with a pond in it: what the decoded image would hand over. */
+const SPEC_STORED: IStoredLand = (() => {
+  const land = new Float32Array(SPEC_GRID * SPEC_GRID * 4);
+  for (let i = 0; i < SPEC_GRID * SPEC_GRID; i++) {
+    land[i * 4] = (i % SPEC_GRID) * 3;
+    land[i * 4 + 2] = i % 7 === 0 ? 2 : 0;
+  }
+  return { size: SPEC_GRID, land };
+})();
+
+const fakeStoredLand = (): Promise<IStoredLand> => {
+  rendererState.storedAsked++;
+  if (rendererState.storedFails) {
+    return Promise.reject(new Error('the stored land answered 404'));
+  }
+  if (rendererState.storedHeld) {
+    return new Promise((resolve) => {
+      rendererState.release = (): void => resolve(SPEC_STORED);
+    });
+  }
+  return Promise.resolve(SPEC_STORED);
 };
 
 const fakeRendererFactory = (): THREE.WebGLRenderer => {
@@ -137,6 +168,7 @@ const mount = async (options: IMountOptions = {}): Promise<ComponentFixture<Wate
   const providers: object[] = [
     { provide: WATERSHED_TIERS, useValue: SPEC_TIERS },
     { provide: WATERSHED_ADDRESS, useValue: (seed: number) => rendererState.addressed.push(seed) },
+    { provide: WATERSHED_STORED_LAND, useValue: fakeStoredLand },
   ];
   if (options.random) {
     providers.push({ provide: WATERSHED_RANDOM, useValue: options.random });
@@ -188,17 +220,6 @@ const cameraOf = (composer: FakeComposer): THREE.PerspectiveCamera => {
     throw new Error('no perspective camera was rendered through');
   }
   return camera;
-};
-
-/** The slab in the scene drawn. */
-const placeholderIn = (composer: FakeComposer): THREE.Mesh<THREE.PlaneGeometry> => {
-  const slab = passOf(composer, RenderPass).scene.children.find(
-    (child) => child instanceof THREE.Mesh
-  );
-  if (!(slab instanceof THREE.Mesh)) {
-    throw new Error('no placeholder in the rendered scene');
-  }
-  return slab as THREE.Mesh<THREE.PlaneGeometry>;
 };
 
 type Land = THREE.Mesh<THREE.BufferGeometry, THREE.RawShaderMaterial>;
@@ -257,6 +278,9 @@ describe('Watershed', () => {
     rendererState.instances = [];
     rendererState.composers = [];
     rendererState.addressed = [];
+    rendererState.storedFails = false;
+    rendererState.storedAsked = 0;
+    rendererState.storedHeld = false;
     stubReducedMotion(false);
   });
 
@@ -364,22 +388,81 @@ describe('Watershed', () => {
       expect(landLineOf(fixture)).toContain('Seed 0.');
     });
 
-    it('shows the stored land, under its own seed, when the float target rounds', async () => {
+    it('shows the stored land, under its own seed, when the float target rounds, once it has drawn it', async () => {
       rendererState.probeReads = 2400;
       const fixture = await mount({ search: '?seed=77' });
+      await settle();
 
+      // fetched, but not yet drawn: the line claims nothing until a frame has the land in it
+      expect(rendererState.storedAsked).toBe(1);
+      expect(landLineOf(fixture)).toBeUndefined();
+
+      frameLoopOf(onlyRenderer())(1_000);
+      await fixture.whenStable();
+
+      expect(landIn(onlyComposer())).toBeDefined();
       expect(canvasOf(fixture).dataset['land']).toBe('stored');
       expect(landLineOf(fixture)).toBe(landLine('stored', HERO_SEED));
-      expect(hostOf(fixture).querySelector('.controls')).toBeNull();
+      // no storm to start again, but a pass that can be held
+      expect(() => buttonOf(fixture, 'New land')).toThrow();
+      expect(buttonOf(fixture, 'Pause')).toBeInstanceOf(HTMLButtonElement);
     });
 
     it('holds still under reduced motion, under the stored seed, even on a device that could simulate', async () => {
       stubReducedMotion(true);
       const fixture = await mount({ search: '?seed=77' });
+      await settle();
+      await fixture.whenStable();
 
+      expect(rendererState.storedAsked).toBe(1);
+      expect(landIn(onlyComposer())).toBeDefined();
       expect(canvasOf(fixture).dataset['land']).toBe('still');
       expect(landLineOf(fixture)).toBe(landLine('still', HERO_SEED));
       expect(hostOf(fixture).querySelector('.controls')).toBeNull();
+    });
+
+    it('asks for no stored land where a storm runs', async () => {
+      await mount();
+      await settle();
+
+      expect(rendererState.storedAsked).toBe(0);
+    });
+
+    it('owns up when the stored land cannot be loaded, and names no land', async () => {
+      stubReducedMotion(true);
+      rendererState.storedFails = true;
+      const fixture = await mount();
+      await settle();
+      await fixture.whenStable();
+
+      expect(landLineOf(fixture)).toBe(UNLOADED);
+      expect(landIn(onlyComposer())).toBeUndefined();
+      // the empty sky is drawn, once, rather than nothing
+      expect(onlyComposer().render).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers no Pause when the stored land could not be loaded, since nothing moves', async () => {
+      rendererState.probeReads = 2400;
+      rendererState.storedFails = true;
+      const fixture = await mount();
+      await settle();
+      await fixture.whenStable();
+
+      expect(landLineOf(fixture)).toBe(UNLOADED);
+      expect(hostOf(fixture).querySelector('.controls')).toBeNull();
+    });
+
+    it('stands nothing on a stage that has gone by the time the stored land arrives', async () => {
+      stubReducedMotion(true);
+      rendererState.storedHeld = true;
+      const fixture = await mount();
+      const composer = onlyComposer();
+      fixture.destroy();
+      rendererState.release();
+      await settle();
+
+      expect(landIn(composer)).toBeUndefined();
+      expect(composer.render).not.toHaveBeenCalled();
     });
 
     it('probes the device before building the chain on its renderer', async () => {
@@ -428,15 +511,11 @@ describe('Watershed', () => {
   });
 
   describe('the stage', () => {
-    it('lays a slab the size of the land flat under the camera', async () => {
+    it('stands no slab and no lights: before a land, there is only the air', async () => {
       await mount();
-      const slab = placeholderIn(onlyComposer());
-      slab.geometry.computeBoundingBox();
-      const size = slab.geometry.boundingBox?.getSize(new THREE.Vector3());
+      const names = passOf(onlyComposer(), RenderPass).scene.children.map((child) => child.name);
 
-      expect(size?.x).toBeCloseTo(LAND_EXTENT, 6);
-      expect(size?.z).toBeCloseTo(LAND_EXTENT, 6);
-      expect(size?.y).toBeCloseTo(0, 6);
+      expect(names.sort()).toEqual([DECK_MESH, DOME_MESH].sort());
     });
 
     it('is seen from the calibrated vantage', async () => {
@@ -472,13 +551,25 @@ describe('Watershed', () => {
   });
 
   describe('drawing', () => {
-    it('draws one still frame under reduced motion and starts no loop', async () => {
+    it('draws one still frame under reduced motion, of the stored land, and starts no loop', async () => {
       stubReducedMotion(true);
       await mount();
+      await settle();
       const renderer = onlyRenderer();
 
       expect(onlyComposer().render).toHaveBeenCalledTimes(1);
+      expect(landIn(onlyComposer())).toBeDefined();
       expect(renderer.setAnimationLoop).not.toHaveBeenCalled();
+    });
+
+    it('draws the still frame at the hero shot, where the orbit begins', async () => {
+      stubReducedMotion(true);
+      await mount();
+      await settle();
+      const camera = cameraOf(onlyComposer());
+      const target = new THREE.Vector3(0, DIRECTION.heroTargetHeight, 0);
+
+      expect(camera.position.distanceTo(target)).toBeCloseTo(DIRECTION.heroDistance, 3);
     });
 
     it('draws every frame of the loop through the composer', async () => {
@@ -548,10 +639,9 @@ describe('Watershed', () => {
 
       expect(simulated(renderer)).toBe(0);
       expect(landIn(onlyComposer())).toBeUndefined();
-      expect(placeholderIn(onlyComposer()).visible).toBe(true);
     });
 
-    it('starts on the settled tier’s grid, and stands its land where the slab was', async () => {
+    it('starts on the settled tier’s grid, and stands its land on the stage', async () => {
       await mount();
       const renderer = onlyRenderer();
 
@@ -561,7 +651,6 @@ describe('Watershed', () => {
       // one vertex a cell, and two down each of the four walls
       expect(land?.geometry.getAttribute('position').count).toBe(SPEC_GRID ** 2 + 8 * SPEC_GRID);
       expect(land?.material.uniforms['land'].value).toBeInstanceOf(THREE.Texture);
-      expect(placeholderIn(onlyComposer()).visible).toBe(false);
     });
 
     it('lights the land only in frames that moved it', async () => {
@@ -850,17 +939,66 @@ describe('Watershed', () => {
       });
     });
 
-    it('simulates nothing on a device that cannot render to float', async () => {
+    it('simulates nothing on a device that cannot render to float, and stands the stored land instead', async () => {
       rendererState.probeReads = 2400;
       await mount();
+      await settle();
       const renderer = onlyRenderer();
 
       settleAndRun(renderer, 1_000);
+      const land = landIn(onlyComposer());
 
       expect(simulated(renderer)).toBe(0);
-      expect(lit(renderer)).toBe(0);
-      expect(landIn(onlyComposer())).toBeUndefined();
-      expect(placeholderIn(onlyComposer()).visible).toBe(true);
+      expect(renderer.readRenderTargetPixelsAsync).not.toHaveBeenCalled();
+      // the stored land's own grid, not a tier's
+      expect(land?.geometry.getAttribute('position').count).toBe(SPEC_GRID ** 2 + 8 * SPEC_GRID);
+      expect((land?.material.uniforms['land'].value as THREE.DataTexture).image.data).toBe(
+        SPEC_STORED.land
+      );
+      expect(lit(renderer)).toBeGreaterThan(0);
+    });
+
+    it('flies the pass over the stored land and then orbits, which can be paused and turned', async () => {
+      rendererState.probeReads = 2400;
+      const fixture = await mount();
+      await settle();
+      const camera = cameraOf(onlyComposer());
+      const renderer = onlyRenderer();
+      const loop = frameLoopOf(renderer);
+      const until = 1_000 + (heroSeconds(DIRECTION) + 3) * 1_000;
+      let now = 1_000;
+      loop(now);
+      const high = camera.position.y;
+      for (; now <= until; now += 16) {
+        loop(now);
+      }
+      await fixture.whenStable();
+      const target = new THREE.Vector3(0, DIRECTION.heroTargetHeight, 0);
+
+      expect(high).toBe(CAMERA_POSITION[1]);
+      expect(camera.position.distanceTo(target)).toBeCloseTo(DIRECTION.heroDistance, 3);
+
+      buttonOf(fixture, 'Pause').click();
+      await fixture.whenStable();
+      const held = camera.position.clone();
+      loop(now + 1_000);
+
+      expect(camera.position.equals(held)).toBe(true);
+      expect(landLineOf(fixture)).toBe(landLine('stored', HERO_SEED, true));
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', cancelable: true }));
+
+      expect(camera.position.equals(held)).toBe(false);
+    });
+
+    it('lets no key turn the still frame, which has no orbit to turn', async () => {
+      stubReducedMotion(true);
+      await mount();
+      await settle();
+      const event = new KeyboardEvent('keydown', { key: 'ArrowLeft', cancelable: true });
+      document.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
     });
 
     it('frees the simulation and the land on destroy, and takes the land off the stage', async () => {
@@ -959,6 +1097,7 @@ describe('Watershed', () => {
     it('redraws the still frame under reduced motion, which has no loop to pick the change up', async () => {
       stubReducedMotion(true);
       const fixture = await mount();
+      await settle();
 
       sizeCanvas(fixture, 800, 1200);
       watcher().report();
@@ -988,6 +1127,7 @@ describe('Watershed', () => {
     vi.stubGlobal('ResizeObserver', undefined);
     stubReducedMotion(true);
     const fixture = await mount();
+    await settle();
 
     expect(onlyComposer().render).toHaveBeenCalledTimes(1);
     expect(() => fixture.destroy()).not.toThrow();
@@ -1018,16 +1158,22 @@ describe('Watershed', () => {
       expect(composer.dispose).toHaveBeenCalledTimes(1);
     });
 
-    it('releases the slab: its geometry and its material', async () => {
+    it('releases the stored land and takes it off the stage', async () => {
+      stubReducedMotion(true);
       const fixture = await mount();
-      const slab = placeholderIn(onlyComposer());
-      const geometry = vi.spyOn(slab.geometry, 'dispose');
-      const material = vi.spyOn(slab.material as THREE.Material, 'dispose');
+      await settle();
+      const composer = onlyComposer();
+      const land = landIn(composer) as Land;
+      const geometry = vi.spyOn(land.geometry, 'dispose');
+      const material = vi.spyOn(land.material, 'dispose');
+      const texture = vi.spyOn(land.material.uniforms['land'].value as THREE.Texture, 'dispose');
 
       fixture.destroy();
 
       expect(geometry).toHaveBeenCalledTimes(1);
       expect(material).toHaveBeenCalledTimes(1);
+      expect(texture).toHaveBeenCalledTimes(1);
+      expect(landIn(composer)).toBeUndefined();
     });
 
     it('stops listening for a lost context', async () => {

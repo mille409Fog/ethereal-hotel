@@ -3,9 +3,14 @@
  * figures came from. three states and no fourth: a land is being made in front of the visitor, or it was made
  * earlier by the same model and is shown as one still frame, or made earlier and shown moving.
  *
- * the sentences say what is true today and no more. a storm really is simulated on a device that can, so that
- * one says so, and says when the visitor has paused it. no land is stored yet, so the other two say what the device was found able
- * to do, and the phase that stores a land rewrites them to say what is shown.
+ * the sentences say what is true and no more. a storm really is simulated on a device that can, so that one says
+ * so. the other two say why the visitor is not watching one, and that what they are shown was computed earlier by
+ * the same model, which it was: `public/watershed-land.png` is the reference model's own storm for the hero seed
+ * (`scripts/build-watershed-land.mjs`), and the seed is named after the sentence. that clause is the whole
+ * difference between a fallback and a fake.
+ *
+ * a line that says a land is shown appears only once it has been drawn, and a stored land that could not be
+ * fetched says so instead of claiming one.
  */
 
 export type LandState = 'simulating' | 'still' | 'stored';
@@ -28,18 +33,27 @@ export function showsStoredLand(state: LandState): boolean {
 
 export const LAND_SENTENCES: Readonly<Record<LandState, string>> = {
   simulating: 'A storm is being simulated on this device.',
-  still: 'Reduced motion: one still frame of a stored land.',
-  stored: 'This device cannot render to 32-bit float, so it is shown a stored land.',
+  still: 'Reduced motion: one still frame of a land computed earlier by the same model.',
+  stored:
+    'This device cannot render to 32-bit float, so it is shown a land computed earlier by the same model.',
 };
 
-/** said after the sentence while a running storm is held */
+/** said after the sentence while a storm, or a stored land's pass, is held */
 export const PAUSED = 'Paused.';
 
+/** said in place of the line when the stored land could not be fetched or decoded: there is no land to name */
+export const UNLOADED = 'The stored land could not be loaded, so no land is shown.';
+
+/** true for a state the visitor can pause: anything that moves */
+export function pausable(state: LandState): boolean {
+  return state !== 'still';
+}
+
 /**
- * the whole line: the state's sentence, whether a storm is paused, and the seed. how far the storm has got is the
+ * the whole line: the state's sentence, whether it is paused, and the seed. how far the storm has got is the
  * readout's to say (`direction/readout.ts`), in steps and not in years or hours: the model has no calendar.
  */
 export function landLine(state: LandState, seed: number, paused = false): string {
-  const held = state === 'simulating' && paused ? ` ${PAUSED}` : '';
+  const held = pausable(state) && paused ? ` ${PAUSED}` : '';
   return `${LAND_SENTENCES[state]}${held} Seed ${seed}.`;
 }

@@ -49,7 +49,11 @@
       "Bash(node run-storm.cjs \"C:/Users/Jacob Miller/forest/ethereal-hotel\" 4127 hero-a.png)",
       "Bash(node run-storm.cjs \"C:/Users/Jacob Miller/forest/ethereal-hotel\" 4127 hero-b.png)",
       "Bash(node -e \"for \\(const f of ['WATERSHED.md']\\) console.log\\(f, \\(require\\('fs'\\).readFileSync\\(f\\).length/1024\\).toFixed\\(2\\)\\)\")",
-      "Bash(grep -n \"WATERSHED.md\\\\` *|\" CLAUDE.md)"
+      "Bash(grep -n \"WATERSHED.md\\\\` *|\" CLAUDE.md)",
+      "Bash(time node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-watershed-land.mjs --size 128 --out \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/00a4a37f-8887-4aad-ab7f-8408fc7e4cbd/scratchpad/land128.png\")",
+      "Bash(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-watershed-land.mjs)",
+      "Bash(node --test scripts/watershed-land.test.mjs)",
+      "Bash(echo \"exit $?\")"
     ]
   }
 }

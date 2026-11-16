@@ -161,6 +161,17 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm run verify:watershed
 
+      # A device that cannot simulate, and a visitor who asked for stillness,
+      # are shown `public/watershed-land.png`: the reference model's own storm
+      # for the hero seed, run earlier. This fails when the calibration that
+      # made it has changed since, which is how a tuned constant forces the
+      # land to be rebuilt. It reads a digest and decodes the image; it does
+      # not re-run the eleven-minute storm. It needs no browser and sits here
+      # because the stored land is part of what the route shows.
+      - name: Check the stored Watershed land is current
+        if: ${{ !cancelled() }}
+        run: npm run check:watershed-land
+
       # `if: always()` because these only matter when the step above failed:
       # the config records a trace and a screenshot on failure, and without the
       # upload a red CI run gives you a stack trace and no way to see the page.

@@ -18,7 +18,7 @@
 import * as THREE from 'three';
 import { AIR_FRAGMENT } from '../air/air-shaders';
 import { IErosionConstants } from '../model/erosion-calibration';
-import { ISimDriver } from '../sim/sim-driver';
+import { ISimTextures } from '../sim/sim-driver';
 import { ILandLook, LAND_LOOK } from './land-calibration';
 import { landGeometry } from './land-geometry';
 import {
@@ -47,7 +47,7 @@ export interface ILandMesh {
 
 /** `air` is `IAir.uniforms` from `air/air.ts`: the air's own objects, which this material shares */
 export function createLandMesh(
-  sim: ISimDriver,
+  sim: ISimTextures,
   light: ILightPass,
   constants: IErosionConstants,
   air: Readonly<Record<string, THREE.IUniform>>,

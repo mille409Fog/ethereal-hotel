@@ -13,7 +13,7 @@
  */
 import * as THREE from 'three';
 import { IErosionConstants } from '../model/erosion-calibration';
-import { ISimDriver } from '../sim/sim-driver';
+import { ISimTextures } from '../sim/sim-driver';
 import { SIM_TRIANGLE, SIM_VERTEX } from '../sim/sim-shaders';
 import { ILandLook, LAND_LOOK, sunDirection } from './land-calibration';
 import {
@@ -49,7 +49,7 @@ export interface ILightPass {
  */
 export function createLightPass(
   renderer: THREE.WebGLRenderer,
-  sim: ISimDriver,
+  sim: ISimTextures,
   constants: IErosionConstants,
   look: ILandLook = LAND_LOOK,
   sun: THREE.Vector3 = new THREE.Vector3(...sunDirection(look))

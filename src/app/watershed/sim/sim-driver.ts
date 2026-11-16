@@ -28,17 +28,25 @@ import {
   SimState,
 } from './sim-shaders';
 
-export interface ISimDriver {
+/**
+ * what everything that draws or reads the land asks of the simulation: three textures and a size, and nothing
+ * else. a driver offers them, and so does a stored land (`stored/stored-land.ts`), which is how the stored land is
+ * lit and drawn by the code that draws a live one
+ */
+export interface ISimTextures {
   /** cells along one side of the land */
   readonly size: number;
-  /** one step of the model, with rain at `strength` in [0, 1] */
-  step(strength: number): void;
   /** the texture a state is currently held in. it changes with every step, so ask each frame; do not keep it */
   current(state: SimState): THREE.Texture;
   /** the land as raised: uplift and strata warp. never changes */
   readonly terrain: THREE.Texture;
   /** the beds: colour and erodibility. never changes */
   readonly strata: THREE.Texture;
+}
+
+export interface ISimDriver extends ISimTextures {
+  /** one step of the model, with rain at `strength` in [0, 1] */
+  step(strength: number): void;
   dispose(): void;
 }
 
@@ -47,8 +55,8 @@ interface IPair {
   back: THREE.WebGLRenderTarget;
 }
 
-/** a float texture read one texel at a time, exactly as given */
-function fixedTexture(data: Float32Array, width: number, height: number): THREE.DataTexture {
+/** a float texture read one texel at a time, exactly as given. sampling one needs no extension; rendering to one does */
+export function fixedTexture(data: Float32Array, width: number, height: number): THREE.DataTexture {
   const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.FloatType);
   texture.minFilter = THREE.NearestFilter;
   texture.magFilter = THREE.NearestFilter;

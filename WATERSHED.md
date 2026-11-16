@@ -3,7 +3,7 @@
 The second spectacle on this site, after `/murmuration`, and meant to be much larger. This is the
 whole plan: what the piece is, the decisions already taken and why, what has landed, and the
 phases still to do, each with a Definition of Done so that one instance can build a phase and
-another can verify it. The simulation runs, and the land it makes is drawn with its water on it, under a sky, in haze and mist, standing in a deck of cloud, with the rain falling; and the storm is directed, on one clock, from the first drop to the hero shot and the orbit after it. No land is stored yet, so a device that cannot simulate is shown the slab, and nothing has been tuned for its look.
+another can verify it. The simulation runs, and the land it makes is drawn with its water on it, under a sky, in haze and mist, standing in a deck of cloud, with the rain falling; and the storm is directed, on one clock, from the first drop to the hero shot and the orbit after it. A device that cannot simulate, and a visitor who asked for stillness, are shown the hero seed's land as the reference model left it, stored. Nothing has been tuned for its look.
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -153,7 +153,7 @@ src/app/watershed/
   land-state.ts                           the three states and their sentences            (built)
   seed/            seed.ts                mulberry32, parseSeed, drawSeed, HERO_SEED      (built)
   quality/         calibration, meter     the tiers, and the choice from frame time       (built)
-  stage/           calibration, camera    the block's size and vantage; the slab shown until there is a land (built)
+  stage/           calibration, camera    the block's size and vantage; a land stood on it and its clocks (built)
   composer/        calibration, passes    render, bloom, output, grade, grain             (built)
   canvas/          follow-canvas-size.ts  renderer, composer and lens follow the canvas   (built)
   model/           (leaf modules; the reference, importable by Node)                      (built)
@@ -194,13 +194,15 @@ src/app/watershed/
     readback-shaders.ts                   one block-sum shader: the totals and the quarter copy (leaf)
     readback.ts                           runs it, and reads the totals back without a stall
     readout.ts                            the readout's rows and its one-sentence digest
-  stored/          stored-land.ts         decode the committed land into the same textures
+  stored/                                                                                 (built)
+    stored-layout.ts                      which byte is which field, and the ranges (leaf)
+    stored-land.ts                        decode the committed land into the same textures, and show it
 scripts/
   watershed-model.test.mjs                Node imports the model: the leaf rule's gate    (built)
-  watershed-land.mjs  (+ .test.mjs)       pack and unpack, pure
-  build-watershed-land.mjs                run the reference for HERO_SEED, write the PNG
+  watershed-land.mjs  (+ .test.mjs)       the PNG and the digest, pure                    (built)
+  build-watershed-land.mjs                run the reference for HERO_SEED, write the PNG  (built)
   verify-watershed.mjs                    GPU against reference, in Chromium              (built)
-public/watershed-land.png
+public/watershed-land.png  .json          the stored land, and the digest that made it    (built)
 e2e/watershed.spec.ts
 ```
 
@@ -244,10 +246,9 @@ here.
   rather than assert an empty console: the local server answers 404 for
   `/_vercel/insights/script.js`, and SwiftShader prints a "GPU stall due to ReadPixels"
   performance warning for every read-back, the probe's included.
-- **Two of the state line's three sentences are provisional.** No land is stored yet, so `still`
-  and `stored` say what the device was found able to do, not what it is shown. So is
-  `HERO_SEED`, and so is the route's description in `src/route-meta.json`, which says "in
-  progress".
+- **`HERO_SEED` is provisional**, and so is the route's description in `src/route-meta.json`,
+  which says "in progress". Two of the state line's sentences were too, until the stored land
+  gave them something to say.
 
 **The reference model** (2026-11-11). `src/app/watershed/model/` is the simulation in plain
 TypeScript on plain arrays: no WebGL, no three.js, no Angular. `step.ts` is the specification
@@ -509,40 +510,56 @@ under `direction/` and of `sim/storm.ts`.
   land a silhouette; and a land with no valley, which only a grid too small for one has, where
   the camera skips the pass and reaches the hero shot at the same moment.
 
+**The stored land** (2026-11-16). A device that cannot render to float, and a visitor who asked
+for stillness, are shown a land the model made: the reference model's own storm for the hero
+seed, run in Node and committed as `public/watershed-land.png`. The state line says so in both
+cases and names the seed. The slab and its two lights are gone. The reasoning is in the headers
+of `stored/stored-layout.ts`, `stored/stored-land.ts`, `stage/stand-land.ts` and
+`scripts/build-watershed-land.mjs`.
+
+- **The Definition of Done.** On this box, against the production build: under reduced motion
+  the route requested the PNG once and drew the hero frame, and the line read "Reduced motion:
+  one still frame of a land computed earlier by the same model. Seed 4127." With
+  `EXT_color_buffer_float` withheld the probe failed, the PNG was requested once, the line read
+  "This device cannot render to 32-bit float, so it is shown a land computed earlier by the
+  same model. Seed 4127.", the only button was **Pause**, and the camera flew the pass and
+  reached the orbit, on SwiftShader and on the RTX 3070 Ti alike. With `capacity` moved from 0.8
+  to 0.81, `npm run check:watershed-land` failed, and passed again when it was put back.
+- **The browser reads the bytes the build wrote.** The canvas's decode of the PNG and Node's
+  were compared byte for byte: none of 1,572,864 differed.
+- **The build.** 693 s for 12,000 steps at 512², and 676 KB, under the 1 MB it refuses past.
+  The land's deepest cut is 304 m, its deepest regolith 146 m and its deepest water 3.0 m, with
+  1,524 cells holding more than a centimetre: the storm's last 15% drains the land, and what
+  stands at the end is ponds. `public/watershed-land.json` records the digest and these.
+- **The layout is not quite the one planned.** The regolith is sixteen bits, not eight, because
+  eight over its range is a step of most of a metre and the ground is drawn from it; it took
+  one of the two spare channels. The water is eight bits by its square root, so a film of two
+  centimetres survives. A field outside its range is refused, not clamped.
+- **The digest sees constants, not code.** It covers every erosion constant, the seed, the grid,
+  the rain's curve and the layout's ranges. A change to `model/` that leaves every constant alone
+  makes a different land and passes the check; rebuild after one.
+- **A stored land's water is clear and still.** The image keeps neither the suspended sediment
+  nor the flow, so every state but `land` is a texture of zeros: no turbidity, no ripples, no
+  white water. That is a stand-in only if the look phase wants it otherwise; the spare channel
+  is where suspended sediment would go.
+- **The valley is found on the CPU.** A storm reads its quarter copy back from a float target; a
+  device in `stored` has none, and the land is already in memory, so the quarter is averaged
+  there and `findValley` is given it the same way.
+- **The line names a stored land only once it is drawn.** Until the image arrives there is no
+  line; if it cannot be fetched the line says "The stored land could not be loaded, so no land
+  is shown." and names no seed.
+- **Frame time.** In `stored` on the RTX 3070 Ti, 16.7 ms a frame (median and 95th percentile)
+  during the orbit. On SwiftShader 633 ms; it is a 512 grid there whatever the tier, where a
+  storm on SwiftShader runs the lowest tier's. **The reading from CI is still owed.**
+- **Baselines.** The shared three.js chunk is 597.83 kB, unchanged, and the route's own is
+  77.48 kB. The build's total-scripts warning (1.75 MB) is over by 69.29 kB; this phase added 2.8.
+- **One thing `stored` cannot fix**: the composer's buffers are half-float, and a device that
+  cannot render to 32-bit float may not render to 16-bit either. The device this was checked on
+  withheld only the first. Nothing here has met a device without both.
+
 ## The phases
 
-### Phase 0 — the stored land
-
-1. `scripts/watershed-land.mjs`: pure pack and unpack. A 1024×512 RGB image: left half carries
-   the cut as sixteen bits across R and G and water depth in B; right half carries regolith in R
-   and two spare channels. Ranges are named constants. Tests under `scripts/*.test.mjs`.
-2. `scripts/build-watershed-land.mjs`: `raiseLand` for `HERO_SEED` at 512², then `stormSteps` of
-   `step`, with the parts wired as `scripts/watershed-model.test.mjs` wires them. Write
-   `public/watershed-land.png` and print its size. It will take about eleven minutes; say so when
-   it starts. Refuse to write a file over 1 MB. Only the fields are stored: the uplift and the
-   strata are raised again from the seed in the browser, which is why they are not in the image.
-3. `--check`: recompute a digest of the calibration object, `HERO_SEED` and `STORM_STEPS` and
-   compare it with the digest recorded beside the image, then assert the image's dimensions and
-   that its water channel is not empty. It does not re-run the simulation in CI. Add both
-   spellings to `package.json` and the check to the e2e job.
-4. `stored/stored-land.ts`: fetch, `createImageBitmap` with colour-space conversion and
-   premultiplication off, unpack to a `Float32Array`, upload as the same `land` texture the
-   driver would have produced. Sampling a float texture needs no extension; only rendering to
-   one does. The light pass and the mesh ask an `ISimDriver` for three textures and a size and
-   for nothing else, and the light's own target is eight-bit, so a stored land that offers the
-   same four is lit and drawn by the code that draws a live one. The stage's slab and its two
-   lights go when this does.
-5. The `still` state: stored land, `p = 1`, `e` at the hero moment (`heroSeconds` in
-   `direction/camera-path.ts`), one frame. The valley the camera's pass needs comes from the
-   stored land the way the live one's does: `valley.ts` takes a quarter copy and the uplift.
-6. The `stored` state: stored land, the camera pass and the orbit, no storm, no **New land**.
-7. The state line's three sentences.
-
-**DoD.** With reduced motion the route shows the hero frame and requests the PNG. With
-`sim-support` forced false it shows the pass over the stored land and says so. Changing any
-erosion constant makes `--check` fail until the land is rebuilt.
-
-### Phase 1 — the look
+### Phase 0 — the look
 
 Tuning, with the whole instrument running. This is a phase and not an afterthought because it
 is where the piece becomes beautiful or does not, and because colour decisions made before the
@@ -576,7 +593,7 @@ air existed were made blind.
 **DoD.** Hero frames for six seeds, kept out of the repo, all acceptable. Frame times for each
 tier recorded in the tier calibration file.
 
-### Phase 2 — the wiring
+### Phase 1 — the wiring
 
 Everything a route needs to exist on this site. Each line is a place that fails a gate, or
 degrades silently, if skipped.
@@ -621,8 +638,10 @@ route's card, and every gate is green in CI, not only here.
 - **Record frame time at the end of every phase**, from this box and from the CI log. A jump is
   a regression in a shader, not a slow afternoon.
 - **Watch the `any` budget on the first build of every phase.** Do not raise it without a number.
-- **Do not tune before Phase 1.** Phase 0 finishes the instrument; make it correct and
-  legible and move on.
+- **Tune in the look phase and nowhere else.** The instrument is finished; a phase that is not
+  the look makes what it touches correct and legible and moves on. A tuned erosion constant
+  fails `check:watershed-land` until the stored land is rebuilt, which is the look phase's last
+  step.
 - **Do not loosen the parity tolerance or the conservation bound to get a phase through.** If
   one moves, find out which pass moved it.
 - **When a phase lands**: delete it here, renumber, move what was learned into the header of the

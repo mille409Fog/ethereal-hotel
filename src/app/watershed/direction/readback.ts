@@ -13,7 +13,7 @@
  * both write to targets of their own, never to the driver's, which the driver swaps under them.
  */
 import * as THREE from 'three';
-import { ISimDriver } from '../sim/sim-driver';
+import { ISimTextures } from '../sim/sim-driver';
 import { SIM_TRIANGLE, SIM_VERTEX } from '../sim/sim-shaders';
 import {
   BLOCK_MOST,
@@ -50,7 +50,7 @@ function floatTarget(size: number): THREE.WebGLRenderTarget {
   });
 }
 
-export function createLandReader(renderer: THREE.WebGLRenderer, sim: ISimDriver): ILandReader {
+export function createLandReader(renderer: THREE.WebGLRenderer, sim: ISimTextures): ILandReader {
   const quarterSize = Math.max(1, Math.floor(sim.size / QUARTER));
   const quarterTarget = floatTarget(quarterSize);
   const sumTargets = reductionSizes(sim.size, BLOCK_MOST).map(floatTarget);

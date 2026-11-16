@@ -15,13 +15,18 @@
      the canvas keeps the viewport. -->
 @if (line(); as said) {
   <section class="panel" aria-label="The storm">
-    @if (land() === 'simulating') {
+    <!-- A stored land has no storm to start again, so no New land; its pass can still be held. -->
+    @if (canPause()) {
       <div class="controls">
-        <button type="button" class="control" (click)="newLand()">New land</button>
+        @if (land() === 'simulating') {
+          <button type="button" class="control" (click)="newLand()">New land</button>
+        }
         <button type="button" class="control" (click)="togglePause()">
           {{ paused() ? 'Resume' : 'Pause' }}
         </button>
       </div>
+    }
+    @if (land() === 'simulating') {
       @if (rows(); as shown) {
         <!-- Not a live region: it changes every second. The status below is. -->
         <dl class="readout">

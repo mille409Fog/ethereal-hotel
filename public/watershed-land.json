@@ -1,0 +1,15 @@
+{
+  "digest": "f6be8d8e4a5790d5b443713b1d6429c5d2ba18f9fc69e024666683010d89dc2f",
+  "seed": 4127,
+  "size": 512,
+  "steps": 12000,
+  "measured": {
+    "seconds": 693,
+    "deepestCut": 304.05615234375,
+    "deepestRegolith": 146.46324157714844,
+    "deepestWater": 2.9934911727905273,
+    "wetCells": 1524,
+    "rockCut": 2493573060.7582603,
+    "rockExported": 1455093798.8106198
+  }
+}

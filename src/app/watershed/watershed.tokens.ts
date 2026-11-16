@@ -6,6 +6,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { COMPOSER_SAMPLES } from './composer/composer-calibration';
 import { IQualityTier, QUALITY_TIERS } from './quality/quality-calibration';
 import { Random } from './seed/seed';
+import { fetchStoredLand, IStoredLand } from './stored/stored-land';
 
 /**
  * the quality tiers, best first. a spec supplies tiers with a grid of a few cells: raising a land is noise at
@@ -41,6 +42,15 @@ export const WATERSHED_ADDRESS = new InjectionToken<(seed: number) => void>('WAT
     };
   },
 });
+
+/**
+ * fetches and decodes `public/watershed-land.png`. jsdom can decode no image, so a spec supplies a land of a few
+ * cells instead; it is the land a device that cannot simulate, or a visitor who asked for stillness, is shown
+ */
+export const WATERSHED_STORED_LAND = new InjectionToken<() => Promise<IStoredLand>>(
+  'WATERSHED_STORED_LAND',
+  { factory: () => (): Promise<IStoredLand> => fetchStoredLand() }
+);
 
 /** jsdom has no WebGL, so a spec supplies a renderer that records what was asked of it */
 export const WATERSHED_RENDERER = new InjectionToken<

@@ -139,11 +139,10 @@ describe('storm', () => {
     expect(begin().storm.total).toBe(CONSTANTS.stormSteps);
   });
 
-  it('stands its land on the stage in the slab’s place as soon as it starts', () => {
+  it('stands its land on the stage as soon as it starts', () => {
     const { stage } = begin();
 
     expect(landIn(stage)).toBeInstanceOf(THREE.Mesh);
-    expect(stage.placeholder.visible).toBe(false);
   });
 
   it('lays the water’s mesh over the land, to be drawn after it', () => {
@@ -445,7 +444,7 @@ describe('storm', () => {
     });
   });
 
-  it('takes its land off the stage when it is over, frees it, and puts the slab back', () => {
+  it('takes its land off the stage when it is over, and frees it', () => {
     const { stage, storm } = begin();
     const land = landIn(stage);
     const geometry = vi.spyOn(land.geometry, 'dispose');
@@ -455,7 +454,6 @@ describe('storm', () => {
 
     expect(stage.scene.children.some((child) => child.name === WATER_MESH)).toBe(false);
     expect(stage.scene.children.some((child) => child.name === LAND_MESH)).toBe(false);
-    expect(stage.placeholder.visible).toBe(true);
     expect(geometry).toHaveBeenCalledTimes(1);
     expect(material).toHaveBeenCalledTimes(1);
     expect(light).toHaveBeenCalledTimes(1);

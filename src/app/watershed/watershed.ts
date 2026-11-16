@@ -1,19 +1,26 @@
 /**
  * `/watershed`: a landscape eroded by a simulation while the visitor watches. `WATERSHED.md` is the plan.
  *
- * the component assembles a renderer, the post-processing chain, a camera, and the stage with its air and its
- * placeholder slab, finds out whether the device can run the simulation, chooses a quality tier from
- * measured frame time, and says on screen which of the three land states the visitor is in. it owns nothing clever:
- * each of those is a module with its own spec, and this file is the order they happen in.
+ * the component assembles a renderer, the post-processing chain, a camera, and the stage with its air, finds out
+ * whether the device can run the simulation, chooses a quality tier from measured frame time, and says on screen
+ * which of the three land states the visitor is in. it owns nothing clever: each of those is a module with its
+ * own spec, and this file is the order they happen in.
  *
  * two things are decided once, at the start, and never revisited. reduced motion is read once, so a visitor who
  * asked for stillness gets one frame and no loop. and the land state is fixed before the first frame, because a
  * piece that changed its mind about whether it was simulating would have to say so mid-sentence.
  *
- * once a storm runs, the storm (`sim/storm.ts`) keeps its clocks and this file asks the camera's path
- * (`direction/camera-path.ts`) where to stand at them each frame. the visitor has three things to do, each real
- * DOM: **New land**, which draws a seed, writes it into the address and starts a storm on it; **Pause**, which
- * stops the storm's steps and its clock; and, once the orbit has begun, a drag or the arrow keys, which turn it.
+ * - **`simulating`**: a storm (`sim/storm.ts`) starts once the quality meter has settled, and keeps its clocks.
+ * - **`stored`**: the stored land (`stored/stored-land.ts`) is fetched at once and stood on the stage with the
+ *   storm over, and the camera flies the pass over it and then orbits. there is no storm to start again, so no
+ *   **New land**; it can be paused.
+ * - **`still`**: the stored land is fetched, stood at the hero moment, and drawn once. no loop is started.
+ *
+ * in each, this file asks the camera's path (`direction/camera-path.ts`) where to stand at the show's clocks. the
+ * state line names a stored land only once it has been drawn, so a line that says one is shown is never ahead of
+ * the picture. the visitor has three things to do, each real DOM: **New land**, which draws a seed, writes it into
+ * the address and starts a storm on it; **Pause**, which stops the clocks; and, once the orbit has begun, a drag or
+ * the arrow keys, which turn it.
  */
 import {
   AfterViewInit,
@@ -37,24 +44,42 @@ import {
 } from '../murmuration/renderer/renderer-calibration';
 import { followCanvasSize } from './canvas/follow-canvas-size';
 import { orchestratePasses } from './composer/orchestrate-passes';
-import { cameraAt, IPose, ISteer, steer, steerable, UNSTEERED } from './direction/camera-path';
+import {
+  cameraAt,
+  heroSeconds,
+  IPose,
+  ISteer,
+  steer,
+  steerable,
+  UNSTEERED,
+} from './direction/camera-path';
 import { DIRECTION } from './direction/direction-calibration';
 import { IReadout, readoutDigest, readoutRows } from './direction/readout';
-import { landLine, LandState, landStateFor, showsStoredLand } from './land-state';
+import {
+  landLine,
+  LandState,
+  landStateFor,
+  pausable,
+  showsStoredLand,
+  UNLOADED,
+} from './land-state';
 import { measure, UNMEASURED } from './quality/quality-meter';
 import { drawSeed, HERO_SEED, parseSeed } from './seed/seed';
 import { ANNOUNCE_EVERY_MS, REPORT_EVERY } from './sim/sim-calibration';
 import { supportsFloatTargets } from './sim/sim-support';
-import { IStorm, IStormFrame, startStorm } from './sim/storm';
+import { IStorm, startStorm } from './sim/storm';
 import { createStage, disposeStage, IStage } from './stage/create-stage';
+import { ILandShow, IStormFrame } from './stage/stand-land';
 import { CAMERA_POSITION, CAMERA_TARGET } from './stage/stage-calibration';
 import { aspectOf, createStageCamera } from './stage/stage-camera';
+import { showStoredLand } from './stored/stored-land';
 import {
   WATERSHED_ADDRESS,
   WATERSHED_COMPOSER,
   WATERSHED_RANDOM,
   WATERSHED_RENDERER,
   WATERSHED_SEARCH,
+  WATERSHED_STORED_LAND,
   WATERSHED_TIERS,
 } from './watershed.tokens';
 
@@ -83,12 +108,17 @@ export class Watershed implements AfterViewInit, OnDestroy {
   private readonly createRenderer = inject(WATERSHED_RENDERER);
   private readonly createComposer = inject(WATERSHED_COMPOSER);
   private readonly tiers = inject(WATERSHED_TIERS);
+  private readonly loadStoredLand = inject(WATERSHED_STORED_LAND);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('stage');
   private renderer?: THREE.WebGLRenderer;
   private composer?: EffectComposer;
   private camera?: THREE.PerspectiveCamera;
   private stage?: IStage;
   private storm?: IStorm;
+  /** the stored land on the stage, in the two states that show one */
+  private stored?: ILandShow;
+  /** set on destroy, so a stored land that arrives after it is not stood on a stage that has gone */
+  private destroyed = false;
   private resizeObserver?: ResizeObserver;
   private announcer?: ReturnType<typeof setInterval>;
   /** where the storm's clocks stood at the last frame, or null before a storm has run one */
@@ -99,17 +129,30 @@ export class Watershed implements AfterViewInit, OnDestroy {
   private dragging: { readonly id: number; x: number; y: number } | null = null;
 
   protected readonly webGLfailure = signal(false);
-  /** null until the device has been probed, and again if the context is lost */
+  /**
+   * null until the device has been probed, and again if the context is lost. a state that shows the stored land
+   * is set only once that land has been drawn, or has failed to load
+   */
   protected readonly land = signal<LandState | null>(null);
+  /** true when the stored land could not be fetched or decoded */
+  protected readonly unloaded = signal(false);
   protected readonly seed = signal(HERO_SEED);
   protected readonly paused = signal(false);
+  /** true while there is something moving that **Pause** would hold */
+  protected readonly canPause = computed(() => {
+    const land = this.land();
+    return land !== null && pausable(land) && !this.unloaded();
+  });
   /** what the readout shows, to the nearest report; null until a storm has run */
   protected readonly readout = signal<IReadout | null>(null);
   /** the throttled one-sentence digest a screen reader hears; empty until the first is due */
   protected readonly announcement = signal('');
   protected readonly line = computed(() => {
     const land = this.land();
-    return land === null ? null : landLine(land, this.seed(), this.paused());
+    if (land === null) {
+      return null;
+    }
+    return this.unloaded() ? UNLOADED : landLine(land, this.seed(), this.paused());
   });
   protected readonly rows = computed(() => {
     const readout = this.readout();
@@ -148,12 +191,14 @@ export class Watershed implements AfterViewInit, OnDestroy {
       this.seed.set(
         showsStoredLand(land) ? HERO_SEED : (parseSeed(this.search) ?? drawSeed(this.random))
       );
-      this.land.set(land);
 
-      if (reducedMotion) {
-        composer.render();
+      if (showsStoredLand(land)) {
+        this.standStoredLand(renderer, composer, stage, land);
       } else {
-        this.animate(renderer, composer, stage, land === 'simulating');
+        this.land.set(land);
+      }
+      if (!reducedMotion) {
+        this.animate(renderer, composer, stage, land);
       }
       if (land === 'simulating') {
         // writing an identical sentence is a no-op on a signal, so a paused or finished storm goes quiet
@@ -177,7 +222,7 @@ export class Watershed implements AfterViewInit, OnDestroy {
     renderer: THREE.WebGLRenderer,
     composer: EffectComposer,
     stage: IStage,
-    simulating: boolean
+    land: LandState
   ): void {
     let meter = UNMEASURED;
     renderer.setAnimationLoop((nowMs) => {
@@ -186,22 +231,68 @@ export class Watershed implements AfterViewInit, OnDestroy {
         this.drawAt(this.tiers[measured.tier].resolutionScale);
       }
       meter = measured;
-      if (simulating && meter.settled) {
+      if (land === 'simulating' && meter.settled) {
         this.storm ??= startStorm(renderer, stage, this.seed(), this.tiers[meter.tier]);
         this.frame = this.storm.advance(nowMs, this.paused());
         this.place(this.storm, this.frame);
         this.report(this.storm.readout);
       }
+      // the stored land's grid is the image's, not a tier's, so it does not wait for the meter
+      const stored = this.stored;
+      if (stored) {
+        this.frame = stored.advance(nowMs, this.paused());
+        this.place(stored, this.frame);
+      }
       composer.render();
+      if (stored && this.land() === null) {
+        this.land.set(land);
+      }
     });
   }
 
+  /**
+   * fetches the stored land and stands it on the stage: at the hero moment and drawn once under reduced motion,
+   * or at the storm's end for the loop to fly over. a land that cannot be loaded is owned up to on the line
+   */
+  private standStoredLand(
+    renderer: THREE.WebGLRenderer,
+    composer: EffectComposer,
+    stage: IStage,
+    land: LandState
+  ): void {
+    const still = land === 'still';
+    this.loadStoredLand()
+      .then((loaded) => {
+        if (this.destroyed || this.webGLfailure()) {
+          return;
+        }
+        const show = showStoredLand(renderer, stage, loaded, still ? heroSeconds(DIRECTION) : 0);
+        this.stored = show;
+        if (still) {
+          this.frame = show.advance(window.performance.now());
+          this.place(show, this.frame);
+          composer.render();
+          this.land.set(land);
+        }
+      })
+      .catch(() => {
+        if (this.destroyed || this.webGLfailure()) {
+          return;
+        }
+        this.unloaded.set(true);
+        this.land.set(land);
+        if (still) {
+          composer.render();
+        }
+      });
+  }
+
   /** stands the camera where the path says it is at these clocks */
-  private place(storm: IStorm, frame: IStormFrame): void {
+  private place(show: ILandShow, frame: IStormFrame): void {
     const pose = cameraAt(
       frame.progress,
       frame.ended,
-      storm.valley,
+      show.valley,
       this.steering,
       VANTAGE,
       DIRECTION
@@ -243,16 +334,21 @@ export class Watershed implements AfterViewInit, OnDestroy {
     this.paused.update((paused) => !paused);
   }
 
-  /** true once the orbit has begun, which is when the visitor may turn it */
+  /** true once the orbit has begun, which is when the visitor may turn it; a still frame has no orbit */
   private canSteer(): boolean {
-    return this.frame !== null && steerable(this.frame.progress, this.frame.ended, DIRECTION);
+    return (
+      this.canPause() &&
+      this.frame !== null &&
+      steerable(this.frame.progress, this.frame.ended, DIRECTION)
+    );
   }
 
   private turnBy(yaw: number, pitch: number): void {
     this.steering = steer(this.steering, yaw, pitch, DIRECTION);
-    if (this.storm && this.frame) {
+    const show = this.storm ?? this.stored;
+    if (show && this.frame) {
       // drawn at once, so a turn shows on a paused orbit too
-      this.place(this.storm, this.frame);
+      this.place(show, this.frame);
     }
   }
 
@@ -289,10 +385,12 @@ export class Watershed implements AfterViewInit, OnDestroy {
   }
 
   public ngOnDestroy(): void {
+    this.destroyed = true;
     this.canvas().nativeElement.removeEventListener('webglcontextlost', this.onContextLost);
     clearInterval(this.announcer);
     this.resizeObserver?.disconnect();
     this.storm?.dispose();
+    this.stored?.dispose();
     if (this.stage) {
       disposeStage(this.stage);
     }
