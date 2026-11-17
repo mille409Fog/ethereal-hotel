@@ -11,15 +11,16 @@ import { GrainPass } from '../murmuration/grain/grain-pass/grain-pass';
 import { REDUCED_MOTION_QUERY } from '../murmuration/renderer/renderer-calibration';
 import { DECK_MESH, DOME_MESH } from './air/air';
 import { RainPass } from './air/rain-pass';
-import { COMPOSER_SAMPLES } from './composer/composer-calibration';
 import { LAND_MESH } from './land/land-mesh';
 import { LIGHT_PASS } from './land/light-pass';
 import { landLine, UNLOADED } from './land-state';
 import { EROSION } from './model/erosion-calibration';
+import { ILand } from './model/land';
 import { IQualityTier, MEASURE_WINDOW_MS, QUALITY_TIERS } from './quality/quality-calibration';
 import { HERO_SEED, Random, SEED_SPAN } from './seed/seed';
 import { heroSeconds } from './direction/camera-path';
 import { DIRECTION } from './direction/direction-calibration';
+import { RaiseLand, raiseHere } from './sim/raise-land';
 import { ANNOUNCE_EVERY_MS, REPORT_EVERY, STORM_SECONDS } from './sim/sim-calibration';
 import { SIM_PASSES, SIM_STATES } from './sim/sim-shaders';
 import { PROBE_VALUE } from './sim/sim-support';
@@ -29,6 +30,7 @@ import { Watershed } from './watershed';
 import {
   WATERSHED_ADDRESS,
   WATERSHED_COMPOSER,
+  WATERSHED_RAISE,
   WATERSHED_RANDOM,
   WATERSHED_RENDERER,
   WATERSHED_SEARCH,
@@ -85,6 +87,9 @@ class FakeComposer {
   public readonly setSize = vi.fn();
   public readonly setPixelRatio = vi.fn();
   public readonly dispose = vi.fn();
+  /** The two buffers the scene is drawn into, whose samples are the tier's. */
+  public readonly renderTarget1 = { samples: 0, dispose: vi.fn() };
+  public readonly renderTarget2 = { samples: 0, dispose: vi.fn() };
   /** A real composer sizes its targets from the renderer once, when it is built. */
   public readonly builtOnSizedRenderer: boolean;
   /** The probe borrows the renderer; it must have handed it back before the chain is built on it. */
@@ -162,11 +167,45 @@ interface IMountOptions {
   readonly search?: string;
   /** Leave the real `WebGLRenderer` in place, which jsdom cannot give a context. */
   readonly realRenderer?: boolean;
+  /** Tiers other than the spec's, all of whose grids are one size. */
+  readonly tiers?: readonly IQualityTier[];
+  /** Raises lands as given, instead of at once on this thread. */
+  readonly raise?: RaiseLand;
 }
+
+/**
+ * Raises on this thread, but hands each land over only when `release` is called, as a worker does when it answers:
+ * every land asked for, in order, with what became of it.
+ */
+const heldRaise = (): {
+  raise: RaiseLand;
+  asked: Array<{ seed: number; size: number; cancelled: boolean }>;
+  release: () => void;
+} => {
+  const asked: Array<{ seed: number; size: number; cancelled: boolean }> = [];
+  const waiting: Array<() => void> = [];
+  const raise: RaiseLand = (seed, size, constants) => {
+    const record = { seed, size, cancelled: false };
+    asked.push(record);
+    let land: ILand | null = null;
+    waiting.push(() => {
+      land = raiseHere(seed, size, constants).land;
+    });
+    return {
+      get land(): ILand | null {
+        return land;
+      },
+      cancel: (): void => {
+        record.cancelled = true;
+      },
+    };
+  };
+  return { raise, asked, release: () => waiting.splice(0).forEach((hand) => hand()) };
+};
 
 const mount = async (options: IMountOptions = {}): Promise<ComponentFixture<Watershed>> => {
   const providers: object[] = [
-    { provide: WATERSHED_TIERS, useValue: SPEC_TIERS },
+    { provide: WATERSHED_TIERS, useValue: options.tiers ?? SPEC_TIERS },
     { provide: WATERSHED_ADDRESS, useValue: (seed: number) => rendererState.addressed.push(seed) },
     { provide: WATERSHED_STORED_LAND, useValue: fakeStoredLand },
   ];
@@ -175,6 +214,9 @@ const mount = async (options: IMountOptions = {}): Promise<ComponentFixture<Wate
   }
   if (options.search !== undefined) {
     providers.push({ provide: WATERSHED_SEARCH, useValue: options.search });
+  }
+  if (options.raise) {
+    providers.push({ provide: WATERSHED_RAISE, useValue: options.raise });
   }
   if (!options.realRenderer) {
     providers.push({ provide: WATERSHED_RENDERER, useValue: fakeRendererFactory });
@@ -336,9 +378,14 @@ describe('Watershed', () => {
       expect(composer.readBuffer.depthTexture).toBeInstanceOf(THREE.DepthTexture);
       expect(composer.writeBuffer.depthTexture).not.toBe(composer.readBuffer.depthTexture);
       expect(composer.readBuffer.width).toBe(8);
-      expect(composer.readBuffer.samples).toBe(COMPOSER_SAMPLES);
-      expect(composer.writeBuffer.samples).toBe(COMPOSER_SAMPLES);
+      // built with none: the samples are the tier's, and the component gives them before the first frame
+      expect(composer.readBuffer.samples).toBe(0);
+      expect(composer.writeBuffer.samples).toBe(0);
       composer.dispose();
+    });
+
+    it('raises a land on this thread where there is no Worker, as in jsdom', () => {
+      expect(TestBed.inject(WATERSHED_RAISE)).toBe(raiseHere);
     });
 
     it('draws chance from Math.random as it is when called, so a suite can pin it first', () => {
@@ -607,6 +654,100 @@ describe('Watershed', () => {
       expect(renderer.setPixelRatio).toHaveBeenLastCalledWith(lowest.resolutionScale);
       expect(onlyComposer().setPixelRatio).toHaveBeenLastCalledWith(lowest.resolutionScale);
       expect(onlyComposer().setPixelRatio).toHaveBeenCalledTimes(QUALITY_TIERS.length - 1);
+      expect(onlyComposer().renderTarget1.samples).toBe(lowest.samples);
+      expect(onlyComposer().renderTarget2.samples).toBe(lowest.samples);
+    });
+
+    it('draws the scene with the best tier’s samples from before the first frame', async () => {
+      await mount();
+      const composer = onlyComposer();
+
+      expect(composer.renderTarget1.samples).toBe(QUALITY_TIERS[0].samples);
+      expect(composer.renderTarget2.samples).toBe(QUALITY_TIERS[0].samples);
+    });
+
+    describe('with the storm running', () => {
+      /** a grid for each of the top two tiers, and the bottom two sharing one, as the calibrated tiers do */
+      const GRIDS = [16, 8, 8];
+      const TIERS: readonly IQualityTier[] = QUALITY_TIERS.map((tier, at) => ({
+        ...tier,
+        grid: GRIDS[at],
+      }));
+      const cellsOf = (composer: FakeComposer): number | undefined =>
+        landIn(composer)?.geometry.getAttribute('position').count;
+      const meshOn = (grid: number): number => grid ** 2 + 8 * grid;
+
+      /** frames `frameMs` apart from `from` for `forMs`; returns the time of the last */
+      const framesFrom = (
+        loop: FrameCallback,
+        from: number,
+        frameMs: number,
+        forMs: number
+      ): number => {
+        let now = from;
+        for (; now <= from + forMs; now += frameMs) {
+          loop(now);
+        }
+        return now - frameMs;
+      };
+
+      it('measures the storm too, and starts it again on a smaller grid when it is too dear', async () => {
+        await mount({ tiers: TIERS });
+        const renderer = onlyRenderer();
+        const loop = frameLoopOf(renderer);
+        const composer = onlyComposer();
+
+        // the empty stage is quick: the best tier, and a storm on its grid
+        const now = framesFrom(loop, 1_000, 16, MEASURE_WINDOW_MS + 100);
+        expect(cellsOf(composer)).toBe(meshOn(16));
+        expect(composer.setPixelRatio).not.toHaveBeenCalled();
+
+        // the storm is not: one window of it steps down, to a smaller grid, and the storm starts again on it
+        framesFrom(loop, now + 40, 40, MEASURE_WINDOW_MS + 80);
+        expect(cellsOf(composer)).toBe(meshOn(8));
+        expect(composer.renderTarget1.samples).toBe(TIERS[1].samples);
+      });
+
+      it('runs on through a step down that keeps its grid, and never steps back up', async () => {
+        await mount({ tiers: TIERS });
+        const renderer = onlyRenderer();
+        const loop = frameLoopOf(renderer);
+        const composer = onlyComposer();
+        let now = framesFrom(loop, 1_000, 16, MEASURE_WINDOW_MS + 100);
+        now = framesFrom(loop, now + 40, 40, MEASURE_WINDOW_MS + 80);
+        const land = landIn(composer);
+
+        now = framesFrom(loop, now + 40, 40, 2 * MEASURE_WINDOW_MS + 80);
+        const lowest = TIERS[TIERS.length - 1];
+
+        expect(landIn(composer)).toBe(land);
+        expect(composer.setPixelRatio).toHaveBeenLastCalledWith(lowest.resolutionScale);
+        expect(composer.renderTarget1.samples).toBe(lowest.samples);
+
+        // fast again: the meter has settled, and stays where it is
+        const calls = composer.setPixelRatio.mock.calls.length;
+        framesFrom(loop, now + 16, 16, 3 * MEASURE_WINDOW_MS);
+        expect(composer.setPixelRatio).toHaveBeenCalledTimes(calls);
+      });
+
+      it('counts no frame while the land is being raised, nor while the storm is paused', async () => {
+        const held = heldRaise();
+        const fixture = await mount({ tiers: TIERS, raise: held.raise });
+        const renderer = onlyRenderer();
+        const loop = frameLoopOf(renderer);
+        const composer = onlyComposer();
+        let now = framesFrom(loop, 1_000, 16, MEASURE_WINDOW_MS + 100);
+
+        // slow, but there is no storm yet: an empty stage, already measured
+        now = framesFrom(loop, now + 40, 40, 3 * MEASURE_WINDOW_MS);
+        expect(composer.setPixelRatio).not.toHaveBeenCalled();
+
+        held.release();
+        loop((now += 16));
+        buttonOf(fixture, 'Pause').click();
+        framesFrom(loop, now + 40, 40, 3 * MEASURE_WINDOW_MS);
+        expect(composer.setPixelRatio).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -803,6 +944,26 @@ describe('Watershed', () => {
         expect(landIn(onlyComposer())).toBeDefined();
         expect(landIn(onlyComposer())).not.toBe(before);
         expect(readoutOf(fixture)[0]).toEqual(['Step', '0 of 12,000']);
+      });
+
+      it('gives up a land still being raised, and asks for its own on the same grid', async () => {
+        let draws = 0;
+        const held = heldRaise();
+        const fixture = await mount({
+          search: '?seed=77',
+          random: () => [0.5, 0.25][draws++],
+          raise: held.raise,
+        });
+        settleAndRun(onlyRenderer(), 200);
+
+        buttonOf(fixture, 'New land').click();
+        await fixture.whenStable();
+        frameLoopOf(onlyRenderer())(4_000);
+
+        expect(held.asked).toEqual([
+          { seed: 77, size: SPEC_GRID, cancelled: true },
+          { seed: SEED_SPAN / 2, size: SPEC_GRID, cancelled: false },
+        ]);
       });
 
       it('unpauses: a new land is a new storm, and a storm starts by raining', async () => {
@@ -1018,6 +1179,33 @@ describe('Watershed', () => {
       expect(landIn(composer)).toBeUndefined();
       // two copies of each state texture and the light's one; the passes' own are freed with them, so at least these
       expect(targets.mock.calls.length).toBeGreaterThanOrEqual(SIM_STATES.length * 2 + 1);
+    });
+
+    it('waits for its land, starting the storm in the first frame after it is raised, and not before', async () => {
+      const held = heldRaise();
+      await mount({ raise: held.raise });
+      const renderer = onlyRenderer();
+      const loop = frameLoopOf(renderer);
+      settleAndRun(renderer, 500);
+
+      expect(landIn(onlyComposer())).toBeUndefined();
+      expect(held.asked).toEqual([{ seed: expect.any(Number), size: SPEC_GRID, cancelled: false }]);
+
+      held.release();
+      loop(3_000);
+
+      expect(landIn(onlyComposer())).toBeDefined();
+      expect(held.asked).toHaveLength(1);
+    });
+
+    it('gives up a land still being raised on destroy', async () => {
+      const held = heldRaise();
+      const fixture = await mount({ raise: held.raise });
+      settleAndRun(onlyRenderer(), 200);
+
+      fixture.destroy();
+
+      expect(held.asked[0].cancelled).toBe(true);
     });
   });
 

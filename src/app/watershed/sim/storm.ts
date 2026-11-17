@@ -24,8 +24,12 @@
  * the land, its light and its water are stood on the stage by `stage/stand-land.ts`, which a stored land uses
  * too; this file is what a storm adds to that: the steps, the readout, and the valley read at the end.
  *
- * raising the land happens here, on the main thread, in the frame the storm starts. it is noise evaluated at
- * every cell, and it is a visible hitch on the largest grid, once a visit and again for each new land.
+ * the land arrives raised. raising it is noise at every cell, a visible hitch on the largest grid when it ran
+ * here, so the component has it raised in a worker (`raise-land.ts`) and starts the storm when it comes back.
+ *
+ * the tier may change under a running storm, when the meter, measuring the storm itself, finds it too dear: to
+ * a tier on the same grid, the storm takes it (`retier`) and runs on at fewer steps a frame; to a smaller grid,
+ * the component starts the storm again instead, since a storm cannot change grids halfway.
  */
 import * as THREE from 'three';
 import { DIRECTION, IDirection } from '../direction/direction-calibration';
@@ -37,7 +41,6 @@ import { coarsen, findValley, IValley, waterSurface } from '../direction/valley'
 import { ILightPass } from '../land/light-pass';
 import { EROSION, IErosionConstants } from '../model/erosion-calibration';
 import { ILand } from '../model/land';
-import { raise } from '../model/reference';
 import { IQualityTier } from '../quality/quality-calibration';
 import { IStage } from '../stage/create-stage';
 import { ILandShow, IStormFrame, pieceClock, standLand } from '../stage/stand-land';
@@ -58,6 +61,8 @@ export interface IStorm extends ILandShow {
   readonly readout: IReadout;
   /** runs the steps the frame at `nowMs` is worth, none while `paused`, and says where the clocks stand */
   advance(nowMs: number, paused?: boolean): IStormFrame;
+  /** runs on under another tier, which must be on the same grid: a smaller one is a new storm */
+  retier(tier: IQualityTier): void;
   /** frees the simulation and the land, and takes the land off the stage */
   dispose(): void;
 }
@@ -128,13 +133,18 @@ function valleyOf(
 export function startStorm(
   renderer: THREE.WebGLRenderer,
   stage: IStage,
-  seed: number,
-  tier: IQualityTier,
+  raised: ILand,
+  startingTier: IQualityTier,
   constants: IErosionConstants = EROSION,
   direction: IDirection = DIRECTION
 ): IStorm {
+  if (raised.terrain.size !== startingTier.grid) {
+    throw new Error(
+      `a land of ${raised.terrain.size} cells a side cannot run on a grid of ${startingTier.grid}`
+    );
+  }
+  let tier = startingTier;
   const total = constants.stormSteps;
-  const raised = raise(seed, tier.grid, constants);
   const driver = createSimDriver(renderer, raised, constants);
   const standing = standLand(renderer, stage, driver, constants, direction);
   const { light } = standing;
@@ -184,6 +194,12 @@ export function startStorm(
       standing.follow(progress, ended, seconds);
       volumes.read(nowMs, clock.steps);
       return { steps: clock.steps, progress, ended };
+    },
+    retier(next: IQualityTier): void {
+      if (next.grid !== tier.grid) {
+        throw new Error(`a storm on a grid of ${tier.grid} cannot run on one of ${next.grid}`);
+      }
+      tier = next;
     },
     dispose(): void {
       volumes.stop();

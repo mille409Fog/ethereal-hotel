@@ -583,12 +583,9 @@ air existed were made blind.
 4. Tiers: confirm the lowest tier holds its frame rate on a phone and still reads as the same
    place. The air doubled the land's and the water's cost on the software rasteriser, where
    branching saves nothing; if the lowest tier is short, less arithmetic in `fogged` and in the
-   sky is where to look first. Three things about tiers were left here by the storm phase: the
-   meter still measures the empty stage, so a device can settle on a grid it cannot keep up with
-   (the storm is then slower, not different); the land is raised on the main thread, a hitch on
-   the 1,024 grid at the start and at every **New land**; and `COMPOSER_SAMPLES` wants to be a
-   tier property, which the meter can now support since it steps down from frames too slow to
-   measure.
+   sky is where to look first. The meter now judges the storm as well as the empty stage, the
+   land is raised in a worker, and samples are a tier property; `quality-calibration.ts` has
+   the table this box filled in, and the phone's row and the middle tier's are what is left.
 
 **DoD.** Hero frames for six seeds, kept out of the repo, all acceptable. Frame times for each
 tier recorded in the tier calibration file.

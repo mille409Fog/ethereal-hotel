@@ -3,9 +3,9 @@ import { Location } from '@angular/common';
 import { inject, InjectionToken } from '@angular/core';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { COMPOSER_SAMPLES } from './composer/composer-calibration';
 import { IQualityTier, QUALITY_TIERS } from './quality/quality-calibration';
 import { Random } from './seed/seed';
+import { RaiseLand, raiseHere, raiseInWorker, spawnRaiseWorker } from './sim/raise-land';
 import { fetchStoredLand, IStoredLand } from './stored/stored-land';
 
 /**
@@ -52,6 +52,14 @@ export const WATERSHED_STORED_LAND = new InjectionToken<() => Promise<IStoredLan
   { factory: () => (): Promise<IStoredLand> => fetchStoredLand() }
 );
 
+/**
+ * raises a storm's land: in a worker where there is one (`sim/raise-land.ts`), and here where there is not, which
+ * is jsdom. a spec supplies one that is there at once, so the storm starts in the frame that asks for it
+ */
+export const WATERSHED_RAISE = new InjectionToken<RaiseLand>('WATERSHED_RAISE', {
+  factory: () => (typeof Worker === 'undefined' ? raiseHere : raiseInWorker(spawnRaiseWorker)),
+});
+
 /** jsdom has no WebGL, so a spec supplies a renderer that records what was asked of it */
 export const WATERSHED_RENDERER = new InjectionToken<
   (canvas: HTMLCanvasElement) => THREE.WebGLRenderer
@@ -64,12 +72,9 @@ export const WATERSHED_RENDERER = new InjectionToken<
  * survives until the bloom and the tone mapping have seen it, and one that carries a depth texture, which the
  * water and the fog will read. the composer clones the target for its second buffer and the clone carries its own.
  *
- * the target takes `COMPOSER_SAMPLES` samples, and that is 0, so the land's ridgelines are stair-stepped. four
- * were tried with the land drawn (2026-11-12). on a real GPU they cost nothing that showed: 17 ms a frame with
- * and without, and the edges were clean, with the depth texture still attached. on SwiftShader the empty stage
- * went from 117 ms a frame to 420 ms, and past 250 ms the quality meter takes every frame for a hidden tab and
- * never settles, so the storm never started. so samples want to be a property of the tier, and the meter has to
- * be able to step down from a frame that slow before they can be; the phase that directs the storm owns the meter.
+ * it is built with no samples. its antialiasing is the quality tier's (`quality/quality-calibration.ts`), and the
+ * component gives it the tier's samples before the first frame and again when the meter steps down
+ * (`composer/composer-samples.ts`).
  */
 export const WATERSHED_COMPOSER = new InjectionToken<
   (renderer: THREE.WebGLRenderer) => EffectComposer
@@ -79,7 +84,6 @@ export const WATERSHED_COMPOSER = new InjectionToken<
     const target = new THREE.WebGLRenderTarget(width, height, {
       type: THREE.HalfFloatType,
       depthTexture: new THREE.DepthTexture(width, height),
-      samples: COMPOSER_SAMPLES,
     });
     const composer = new EffectComposer(renderer, target);
     // a supplied target is taken as already sized; this applies the pixel ratio, as the default target would

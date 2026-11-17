@@ -10,7 +10,8 @@
  * asked for stillness gets one frame and no loop. and the land state is fixed before the first frame, because a
  * piece that changed its mind about whether it was simulating would have to say so mid-sentence.
  *
- * - **`simulating`**: a storm (`sim/storm.ts`) starts once the quality meter has settled, and keeps its clocks.
+ * - **`simulating`**: a storm (`sim/storm.ts`) starts once the quality meter has settled and its land has been
+ *   raised in a worker, and keeps its clocks. the meter goes on judging the storm, and may step down under it.
  * - **`stored`**: the stored land (`stored/stored-land.ts`) is fetched at once and stood on the stage with the
  *   storm over, and the camera flies the pass over it and then orbits. there is no storm to start again, so no
  *   **New land**; it can be paused.
@@ -43,6 +44,7 @@ import {
   REDUCED_MOTION_QUERY,
 } from '../murmuration/renderer/renderer-calibration';
 import { followCanvasSize } from './canvas/follow-canvas-size';
+import { drawWithSamples } from './composer/composer-samples';
 import { orchestratePasses } from './composer/orchestrate-passes';
 import {
   cameraAt,
@@ -63,8 +65,10 @@ import {
   showsStoredLand,
   UNLOADED,
 } from './land-state';
-import { measure, UNMEASURED } from './quality/quality-meter';
+import { EROSION } from './model/erosion-calibration';
+import { IQualityMeter, measure, UNMEASURED } from './quality/quality-meter';
 import { drawSeed, HERO_SEED, parseSeed } from './seed/seed';
+import { IRaising } from './sim/raise-land';
 import { ANNOUNCE_EVERY_MS, REPORT_EVERY } from './sim/sim-calibration';
 import { supportsFloatTargets } from './sim/sim-support';
 import { IStorm, startStorm } from './sim/storm';
@@ -76,6 +80,7 @@ import { showStoredLand } from './stored/stored-land';
 import {
   WATERSHED_ADDRESS,
   WATERSHED_COMPOSER,
+  WATERSHED_RAISE,
   WATERSHED_RANDOM,
   WATERSHED_RENDERER,
   WATERSHED_SEARCH,
@@ -109,12 +114,19 @@ export class Watershed implements AfterViewInit, OnDestroy {
   private readonly createComposer = inject(WATERSHED_COMPOSER);
   private readonly tiers = inject(WATERSHED_TIERS);
   private readonly loadStoredLand = inject(WATERSHED_STORED_LAND);
+  private readonly raiseLand = inject(WATERSHED_RAISE);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('stage');
   private renderer?: THREE.WebGLRenderer;
   private composer?: EffectComposer;
   private camera?: THREE.PerspectiveCamera;
   private stage?: IStage;
   private storm?: IStorm;
+  /** the land the next storm will run on, while it is being raised */
+  private raising?: IRaising;
+  /** the tier everything is drawn and simulated at now: an index into `tiers`, which only ever grows */
+  private tier = 0;
+  /** the meter that judges the storm while it runs, from the tier the empty stage settled on */
+  private running: IQualityMeter = UNMEASURED;
   /** the stored land on the stage, in the two states that show one */
   private stored?: ILandShow;
   /** set on destroy, so a stored land that arrives after it is not stood on a stage that has gone */
@@ -182,6 +194,7 @@ export class Watershed implements AfterViewInit, OnDestroy {
 
       const composer = this.createComposer(renderer);
       this.composer = composer;
+      drawWithSamples(composer, this.tiers[this.tier].samples);
       const resolution = new THREE.Vector2(canvas.clientWidth, canvas.clientHeight);
       orchestratePasses(composer, stage.scene, camera, resolution, stage.air.rain);
       this.resizeObserver = followCanvasSize(canvas, renderer, composer, camera, reducedMotion);
@@ -215,8 +228,11 @@ export class Watershed implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * the frame loop. it measures first and simulates second: the grid a storm runs on belongs to the quality
-   * tier, so no storm starts until the meter has settled on one, and then it runs on that grid to the end.
+   * the frame loop. it measures twice and simulates in between. the empty stage is measured first, and no storm
+   * starts until that has settled, because the grid a storm runs on belongs to the tier. then the storm is measured
+   * while it runs, starting from that tier and only stepping down: a step to a tier on the same grid is taken by the
+   * running storm, and one to a smaller grid starts the storm again on it. frames with no storm running in them,
+   * while its land is being raised, are not counted, since they are the empty stage again.
    */
   private animate(
     renderer: THREE.WebGLRenderer,
@@ -226,16 +242,32 @@ export class Watershed implements AfterViewInit, OnDestroy {
   ): void {
     let meter = UNMEASURED;
     renderer.setAnimationLoop((nowMs) => {
-      const measured = measure(meter, nowMs, this.tiers.length);
-      if (measured.tier !== meter.tier) {
-        this.drawAt(this.tiers[measured.tier].resolutionScale);
+      if (!meter.settled) {
+        const measured = measure(meter, nowMs, this.tiers.length);
+        this.tierTo(measured.tier);
+        meter = measured;
+        this.running = { ...UNMEASURED, tier: meter.tier };
       }
-      meter = measured;
       if (land === 'simulating' && meter.settled) {
-        this.storm ??= startStorm(renderer, stage, this.seed(), this.tiers[meter.tier]);
-        this.frame = this.storm.advance(nowMs, this.paused());
-        this.place(this.storm, this.frame);
-        this.report(this.storm.readout);
+        const storm = this.stormNow(renderer, stage);
+        if (storm) {
+          this.frame = storm.advance(nowMs, this.paused());
+          this.place(storm, this.frame);
+          this.report(storm.readout);
+        }
+        if (storm && !this.paused()) {
+          this.measureStorm(nowMs);
+        } else {
+          // no storm yet, its land still being raised, or one held: either way the frame ran no step and says
+          // nothing of what a storm costs, so the window starts again at the next frame that does
+          this.running = {
+            ...this.running,
+            windowStartMs: null,
+            lastMs: null,
+            frames: 0,
+            stalls: 0,
+          };
+        }
       }
       // the stored land's grid is the image's, not a tier's, so it does not wait for the meter
       const stored = this.stored;
@@ -248,6 +280,66 @@ export class Watershed implements AfterViewInit, OnDestroy {
         this.land.set(land);
       }
     });
+  }
+
+  /** the running storm, or one started on a land that has just been raised, or none while it is being raised */
+  private stormNow(renderer: THREE.WebGLRenderer, stage: IStage): IStorm | undefined {
+    if (this.storm) {
+      return this.storm;
+    }
+    const tier = this.tiers[this.tier];
+    this.raising ??= this.raiseLand(this.seed(), tier.grid, EROSION);
+    const raised = this.raising.land;
+    if (raised === null) {
+      return undefined;
+    }
+    this.raising = undefined;
+    this.storm = startStorm(renderer, stage, raised, tier);
+    return this.storm;
+  }
+
+  /**
+   * the storm's frame time, judged as the empty stage's was. a step down the running storm can take, it takes; a
+   * step to a smaller grid ends it, and the next frame raises its land again on that grid, for the same seed
+   */
+  private measureStorm(nowMs: number): void {
+    const measured = measure(this.running, nowMs, this.tiers.length);
+    this.running = measured;
+    const grid = this.tiers[this.tier].grid;
+    if (!this.tierTo(measured.tier)) {
+      return;
+    }
+    const tier = this.tiers[measured.tier];
+    if (tier.grid === grid) {
+      this.storm?.retier(tier);
+      return;
+    }
+    this.endStorm();
+  }
+
+  /** moves to the tier at `index`, redrawing at its resolution and with its samples; true if it was a move */
+  private tierTo(index: number): boolean {
+    if (index === this.tier) {
+      return false;
+    }
+    this.tier = index;
+    const tier = this.tiers[index];
+    this.drawAt(tier.resolutionScale);
+    if (this.composer) {
+      drawWithSamples(this.composer, tier.samples);
+    }
+    return true;
+  }
+
+  /** takes the storm and any land being raised for one away, and everything that showed it */
+  private endStorm(): void {
+    this.raising?.cancel();
+    this.raising = undefined;
+    this.storm?.dispose();
+    this.storm = undefined;
+    this.frame = null;
+    this.readout.set(null);
+    this.announcement.set('');
   }
 
   /**
@@ -320,14 +412,10 @@ export class Watershed implements AfterViewInit, OnDestroy {
     const seed = drawSeed(this.random);
     this.address(seed);
     this.seed.set(seed);
-    this.storm?.dispose();
-    this.storm = undefined;
-    this.frame = null;
+    this.endStorm();
     this.steering = UNSTEERED;
     this.dragging = null;
     this.paused.set(false);
-    this.readout.set(null);
-    this.announcement.set('');
   }
 
   protected togglePause(): void {
@@ -389,6 +477,7 @@ export class Watershed implements AfterViewInit, OnDestroy {
     this.canvas().nativeElement.removeEventListener('webglcontextlost', this.onContextLost);
     clearInterval(this.announcer);
     this.resizeObserver?.disconnect();
+    this.raising?.cancel();
     this.storm?.dispose();
     this.stored?.dispose();
     if (this.stage) {

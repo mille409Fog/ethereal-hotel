@@ -7,6 +7,7 @@ import { LAND_MESH } from '../land/land-mesh';
 import { GREENING, RAIN, SUN_DIRECTION } from '../land/land-shaders';
 import { LIGHT_PASS } from '../land/light-pass';
 import { EROSION, IErosionConstants } from '../model/erosion-calibration';
+import { raise } from '../model/reference';
 import { IQualityTier } from '../quality/quality-calibration';
 import { HERO_SEED } from '../seed/seed';
 import { createStage, IStage } from '../stage/create-stage';
@@ -25,7 +26,13 @@ import { IStorm, startStorm } from './storm';
  * sixteen is the smallest grid whose quarter copy is big enough to have a valley in it.
  */
 const CONSTANTS: IErosionConstants = { ...EROSION, extent: 16 * 16, stormSteps: 3600 };
-const TIER: IQualityTier = { name: 'spec', resolutionScale: 1, grid: 16, stepsPerFrame: 6 };
+const TIER: IQualityTier = {
+  name: 'spec',
+  resolutionScale: 1,
+  grid: 16,
+  stepsPerFrame: 6,
+  samples: 0,
+};
 /** the frame length at which exactly one step is due */
 const STEP_MS = (STORM_SECONDS * 1000) / CONSTANTS.stormSteps;
 
@@ -105,7 +112,7 @@ const begin = (): { renderer: FakeRenderer; stage: IStage; storm: IStorm } => {
   const storm = startStorm(
     renderer as unknown as THREE.WebGLRenderer,
     stage,
-    HERO_SEED,
+    raise(HERO_SEED, TIER.grid, CONSTANTS),
     TIER,
     CONSTANTS
   );
@@ -190,6 +197,38 @@ describe('storm', () => {
       storm.advance(STEP_MS * 20);
 
       expect(renderer.strengths).toHaveLength(TIER.stepsPerFrame);
+    });
+
+    it('runs on under a cheaper tier on the same grid, at its steps a frame', () => {
+      const { renderer, storm } = begin();
+      storm.advance(0);
+      storm.advance(STEP_MS * 20);
+      const before = renderer.strengths.length;
+
+      storm.retier({ ...TIER, stepsPerFrame: 2 });
+      storm.advance(STEP_MS * 40);
+
+      expect(renderer.strengths.length - before).toBe(2);
+    });
+
+    it('will not take a tier on another grid, which would be another storm', () => {
+      const { storm } = begin();
+
+      expect(() => storm.retier({ ...TIER, grid: TIER.grid / 2 })).toThrow(/grid/);
+    });
+
+    it('will not start on a land raised for another grid', () => {
+      const renderer = new FakeRenderer();
+
+      expect(() =>
+        startStorm(
+          renderer as unknown as THREE.WebGLRenderer,
+          createStage(),
+          raise(HERO_SEED, TIER.grid / 2, CONSTANTS),
+          TIER,
+          CONSTANTS
+        )
+      ).toThrow(/grid/);
     });
 
     it('says how far it has got, and how long ago it ended', () => {

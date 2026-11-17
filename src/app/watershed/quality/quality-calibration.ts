@@ -1,9 +1,27 @@
 /**
  * the quality tiers, best first, and the numbers that decide between them.
  *
- * a tier is three costs. `resolutionScale` multiplies the capped pixel ratio and is applied by the component today.
- * `grid` is the side of the simulation's textures and `stepsPerFrame` how many simulation steps one frame may spend;
- * the simulation driver and its clock read those two, so a tier is chosen once and means the same thing to all three.
+ * a tier is four costs. `resolutionScale` multiplies the capped pixel ratio and `samples` is the antialiasing of the
+ * buffer the scene is drawn into; the component applies both. `grid` is the side of the simulation's textures and
+ * `stepsPerFrame` how many simulation steps one frame may spend; the simulation driver and its clock read those two.
+ *
+ * the tier is measured twice. first on the empty stage, which is quick and sends a slow device straight down
+ * without making it pay for a storm; then with the storm running on that tier, which may step down further and
+ * never up. a step down to a smaller grid starts the storm again on it, within its first second or two; the
+ * empty stage alone let a device settle on a grid it could not keep up with. so the grid of the top two tiers
+ * differs and the bottom two share one, and a storm restarts at most once.
+ *
+ * ## frame times, measured during the storm against the production build
+ *
+ *     device                          settled on   median     95th pct   when
+ *     RTX 3070 Ti, Chromium, D3D11    high         16.7 ms    16.7 ms    2026-11-18, the display's 60, on pace
+ *     SwiftShader, this box           low          383 ms     1183 ms    2026-11-18, slower, the same storm
+ *     a phone                         owed         owed       owed       nobody has measured one yet
+ *     the middle tier                 owed: no device here settles on it
+ *
+ * the storm's start was one main-thread task of 902 ms on the RTX box with the land raised there, and is 514 ms
+ * with it raised in a worker (`sim/raise-land.ts`). what is left is the storm's own setup, compiling its shaders and
+ * uploading its textures, and no tier changes that.
  */
 
 export interface IQualityTier {
@@ -14,13 +32,19 @@ export interface IQualityTier {
   readonly grid: number;
   /** the most simulation steps one frame may run */
   readonly stepsPerFrame: number;
+  /**
+   * samples a pixel of the buffer the scene is drawn into: 0 is none, and the land's ridgelines stair-step. four
+   * cost nothing that showed on this box's graphics card (2026-11-12) and took the software rasteriser's empty
+   * stage from 117 ms a frame to 420, which the meter now steps down from; so the lowest tier has none
+   */
+  readonly samples: number;
 }
 
 /** best first: the meter starts at the top and only ever steps down */
 export const QUALITY_TIERS: readonly IQualityTier[] = [
-  { name: 'high', resolutionScale: 1, grid: 1024, stepsPerFrame: 8 },
-  { name: 'middle', resolutionScale: 1, grid: 512, stepsPerFrame: 6 },
-  { name: 'low', resolutionScale: 0.6, grid: 512, stepsPerFrame: 3 },
+  { name: 'high', resolutionScale: 1, grid: 1024, stepsPerFrame: 8, samples: 4 },
+  { name: 'middle', resolutionScale: 1, grid: 512, stepsPerFrame: 6, samples: 4 },
+  { name: 'low', resolutionScale: 0.6, grid: 512, stepsPerFrame: 3, samples: 0 },
 ];
 
 /** how long the meter watches a tier before judging it, in milliseconds */
