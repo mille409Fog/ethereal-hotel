@@ -29,6 +29,12 @@ export interface IErosionConstants {
    * its area is this times the cell size, and a wave crosses the land at the square root of gravity times this.
    */
   readonly pipeDepth: number;
+  /**
+   * the bed's drag on the water, a pure number: a flow of depth d on a slope S runs at sqrt(gravity * S * d /
+   * friction), so depth decides speed and a film no longer runs as a river does. 0 is the paper's frictionless
+   * pipes. see `pipeFlux` in `step.ts`
+   */
+  readonly friction: number;
   /** depth of rain falling per second at full strength, metres a second */
   readonly rainRate: number;
   /** depth of standing water lost to the air per second, metres a second. a rate, not a share: a lake outlasts a film */
@@ -53,9 +59,12 @@ export interface IErosionConstants {
   /** below this depth a cell is dry and whatever its water still held is laid down, metres */
   readonly dryDepth: number;
 
-  /** the slope loose material comes to rest at, as rise over run */
+  /**
+   * the slope loose material comes to rest at, as rise over run, and the slope the softest bedrock holds before it
+   * breaks. both are gentler than real scree and shale, on purpose: the gap between them and `talusRockHard` is
+   * what makes benches. the soft beds lay back into aprons and only the hard ones stand as cliffs
+   */
   readonly talusRegolith: number;
-  /** the slope the softest bedrock holds before it breaks, as rise over run */
   readonly talusRockSoft: number;
   /** the slope the hardest bedrock holds, as rise over run */
   readonly talusRockHard: number;
@@ -95,6 +104,7 @@ export const EROSION: IErosionConstants = {
   gravity: 9.81,
   timestep: 1,
   pipeDepth: 1,
+  friction: 0.3,
   rainRate: 1.5e-4,
   evaporationRate: 1e-5,
   depthFloor: 1e-3,
@@ -108,8 +118,8 @@ export const EROSION: IErosionConstants = {
   rampDepth: 0.05,
   dryDepth: 1e-4,
 
-  talusRegolith: 0.7,
-  talusRockSoft: 1.1,
+  talusRegolith: 0.4,
+  talusRockSoft: 0.6,
   talusRockHard: 3,
   slumpShare: 0.1,
 
