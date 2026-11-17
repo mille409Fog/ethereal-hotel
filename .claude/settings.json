@@ -55,7 +55,10 @@
       "Bash(node --test scripts/watershed-land.test.mjs)",
       "Bash(echo \"exit $?\")",
       "PowerShell(npm run build 2>&1 | Select-String -Pattern \"WARNING|exceeded\"; \"exit: $LASTEXITCODE\"; npm run check:docs 2>&1 | Select-Object -Last 5)",
-      "PowerShell(npx prettier --check README.md)"
+      "PowerShell(npx prettier --check README.md)",
+      "Bash(\"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/410468bb-0ca5-4be4-8cee-5acfb0c067a8/scratchpad/r.sh\" hero-1 *)",
+      "Bash(awk '{print $1, $4, \"allowed\", $NF}')",
+      "Bash(\"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/410468bb-0ca5-4be4-8cee-5acfb0c067a8/scratchpad/r.sh\" hero-final *)"
     ]
   }
 }
