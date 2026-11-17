@@ -107,6 +107,15 @@ function shareLeaving(
  * edge four times a cell, and what stands in for a missing neighbour is the whole of its boundary condition, so
  * it is named at each call instead of being folded into an index.
  */
+/**
+ * a pipe's new flow q: its last, plus the pull of the head across it, never negative, and then dragged by
+ * `drag * q` of itself, so q (1 + drag q) = that. solved for q exactly, in the form that does not cancel
+ */
+function slowed(was: number, pulled: number, drag: number): number {
+  const driven = Math.max(0, was + pulled);
+  return (2 * driven) / (1 + Math.sqrt(1 + 4 * drag * driven));
+}
+
 function across(values: Float32Array, j: number, onBlock: boolean, beyond: number): number {
   return onBlock ? values[j] : beyond;
 }
@@ -130,6 +139,23 @@ export function rainFall(fields: IFields, constants: IErosionConstants, strength
  * the pipes: each of a cell's four outflows gains in proportion to how far its water level stands above the
  * neighbour's, and loses when it stands below, never going negative. then the four are scaled down together if
  * they would otherwise carry off more water than the cell has.
+ *
+ * the bed drags on the water, and this is not the paper's. without it the pipes accelerate every film to the speed
+ * limit, a sheet of rain on a hillside cuts as a river does, and every slope came out as the same comb of parallel
+ * gullies. the drag on a pipe grows with its own new flow times `friction`, over the depth of the water leaving
+ * cubed, and the pipe's flow is what balances the pull against it, solved exactly (`slowed`). so a flow of depth d
+ * on a slope S settles at a speed of sqrt(g S d / friction), which is Chezy's law: speed grows with depth, a film
+ * crawls, a channel runs. the drag only ever slows a pipe, so the stable timestep and the conservation of every
+ * pass are as they were, and a friction of 0 is the paper's pipes.
+ *
+ * the drag is the new flow's and not the last's, and that is not a detail. dividing by one plus the last flow's
+ * drag is explicit in a term that over a film is stiff by six orders: a large flow one step made a tiny one the
+ * next and a large one again, an oscillation that never settled, left cells with water and no velocity, and made
+ * the model so sensitive that two correct runs parted within thirty steps. the exact solve settles in one.
+ *
+ * with the drag the comb went, and valleys that gather water cut where the slopes between them do not: the hero
+ * seed's 512 storm was a comb at friction 0, a gorge through the cliff band at 0.05, terraces and a braided fan at
+ * 0.3, and soft and blunt at 1.
  */
 export function pipeFlux(fields: IFields, terrain: ITerrain, constants: IErosionConstants): void {
   const { size, water, fluxLeft, fluxRight, fluxUp, fluxDown, scratch } = fields;
@@ -151,10 +177,15 @@ export function pipeFlux(fields: IFields, terrain: ITerrain, constants: IErosion
       const levelRight = across(scratch, i + 1, x < last, outside);
       const levelUp = across(scratch, i - size, y > 0, outside);
       const levelDown = across(scratch, i + size, y < last, outside);
-      let left = Math.max(0, fluxLeft[i] + pull * (level - levelLeft));
-      let right = Math.max(0, fluxRight[i] + pull * (level - levelRight));
-      let up = Math.max(0, fluxUp[i] + pull * (level - levelUp));
-      let down = Math.max(0, fluxDown[i] + pull * (level - levelDown));
+      // the bed's drag on what leaves through each pipe, per unit of its flow, over the depth it leaves from cubed
+      const depth = Math.max(water[i], constants.depthFloor);
+      const drag =
+        (constants.timestep * constants.friction * constants.pipeDepth) /
+        (cell * depth * depth * depth);
+      let left = slowed(fluxLeft[i], pull * (level - levelLeft), drag);
+      let right = slowed(fluxRight[i], pull * (level - levelRight), drag);
+      let up = slowed(fluxUp[i], pull * (level - levelUp), drag);
+      let down = slowed(fluxDown[i], pull * (level - levelDown), drag);
       // summed in pairs so the result is the same whichever way the land is mirrored or turned
       const outflow = left + right + (up + down);
       if (outflow > 0) {
