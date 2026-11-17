@@ -103,7 +103,7 @@ export const DIRECTION: IDirection = {
 
   heroDistance: 10500,
   heroElevation: 15,
-  heroSunOffset: 50,
+  heroSunOffset: 105,
   heroTargetHeight: 300,
   orbitRate: 0.6,
   orbitLowest: 6,
