@@ -61,6 +61,7 @@ export const SIM_CONSTANTS: ReadonlyArray<keyof IErosionConstants> = [
   'gravity',
   'timestep',
   'pipeDepth',
+  'friction',
   'rainRate',
   'evaporationRate',
   'depthFloor',
@@ -211,10 +212,15 @@ void main() {
   float levelUp = onBlock(p + UP) ? levelOf(p + UP) : baseLevel;
   float levelDown = onBlock(p + DOWN) ? levelOf(p + DOWN) : baseLevel;
   vec4 was = texelFetch(flux, p, 0);
-  vec4 toward = max(
+  // the bed's drag on what leaves through each pipe, per unit of its flow, over the depth it leaves from cubed;
+  // each pipe's flow q then solves q (1 + drag q) = driven, as slowed in step.ts does
+  float depth = max(texelFetch(land, p, 0).b, depthFloor);
+  float drag = (timestep * friction * pipeDepth) / (cell * depth * depth * depth);
+  vec4 driven = max(
     vec4(0.0),
     was + pull * (vec4(level) - vec4(levelLeft, levelRight, levelUp, levelDown))
   );
+  vec4 toward = (2.0 * driven) / (vec4(1.0) + sqrt(vec4(1.0) + 4.0 * drag * driven));
   float outflow = fourWay(toward);
   if (outflow > 0.0) {
     toward *= min(1.0, (texelFetch(land, p, 0).b * area) / (outflow * timestep));
