@@ -47,23 +47,34 @@
  * box:
  *
  *     layer       worst difference   the layer reaches   with capacity +1%
- *     cut         5.3e-5 m           210 m               4.2e-2 m
- *     regolith    6.3e-5 m           136 m               6.3e-1 m
- *     water       1.7e-5 m           0.70 m              1.6e-1 m
- *     suspended   6.9e-4 m           31 m                6.5 m
+ *     cut         5.3e-5 m           222 m               2.1e-3 m
+ *     regolith    1.4e-4 m           141 m               3.1e-3 m
+ *     water       4.2e-8 m           0.029 m             1.0e-6 m
+ *     suspended   1.8e-6 m           0.26 m              2.6e-3 m
  *
- * (2026-11-11, SwiftShader under Windows, 64 grid, 50 steps, seed 4127.) Each
- * tolerance below is about ten times its measurement. The last column is why
- * that is still tight enough, and it is checked on every run, not assumed: the
- * script runs the shaders once more with one constant nudged by 1% and requires
- * the comparison to *fail*. A gate that cannot fail is not a gate, and this is
- * the cheapest proof that this one can.
+ * (2026-11-17, SwiftShader under Windows, 64 grid, 50 steps, seed 4127.) The
+ * tolerances were set at about ten times the first measurement (2026-11-11)
+ * and have not moved; the look phase's gentler rock and the pipes' drag left
+ * the cut and the regolith four to nine times inside them. The last column is
+ * why that is still tight enough, and it is checked on every run, not assumed:
+ * the script runs the shaders once more with one constant nudged by 1% and
+ * requires the comparison to *fail*. A gate that cannot fail is not a gate,
+ * and this is the cheapest proof that this one can. The pipes' drag is held as
+ * hard: with the depth squared where it is cubed, the cut differed by 4.5 m.
+ *
+ * A first version of the drag divided by the last flow's and not the new
+ * flow's, and this gate is how that was found: the model and the shaders
+ * parted by a hundred times the tolerance in thirty steps, and so did the
+ * model and itself with the rain changed by one part in ten million. Two
+ * correct runs that disagree are a model that oscillates, not a tolerance that
+ * is too tight. `pipeFlux` in `step.ts` has the rest.
  *
  * The land here is not a gentle one. A 64 grid of real-sized cells is a
  * kilometre across and the calibrated relief is nearly two, so the slopes are
  * far past what rock holds and most of what moves in fifty steps is rockfall.
  * That is deliberate: it puts every branch of every pass to work in a run
- * short enough to compare.
+ * short enough to compare. The drawing shaders below are checked on the same
+ * land run on to `WET_STEPS`, since with drag fifty steps leave few pools.
  *
  * ## The land's shaders
  *
@@ -135,12 +146,24 @@
  * ending in `.webp` is written as one; `docs/images/watershed-*.webp` were
  * drawn so.
  *
+ * Three more options are for the look, where one land is drawn many ways.
+ * `--seed <n>` erodes another seed's land than the hero's (the gate's land is
+ * always the hero's). `--erode key=value`, as often as wanted, changes an
+ * erosion constant for the picture's storm alone, as `--set` does a number of
+ * the air's. `--keep <directory>` writes the storm's layers there and reads
+ * them back on a later run with the same seed, grid, steps, rain and
+ * constants, so a change to the air, the land's look or the camera is redrawn
+ * in seconds instead of re-eroded: at 512 a storm is most of a minute even on
+ * a real card. Like the stored land's digest it sees constants, not code:
+ * empty the directory after changing `model/` or `sim/`.
+ *
  * The line it prints times the light pass, the mesh, the water and a copy of
  * the frame; `--gpu` takes those on this machine's own graphics card. It is
  * tone-mapped by a few lines appended here and not by the route's chain, so it
  * has no bloom, grade or grain, and it is drawn by SwiftShader, so it shows
  * whether the land reads and says nothing about the final colour or about speed.
  */
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -244,6 +267,13 @@ const CONSTANTS = { ...EROSION, extent: SIZE * CELL };
 const STEPS = 50;
 
 /**
+ * The land the drawing shaders' claims are checked on: the model alone, long enough to leave pools. It is never
+ * compared with the shaders' land, so it need not stay inside the horizon `STEPS` does. It was the same land until
+ * the pipes had drag; then a film crawled, and after 50 steps only 3 cells of this land held water to draw.
+ */
+const WET_STEPS = 100;
+
+/**
  * The largest difference allowed in each field, in metres, between the model
  * and the shaders after the run. See the header for where these come from.
  */
@@ -256,14 +286,14 @@ const NUDGE = 1.01;
 const LAYERS = ['cut', 'regolith', 'water', 'suspended'];
 
 /** The land both sides start from. Raised twice, so neither run can see the other's state. */
-function raise(size = SIZE, constants = CONSTANTS) {
-  return raiseLand(HERO_SEED, size, constants, STRATA_ENTRIES, PARTS);
+function raise(size = SIZE, constants = CONSTANTS, seed = HERO_SEED) {
+  return raiseLand(seed, size, constants, STRATA_ENTRIES, PARTS);
 }
 
-/** The model's answer: the fields after `STEPS` steps of full rain. */
-function reference() {
+/** The model's answer: the fields after `steps` steps of full rain. */
+function reference(steps = STEPS) {
   const land = raise();
-  for (let n = 0; n < STEPS; n++) {
+  for (let n = 0; n < steps; n++) {
     step(land.fields, land.terrain, CONSTANTS, 1);
   }
   return land.fields;
@@ -407,8 +437,15 @@ function simulateInPage(job) {
  * The shaders' answer, with the constants given: `steps` steps on a grid of
  * `size`, the rain at `rains[n]` on step `n`, full on every step unless given.
  */
-async function simulate(page, constants, size = SIZE, steps = STEPS, rains = Array(steps).fill(1)) {
-  const land = raise(size, constants);
+async function simulate(
+  page,
+  constants,
+  size = SIZE,
+  steps = STEPS,
+  rains = Array(steps).fill(1),
+  seed = HERO_SEED
+) {
+  const land = raise(size, constants, seed);
   const uniforms = Object.fromEntries(SIM_CONSTANTS.map((key) => [key, constants[key]]));
   uniforms[SIM_STRENGTH] = 1;
   const outcome = await page.evaluate(simulateInPage, {
@@ -1292,6 +1329,42 @@ function airFor(name, raining, e) {
   }
 }
 
+/** The layers a picture is drawn from, and so the ones `--keep` keeps. */
+const KEPT = ['cut', 'regolith', 'water', 'suspended', 'velocityX', 'velocityY'];
+
+/**
+ * The shaders' storm for a picture, or, with `--keep <directory>`, the one a
+ * previous picture ran with the same seed, grid, steps, rain and erosion
+ * constants. For the look, where one land is drawn under many skies: a storm
+ * at 512 is most of a minute even on a real card, and the drawing is not.
+ */
+async function erodeOrKeep(page, constants, size, steps, rains, seed) {
+  const keep = option('keep', null);
+  const name = createHash('sha256')
+    .update(JSON.stringify({ constants, size, steps, rains, seed }))
+    .digest('hex')
+    .slice(0, 16);
+  const file = keep && path.join(keep, `watershed-${seed}-${size}-${name}.bin`);
+  if (file && fs.existsSync(file)) {
+    const land = raise(size, constants, seed);
+    const bytes = fs.readFileSync(file);
+    const all = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+    KEPT.forEach((layer, at) =>
+      land.fields[layer].set(all.subarray(at * size * size, (at + 1) * size * size))
+    );
+    console.log(`  kept: ${file}`);
+    return { fields: land.fields, land };
+  }
+  const eroded = await simulate(page, constants, size, steps, rains, seed);
+  if (file) {
+    fs.mkdirSync(keep, { recursive: true });
+    const all = new Float32Array(KEPT.length * size * size);
+    KEPT.forEach((layer, at) => all.set(eroded.fields[layer], at * size * size));
+    fs.writeFileSync(file, Buffer.from(all.buffer));
+  }
+  return eroded;
+}
+
 /** Erodes the whole block on a coarse grid and writes a picture of it. To look at; it asserts nothing. */
 async function picture(page, file) {
   const size = Number(option('grid', 256));
@@ -1315,7 +1388,20 @@ async function picture(page, file) {
     }
     weather.airLook = { ...(weather.airLook ?? AIR_LOOK), [key]: Number(value) };
   }
-  const eroded = await simulate(page, EROSION, size, steps, rains);
+  // `--erode key=value`, as often as wanted: an erosion constant, changed for this picture's storm alone
+  const constants = { ...EROSION };
+  const erode = process.argv.flatMap((arg, at) =>
+    process.argv[at - 1] === '--erode' ? [arg] : []
+  );
+  for (const pair of erode) {
+    const [key, value] = pair.split('=');
+    if (typeof EROSION[key] !== 'number') {
+      throw new Error(`--erode takes an erosion constant; "${key}" is not one.`);
+    }
+    constants[key] = Number(value);
+  }
+  const seed = Number(option('seed', HERO_SEED));
+  const eroded = await erodeOrKeep(page, constants, size, steps, rains, seed);
   const views = { route: () => ROUTE_VIEW, hero: () => directedView(eroded.land, after) };
   const seenFrom = views[option('view', 'route')]?.();
   if (!seenFrom) {
@@ -1328,7 +1414,7 @@ async function picture(page, file) {
     clock: Number(option('clock', 0)),
     imageType: file.endsWith('.webp') ? 'image/webp' : 'image/png',
   };
-  const drawn = await draw(page, eroded.land, EROSION, view, true);
+  const drawn = await draw(page, eroded.land, constants, view, true);
   fs.writeFileSync(file, Buffer.from(drawn.image.split(',')[1], 'base64'));
   console.log(
     `  wrote ${file}: ${steps} steps on a ${size} grid, in ` +
@@ -1429,10 +1515,11 @@ try {
     );
   }
 
-  if (await verifyLand(page, expected)) {
+  const wet = reference(WET_STEPS);
+  if (await verifyLand(page, wet)) {
     failed = true;
   }
-  if (await verifyReadback(page, expected)) {
+  if (await verifyReadback(page, wet)) {
     failed = true;
   }
   const out = option('out', null);
