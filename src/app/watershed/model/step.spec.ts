@@ -244,9 +244,11 @@ describe('the erosion step', () => {
       const terrain = terrainOf((x) => 2000 - 60 * x);
       const fields = createFields(SIZE);
       fields.water.fill(0.5);
+      // without drag, which holds this water to about 8 m/s on its own: the clamp is what is under test
+      const frictionless: IErosionConstants = { ...K, friction: 0 };
       for (let n = 0; n < 30; n++) {
-        pipeFlux(fields, terrain, K);
-        flow(fields, K);
+        pipeFlux(fields, terrain, frictionless);
+        flow(fields, frictionless);
       }
       const fastest = Math.max(
         ...Array.from(fields.velocityX, (speedX, i) => Math.hypot(speedX, fields.velocityY[i]))
@@ -622,7 +624,14 @@ describe('the erosion step', () => {
     it('blows up past the stable timestep, which is what the limit is a limit of', () => {
       // not a wish: the proof that `stableTimestep` bounds something real, and not a formula that happens to pass
       const sloshing = (timestep: number): number => {
-        const still: IErosionConstants = { ...K, timestep, rainRate: 0, evaporationRate: 0 };
+        // without drag: the limit is the pipes', and friction only ever slows them, so it could hide a wrong one
+        const still: IErosionConstants = {
+          ...K,
+          timestep,
+          friction: 0,
+          rainRate: 0,
+          evaporationRate: 0,
+        };
         const terrain = terrainOf(() => K.baseLevel - 50);
         const fields = createFields(SIZE);
         for (let i = 0; i < SIZE * SIZE; i++) {
