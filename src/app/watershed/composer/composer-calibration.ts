@@ -13,13 +13,19 @@ export const BLOOM_THRESHOLD = 1;
 export const BLOOM_STRENGTH = 0.35;
 export const BLOOM_RADIUS = 0.6;
 
-/** the identity grade: no lift, no gain, midtones where the tone mapping put them */
+/**
+ * set against the hero frame, and small: the light already makes the picture warm where the low sun reaches and
+ * blue where only the sky does, so the grade leans the same two ways and adds no colour of its own. the shadow
+ * tint is the clear zenith (`clearZenith` in the air's calibration, linear 0.035, 0.07, 0.16) as display values,
+ * and the highlight tint the low sun's gold; the midtones open a little because the land's shaded side, which
+ * the hero shot shows half of, sat heavy at the identity
+ */
 export const GRADE: IGrade = {
-  shadowTint: 0x000000,
-  shadowStrength: 0,
-  highlightTint: 0xffffff,
-  highlightStrength: 0,
-  gamma: 1,
+  shadowTint: 0x334a70,
+  shadowStrength: 0.04,
+  highlightTint: 0xffcc88,
+  highlightStrength: 0.05,
+  gamma: 1.08,
 };
 
 /** lighter than murmuration's: this picture is mostly mid-tones, where grain reads as noise sooner */

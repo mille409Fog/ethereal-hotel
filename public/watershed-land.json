@@ -1,15 +1,15 @@
 {
-  "digest": "f6be8d8e4a5790d5b443713b1d6429c5d2ba18f9fc69e024666683010d89dc2f",
+  "digest": "3f70b9d9efb4a05344f86f1aaf9f06c766fe9fe5bd0e06b5a0f03439d4b736e0",
   "seed": 4127,
   "size": 512,
   "steps": 12000,
   "measured": {
-    "seconds": 693,
-    "deepestCut": 304.05615234375,
-    "deepestRegolith": 146.46324157714844,
-    "deepestWater": 2.9934911727905273,
-    "wetCells": 1524,
-    "rockCut": 2493573060.7582603,
-    "rockExported": 1455093798.8106198
+    "seconds": 571,
+    "deepestCut": 124.74763488769531,
+    "deepestRegolith": 71.19432067871094,
+    "deepestWater": 58.771644592285156,
+    "wetCells": 15953,
+    "rockCut": 478142843.8799792,
+    "rockExported": 20562457.074852973
   }
 }

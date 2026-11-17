@@ -70,6 +70,14 @@ export interface IAirLook {
   readonly deckRelief: number;
   /** how far out it is drawn, metres; it is faded into the sky well before the edge */
   readonly deckReach: number;
+  /**
+   * cloud is lit through, not only on: the share of the sun's full light its top gets whichever way it faces,
+   * so a low sun still lights the deck. 0 is a surface, which a 10 degree sun leaves at a sixth of its light
+   */
+  readonly deckWrap: number;
+  /** the extra light it sends on forward, toward an eye looking at the sun, and how tight round the sun, as an exponent */
+  readonly deckSilver: number;
+  readonly deckSilverTightness: number;
 
   /** the wind that carries the deck and the clouds overhead, metres a second along x and along z */
   readonly windX: number;
@@ -119,12 +127,12 @@ export const AIR_LOOK: IAirLook = {
   warmthElevation: 0.5,
   sunGlow: [0.5, 0.36, 0.22],
   glowTightness: 24,
-  duskSky: 0.5,
+  duskSky: 0.85,
   duskElevation: 0.5,
   groundBounce: 0.08,
 
   hazeStorm: 2e-4,
-  hazeClear: 3e-5,
+  hazeClear: 5e-5,
   fogBase: 0,
   fogFalloff: 900,
 
@@ -138,14 +146,17 @@ export const AIR_LOOK: IAirLook = {
   deckGrain: 1800,
   deckRelief: 0.5,
   deckReach: 60000,
+  deckWrap: 0.4,
+  deckSilver: 1.5,
+  deckSilverTightness: 8,
 
   windX: 9,
   windZ: 4,
   cloudHeight: 4500,
   cloudGrain: 2400,
   cloudCover: 0.55,
-  cloudSoftness: 0.12,
-  cloudShadow: 0.7,
+  cloudSoftness: 0.3,
+  cloudShadow: 0.25,
 
   rainSlant: 0.18,
   rainColumn: 9,

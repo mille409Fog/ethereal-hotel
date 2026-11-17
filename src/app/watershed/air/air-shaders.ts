@@ -106,6 +106,9 @@ export const AIR_FLOATS: ReadonlyArray<LookKeys<number>> = [
   'deckGrain',
   'deckRelief',
   'deckReach',
+  'deckWrap',
+  'deckSilver',
+  'deckSilverTightness',
   'windX',
   'windZ',
   'cloudHeight',
@@ -253,9 +256,19 @@ float cloudShade(vec3 at, vec3 sun, float weather) {
   return 1.0 - strength * cloud;
 }
 
-// the cloud of the deck lit from above: what it scatters toward the eye
-vec3 deckLight(vec3 sun, float weather) {
-  return deckColour * (sunLight(sun, weather) * max(sun.y, 0.0) + skyLight(vec3(0.0, 1.0, 0.0), sun, weather));
+// the share of the sun's light that cloud whose top faces this way sends toward an eye looking this way. cloud
+// is not a surface: light goes into it and comes out of the top whichever way the top faces, so a low sun still
+// lights it (deckWrap), and more of it goes on forward than back, so cloud seen toward the sun is brightest
+// (deckSilver, deckSilverTightness)
+float deckSun(vec3 normal, vec3 sun, vec3 look) {
+  float carried = mix(max(dot(normal, sun), 0.0), 1.0, deckWrap) * step(0.0, sun.y);
+  return carried + deckSilver * pow(max(dot(look, sun), 0.0), deckSilverTightness);
+}
+
+// the cloud of the deck lit from above: what it scatters toward an eye looking this way
+vec3 deckLight(vec3 sun, float weather, vec3 look) {
+  vec3 up = vec3(0.0, 1.0, 0.0);
+  return deckColour * (sunLight(sun, weather) * deckSun(up, sun, look) + skyLight(up, sun, weather));
 }
 
 // an antiderivative, in height, of a density that is 1 below top, falls to 0 over soft above it, and is 0 above
@@ -302,7 +315,7 @@ vec3 fogged(vec3 colour, vec3 eye, vec3 point, vec3 sun, float weather, float hu
   }
   vec3 scattered = (haze + mist) * skyGlow(point - eye, sun, weather);
   if (deck > 0.0) {
-    scattered += deck * deckLight(sun, weather);
+    scattered += deck * deckLight(sun, weather, normalize(point - eye));
   }
   scattered /= thickness;
   float passed = exp(-thickness);
@@ -369,12 +382,16 @@ void main() {
   vec2 slope = airNoise(at).yz + 0.5 * airNoise(at * 2.7 + 11.0).yz * 2.7;
   vec3 normal = normalize(vec3(-slope.x * deckRelief, 1.0, -slope.y * deckRelief));
 
-  float facing = max(dot(normal, sunDirection), 0.0);
+  vec3 look = normalize(vWorld - cameraPosition);
   float shade = cloudShade(vWorld, sunDirection, ${WEATHER});
   vec3 colour = deckColour * (
-    sunLight(sunDirection, ${WEATHER}) * facing * shade + skyLight(normal, sunDirection, ${WEATHER})
+    sunLight(sunDirection, ${WEATHER}) * deckSun(normal, sunDirection, look) * shade +
+    skyLight(normal, sunDirection, ${WEATHER})
   );
-  colour = fogged(colour, cameraPosition, vWorld, sunDirection, ${WEATHER}, 0.0);
+  // through the haze and not through itself: the deck's fog thins over deckSoft above this sheet, and a ray to the
+  // sheet crossed that first, at a low view four optical depths of it, so the billows drawn here were never seen.
+  // fogged as if it stood at the top of that layer, which is the same ray to within deckSoft of haze
+  colour = fogged(colour, cameraPosition, vWorld + vec3(0.0, deckSoft, 0.0), sunDirection, ${WEATHER}, 0.0);
 
   // gone into the sky long before its edge, so where it ends is never seen
   float distant = smoothstep(0.5 * deckReach, 0.9 * deckReach, length(vWorld.xz));
