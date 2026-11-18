@@ -1,8 +1,12 @@
 @if (webGLfailure()) {
   <p class="stage-failure">This piece is drawn with WebGL, and this browser could not start it.</p>
 }
+<!-- One image to a screen reader, named for what it draws; the line under the
+     readout says where that land came from. -->
 <canvas
   #stage
+  role="img"
+  [attr.aria-label]="picture()"
   [hidden]="webGLfailure()"
   [attr.data-land]="land()"
   (pointerdown)="grab($event)"

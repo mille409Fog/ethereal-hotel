@@ -17,6 +17,15 @@
     },
     "text": ""
   },
+  "/watershed": {
+    "clip": {
+      "x": 0,
+      "y": 0,
+      "width": 1357,
+      "height": 848
+    },
+    "text": "Reduced motion: one still frame of a land computed earlier by the same model. Seed 4127."
+  },
   "/dashboard": {
     "clip": {
       "x": 8,

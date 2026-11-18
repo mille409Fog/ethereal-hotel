@@ -13,7 +13,7 @@ import { DECK_MESH, DOME_MESH } from './air/air';
 import { RainPass } from './air/rain-pass';
 import { LAND_MESH } from './land/land-mesh';
 import { LIGHT_PASS } from './land/light-pass';
-import { landLine, UNLOADED } from './land-state';
+import { LAND_PICTURES, landLine, NO_PICTURE, UNLOADED } from './land-state';
 import { EROSION } from './model/erosion-calibration';
 import { ILand } from './model/land';
 import { IQualityTier, MEASURE_WINDOW_MS, QUALITY_TIERS } from './quality/quality-calibration';
@@ -421,6 +421,8 @@ describe('Watershed', () => {
       expect(canvasOf(fixture).hidden).toBe(false);
       expect(canvasOf(fixture).dataset['land']).toBe('simulating');
       expect(landLineOf(fixture)).toBe(landLine('simulating', 77));
+      expect(canvasOf(fixture).getAttribute('role')).toBe('img');
+      expect(canvasOf(fixture).getAttribute('aria-label')).toBe(LAND_PICTURES.simulating);
     });
 
     it('draws a seed from chance when the address names none', async () => {
@@ -443,12 +445,14 @@ describe('Watershed', () => {
       // fetched, but not yet drawn: the line claims nothing until a frame has the land in it
       expect(rendererState.storedAsked).toBe(1);
       expect(landLineOf(fixture)).toBeUndefined();
+      expect(canvasOf(fixture).getAttribute('aria-label')).toBe(NO_PICTURE);
 
       frameLoopOf(onlyRenderer())(1_000);
       await fixture.whenStable();
 
       expect(landIn(onlyComposer())).toBeDefined();
       expect(canvasOf(fixture).dataset['land']).toBe('stored');
+      expect(canvasOf(fixture).getAttribute('aria-label')).toBe(LAND_PICTURES.stored);
       expect(landLineOf(fixture)).toBe(landLine('stored', HERO_SEED));
       // no storm to start again, but a pass that can be held
       expect(() => buttonOf(fixture, 'New land')).toThrow();
@@ -465,6 +469,7 @@ describe('Watershed', () => {
       expect(landIn(onlyComposer())).toBeDefined();
       expect(canvasOf(fixture).dataset['land']).toBe('still');
       expect(landLineOf(fixture)).toBe(landLine('still', HERO_SEED));
+      expect(canvasOf(fixture).getAttribute('aria-label')).toBe(LAND_PICTURES.still);
       expect(hostOf(fixture).querySelector('.controls')).toBeNull();
     });
 
@@ -483,6 +488,7 @@ describe('Watershed', () => {
       await fixture.whenStable();
 
       expect(landLineOf(fixture)).toBe(UNLOADED);
+      expect(canvasOf(fixture).getAttribute('aria-label')).toBe(NO_PICTURE);
       expect(landIn(onlyComposer())).toBeUndefined();
       // the empty sky is drawn, once, rather than nothing
       expect(onlyComposer().render).toHaveBeenCalledTimes(1);

@@ -71,6 +71,8 @@ check('files CLAUDE.md points at still exist', () => {
     'src/app/resume/resume.data.ts',
     'scripts/resume-fonts',
     'public/jacob-miller-resume.pdf',
+    'public/watershed-land.png',
+    'scripts/build-watershed-land.mjs',
   ];
   return referenced
     .filter((file) => !exists(file))
@@ -1512,7 +1514,9 @@ check('quoted config values still match the files they came from', () => {
 
 // The gates that share the e2e job. `resume:check`, `verify:shader` and
 // `verify:watershed` sit after
-// the Playwright suite because they need the Chromium it installs, and a step in
+// the Playwright suite because they need the Chromium it installs, and
+// `check:watershed-land` because the stored land is part of what the route
+// shows. A step in
 // GitHub Actions is skipped once an earlier one fails unless it says otherwise. So
 // a red suite silently switched off both — the shader gate went unrun on every
 // push for two months while the suite timed out on a growing shader, and nothing
@@ -1533,7 +1537,12 @@ check('a failing e2e suite cannot switch off the gates behind it', () => {
   }
 
   const after = steps.slice(suite + 1);
-  for (const gate of ['resume:check', 'verify:shader', 'verify:watershed']) {
+  for (const gate of [
+    'resume:check',
+    'verify:shader',
+    'verify:watershed',
+    'check:watershed-land',
+  ]) {
     if (!after.some((step) => step.includes(`npm run ${gate}`))) {
       problems.push(
         `CLAUDE.md says \`npm run ${gate}\` rides in the e2e job; it is no longer after the suite.`
@@ -2453,9 +2462,14 @@ check('no template under src/app/ draws an emoji', () => {
 // `:hover` or `:focus` may move its element, and no transition may be `all`.
 // `/murmuration` is spectacle and exempt, as is `/aesthetic`'s medallion,
 // whose motion shows state; both are named here so the carve-out is visible.
+// `/watershed` is spectacle too and is not exempt: its canvas has no CSS
+// hover to exempt, and its controls are interface. The watershed check below
+// holds that.
+const hoverExempt = (file, selector) =>
+  file.startsWith('src/app/murmuration/') || /\.medallion\b/.test(selector);
+
 check('hover and focus do not move anything', () => {
-  const exempt = (file, selector) =>
-    file.startsWith('src/app/murmuration/') || /\.medallion\b/.test(selector);
+  const exempt = hoverExempt;
   const sheets = readdirSync(path.join(repoRoot, 'src/app'), { recursive: true })
     .map((file) => `src/app/${String(file).replace(/\\/g, '/')}`)
     .filter((file) => file.endsWith('.css'));
@@ -2531,6 +2545,94 @@ check("wanderquest's palettes stay its own", () => {
           `${value ?? '(none)'}. The contrast test is only as true as that copy.`
       );
     }
+  }
+  return problems;
+});
+
+// `/watershed`'s claims that CLAUDE.md makes, each one a way the piece could
+// go on rendering beautifully while it stopped being what it says it is. Two
+// are read from the running code rather than the source, because Node can
+// import the direction leaves (`npm run test:scripts` fails the day it cannot)
+// and a value is harder to fake than a pattern.
+const WATERSHED = 'src/app/watershed';
+let watershedDirection;
+try {
+  watershedDirection = {
+    ...(await import(`../${WATERSHED}/direction/direction.ts`)),
+    ...(await import(`../${WATERSHED}/direction/direction-calibration.ts`)),
+  };
+} catch (error) {
+  watershedDirection = { error };
+}
+
+check('the watershed is made by its model, and only the model', () => {
+  const problems = [];
+
+  // The rain stops before the storm does, and stops: `rainAt(1)` exactly 0. A
+  // last drop of rain at the end is a land still flooding when the light
+  // comes, and the hero frame is of rivers at base flow. `direction.spec.ts`
+  // asserts it too; this is the copy CLAUDE.md answers to.
+  const { rainAt, DIRECTION, error } = watershedDirection;
+  if (error || typeof rainAt !== 'function' || DIRECTION === undefined) {
+    problems.push(
+      `Node could not import rainAt and DIRECTION from ${WATERSHED}/direction/ ` +
+        `(${error?.message ?? 'not exported'}). Both are leaves, and CLAUDE.md says the rain ` +
+        `is exactly 0 at the end of the storm.`
+    );
+  } else {
+    for (const p of [DIRECTION.rainStop, 1]) {
+      const rain = rainAt(p, DIRECTION);
+      if (rain !== 0) {
+        problems.push(
+          `rainAt(${p}) is ${rain}, not exactly 0. The storm's last steps drain the land; a ` +
+            `trickle of rain through them is a flood the hero shot was never meant to show.`
+        );
+      }
+    }
+  }
+
+  // The water is drawn where the simulation has water: its vertex shader reads
+  // the depth out of the `land` texture and nothing else decides it.
+  const waterShaders = `${WATERSHED}/water/water-shaders.ts`;
+  if (!exists(waterShaders) || !/texelFetch\(\s*land\b/.test(read(waterShaders))) {
+    problems.push(
+      `${waterShaders} no longer reads the \`land\` texture. Everything drawn on /watershed ` +
+        `reads the simulation's own textures; a water mesh that decides for itself where ` +
+        `rivers go is painting them.`
+    );
+  }
+
+  const sources = readdirSync(path.join(repoRoot, WATERSHED), { recursive: true })
+    .map((file) => `${WATERSHED}/${String(file).replace(/\\/g, '/')}`)
+    .filter((file) => /\.(ts|html|css)$/.test(file));
+
+  // No sound, as for every piece on this site: WATERSHED.md §Decisions.
+  for (const file of sources.filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'))) {
+    if (/\bnew (webkit)?AudioContext\b|createAnalyser\(/i.test(read(file))) {
+      problems.push(
+        `${file} creates an AudioContext. /watershed has no sound by decision ` +
+          `(WATERSHED.md §Decisions already taken); a storm with a soundtrack is a new piece.`
+      );
+    }
+  }
+
+  // Spectacle exempts the canvas from the interface rules, and nothing else on
+  // the route. Its controls are buttons like any other, so its CSS takes no
+  // carve-out from the hover rule — and needs none, which is the claim.
+  for (const sheet of sources.filter((f) => f.endsWith('.css'))) {
+    if (hoverExempt(sheet, '.control:hover')) {
+      problems.push(
+        `${sheet} is exempt from the hover rule. CLAUDE.md says /watershed's controls are ` +
+          `interface and obey it; take the route out of the exemption.`
+      );
+    }
+  }
+
+  if (!exists('public/watershed-land.png') || !exists('public/watershed-land.json')) {
+    problems.push(
+      'public/watershed-land.png or its .json is missing. CLAUDE.md calls the stored land a ' +
+        'generated file; `npm run build:watershed-land` writes both.'
+    );
   }
   return problems;
 });

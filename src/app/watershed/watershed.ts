@@ -59,6 +59,7 @@ import { DIRECTION } from './direction/direction-calibration';
 import { IReadout, readoutDigest, readoutRows } from './direction/readout';
 import {
   landLine,
+  landPicture,
   LandState,
   landStateFor,
   pausable,
@@ -166,6 +167,8 @@ export class Watershed implements AfterViewInit, OnDestroy {
     }
     return this.unloaded() ? UNLOADED : landLine(land, this.seed(), this.paused());
   });
+  /** the canvas's name: what it draws, which is no land until the line has one to name */
+  protected readonly picture = computed(() => landPicture(this.land(), this.unloaded()));
   protected readonly rows = computed(() => {
     const readout = this.readout();
     return readout === null ? null : readoutRows(readout);

@@ -107,6 +107,19 @@ export const PROJECTS: readonly IProject[] = [
     },
   },
   {
+    name: 'Watershed',
+    description:
+      'A block of land eroded while you watch by a simulation on the GPU: rivers, benches and lakes that nobody drew',
+    category: 'Live Demo',
+    tech: ['Angular 22', 'three.js', 'GLSL', 'WebGL 2'],
+    link: '/watershed',
+    linkLabel: 'Watch the Land Erode',
+    frame: {
+      src: '/projects/watershed.webp',
+      alt: 'The hero seed’s land as the model left it, valleys cut through banded rock and lit low from one side, standing in a sea of cloud, under the line “Reduced motion: one still frame of a land computed earlier by the same model. Seed 4127.”',
+    },
+  },
+  {
     name: 'Hotel Operations Dashboard',
     description:
       'Occupancy, ADR and RevPAR computed from real booking records — polled from a serverless API here, streamed over a WebSocket from the container',

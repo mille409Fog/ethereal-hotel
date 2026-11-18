@@ -44,6 +44,24 @@ export const PAUSED = 'Paused.';
 /** said in place of the line when the stored land could not be fetched or decoded: there is no land to name */
 export const UNLOADED = 'The stored land could not be loaded, so no land is shown.';
 
+/**
+ * the canvas's own name, for a screen reader: what the picture is of, where the line says where it came from. a
+ * canvas is opaque to assistive technology, so without this the largest thing on the page is announced as nothing.
+ * it claims only what is drawn: before the first frame, and when the stored land could not be loaded, that is no land.
+ */
+export const LAND_PICTURES: Readonly<Record<LandState, string>> = {
+  simulating: 'A block of land eroding under a storm as the simulation runs.',
+  still: 'One still frame of a block of land the model eroded, standing in cloud.',
+  stored: 'A block of land the model eroded, flown over by the camera.',
+};
+
+/** the canvas's name while it holds no land: before the first frame, or when the stored land failed to load */
+export const NO_PICTURE = 'No land is drawn.';
+
+export function landPicture(state: LandState | null, unloaded: boolean): string {
+  return state === null || unloaded ? NO_PICTURE : LAND_PICTURES[state];
+}
+
 /** true for a state the visitor can pause: anything that moves */
 export function pausable(state: LandState): boolean {
   return state !== 'still';

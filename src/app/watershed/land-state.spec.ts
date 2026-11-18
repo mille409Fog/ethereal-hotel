@@ -1,7 +1,10 @@
 import {
+  LAND_PICTURES,
   LAND_SENTENCES,
   landLine,
+  landPicture,
   landStateFor,
+  NO_PICTURE,
   PAUSED,
   pausable,
   showsStoredLand,
@@ -32,6 +35,27 @@ describe('land state', () => {
     const sentences = Object.values(LAND_SENTENCES);
 
     expect(new Set(sentences).size).toBe(3);
+  });
+
+  describe("the canvas's name", () => {
+    it('says what each state draws, differently for each', () => {
+      expect(landPicture('simulating', false)).toBe(LAND_PICTURES.simulating);
+      expect(landPicture('still', false)).toBe(LAND_PICTURES.still);
+      expect(landPicture('stored', false)).toBe(LAND_PICTURES.stored);
+      expect(new Set(Object.values(LAND_PICTURES)).size).toBe(3);
+    });
+
+    it('claims no land before one is drawn, or when the stored one failed to load', () => {
+      expect(landPicture(null, false)).toBe(NO_PICTURE);
+      expect(landPicture('still', true)).toBe(NO_PICTURE);
+      expect(landPicture('stored', true)).toBe(NO_PICTURE);
+    });
+
+    it('makes no claim about time either', () => {
+      for (const picture of [...Object.values(LAND_PICTURES), NO_PICTURE]) {
+        expect(picture).not.toMatch(/year|hour|century|millenni/i);
+      }
+    });
   });
 
   describe('the line on screen', () => {

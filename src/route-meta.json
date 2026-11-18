@@ -56,7 +56,7 @@
     "watershed": {
       "path": "watershed",
       "title": "watershed - Jacob Miller",
-      "description": "in progress — a landscape that will be eroded by a simulation while you watch. today it is an empty stage: one lit slab the size of the land to come"
+      "description": "a block of land eroded while you watch by a hydraulic simulation on the GPU: the rivers, the benches and the lakes are its output, nobody drew them, and every seed is a different land"
     }
   }
 }

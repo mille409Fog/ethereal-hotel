@@ -184,6 +184,21 @@ const RECIPES: Readonly<Record<string, IRecipe>> = {
       await expect(page.locator('app-murmuration canvas')).toBeVisible();
     },
   },
+  // Reduced motion, which this whole context runs under, is the `still` state:
+  // the stored land for the hero seed, drawn once. The line names it only after
+  // that frame is drawn, so waiting on its sentence is waiting on the picture.
+  // A live storm could never be a committed frame, since two machines do not
+  // make the same land from one seed.
+  '/watershed': {
+    anchors: ['app-watershed canvas', 'app-watershed .land-line'],
+    prepare: async (page) => {
+      await page.goto('/watershed');
+      await expect(page.locator('app-watershed .land-line')).toContainText(
+        'Reduced motion: one still frame',
+        { timeout: 30_000 }
+      );
+    },
+  },
 };
 
 /**
