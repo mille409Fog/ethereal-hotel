@@ -8,8 +8,9 @@
  * the rain is a deluge no sky has delivered and the erodibility is tuned so that a storm of `stormSteps` steps
  * carves a landscape a visitor can watch form. the model has no calendar, and nothing derived from it may claim one.
  *
- * all of them are provisional until the phase that tunes the look, which sets them with the picture running.
- * the two that are not free are the timestep, which `stableTimestep` bounds, and the three rates multiplied by
+ * the look phase (2026-11-18) set them with the picture running: it added `friction` and laid the soft rock back
+ * (`talusRegolith`, `talusRockSoft`), and the rest held. a change here fails `check:watershed-land` until the
+ * stored land is rebuilt (`npm run build:watershed-land`, about eleven minutes). the two that are not free are the timestep, which `stableTimestep` bounds, and the three rates multiplied by
  * it, which `step.ts` requires to be at most 1; `erosion-calibration.spec.ts` holds both.
  *
  * a leaf module: see `fields.ts`.

@@ -3,7 +3,7 @@
 The second spectacle on this site, after `/murmuration`, and meant to be much larger. This is the
 whole plan: what the piece is, the decisions already taken and why, what has landed, and the
 phases still to do, each with a Definition of Done so that one instance can build a phase and
-another can verify it. The simulation runs, and the land it makes is drawn with its water on it, under a sky, in haze and mist, standing in a deck of cloud, with the rain falling; and the storm is directed, on one clock, from the first drop to the hero shot and the orbit after it. A device that cannot simulate, and a visitor who asked for stillness, are shown the hero seed's land as the reference model left it, stored. Nothing has been tuned for its look.
+another can verify it. The simulation runs, and the land it makes is drawn with its water on it, under a sky, in haze and mist, standing in a deck of cloud, with the rain falling; and the storm is directed, on one clock, from the first drop to the hero shot and the orbit after it. A device that cannot simulate, and a visitor who asked for stillness, are shown the hero seed's land as the reference model left it, stored. It has been tuned for its look, and what is left is wiring it into the site.
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -154,7 +154,7 @@ src/app/watershed/
   seed/            seed.ts                mulberry32, parseSeed, drawSeed, HERO_SEED      (built)
   quality/         calibration, meter     the tiers, and the choice from frame time       (built)
   stage/           calibration, camera    the block's size and vantage; a land stood on it and its clocks (built)
-  composer/        calibration, passes    render, bloom, output, grade, grain             (built)
+  composer/        calibration, passes    render, bloom, output, grade, grain; the tier's samples (built)
   canvas/          follow-canvas-size.ts  renderer, composer and lens follow the canvas   (built)
   model/           (leaf modules; the reference, importable by Node)                      (built)
     erosion-calibration.ts                every constant with its unit; stableTimestep
@@ -171,6 +171,7 @@ src/app/watershed/
     sim-driver.ts                         ping-pong targets over SIM_PASSES
     sim-clock.ts   sim-calibration.ts     frames into whole steps; the storm's pace
     storm.ts                              a land, its driver, its clock, and the land on the stage
+    raise-land.ts  raise.worker.ts        a storm's land, raised in a worker and polled for
     sim-support.ts                        the float-target probe; decides `stored`
   land/                                                                                   (built)
     land-calibration.ts                   the sun, the light pass's reach, the ground's colours (leaf)
@@ -557,40 +558,55 @@ of `stored/stored-layout.ts`, `stored/stored-land.ts`, `stage/stand-land.ts` and
   cannot render to 32-bit float may not render to 16-bit either. The device this was checked on
   withheld only the first. Nothing here has met a device without both.
 
+**The look** (2026-11-18). The land erodes into stepped beds and branching valleys instead of a
+comb of gullies, the block stands in a sea of cloud that reads as cloud, the hero shot is lit
+across by the golden sun, and the tiers measure the storm itself. The reasoning is in the headers
+of `model/step.ts` (`pipeFlux`), `model/erosion-calibration.ts`, `air/air-shaders.ts`,
+`direction/direction-calibration.ts`, `composer/composer-calibration.ts`,
+`quality/quality-calibration.ts`, `sim/raise-land.ts` and `scripts/verify-watershed.mjs`.
+
+- **The Definition of Done.** Hero frames for seeds 4127, 1, 2, 3, 77 and 2024, drawn with every
+  number set and kept out of the repo, were accepted. Frame times are in the tier calibration for
+  the two devices here: the RTX 3070 Ti settles on the top tier at 16.7 ms (median and 95th
+  percentile alike) through the storm, and SwiftShader on the lowest at 383 ms. **No phone was
+  measured**, and the phase was closed without one by choice: an emulated phone is a desktop's
+  number under a phone's name. Nothing here settles on the middle tier either.
+- **The comb was the pipes, not the constants.** Every slope eroded into the same parallel
+  gullies a few cells apart, because frictionless pipes run a film as fast as a river and a film
+  then cuts as one does. No setting of `rampDepth`, `capacity`, the rest angles or the uplift's
+  edge removed it. The pipes have Chezy drag now (`friction`), a film crawls and a channel runs,
+  and the water that gathers is the water that cuts. The water no longer sits on `maxSpeed`.
+- **The first drag oscillated, and the parity gate found it.** It divided by the last flow's drag;
+  over a film that term is stiff by six orders, the flow flipped large and small on alternate
+  steps, and the model and the shaders parted by a hundred times the tolerance. So did the model
+  and itself with the rain changed by one part in ten million. The drag is solved exactly for
+  the new flow now, and the tolerances never moved. The drawing checks run on the same land
+  carried on to 100 steps, since with drag fifty leave three pools.
+- **Benches come from the gap between soft and hard rock.** Soft beds rest at 0.6 and loose ground
+  at 0.4, against 3 for the hardest, so the soft lay back into slopes and the hard stand as cliffs.
+- **The deck's billows were never seen.** It was fogged through its own soft top, about four
+  optical depths at the hero shot's angle; it is fogged through the haze alone now, and lit as
+  cloud, through and forward toward the sun, rather than as a surface a 10 degree sun barely
+  reaches. Hard dappling that then appeared was the shadows of clouds the sky does not draw, at
+  70%; they are 25% and soft.
+- **The stored land was rebuilt**, and keeps lakes: 15,953 wet cells, the deepest 59 m, where the
+  last ended as a few ponds.
+- **The land is raised in a worker**, which took 390 ms off a 902 ms main-thread task at the start
+  of every storm on the RTX box; the 514 ms left is the storm compiling its shaders and uploading
+  its textures. **The meter judges the storm too**, from the tier the empty stage settled on and
+  only downward, starting the storm again at most once, on the smaller grid. **Samples are a tier
+  property**: four on the top two, none on the lowest.
+- **The air's three frames were redrawn**, `docs/images/watershed-storm.webp`, `-golden` and
+  `-bare`, with every number set and at the air's own settings (the hero seed, 1,500 steps, a 256
+  grid). Golden and bare are from `--view hero` now, which they were not before.
+- **The verifier draws other seeds and keeps storms.** `--seed`, `--erode key=value` and
+  `--keep <directory>` are in its header; `--keep` sees constants and not code.
+- **Baselines.** The shared three.js chunk is 597.83 kB, unchanged, the route's own is 81.00 kB,
+  and the worker is 3.9 kB. The build raised no budget warning.
+
 ## The phases
 
-### Phase 0 — the look
-
-Tuning, with the whole instrument running. This is a phase and not an afterthought because it
-is where the piece becomes beautiful or does not, and because colour decisions made before the
-air existed were made blind.
-
-1. Erosion constants, for character: enough contrast between hard and soft beds that benches form, enough
-   slump that cliffs shed scree, a storm long enough to cut and short enough to watch. Re-run
-   the model's specs and the parity script after every change; rebuild the stored land at the end.
-2. The hero frame: sun azimuth and elevation, fog density, mist ceiling, bloom threshold, grade.
-   The sun and the camera are curves now, so this is `direction-calibration.ts` (the golden sun,
-   `heroSunOffset`, `heroDistance`, `heroElevation`, the pass's numbers); as directed, the hero
-   shot looks nearly into the sun and the land is a dark silhouette, so start there.
-   `npm run verify:watershed -- --out hero.png --air golden --view hero` draws it, and
-   `--after <seconds>` any other moment after the storm.
-   Compose it for a 16:10 crop, because that is the shape of the project card. Bloom, grade and
-   grain were left untouched when the air landed, for want of a hero frame to set them against;
-   they are this item's. So are the air's numbers (`air-calibration.ts`), and two things in its
-   shading that are crude on purpose: the deck is shaded as a surface, so a low sun barely lights
-   its top, and one stream through a valley makes little mist (`humidityDepth`, `mistDensity`).
-3. Try six seeds. A hero that only works for one seed is a painting.
-4. Tiers: confirm the lowest tier holds its frame rate on a phone and still reads as the same
-   place. The air doubled the land's and the water's cost on the software rasteriser, where
-   branching saves nothing; if the lowest tier is short, less arithmetic in `fogged` and in the
-   sky is where to look first. The meter now judges the storm as well as the empty stage, the
-   land is raised in a worker, and samples are a tier property; `quality-calibration.ts` has
-   the table this box filled in, and the phone's row and the middle tier's are what is left.
-
-**DoD.** Hero frames for six seeds, kept out of the repo, all acceptable. Frame times for each
-tier recorded in the tier calibration file.
-
-### Phase 1 — the wiring
+### Phase 0 — the wiring
 
 Everything a route needs to exist on this site. Each line is a place that fails a gate, or
 degrades silently, if skipped.
@@ -635,10 +651,10 @@ route's card, and every gate is green in CI, not only here.
 - **Record frame time at the end of every phase**, from this box and from the CI log. A jump is
   a regression in a shader, not a slow afternoon.
 - **Watch the `any` budget on the first build of every phase.** Do not raise it without a number.
-- **Tune in the look phase and nowhere else.** The instrument is finished; a phase that is not
-  the look makes what it touches correct and legible and moves on. A tuned erosion constant
-  fails `check:watershed-land` until the stored land is rebuilt, which is the look phase's last
-  step.
+- **The look is set; retune it only against the hero frame.** A change to a calibration is drawn
+  with `verify:watershed -- --out` for the six seeds the look was judged on before it lands. A
+  changed erosion constant fails `check:watershed-land` until the stored land is rebuilt, and the
+  rebuild belongs in the same change.
 - **Do not loosen the parity tolerance or the conservation bound to get a phase through.** If
   one moves, find out which pass moved it.
 - **When a phase lands**: delete it here, renumber, move what was learned into the header of the

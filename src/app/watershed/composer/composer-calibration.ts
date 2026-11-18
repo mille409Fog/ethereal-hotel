@@ -1,7 +1,7 @@
 /**
- * the post-processing chain's numbers. all of them are placeholders in the sense that matters: the phase that
- * tunes the look sets them with the land, the water and the air running, and a value chosen before those exist is
- * chosen blind. they are set here to do as little as possible, so nothing built meanwhile is flattered by them.
+ * the post-processing chain's numbers, set in the look phase (2026-11-18) against the hero frame drawn by the
+ * route itself, with the land, the water and the air running. they were left doing as little as possible until
+ * then, so nothing built meanwhile was flattered by them; only the grade moved.
  */
 import { IGrade } from '../../murmuration/grade/grade-pass/grade-pass';
 

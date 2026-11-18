@@ -29,7 +29,8 @@
  *   `humidityDepth`. it is what the mist lies by and what the plants grow by. it is the simulation's water and
  *   nothing else, blurred, and it changes when the land does, which is when this pass runs. a film counts for
  *   almost nothing, so a drained hillside is dry; one stream through the disc is only a little damp, and how
- *   much mist that makes is `mistDensity`, which is the look phase's.
+ *   much mist that makes is `mistDensity`. the look phase left it: with the pipes' drag a storm keeps lakes,
+ *   and the mist they make shows in the basins that hold one, seed 2024's most.
  *
  * ## the mesh fetches in the vertex shader and nowhere else
  *

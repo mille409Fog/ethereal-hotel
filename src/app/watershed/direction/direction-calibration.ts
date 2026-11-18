@@ -7,7 +7,9 @@
  * takes longer over the storm takes longer over everything tied to it and sees the same storm. `e` is seconds
  * since the storm's last step, on the piece's own clock, which stops when the visitor pauses.
  *
- * all of it is provisional until the phase that tunes the look, and was set to be legible and no more.
+ * the look phase (2026-11-18) moved one number, `heroSunOffset`, from 50 degrees to 105. at 50 the hero shot
+ * looked toward the sun's side and the land was a silhouette; at 105 the golden sun lights it across, and the
+ * ridges, the shaded valleys and the beds read. the sun is out of frame there, so nothing in the shot blooms.
  *
  * a leaf module: it imports nothing, so Node can import it. see `model/fields.ts`.
  */

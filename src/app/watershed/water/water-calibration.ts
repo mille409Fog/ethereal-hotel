@@ -3,8 +3,8 @@
  * texture and nothing else. these say how deep water has to be before it is drawn as water, and what it looks
  * like once it is.
  *
- * all of it is provisional until the phase that tunes the look, and was set to be legible and no more. the two
- * depths were set against a measurement, though, and should move only against another: on the hero seed's land
+ * the look phase (2026-11-18) saw these with the whole picture running, the hero frame in the route's own chain,
+ * and left them: the water reads as water in every seed it tried. the two depths were set against a measurement, and should move only against another: on the hero seed's land
  * in the rain half the cells hold under a millimetre and nine in ten under seven, which is a film on a hillside
  * and is the wet ground's to show (`land-calibration.ts`), while the channels hold centimetres to metres and the
  * lakes tens of metres. `waterFrom` sits between the two populations.

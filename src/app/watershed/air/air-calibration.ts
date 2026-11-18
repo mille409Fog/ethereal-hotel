@@ -6,7 +6,8 @@
  * storm sets; these say what each end of it looks like. and none of it says where mist lies: that is the light
  * pass's humidity, a blur of the simulation's own water (`land/land-shaders.ts`).
  *
- * all of it is provisional until the phase that tunes the look, and was set to be legible and no more. colours
+ * the look phase (2026-11-18) set it against the hero frame: more haze, so the far side recedes; a sky less dimmed
+ * at dusk; softer and fainter shadows from clouds the sky does not draw; and the deck lit as cloud. colours
  * are linear. a light is what a white surface facing it sends back, so the division by pi a physical material
  * makes is already in it, as it is in the land's numbers; and a sky's radiance is then exactly what a white
  * surface under a whole sky of it sends back, which is why the ground can be lit by the sky function itself.

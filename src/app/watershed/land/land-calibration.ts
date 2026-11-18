@@ -3,8 +3,8 @@
  * is coloured by. the model's own numbers are in `model/erosion-calibration.ts`; nothing here changes the land,
  * only how it is seen.
  *
- * all of it is provisional until the phase that tunes the look, and was set to be legible and no more: rock that
- * reads as rock, a sun low enough to throw a valley into shade. colours are linear, and they are what a surface
+ * it was set to be legible: rock that reads as rock, a sun low enough to throw a valley into shade. the look phase
+ * (2026-11-18) saw it with the air, the grade and the tuned erosion running, and left it. colours are linear, and they are what a surface
  * sends back, not lights: the ground is lit by the air (`air/air-calibration.ts`), whose sun and sky replaced the
  * three flat lights that stood here.
  *

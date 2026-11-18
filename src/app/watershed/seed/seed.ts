@@ -10,8 +10,9 @@ export type Random = () => number;
 export const SEED_SPAN = 2 ** 32;
 
 /**
- * the land the still frame and the stored land are made from. provisional: the phase that tunes the look tries
- * several seeds and names the one whose golden-hour frame is the project card.
+ * the land the still frame and the stored land are made from. the look phase drew the hero frame for it and five
+ * others (1, 2, 3, 77, 2024) with every number set, and kept it: each of the six held the same character, so
+ * the frame this seed makes stands for the piece rather than being the one land the numbers suit.
  */
 export const HERO_SEED = 4127;
 

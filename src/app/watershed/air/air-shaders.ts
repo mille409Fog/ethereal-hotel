@@ -26,7 +26,7 @@
  * is none, and the sky is the only light, which is what makes a storm flat. the light the sky sends onto ground
  * facing some way is the sky halfway between that way and straight up, for the share of the sky that ground
  * faces, and light come back off the ground for the rest. that is cruder than integrating the sky and it is
- * one fetch-free function; the look phase may want better.
+ * one fetch-free function, and the look phase saw it lighting the hero frame and kept it.
  *
  * ## the fog is integrated, not stepped
  *
@@ -65,7 +65,9 @@
  * draw went from 146 ms to 292 and the water's from 128 to 275, and the deck adds 151, the dome 31 and the rain
  * 33; the route's storm frame there went from about 690 ms to 840. the branches on the weather and on each fog
  * layer are exact and skip the work on a card; the software rasteriser runs both sides and was measured not to
- * notice, so what would cut it there is less arithmetic, which is the look phase's to trade.
+ * notice, so what would cut it there is less arithmetic. the look phase traded none: the lowest tier on the
+ * software rasteriser runs the storm, at 383 ms a frame (`quality/quality-calibration.ts`), and no phone has
+ * been measured to say it must.
  *
  * colour leaves here linear and unbounded. GLSL lives in template literals, so a backtick in a comment ends the
  * string, and GLSL ES 3.00 reserves a long list of ordinary words: the obvious name for a filter is one of them.

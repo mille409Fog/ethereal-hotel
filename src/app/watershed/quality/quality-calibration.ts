@@ -16,8 +16,10 @@
  *     device                          settled on   median     95th pct   when
  *     RTX 3070 Ti, Chromium, D3D11    high         16.7 ms    16.7 ms    2026-11-18, the display's 60, on pace
  *     SwiftShader, this box           low          383 ms     1183 ms    2026-11-18, slower, the same storm
- *     a phone                         owed         owed       owed       nobody has measured one yet
- *     the middle tier                 owed: no device here settles on it
+ *
+ * no phone has been measured, and no device here settles on the middle tier. a phone emulated by throttling a
+ * desktop would be a desktop's number with a phone's name, so the table does not have one; the first real phone
+ * that loads the route is where the next row comes from.
  *
  * the storm's start was one main-thread task of 902 ms on the RTX box with the land raised there, and is 514 ms
  * with it raised in a worker (`sim/raise-land.ts`). what is left is the storm's own setup, compiling its shaders and

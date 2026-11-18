@@ -20,9 +20,9 @@ export interface IStrata {
 }
 
 /**
- * rock colours, linear, from which each bed takes a mix of two neighbours. provisional: the phase that tunes the
- * look sets them against the sky and the grade. ordered so that neighbours in the list are plausible neighbours
- * in a cliff.
+ * rock colours, linear, from which each bed takes a mix of two neighbours. seen against the sky and the grade in
+ * the look phase and left: under the golden sun they read as warm bands on the lit side and cool ones in shade.
+ * ordered so that neighbours in the list are plausible neighbours in a cliff.
  */
 const ROCKS: ReadonlyArray<readonly [number, number, number]> = [
   [0.21, 0.17, 0.14],
