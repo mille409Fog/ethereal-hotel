@@ -19,6 +19,10 @@ pretending.
   the dashboard reads. Server-side validation renders on the field that caused it.
 - **[`/murmuration`](https://jacobmiller.dev/murmuration)**: a cauldron of batoids
   in three.js, uses dynamic flock algorithms to model murmuration behavior.
+- **[`/watershed`](https://jacobmiller.dev/watershed)**: a block of land eroded while you watch by
+  a hydraulic simulation in fragment shaders. The same model also exists in TypeScript, and a gate
+  holds the shaders to it. A device that can't render to 32-bit float, or a visitor who asks for
+  reduced motion, is shown a land the model computed earlier, and the page says so.
 - **[`/wanderquest`](https://jacobmiller.dev/wanderquest)**: _in progress._ A simulation of three travel
   quests: every state, every continent, every country.
 - **[`/gallery`](https://jacobmiller.dev/gallery)**: choose a colour and a painting is hung for
@@ -46,9 +50,12 @@ pretending.
     <td><img src="public/projects/aesthetic.webp" alt="The colour wheel with Rich red, #e63000, chosen as the primary, and markers on the wheel where its two partner colours sit." width="360"></td>
     <td><img src="docs/images/aubade-lobby-aubade.webp" alt="Hôtel Aubade's lobby at dawn: a shaft of light through the transom over the door falls across a chequered floor toward the reception desk, its bell, ledger and lamp." width="360"></td>
   </tr>
+  <tr>
+    <td><img src="public/projects/watershed.webp" alt="The hero seed’s land as the model left it, valleys cut through banded rock and lit low from one side, standing in a sea of cloud, under the line “Reduced motion: one still frame of a land computed earlier by the same model. Seed 4127.”" width="360"></td>
+  </tr>
 </table>
 
-_The five portfolio frames aren't mock-ups. `npm run frames:capture` photographs each route from
+_The six portfolio frames aren't mock-ups. `npm run frames:capture` photographs each route from
 the production build, and `npm run e2e` fails when a committed frame stops matching the app.
 The lobby is one of the frames `npm run verify:shader` renders._
 
@@ -115,7 +122,8 @@ that enforce them disagree.
 
 The initial payload is the number to watch: 267 kB (77 kB over the wire), Angular and the router
 included. Every piece of work above is a lazy route, so a visitor to `/` downloads none of them.
-The largest is `/murmuration`'s three.js, about 600 kB in a chunk of its own. `/aubade` puts its
+The largest is three.js, about 600 kB in a chunk that `/murmuration` and `/watershed` share and
+nothing else loads. `/aubade` puts its
 renderer behind a second dynamic import, so its shaders reach a browser only when someone opens
 that page, and its Reader's Edition at `/aubade/reader` creates no WebGL context at all.
 `npm run verify:shader` compiles the GLSL in headless Chromium and renders a frame. Without it,

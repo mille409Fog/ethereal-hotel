@@ -3,7 +3,7 @@
 The second spectacle on this site, after `/murmuration`, and meant to be much larger. This is the
 whole plan: what the piece is, the decisions already taken and why, what has landed, and the
 phases still to do, each with a Definition of Done so that one instance can build a phase and
-another can verify it. The simulation runs, and the land it makes is drawn with its water on it, under a sky, in haze and mist, standing in a deck of cloud, with the rain falling; and the storm is directed, on one clock, from the first drop to the hero shot and the orbit after it. A device that cannot simulate, and a visitor who asked for stillness, are shown the hero seed's land as the reference model left it, stored. It has been tuned for its look, and what is left is wiring it into the site.
+another can verify it. The simulation runs, and the land it makes is drawn with its water on it, under a sky, in haze and mist, standing in a deck of cloud, with the rain falling; and the storm is directed, on one clock, from the first drop to the hero shot and the orbit after it. A device that cannot simulate, and a visitor who asked for stillness, are shown the hero seed's land as the reference model left it, stored. It has been tuned for its look and wired into the site, with a card on the home page; no phase is left.
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -204,7 +204,8 @@ scripts/
   build-watershed-land.mjs                run the reference for HERO_SEED, write the PNG  (built)
   verify-watershed.mjs                    GPU against reference, in Chromium              (built)
 public/watershed-land.png  .json          the stored land, and the digest that made it    (built)
-e2e/watershed.spec.ts
+public/projects/watershed.webp            the card's frame, from frames:capture          (built)
+e2e/watershed.spec.ts                     the route in a real browser                     (built)
 ```
 
 Textures, all `RGBA32F` at `GRID` × `GRID` (512; 1024 on the top tier) except `strata`, which is
@@ -247,9 +248,8 @@ here.
   rather than assert an empty console: the local server answers 404 for
   `/_vercel/insights/script.js`, and SwiftShader prints a "GPU stall due to ReadPixels"
   performance warning for every read-back, the probe's included.
-- **`HERO_SEED` is provisional**, and so is the route's description in `src/route-meta.json`,
-  which says "in progress". Two of the state line's sentences were too, until the stored land
-  gave them something to say.
+- **`HERO_SEED` was provisional**, and so was the route's description in `src/route-meta.json`.
+  The stored land settled the first and the wiring the second.
 
 **The reference model** (2026-11-11). `src/app/watershed/model/` is the simulation in plain
 TypeScript on plain arrays: no WebGL, no three.js, no Angular. `step.ts` is the specification
@@ -604,43 +604,41 @@ of `model/step.ts` (`pipeFlux`), `model/erosion-calibration.ts`, `air/air-shader
 - **Baselines.** The shared three.js chunk is 597.83 kB, unchanged, the route's own is 81.00 kB,
   and the worker is 3.9 kB. The build raised no budget warning.
 
+**The wiring** (2026-11-18). `/watershed` is a card on the home page, between the murmuration and
+the dashboard, with a committed frame of the still state, and its own social card: the built
+`watershed/index.html` carries the new description. The canvas is one image to a screen reader,
+named for what it draws (`LAND_PICTURES` in `land-state.ts`), and is `No land is drawn.` until the
+line has a land to name. The reasoning is in the headers of `e2e/watershed.spec.ts` and of the
+watershed test in `e2e/a11y.spec.ts`.
+
+- **The frame is the `still` state**, because `project-frames.spec.ts` runs under reduced motion
+  and because a live storm could never be committed: two machines do not make the same land from
+  one seed. The crop is the whole viewport, as murmuration's is. Its recorded words are the line,
+  so a change to `LAND_SENTENCES.still` fails the frame until it is recaptured.
+- **What the browser holds.** A storm runs on SwiftShader to its first readout with no console
+  error, the two known kinds of noise filtered by name; the still frame's luma spans more than a
+  quarter of the scale; the line names the hero seed whatever `?seed=` says; and **New land**
+  writes a fresh seed into the address, naming the same land the line does.
+- **axe scans both states it can reach**, the canvas excluded: `still`, where there is nothing
+  but the line, and `simulating` once the readout is up, because a scan of the still state alone
+  would pass buttons that had lost their names. The canvas's name is asserted, since an excluded
+  element is not audited.
+- **`check:docs` holds five things** about the piece: `rainAt` is exactly 0 from `rainStop` to
+  the end of the storm, read by importing the leaves; the water's shader reads `land`; nothing
+  under `src/app/watershed/` makes a sound; the route's CSS takes no hover exemption; and
+  `check:watershed-land` sits in the e2e job with `!cancelled()`. With `rainStop` at 1.05 it
+  failed, naming `rainAt(1)`.
+- **The README's largest-chunk sentence was already wrong** before this phase: three.js left
+  murmuration's chunk when the stage landed. It is now said to be shared.
+- **Baselines.** The shared three.js chunk is 597.83 kB, unchanged, and the route's own is 81.39
+  kB; the canvas's name is the difference. **The reading from CI is owed**, as it has been since
+  the land: the first push is the first run of this route's e2e spec on Linux, and its storm test
+  waits up to 60 s for a first step that took seconds here.
+
 ## The phases
 
-### Phase 0 — the wiring
-
-Everything a route needs to exist on this site. Each line is a place that fails a gate, or
-degrades silently, if skipped.
-
-1. `src/route-meta.json`: replace the "in progress" description with what the piece is. The
-   `vercel.json` rewrite is already there; `check:docs` demanded it the moment the route had a
-   meta entry. Build with `npm run build`, never bare `ng build`, or the social card is not
-   emitted.
-2. `src/app/projects/projects.data.ts`: the card, with a `frame` whose alt describes the still.
-   Alt text is checked against the frame's recorded words, so quote only text the route
-   actually renders (the state line qualifies).
-3. `e2e/project-frames.spec.ts`: a recipe anchored on the canvas and the state line, waiting on
-   the state line's `still` sentence, which appears only after the stored land has drawn. Then
-   `npm run frames:capture`, and commit the `.webp` and the record.
-4. `e2e/home-link.spec.ts`: the route in `ROUTES`, and a twin of the test that the canvas keeps
-   the whole viewport.
-5. `e2e/watershed.spec.ts`: no console error on load; the canvas is not one flat colour; the
-   state line says `still` under reduced motion; **New land** changes the URL's seed.
-6. `e2e/a11y.spec.ts`: the canvas is not scanned, as murmuration's is not, but the controls and
-   the readout are real DOM and must pass axe. The canvas carries a text alternative that says
-   what state it is showing.
-7. `README.md`: the route in the list of pieces, its frame in the table, and the sentence about
-   the largest chunk if this route changed which one that is.
-8. `CLAUDE.md`: add `/watershed` to the sentence listing routes with generated frames; rewrite
-   this file's doc-map row to say what has landed; add the stored land to §Traps as a generated
-   file never to be edited; add the spectacle paragraph's second beneficiary.
-9. `scripts/check-docs.mjs`, in the same change as the claims: the stored land's `--check` is in
-   the e2e job with its condition; `rainAt` is exactly 0 at the end of the storm; the water
-   shader reads `land`; no `AudioContext` under `src/app/watershed/`; the route's CSS needs no
-   exemption from the hover rule.
-10. All six gates, `npm run e2e` and `npm run check:docs`, green.
-
-**DoD.** The card is on the home page with a committed frame, a link shared to Slack shows this
-route's card, and every gate is green in CI, not only here.
+None. The piece is built and on the home page. A new phase starts here at 0, with a Definition of
+Done, and the rules below still bind it.
 
 ## Rules for every phase
 

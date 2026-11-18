@@ -46,7 +46,7 @@
     "format:py": "node scripts/py-tool.mjs ruff format backend/ api/ triage/",
     "format:py:check": "node scripts/py-tool.mjs ruff format --check backend/ api/ triage/",
     "typecheck:py": "node scripts/py-tool.mjs mypy",
-    "check:docs": "node scripts/check-docs.mjs",
+    "check:docs": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-docs.mjs",
     "audit": "npm run audit:js && npm run audit:py",
     "audit:js": "npm audit --audit-level=high",
     "audit:py": "node scripts/py-tool.mjs pip-audit --strict --progress-spinner=off -r backend/requirements-dev.txt",

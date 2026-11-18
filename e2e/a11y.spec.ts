@@ -2,11 +2,13 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import type { Result } from 'axe-core';
 import { COLOURS } from '../src/app/gallery/gallery.data';
+import { LAND_PICTURES } from '../src/app/watershed/land-state';
 import { stubBookingApi } from './support/backend';
 import { LOBBY_TIMEOUT, waitForTheLobby } from './support/lobby';
 
 /**
- * Nine of the app's routes; `/murmuration` is not scanned. `/` is the portfolio page;
+ * Nine of the app's routes; `/murmuration` is not scanned, and `/watershed` has
+ * its own test below, in two states. `/` is the portfolio page;
  * `/dashboard` and `/booking` are the live demos, `/work` is the case
  * studies, `/gallery` the colour-to-painting guide, `/aesthetic` the
  * aesthetic generator's colour wheel and `/wanderquest` the travel quests'
@@ -173,6 +175,53 @@ test.describe('accessibility', () => {
 
       // `impact` is optional as well as nullable in axe's types — a truthiness
       // check covers both, and an unclassified violation can't be blocking.
+      const blocking = results.violations.filter((violation) =>
+        violation.impact ? BLOCKING_IMPACTS.has(violation.impact) : false
+      );
+
+      expect(blocking, `\n${formatViolations(blocking)}\n`).toEqual([]);
+    });
+  }
+
+  /**
+   * `/watershed`, in the two states a browser here can reach, and with its
+   * canvas left out of the scan as murmuration's is: what the renderer draws is
+   * opaque to axe either way. What is scanned is everything else, which is real
+   * DOM — **New land**, **Pause**, the readout and the line — and the canvas's
+   * own name, which is asserted rather than scanned, since an excluded element
+   * is not audited.
+   *
+   * Not in `ROUTES`, because those are scanned under reduced motion and that is
+   * the `still` state, where there are no controls and no readout: a scan of it
+   * alone would pass a route whose buttons had lost their names. So the storm is
+   * scanned too, once its first step has put the readout on screen.
+   */
+  for (const state of ['simulating', 'still'] as const) {
+    test(`watershed has no critical or serious axe violations while ${state}`, async ({
+      page,
+    }, testInfo) => {
+      // A storm on SwiftShader takes seconds to reach its first step; see
+      // `watershed.spec.ts` for the budget.
+      testInfo.setTimeout(80_000);
+      await page.emulateMedia({ reducedMotion: state === 'still' ? 'reduce' : 'no-preference' });
+      await page.goto('/watershed');
+
+      const canvas = page.locator('app-watershed canvas');
+      await expect(canvas).toHaveAttribute('data-land', state);
+      if (state === 'simulating') {
+        await expect(page.locator('app-watershed .readout')).toBeVisible({ timeout: 60_000 });
+        await expect(page.getByRole('button', { name: 'New land' })).toBeVisible();
+      }
+      await expect(page.locator('app-watershed .land-line')).toBeVisible({ timeout: 30_000 });
+      await expect(canvas).toHaveAccessibleName(LAND_PICTURES[state]);
+
+      const results = await new AxeBuilder({ page }).exclude('app-watershed canvas').analyze();
+
+      await testInfo.attach(`axe-watershed-${state}.json`, {
+        body: JSON.stringify(results.violations, null, 2),
+        contentType: 'application/json',
+      });
+
       const blocking = results.violations.filter((violation) =>
         violation.impact ? BLOCKING_IMPACTS.has(violation.impact) : false
       );

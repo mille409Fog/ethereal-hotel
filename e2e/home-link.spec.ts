@@ -20,6 +20,7 @@ const ROUTES = [
   '/aesthetic',
   '/wanderquest',
   '/murmuration',
+  '/watershed',
 ] as const;
 
 const VIEWPORTS = [
@@ -61,6 +62,22 @@ test.describe('home link', () => {
     const viewport = page.viewportSize();
     expect(box).toEqual({ x: 0, y: 0, width: viewport?.width, height: viewport?.height });
     // The link floats over the canvas; the page itself must not grow a scroll.
+    expect(
+      await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)
+    ).toBe(true);
+  });
+
+  // The same claim for the second spectacle. The storm's panel floats over the
+  // other corner, so it must not push the canvas or the page either.
+  test('/watershed keeps the whole viewport for its canvas', async ({ page }) => {
+    await page.goto('/watershed');
+    const canvas = page.locator('app-watershed canvas');
+    await expect(canvas).toBeVisible();
+    await expect(page.locator('app-watershed .land-line')).toBeVisible();
+
+    const box = await canvas.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box).toEqual({ x: 0, y: 0, width: viewport?.width, height: viewport?.height });
     expect(
       await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)
     ).toBe(true);

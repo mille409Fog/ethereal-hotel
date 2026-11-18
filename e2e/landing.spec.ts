@@ -7,6 +7,7 @@
  * `ng build` produced something a browser can run.
  */
 import { expect, test } from '@playwright/test';
+import { PROJECTS } from '../src/app/projects/projects.data';
 
 /** The nav, in the order it is laid out. */
 const NAV_LINKS = ['Home', 'Projects', 'Experience', 'Contact'];
@@ -110,7 +111,7 @@ test.describe('landing page', () => {
         buttonBottom: card.querySelector('.project-link')?.getBoundingClientRect().bottom,
       }))
     );
-    expect(placed).toHaveLength(9);
+    expect(placed).toHaveLength(PROJECTS.length);
 
     const rows = new Map<number, Array<number | undefined>>();
     for (const { top, buttonBottom } of placed) {

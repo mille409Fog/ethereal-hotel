@@ -63,7 +63,13 @@
       "Bash(wc -c dist/ethereal-hotel/browser/worker-*.js)",
       "Bash(node scripts/_tier.tmp.mjs)",
       "Bash(node -e \"console.log\\(Math.round\\(require\\('fs'\\).readFileSync\\('WATERSHED.md'\\).length/1024\\)\\)\")",
-      "Bash(grep -n \"the stored land \\(\\\\`stored/\\\\`\" CLAUDE.md)"
+      "Bash(grep -n \"the stored land \\(\\\\`stored/\\\\`\" CLAUDE.md)",
+      "Bash(node -e \"const s=require\\('./package.json'\\).scripts;for\\(const k of Object.keys\\(s\\)\\)if\\(/watershed|frames|e2e|build|test:scripts/.test\\(k\\)\\)console.log\\(k,'=>',s[k]\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).scripts['check:docs']\\)\")",
+      "Bash(node --input-type=module -e \"const {rainAt}=await import\\('./src/app/watershed/direction/direction.ts'\\);const {DIRECTION}=await import\\('./src/app/watershed/direction/direction-calibration.ts'\\);console.log\\(rainAt\\(1,DIRECTION\\),rainAt\\(DIRECTION.rainStop,DIRECTION\\),rainAt\\(0.5,DIRECTION\\)\\)\")",
+      "Bash(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --input-type=module -e \"const {rainAt}=await import\\('./src/app/watershed/direction/direction.ts'\\);const {DIRECTION}=await import\\('./src/app/watershed/direction/direction-calibration.ts'\\);console.log\\(rainAt\\(1,DIRECTION\\),rainAt\\(DIRECTION.rainStop,DIRECTION\\),rainAt\\(0.5,DIRECTION\\)\\)\")",
+      "Bash(node -e \"for \\(const f of ['WATERSHED.md','README.md','CLAUDE.md']\\) console.log\\(f, Math.round\\(require\\('fs'\\).readFileSync\\(f\\).length/1024\\)\\)\")",
+      "PowerShell(Get-Process | Sort-Object CPU -Descending | Select-Object -First 12 Name, Id, CPU, @{n='MB';e={[int]\\($_.WorkingSet64/1MB\\)}} | Format-Table -AutoSize | Out-String -Width 120; \\(Get-Process chrome-headless-shell, chrome -ErrorAction SilentlyContinue | Measure-Object\\).Count; \\(Get-Process node -ErrorAction SilentlyContinue | Measure-Object\\).Count)"
     ]
   }
 }
