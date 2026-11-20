@@ -5,13 +5,22 @@ functions that derive dashboard values from real rows.
 """
 
 from .database import Base, SessionLocal, engine, get_db, init_db
-from .models import Booking, BookingStatus, Guest, Room, RoomStatus, RoomType
+from .models import (
+    Booking,
+    BookingStatus,
+    Guest,
+    Pairing,
+    Room,
+    RoomStatus,
+    RoomType,
+)
 
 __all__ = [
     "Base",
     "Booking",
     "BookingStatus",
     "Guest",
+    "Pairing",
     "Room",
     "RoomStatus",
     "RoomType",

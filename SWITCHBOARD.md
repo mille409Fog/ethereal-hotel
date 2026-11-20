@@ -7,7 +7,9 @@ named for that: a hotel switchboard connects two parties and does not stay on th
 
 This is the whole plan: what the piece is, the decisions already taken and why, and the phases,
 each with a Definition of Done so that one instance can build a phase and another can verify it.
-Nothing has landed.
+One item has landed: the `Pairing` table and `services/switchboard.py`, whose header records
+what was decided while building them (per-side tokens, the cursor, why `record_open` is never
+charged).
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -150,7 +152,7 @@ either way.
 backend/
   db/models.py               + Pairing (code, offer, answer, candidates JSON, relayed_bytes,
                                created_at, joined_at, opened_at)
-  services/switchboard.py    create, join, post/poll candidates, open, expire; no FastAPI imports
+  services/switchboard.py    create, join, answer, append_candidate, read, record_open, expire
   routers/switchboard.py     POST /api/switchboard, GET|POST /api/switchboard/{code}/…
 src/app/switchboard/
   switchboard.ts .html .css .spec.ts
@@ -166,15 +168,13 @@ e2e/switchboard.spec.ts       two contexts, one pairing, `direct`
 
 ### Phase 0 — the introduction, with nothing said
 
-1. The `Pairing` table and migration. `services/switchboard.py` provides create, join, append
-   candidate, read (returning only what the caller has not yet seen, by a cursor) and expire.
-   Tests cover expiry, single use, the cursor, and that `relayed_bytes` counts request and
-   response bodies.
-2. The router, with the rate limit. Errors use the existing shape (`{ detail: { message, field } }`),
-   so a mistyped code comes back under the code's input.
-3. `peer.ts` and `signal.ts` behind injection tokens, so the component spec drives a fake
+1. The router, with the rate limit. Errors use the existing shape (`{ detail: { message, field } }`),
+   so a mistyped code comes back under the code's input. The count is only exact if the router
+   passes each request's raw body length as `request_bytes` and sends `Relayed.body` unchanged,
+   so do not re-serialise it through a `response_model`.
+2. `peer.ts` and `signal.ts` behind injection tokens, so the component spec drives a fake
    `RTCPeerConnection`.
-4. The route shows `waiting`, the code and the introduction log. A second tab with the code
+3. The route shows `waiting`, the code and the introduction log. A second tab with the code
    reaches `direct`.
 
 **DoD.** Two tabs on one machine pair. The relayed-bytes counter stops when the channel opens

@@ -49,6 +49,11 @@ Metrics such as occupancy, revenue today, arrivals today, ADR, and RevPAR are co
 from these rows in [`db/metrics.py`](db/metrics.py). Adding or deleting a booking
 changes the reported numbers immediately.
 
+`Pairing` is not part of the hotel. It holds one `/switchboard` introduction (an offer, an
+answer, trickled ICE candidates and a count of the bytes relayed) for about two minutes, and
+[`services/switchboard.py`](services/switchboard.py) deletes it afterwards. Its header has the
+rules.
+
 **Server will start at:**
 - 🌐 REST API: http://localhost:8000
 - 🔌 WebSocket: ws://localhost:8000/ws
@@ -249,10 +254,11 @@ backend/
 │   └── stream.py        #   WS /ws
 ├── services/            # Business logic, no FastAPI imports
 │   ├── bookings.py      #   booking rules; raises domain errors
-│   └── broadcaster.py   #   ConnectionManager + the shared broadcast task
+│   ├── broadcaster.py   #   ConnectionManager + the shared broadcast task
+│   └── switchboard.py   #   /switchboard's introduction and its byte count
 ├── db/                  # Database layer
 │   ├── database.py      #   engine, session, Base, init_db
-│   ├── models.py        #   Room, Guest, Booking ORM models
+│   ├── models.py        #   Room, Guest, Booking, Pairing ORM models
 │   ├── metrics.py       #   derive dashboard metrics from rows
 │   └── seed.py          #   realistic sample-data seeder
 ├── tests/               # pytest suite (isolated, seeded SQLite)

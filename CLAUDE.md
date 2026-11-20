@@ -53,7 +53,7 @@ The docs no longer carry a known-stale list: a finished ROADMAP item rewrote `RE
 page and made `ARCHITECTURE.md` the reference doc, fixing the drift that section used to warn about. Two
 habits are what let that rot set in, so avoid both. Don't explain what FastAPI or RxJS _are_ — the
 reader knows. And don't restate the backend test count in another document: it was quoted in three
-places and disagreed with itself in all three. There are 26 test functions in `backend/tests/`
+places and disagreed with itself in all three. There are 35 test functions in `backend/tests/`
 today, this sentence is the only place that says so, and `check:docs` keeps it honest.
 
 Code-level intent lives in module docstrings and file-header comments, and it is unusually dense

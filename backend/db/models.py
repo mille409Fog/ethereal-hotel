@@ -1,9 +1,11 @@
-"""ORM models for the hotel domain: Room, Guest, Booking."""
+"""ORM models for the hotel domain (Room, Guest, Booking) and /switchboard's Pairing."""
 
 import enum
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import (
+    JSON,
     Date,
     DateTime,
     Enum,
@@ -11,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Text,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -116,3 +119,34 @@ class Booking(Base):
     @property
     def total_guests(self) -> int:
         return self.adults + self.children
+
+
+class Pairing(Base):
+    """One introduction between two of a visitor's devices, for about two minutes.
+
+    Not part of the hotel: it belongs to ``/switchboard`` (SWITCHBOARD.md), and
+    ``services/switchboard.py`` owns every rule about it — expiry, single use,
+    the cursor, and what ``relayed_bytes`` counts. The SDP and candidates carry
+    IP addresses, which makes this the only personal data the site stores, so
+    rows are deleted rather than archived.
+
+    ``code`` is the primary key because it is only unique while a row lives:
+    once a row is deleted its code may be issued again.
+    """
+
+    __tablename__ = "pairings"
+
+    code: Mapped[str] = mapped_column(String(6), primary_key=True)
+    offerer_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    answerer_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    offer: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Both sides' trickled ICE candidates, in arrival order, each tagged with
+    # its side. One list rather than two, so the cursor is one integer.
+    candidates: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    relayed_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    joined_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

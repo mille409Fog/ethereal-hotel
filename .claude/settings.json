@@ -69,7 +69,11 @@
       "Bash(node --input-type=module -e \"const {rainAt}=await import\\('./src/app/watershed/direction/direction.ts'\\);const {DIRECTION}=await import\\('./src/app/watershed/direction/direction-calibration.ts'\\);console.log\\(rainAt\\(1,DIRECTION\\),rainAt\\(DIRECTION.rainStop,DIRECTION\\),rainAt\\(0.5,DIRECTION\\)\\)\")",
       "Bash(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --input-type=module -e \"const {rainAt}=await import\\('./src/app/watershed/direction/direction.ts'\\);const {DIRECTION}=await import\\('./src/app/watershed/direction/direction-calibration.ts'\\);console.log\\(rainAt\\(1,DIRECTION\\),rainAt\\(DIRECTION.rainStop,DIRECTION\\),rainAt\\(0.5,DIRECTION\\)\\)\")",
       "Bash(node -e \"for \\(const f of ['WATERSHED.md','README.md','CLAUDE.md']\\) console.log\\(f, Math.round\\(require\\('fs'\\).readFileSync\\(f\\).length/1024\\)\\)\")",
-      "PowerShell(Get-Process | Sort-Object CPU -Descending | Select-Object -First 12 Name, Id, CPU, @{n='MB';e={[int]\\($_.WorkingSet64/1MB\\)}} | Format-Table -AutoSize | Out-String -Width 120; \\(Get-Process chrome-headless-shell, chrome -ErrorAction SilentlyContinue | Measure-Object\\).Count; \\(Get-Process node -ErrorAction SilentlyContinue | Measure-Object\\).Count)"
+      "PowerShell(Get-Process | Sort-Object CPU -Descending | Select-Object -First 12 Name, Id, CPU, @{n='MB';e={[int]\\($_.WorkingSet64/1MB\\)}} | Format-Table -AutoSize | Out-String -Width 120; \\(Get-Process chrome-headless-shell, chrome -ErrorAction SilentlyContinue | Measure-Object\\).Count; \\(Get-Process node -ErrorAction SilentlyContinue | Measure-Object\\).Count)",
+      "PowerShell(node scripts/py-tool.mjs ruff format backend/tests/test_switchboard.py backend/services/switchboard.py backend/db)",
+      "PowerShell(git stash push backend/README.md -q)",
+      "PowerShell(npx prettier --check backend/README.md 2>&1)",
+      "PowerShell(git stash pop -q)"
     ]
   }
 }

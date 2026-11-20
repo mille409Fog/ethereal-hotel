@@ -110,6 +110,9 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "f
 # at the call site as `except ReferenceNotFound`, and the base class already
 # carries the suffix (`BookingError`); `ReferenceNotFoundError` reads worse.
 "backend/services/bookings.py" = ["N818"]
+# The same reasoning for /switchboard's refusals: `except CodeExpired` at the call
+# site, with the suffix carried by the base class (`SwitchboardError`).
+"backend/services/switchboard.py" = ["N818"]
 # RUF001 flags `›` as a confusable `>`. The triage tests quote real Playwright output,
 # which separates a test's file from its title with exactly that character, and a
 # fixture "corrected" to `>` would no longer look like the log it stands in for.
