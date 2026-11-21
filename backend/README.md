@@ -251,6 +251,7 @@ backend/
 │   ├── health.py        #   GET /
 │   ├── metrics.py       #   GET /api/metrics, /api/dashboard
 │   ├── bookings.py      #   GET/POST/DELETE /api/bookings
+│   ├── switchboard.py   #   /api/switchboard signaling (see its header)
 │   └── stream.py        #   WS /ws
 ├── services/            # Business logic, no FastAPI imports
 │   ├── bookings.py      #   booking rules; raises domain errors

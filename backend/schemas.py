@@ -2,12 +2,13 @@
 
 Field names are camelCase on the metrics payloads because the Angular frontend
 consumes them directly as its ``IMetrics`` interface; the booking models use
-snake_case to match the ORM columns they mirror.
+snake_case to match the ORM columns they mirror. ``IceCandidate`` is camelCase
+because its keys are the browser's ``RTCIceCandidateInit``.
 """
 
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from db import BookingStatus, RoomStatus, RoomType
 
@@ -119,3 +120,47 @@ class GuestOut(BaseModel):
 
     id: int
     full_name: str
+
+
+# ---------------------------------------------------------------------------
+# /switchboard — request bodies only. Responses are the exact bytes
+# ``services.switchboard`` wrote, because their length is part of the count, so
+# no response model may re-serialise them.
+# ---------------------------------------------------------------------------
+
+# A data-channel-only SDP is well under 1 KB; this leaves room for a browser's
+# extra attributes and refuses anything that is not a session description.
+MAX_SDP_LENGTH = 8192
+
+
+class SwitchboardErrorDetail(BookingErrorDetail):
+    """The same ``{ message, field }`` shape, named for the route it serves."""
+
+
+class PairingOffer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    offer: str = Field(min_length=1, max_length=MAX_SDP_LENGTH)
+
+
+class PairingAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sdp: str = Field(min_length=1, max_length=MAX_SDP_LENGTH)
+
+
+class IceCandidate(BaseModel):
+    """What ``RTCIceCandidate.toJSON()`` produces, and nothing more.
+
+    The keys are the browser's, because the other device hands this object
+    straight to ``addIceCandidate``. ``extra="forbid"`` keeps the relay from
+    carrying anything that is not a candidate. An empty ``candidate`` is the
+    browser's end-of-candidates marker, so it is allowed.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    candidate: str = Field(max_length=1024)
+    sdpMid: str | None = Field(default=None, max_length=64)
+    sdpMLineIndex: int | None = Field(default=None, ge=0, le=64)
+    usernameFragment: str | None = Field(default=None, max_length=256)

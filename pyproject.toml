@@ -104,7 +104,8 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "f
 [tool.ruff.lint.per-file-ignores]
 # The metrics payloads are camelCase because they *are* the wire contract the
 # Angular frontend consumes as its IMetrics interface. Renaming them to satisfy
-# a Python naming rule would break the API.
+# a Python naming rule would break the API. `IceCandidate` is the same case: its
+# keys are the browser's RTCIceCandidateInit, passed straight to addIceCandidate.
 "backend/schemas.py" = ["N815"]
 # N818 wants an `Error` suffix on every exception. These are domain errors read
 # at the call site as `except ReferenceNotFound`, and the base class already

@@ -73,7 +73,8 @@
       "PowerShell(node scripts/py-tool.mjs ruff format backend/tests/test_switchboard.py backend/services/switchboard.py backend/db)",
       "PowerShell(git stash push backend/README.md -q)",
       "PowerShell(npx prettier --check backend/README.md 2>&1)",
-      "PowerShell(git stash pop -q)"
+      "PowerShell(git stash pop -q)",
+      "PowerShell(node scripts/py-tool.mjs ruff format backend/routers/switchboard.py backend/tests/test_switchboard_api.py backend/schemas.py backend/main.py)"
     ]
   }
 }
