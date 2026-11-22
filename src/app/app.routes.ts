@@ -80,6 +80,15 @@ export const routes: Routes = [
     title: meta.watershed.title,
   },
   {
+    // Registered ahead of its wiring so two tabs can pair in development. Its
+    // path and title move into `route-meta.json`, with the Vercel rewrite and
+    // the home-page card, when SWITCHBOARD.md's wiring phase lands; until then
+    // nothing links here and no static card is stamped for it.
+    path: 'switchboard',
+    loadComponent: () => import('./switchboard/switchboard').then((m) => m.Switchboard),
+    title: 'switchboard - Jacob Miller',
+  },
+  {
     // Last, because the router matches in order and `**` matches everything.
     // Without it an unknown path threw NG04002 on the first navigation, the
     // router reset the address bar to `/`, and no route activated, so the page

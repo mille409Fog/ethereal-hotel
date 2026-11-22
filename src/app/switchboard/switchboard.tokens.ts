@@ -1,0 +1,35 @@
+/** Injection tokens for `/switchboard`, each a seam a spec replaces. */
+import { InjectionToken } from '@angular/core';
+import { environment } from '../../environments/environment';
+import { ISignal, SignalClient } from './signal/signal';
+
+/**
+ * Makes one `RTCPeerConnection`, or is `null` in a browser that has none.
+ * jsdom has none, so a component spec supplies a factory for a fake.
+ *
+ * No ICE servers: without STUN the browser gathers host candidates only, which
+ * is enough for two tabs or two devices on one network (`direct`). When STUN
+ * is added (SWITCHBOARD.md), it goes here: this factory is first called inside
+ * the tap that starts an introduction, so opening the page tells no third
+ * party anything.
+ */
+export const SWITCHBOARD_PEER_CONNECTION = new InjectionToken<(() => RTCPeerConnection) | null>(
+  'SWITCHBOARD_PEER_CONNECTION',
+  {
+    factory: () =>
+      typeof RTCPeerConnection === 'undefined'
+        ? null
+        : (): RTCPeerConnection => new RTCPeerConnection({ iceServers: [] }),
+  }
+);
+
+/** Makes the signaling client for one pairing. A spec supplies a fake. */
+export const SWITCHBOARD_SIGNAL = new InjectionToken<() => ISignal>('SWITCHBOARD_SIGNAL', {
+  factory: () => (): ISignal =>
+    new SignalClient((input, init) => window.fetch(input, init), environment.apiUrl),
+});
+
+/** The address's query string, which may carry `?code=` from the other device. */
+export const SWITCHBOARD_SEARCH = new InjectionToken<string>('SWITCHBOARD_SEARCH', {
+  factory: () => window.location.search,
+});

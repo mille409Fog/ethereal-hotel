@@ -1,0 +1,87 @@
+<app-home-link />
+<main class="switchboard-page">
+  <div class="switchboard-inner">
+    <h1 class="switchboard-title">Switchboard</h1>
+    <p class="switchboard-lede">
+      Two of your own devices, introduced through this site's server and then left to talk directly.
+      The server relays an offer, an answer and a few candidates, and counts every byte of them.
+    </p>
+
+    <p class="switchboard-state" role="status">{{ stageLine() }}</p>
+
+    @if (stage() === 'idle') {
+      <div class="switchboard-start">
+        <button type="button" class="switchboard-button" (click)="offer()">Get a code</button>
+        <form class="switchboard-join" (submit)="join($event)">
+          <label class="switchboard-label" for="switchboard-code"
+            >Or enter the other device's code</label
+          >
+          <div class="switchboard-join-row">
+            <input
+              id="switchboard-code"
+              class="switchboard-input"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              maxlength="6"
+              [value]="codeInput()"
+              [attr.aria-invalid]="codeError() ? 'true' : null"
+              [attr.aria-describedby]="codeError() ? 'switchboard-code-error' : null"
+              (input)="onCodeInput($event)"
+            />
+            <button type="submit" class="switchboard-button">Connect</button>
+          </div>
+          @if (codeError(); as message) {
+            <p id="switchboard-code-error" class="switchboard-error">{{ message }}</p>
+          }
+        </form>
+      </div>
+    }
+
+    @if (stage() === 'waiting') {
+      <div class="switchboard-code-block">
+        <p class="switchboard-code">{{ code() }}</p>
+        <!-- The server reports expires_in on every read while a code waits, so it is always here. -->
+        <p class="switchboard-hint">
+          On the other device, open <code>/switchboard?code={{ code() }}</code
+          >, or open <code>/switchboard</code> and enter the code. The code expires in
+          {{ expiresIn() }} s.
+        </p>
+      </div>
+    }
+
+    @if (connected()) {
+      <p class="switchboard-thesis">
+        You are now talking directly; the server has stopped relaying.
+      </p>
+    }
+
+    @if (relayedBytes() !== null) {
+      <p class="switchboard-count">
+        The server has relayed <strong>{{ relayedBytes() }}</strong> bytes for this pair{{
+          connected() ? ', and will relay no more.' : ' so far.'
+        }}
+      </p>
+    }
+
+    @if (stage() === 'refused') {
+      <button type="button" class="switchboard-button" (click)="reset()">Start again</button>
+    }
+
+    @if (log().length > 0) {
+      <section class="switchboard-log" aria-labelledby="switchboard-log-title">
+        <h2 id="switchboard-log-title" class="switchboard-log-title">The introduction</h2>
+        <ol class="switchboard-log-lines">
+          @for (line of log(); track line.id) {
+            <li>
+              {{ line.text }}
+              @if (line.note) {
+                <span class="switchboard-note">{{ line.note }}</span>
+              }
+            </li>
+          }
+        </ol>
+      </section>
+    }
+  </div>
+</main>

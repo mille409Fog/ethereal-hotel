@@ -7,9 +7,12 @@ named for that: a hotel switchboard connects two parties and does not stay on th
 
 This is the whole plan: what the piece is, the decisions already taken and why, and the phases,
 each with a Definition of Done so that one instance can build a phase and another can verify it.
-Two items have landed: the `Pairing` table with `services/switchboard.py`, and
-`routers/switchboard.py`. Their headers record what was decided while building them (per-side
-tokens, the cursor, why `record_open` is never charged, why the rate limit is per instance).
+Three items have landed: the `Pairing` table with `services/switchboard.py`;
+`routers/switchboard.py`; and the introduction itself, `src/app/switchboard/` with `peer/` and
+`signal/`, which pairs two tabs over host candidates. Their headers record what was decided while
+building them (per-side tokens, the cursor, why `record_open` is never charged, why the rate limit
+is per instance, why a `409` on a poll or a candidate means the other device opened first and is
+waited out rather than reported, why candidates are held until the server will take them).
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -80,7 +83,7 @@ so the route prints the selected pair's raw stats under the state line.
 - **One STUN server, named on screen.** Without STUN only host candidates exist and `traversed`
   is impossible. STUN learns the visitor's public address, so the route says which server it
   asked. `stun.cloudflare.com:3478` is the proposed choice: free, no account. Settle it with
-  the owner in Phase 1, because it adds a third party. `docs/analytics.md` gains a paragraph, because a third party now learns a
+  the owner in Phase 0, because it adds a third party. `docs/analytics.md` gains a paragraph, because a third party now learns a
   visitor's IP when they open this route. The STUN request is not sent until the visitor presses
   **Connect**, so merely opening the page tells Cloudflare nothing.
 - **No TURN, permanently.** See above. The free TURN tiers that exist need an account and
@@ -139,8 +142,12 @@ either way.
 - **The e2e suite stubs the backend at the network layer.** For a pairing test, the stub in
   `e2e/support/backend.ts` must hold state between two browser contexts. Two contexts in one
   Chromium should pair over host candidates on CI's loopback, which would make the `direct`
-  state testable without STUN. That is unverified: Phase 0 confirms it under CI's headless
-  shell and records the result here. Never point CI at the real STUN server.
+  state testable without STUN. **Measured on this box, not yet on CI:** on 2026-11-22 two
+  contexts in Playwright's headless shell on Windows, against the real backend and `ng serve`,
+  reached `direct` in about 840 ms over mDNS host candidates. Both screens froze at the same
+  count, no request left either page in the following minute, and a `join` on the code 65 s
+  after open was a `404`. The wiring phase's e2e spec settles it on CI's Linux shell. Never point
+  CI at the real STUN server.
 - **The QR code must be real DOM text too.** The six-character code stays visible as text beside
   it, for axe and for a visitor without a camera.
 - **Do not turn the histogram into decoration.** It changes only when a pong arrives; it is not
@@ -157,8 +164,10 @@ backend/
                              POST /api/switchboard/{code}/{join,answer,candidates,open}
 src/app/switchboard/
   switchboard.ts .html .css .spec.ts
+  switchboard.tokens.ts        the peer-connection factory, the signal factory, the query string
   peer/          peer.ts       RTCPeerConnection, both channels, the stats read; behind a token
-  signal/        signal.ts     the poll; stops when the channel opens
+                 peer-connection.testing.ts   the fake RTCPeerConnection the specs drive
+  signal/        signal.ts     the six calls and the poll; stops when the channel opens
   qr/            qr.ts         the encoder (leaf, importable by Node) + qr.spec.ts vectors
   readouts/      rtt-histogram, arrival-order, orientation
   switchboard-calibration.ts   poll interval, expiry, rate limit, message cadence
@@ -167,23 +176,16 @@ e2e/switchboard.spec.ts       two contexts, one pairing, `direct`
 
 ## The phases
 
-### Phase 0 — the introduction, with nothing said
-
-1. `peer.ts` and `signal.ts` behind injection tokens, so the component spec drives a fake
-   `RTCPeerConnection`. `signal.ts` sends the token from `create` or `join` as `X-Pairing-Token`,
-   and treats a `409` after its own channel opened as the other device having reported first.
-2. The route shows `waiting`, the code and the introduction log. A second tab with the code
-   reaches `direct`.
-
-**DoD.** Two tabs on one machine pair. The relayed-bytes counter stops when the channel opens
-and stays stopped for a minute. The pairing row is gone 60 s later.
-
-### Phase 1 — two devices
+### Phase 0 — two devices
 
 1. `qr.ts`, with reference vectors in its spec, and the QR code on the `waiting` screen.
 2. Cloudflare STUN behind **Connect**, the `traversed` state, and the `no-route` state with its
    reason. Test `no-route` with a fake peer whose ICE fails. Do not test it against a real
-   network.
+   network. Both taps start the introduction today, **Get a code** on the offering device and
+   **Connect** on the joining one, and nothing is sent before either. So the ICE servers belong
+   in `SWITCHBOARD_PEER_CONNECTION`'s factory, which is first called inside those handlers.
+   `STAGE_BY_CANDIDATE` already maps `srflx` and `prflx` to `traversed`; without STUN nothing
+   reaches it. An ICE failure today is a generic `refused` line, which becomes `no-route`.
 3. The selected pair's raw stats printed under the state line.
 4. `docs/analytics.md`: the STUN paragraph.
 
@@ -191,7 +193,7 @@ and stays stopped for a minute. The pairing row is gone 60 s later.
 `no-route` with the correct reason. Both outcomes are recorded in this file, with the carrier
 and the router, as the first field measurement.
 
-### Phase 2 — what flows
+### Phase 1 — what flows
 
 1. Ping/pong and the RTT histogram.
 2. The two channels and the arrival-order readout, at the cadence in
@@ -204,10 +206,12 @@ reliable channel and gaps on the unreliable one. A screenshot of both readouts a
 committed to `docs/images/` and described in ARCHITECTURE. The component spec covers all four
 states. `npm test` coverage has not fallen.
 
-### Phase 3 — the wiring
+### Phase 2 — the wiring
 
-1. `vercel.json`'s rewrite, `src/route-meta.json`, the lazy route, and the card in
-   `projects.data.ts`. Build with `npm run build`.
+1. `vercel.json`'s rewrite, `src/route-meta.json`, and the card in `projects.data.ts`. The lazy
+   route is already registered in `app.routes.ts` with its title written inline, so two tabs
+   could pair in development. Move its path and title into `route-meta.json` like every other
+   route's. Build with `npm run build`.
 2. `e2e/switchboard.spec.ts`: two contexts reach `direct` through the stubbed signaling. The
    `waiting` screen passes axe.
 3. `e2e/project-frames.spec.ts`: a recipe anchored on the `waiting` screen (the code is seeded

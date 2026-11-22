@@ -74,7 +74,13 @@
       "PowerShell(git stash push backend/README.md -q)",
       "PowerShell(npx prettier --check backend/README.md 2>&1)",
       "PowerShell(git stash pop -q)",
-      "PowerShell(node scripts/py-tool.mjs ruff format backend/routers/switchboard.py backend/tests/test_switchboard_api.py backend/schemas.py backend/main.py)"
+      "PowerShell(node scripts/py-tool.mjs ruff format backend/routers/switchboard.py backend/tests/test_switchboard_api.py backend/schemas.py backend/main.py)",
+      "Bash(grep -n \"public idle\\\\|{ state: 'waiting', events: \\\\[\\\\], expiresIn: 110\" src/app/switchboard/switchboard.spec.ts)",
+      "Bash(./venv/Scripts/python.exe main.py)",
+      "Bash(node \"C:/Users/JACOBM~1/AppData/Local/Temp/claude/b0672e04e8779a9c/c61f5d92-2ce6-45e9-8f2f-ff3254b66e67/scratchpad/pair.cjs\")",
+      "PowerShell(foreach \\($port in 8000, 4200\\) { Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -Confirm:$false } }; \"stopped\")",
+      "Bash(grep -n \"SWITCHBOARD\\\\|PORTER\\\\|docMap\\\\|Size\\\\b\\\\|sizeKb\\\\|\\\\| \\\\`\" scripts/check-docs.mjs)",
+      "Bash(grep -n \"| \\\\`WATERSHED.md\\\\`\\\\|| \\\\`CONTRIBUTING.md\\\\`\" CLAUDE.md)"
     ]
   }
 }
