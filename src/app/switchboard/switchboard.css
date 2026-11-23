@@ -124,6 +124,26 @@
   margin: 0 0 1.5rem;
 }
 
+/* A camera reads dark modules on a light ground, so the code keeps that
+   polarity in a dark theme: the page's lightest token under its darkest. The
+   quiet zone is inside the SVG, so no padding is needed. `crispEdges` keeps
+   adjacent runs from showing hairline seams at fractional scales. */
+.switchboard-qr {
+  display: block;
+  width: min(15rem, 100%);
+  height: auto;
+  margin: 0 0 1rem;
+  shape-rendering: crispEdges;
+}
+
+.switchboard-qr-ground {
+  fill: var(--color-text);
+}
+
+.switchboard-qr-modules {
+  fill: var(--color-bg);
+}
+
 .switchboard-code {
   font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
   font-size: clamp(2.25rem, 9vw, 3.5rem);

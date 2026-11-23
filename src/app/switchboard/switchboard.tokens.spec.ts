@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../environments/environment';
 import { SignalClient } from './signal/signal';
 import {
+  SWITCHBOARD_ORIGIN,
   SWITCHBOARD_PEER_CONNECTION,
   SWITCHBOARD_SEARCH,
   SWITCHBOARD_SIGNAL,
@@ -44,6 +45,10 @@ describe('switchboard tokens', () => {
     expect(relay).toBeInstanceOf(SignalClient);
     await relay.open();
     expect(fetch.mock.calls[0][0]).toBe(`${environment.apiUrl}/switchboard/open`);
+  });
+
+  it("points the QR code at this page's own origin", () => {
+    expect(TestBed.inject(SWITCHBOARD_ORIGIN)).toBe(window.location.origin);
   });
 
   it("reads the address's query string", () => {

@@ -40,10 +40,31 @@
 
     @if (stage() === 'waiting') {
       <div class="switchboard-code-block">
+        @if (qr(); as drawing) {
+          <!-- Dark modules on a light ground whatever the theme: scanners expect it. -->
+          <svg
+            class="switchboard-qr"
+            role="img"
+            [attr.viewBox]="'0 0 ' + drawing.span + ' ' + drawing.span"
+            [attr.aria-label]="'QR code for ' + link()"
+          >
+            <rect
+              class="switchboard-qr-ground"
+              [attr.width]="drawing.span"
+              [attr.height]="drawing.span"
+            />
+            <path class="switchboard-qr-modules" [attr.d]="drawing.path" />
+          </svg>
+        } @else {
+          <p class="switchboard-hint">
+            This page's address is too long for the QR code it draws, so enter the code on the other
+            device instead.
+          </p>
+        }
         <p class="switchboard-code">{{ code() }}</p>
         <!-- The server reports expires_in on every read while a code waits, so it is always here. -->
         <p class="switchboard-hint">
-          On the other device, open <code>/switchboard?code={{ code() }}</code
+          On the other device, scan the code or open <code>{{ link() }}</code
           >, or open <code>/switchboard</code> and enter the code. The code expires in
           {{ expiresIn() }} s.
         </p>

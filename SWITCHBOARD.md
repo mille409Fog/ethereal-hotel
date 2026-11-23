@@ -7,12 +7,15 @@ named for that: a hotel switchboard connects two parties and does not stay on th
 
 This is the whole plan: what the piece is, the decisions already taken and why, and the phases,
 each with a Definition of Done so that one instance can build a phase and another can verify it.
-Three items have landed: the `Pairing` table with `services/switchboard.py`;
-`routers/switchboard.py`; and the introduction itself, `src/app/switchboard/` with `peer/` and
-`signal/`, which pairs two tabs over host candidates. Their headers record what was decided while
-building them (per-side tokens, the cursor, why `record_open` is never charged, why the rate limit
-is per instance, why a `409` on a poll or a candidate means the other device opened first and is
-waited out rather than reported, why candidates are held until the server will take them).
+Four items have landed: the `Pairing` table with `services/switchboard.py`;
+`routers/switchboard.py`; the introduction itself, `src/app/switchboard/` with `peer/` and
+`signal/`, which pairs two tabs over host candidates; and `qr/qr.ts`, the encoder, drawing the
+link on the `waiting` screen. Their headers record what was decided while building them (per-side
+tokens, the cursor, why `record_open` is never charged, why the rate limit is per instance, why a
+`409` on a poll or a candidate means the other device opened first and is waited out rather than
+reported, why candidates are held until the server will take them, why the encoder stops at
+version 4 and what happens to an origin too long for it). `qr/qr-vectors.testing.ts` records
+where its reference matrices came from, and why `segno` was rejected as the reference.
 
 **Phases are deleted as they land and the rest renumbered from 0**, as `ROADMAP.md` does. The
 reasoning that survives a finished phase moves into the header of the file it describes. So a
@@ -164,11 +167,12 @@ backend/
                              POST /api/switchboard/{code}/{join,answer,candidates,open}
 src/app/switchboard/
   switchboard.ts .html .css .spec.ts
-  switchboard.tokens.ts        the peer-connection factory, the signal factory, the query string
+  switchboard.tokens.ts        the peer-connection factory, the signal factory, the origin, the query string
   peer/          peer.ts       RTCPeerConnection, both channels, the stats read; behind a token
                  peer-connection.testing.ts   the fake RTCPeerConnection the specs drive
   signal/        signal.ts     the six calls and the poll; stops when the channel opens
   qr/            qr.ts         the encoder (leaf, importable by Node) + qr.spec.ts vectors
+                 qr-vectors.testing.ts        reference matrices from an independent encoder
   readouts/      rtt-histogram, arrival-order, orientation
   switchboard-calibration.ts   poll interval, expiry, rate limit, message cadence
 e2e/switchboard.spec.ts       two contexts, one pairing, `direct`
@@ -178,16 +182,15 @@ e2e/switchboard.spec.ts       two contexts, one pairing, `direct`
 
 ### Phase 0 — two devices
 
-1. `qr.ts`, with reference vectors in its spec, and the QR code on the `waiting` screen.
-2. Cloudflare STUN behind **Connect**, the `traversed` state, and the `no-route` state with its
+1. Cloudflare STUN behind **Connect**, the `traversed` state, and the `no-route` state with its
    reason. Test `no-route` with a fake peer whose ICE fails. Do not test it against a real
    network. Both taps start the introduction today, **Get a code** on the offering device and
    **Connect** on the joining one, and nothing is sent before either. So the ICE servers belong
    in `SWITCHBOARD_PEER_CONNECTION`'s factory, which is first called inside those handlers.
    `STAGE_BY_CANDIDATE` already maps `srflx` and `prflx` to `traversed`; without STUN nothing
    reaches it. An ICE failure today is a generic `refused` line, which becomes `no-route`.
-3. The selected pair's raw stats printed under the state line.
-4. `docs/analytics.md`: the STUN paragraph.
+2. The selected pair's raw stats printed under the state line.
+3. `docs/analytics.md`: the STUN paragraph.
 
 **DoD.** A phone on mobile data pairs with the laptop on Wi-Fi and shows `traversed`, or shows
 `no-route` with the correct reason. Both outcomes are recorded in this file, with the carrier

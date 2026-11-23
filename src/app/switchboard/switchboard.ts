@@ -9,13 +9,24 @@ import {
 } from '@angular/core';
 import { HomeLink } from '../home-link/home-link';
 import { describeCandidate, ISelectedPair, IStatsCandidate, Peer } from './peer/peer';
+import { encodeQr, qrPath } from './qr/qr';
 import { CLOSED, IPoll, IRead, ISignal, SignalError, startPoll } from './signal/signal';
 import { OPEN_GRACE_MS, POLL_INTERVAL_MS } from './switchboard-calibration';
 import {
+  SWITCHBOARD_ORIGIN,
   SWITCHBOARD_PEER_CONNECTION,
   SWITCHBOARD_SEARCH,
   SWITCHBOARD_SIGNAL,
 } from './switchboard.tokens';
+
+/** Modules of light margin around the symbol: ISO/IEC 18004 asks for four. */
+const QR_QUIET_ZONE = 4;
+
+/** What the template draws: an SVG path and the side of its square `viewBox`. */
+export interface IQrDrawing {
+  path: string;
+  span: number;
+}
 
 /**
  * Where the introduction is. `direct` and `traversed` are the browser's own
@@ -131,6 +142,26 @@ export class Switchboard {
     return stage === 'refused' ? this.refusal() : STAGE_LINES[stage];
   });
 
+  /** The address the other device opens: the same route, with this code. */
+  public readonly link: Signal<string> = computed(
+    () => `${this.origin}/switchboard?code=${this.code() ?? ''}`
+  );
+
+  /**
+   * The link as a QR code, or `null` when the origin makes it longer than
+   * version 4 holds (a Vercel preview's does). Then the page says so and the
+   * code is typed instead; the encoder's range is deliberate (see `qr.ts`).
+   */
+  public readonly qr: Signal<IQrDrawing | null> = computed(() => {
+    try {
+      const code = encodeQr(this.link());
+      return { path: qrPath(code, QR_QUIET_ZONE), span: code.size + 2 * QR_QUIET_ZONE };
+    } catch {
+      return null;
+    }
+  });
+
+  private readonly origin = inject(SWITCHBOARD_ORIGIN);
   private readonly makeConnection = inject(SWITCHBOARD_PEER_CONNECTION);
   private readonly makeSignal = inject(SWITCHBOARD_SIGNAL);
 

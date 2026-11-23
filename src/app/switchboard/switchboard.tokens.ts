@@ -29,6 +29,14 @@ export const SWITCHBOARD_SIGNAL = new InjectionToken<() => ISignal>('SWITCHBOARD
     new SignalClient((input, init) => window.fetch(input, init), environment.apiUrl),
 });
 
+/**
+ * The origin the QR code's link points at: this page's own, so a preview
+ * deployment's code opens the preview and `ng serve`'s opens `localhost`.
+ */
+export const SWITCHBOARD_ORIGIN = new InjectionToken<string>('SWITCHBOARD_ORIGIN', {
+  factory: () => window.location.origin,
+});
+
 /** The address's query string, which may carry `?code=` from the other device. */
 export const SWITCHBOARD_SEARCH = new InjectionToken<string>('SWITCHBOARD_SEARCH', {
   factory: () => window.location.search,

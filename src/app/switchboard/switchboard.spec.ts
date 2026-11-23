@@ -1,9 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FakePeerConnection, selectedPairStats } from './peer/peer-connection.testing';
+import { encodeQr, qrPath } from './qr/qr';
 import { CLOSED, Closed, ICreated, IJoined, IRead, ISignal, SignalError } from './signal/signal';
 import { OPEN_GRACE_MS, POLL_INTERVAL_MS } from './switchboard-calibration';
 import { Switchboard } from './switchboard';
 import {
+  SWITCHBOARD_ORIGIN,
   SWITCHBOARD_PEER_CONNECTION,
   SWITCHBOARD_SEARCH,
   SWITCHBOARD_SIGNAL,
@@ -76,7 +78,7 @@ describe('Switchboard', () => {
     fixture.detectChanges();
   }
 
-  function render(options: { search?: string; webrtc?: boolean } = {}): void {
+  function render(options: { search?: string; webrtc?: boolean; origin?: string } = {}): void {
     TestBed.configureTestingModule({
       providers: [
         {
@@ -97,6 +99,7 @@ describe('Switchboard', () => {
           },
         },
         { provide: SWITCHBOARD_SEARCH, useValue: options.search ?? '' },
+        { provide: SWITCHBOARD_ORIGIN, useValue: options.origin ?? 'https://jacobmiller.dev' },
       ],
     });
     fixture = TestBed.createComponent(Switchboard);
@@ -189,7 +192,7 @@ describe('Switchboard', () => {
       expect(signal().sendCandidate).toHaveBeenCalledWith({ candidate: HOST, sdpMid: '0' });
       expect(state()).toContain('Waiting for the other device');
       expect(host.querySelector('.switchboard-code')?.textContent).toBe('ABC234');
-      expect(text()).toContain('/switchboard?code=ABC234');
+      expect(text()).toContain('https://jacobmiller.dev/switchboard?code=ABC234');
       expect(text()).toContain('expires in 117 s');
       expect(host.querySelector('.switchboard-count strong')?.textContent).toBe('1100');
       expect(text()).toContain('This device made an offer: 9 bytes of SDP.');
@@ -273,6 +276,31 @@ describe('Switchboard', () => {
       await settle();
       expect(host.querySelector('.switchboard-log')).toBeNull();
       expect(host.querySelector('.switchboard-count')).toBeNull();
+    });
+
+    it('draws the link to this code as a QR code, with the code as text beside it', async () => {
+      render();
+      await offerUntilWaiting();
+      const link = 'https://jacobmiller.dev/switchboard?code=ABC234';
+      const svg = host.querySelector('svg.switchboard-qr');
+      expect(svg?.getAttribute('role')).toBe('img');
+      expect(svg?.getAttribute('aria-label')).toBe(`QR code for ${link}`);
+      // Version 4 is 33 modules a side, and the quiet zone adds four on each.
+      expect(svg?.getAttribute('viewBox')).toBe('0 0 41 41');
+      expect(svg?.querySelector('path')?.getAttribute('d')).toBe(qrPath(encodeQr(link), 4));
+      expect(host.querySelector('.switchboard-code')?.textContent).toBe('ABC234');
+    });
+
+    it('says the address is too long for the code it draws, rather than drawing a larger one', async () => {
+      // As long as a preview deployment's origin, which pushes the link past version 4's 62 bytes.
+      render({ origin: 'https://a-preview-deployment-with-a-long-name.example' });
+      expect(component.link()).toBe(
+        'https://a-preview-deployment-with-a-long-name.example/switchboard?code='
+      );
+      await offerUntilWaiting();
+      expect(host.querySelector('svg.switchboard-qr')).toBeNull();
+      expect(text()).toContain('too long for the QR code it draws');
+      expect(host.querySelector('.switchboard-code')?.textContent).toBe('ABC234');
     });
 
     it('says when ICE finds no working pair', async () => {
