@@ -65,6 +65,9 @@ suggests putting both devices on the same Wi-Fi, which yields a host-candidate p
 | `traversed` | ICE selected a `srflx` pair                       | Connected across the internet through a NAT, without a relay    |
 | `no-route`  | ICE failed, or `RTCPeerConnection` does not exist | Why, and what would fix it (same Wi-Fi), and that no relay runs |
 
+`refused` is not a fifth state of the connection. It means this site turned the attempt down (a
+spent code, a failed request), where `no-route` means the browsers found no path.
+
 The pair type comes from `getStats()` (`candidate-pair` → `local-candidate.candidateType`), not
 from a guess. That makes it the one fact here that a visitor cannot easily check from a terminal,
 so the route prints the selected pair's raw stats under the state line.
@@ -86,9 +89,10 @@ so the route prints the selected pair's raw stats under the state line.
 - **One STUN server, named on screen.** Without STUN only host candidates exist and `traversed`
   is impossible. STUN learns the visitor's public address, so the route says which server it
   asked. `stun.cloudflare.com:3478` is the proposed choice: free, no account. Settle it with
-  the owner in Phase 0, because it adds a third party. `docs/analytics.md` gains a paragraph, because a third party now learns a
-  visitor's IP when they open this route. The STUN request is not sent until the visitor presses
-  **Connect**, so merely opening the page tells Cloudflare nothing.
+  the owner in Phase 0, because it adds a third party. `docs/analytics.md` gains a paragraph,
+  because a third party now learns a visitor's IP when they use this route. The STUN request is
+  not sent until the visitor presses **Get a code** or **Connect**, so merely opening the page
+  tells Cloudflare nothing.
 - **No TURN, permanently.** See above. The free TURN tiers that exist need an account and
   short-lived credentials minted per session. That is a credential flow on a route with no auth,
   and a bandwidth bill held off only by a quota. Recorded so nobody adds one to make `no-route`
@@ -174,7 +178,7 @@ src/app/switchboard/
   qr/            qr.ts         the encoder (leaf, importable by Node) + qr.spec.ts vectors
                  qr-vectors.testing.ts        reference matrices from an independent encoder
   readouts/      rtt-histogram, arrival-order, orientation
-  switchboard-calibration.ts   poll interval, expiry, rate limit, message cadence
+  switchboard-calibration.ts   poll interval, expiry, rate limit, message cadence, ICE servers
 e2e/switchboard.spec.ts       two contexts, one pairing, `direct`
 ```
 
@@ -182,15 +186,38 @@ e2e/switchboard.spec.ts       two contexts, one pairing, `direct`
 
 ### Phase 0 — two devices
 
-1. Cloudflare STUN behind **Connect**, the `traversed` state, and the `no-route` state with its
-   reason. Test `no-route` with a fake peer whose ICE fails. Do not test it against a real
-   network. Both taps start the introduction today, **Get a code** on the offering device and
-   **Connect** on the joining one, and nothing is sent before either. So the ICE servers belong
-   in `SWITCHBOARD_PEER_CONNECTION`'s factory, which is first called inside those handlers.
-   `STAGE_BY_CANDIDATE` already maps `srflx` and `prflx` to `traversed`; without STUN nothing
-   reaches it. An ICE failure today is a generic `refused` line, which becomes `no-route`.
-2. The selected pair's raw stats printed under the state line.
-3. `docs/analytics.md`: the STUN paragraph.
+Four changes used to share one step: a new state, a seam, a third party and its disclosure. They
+land in this order, each green on its own, so that the change which tells Cloudflare something is
+one line with its disclosure beside it. `traversed` is not among them. `STAGE_BY_CANDIDATE`
+already maps `srflx` and `prflx` to it, and the component spec already reads it from fake stats.
+What it lacks is a candidate that only STUN can produce.
+
+1. **`no-route` as its own state, before STUN exists.** Today every stop is `refused`. Split it
+   by who said no. ICE `failed` and a browser with no `RTCPeerConnection` become `no-route`, which
+   is the browsers' report about two networks, and carries its reason. `refused` keeps what this
+   site turned down: an expired or consumed code, a network error, and the other device opening a
+   channel that never opened on this one. The `no-route` line says why, that the same Wi-Fi gives
+   a host pair, and that this site runs no relay. **Start again** shows under both states. Spec it
+   with the fake connection's `setIceState('failed')`, never against a real network, and move the
+   two no-`RTCPeerConnection` specs across. This step is worth landing without STUN: two devices
+   on different networks fail today and are told nothing useful.
+2. **The ICE servers as one constant, still empty.** `ICE_SERVERS` in
+   `switchboard-calibration.ts`, read only by `SWITCHBOARD_PEER_CONNECTION`'s factory, so the third
+   party lives in one place that `check:docs` can read later. `begin()` logs which servers the
+   factory was given, right after calling it. With none, the line says that only this network's
+   own addresses can pair. Both taps start the introduction, **Get a code** on the offering device
+   and **Connect** on the joining one, and the factory is first called inside them. The spec
+   holds that rendering the page calls it zero times and logs nothing.
+3. **The owner settles the STUN server.** `stun.cloudflare.com:3478` is the proposal
+   (§Decisions). Nothing below starts without a yes.
+4. **Cloudflare STUN, and its disclosure in the same change.** `ICE_SERVERS` gains the one URL
+   and the tokens spec's expectation follows it. `docs/analytics.md` gains the paragraph: which
+   host, what it learns (the visitor's public address and port), when (after either tap, never on
+   opening the page), and that no account or key stands behind it. The log line from step 2 now
+   names the server. No state logic changes. Check by hand that two tabs on one machine still
+   reach `direct`: the log should now show a `srflx` candidate, and the browsers should still
+   choose the host pair.
+5. The selected pair's raw stats printed under the state line.
 
 **DoD.** A phone on mobile data pairs with the laptop on Wi-Fi and shows `traversed`, or shows
 `no-route` with the correct reason. Both outcomes are recorded in this file, with the carrier
@@ -216,15 +243,17 @@ states. `npm test` coverage has not fallen.
    could pair in development. Move its path and title into `route-meta.json` like every other
    route's. Build with `npm run build`.
 2. `e2e/switchboard.spec.ts`: two contexts reach `direct` through the stubbed signaling. The
-   `waiting` screen passes axe.
+   `waiting` screen passes axe. The production build now names a real STUN server, and CI must
+   never ask it (§Traps), so the spec's `addInitScript` wraps `RTCPeerConnection` in a constructor
+   that drops `iceServers`. Host candidates pair without it.
 3. `e2e/project-frames.spec.ts`: a recipe anchored on the `waiting` screen (the code is seeded
    in the stub, so the frame is stable), then run `npm run frames:capture`.
 4. ARCHITECTURE gains a §Peer-to-peer covering the endpoints, the four states, the no-TURN
    decision, the STUN disclosure and the shared-store requirement.
 5. `CLAUDE.md` gains a doc-map row and §Don't helpfully add these gains "no TURN relay".
-   `check:docs` gains checks that no `turn:` URL appears under `src/app/switchboard/`, that the
-   STUN request sits behind the **Connect** handler, and that `docs/analytics.md` names the STUN
-   host the code uses.
+   `check:docs` gains checks that no `turn:` URL appears under `src/app/switchboard/`, that
+   `ICE_SERVERS` is read nowhere but the peer-connection factory, and that `docs/analytics.md`
+   names the STUN host `ICE_SERVERS` holds.
 6. All six gates, `npm run e2e` and `npm run check:docs`, green.
 
 **DoD.** The card is on the home page with a committed frame, and a phone and a laptop on the
