@@ -7,10 +7,11 @@ named for that: a hotel switchboard connects two parties and does not stay on th
 
 This is the whole plan: what the piece is, the decisions already taken and why, and the phases,
 each with a Definition of Done so that one instance can build a phase and another can verify it.
-Four items have landed: the `Pairing` table with `services/switchboard.py`;
+Five items have landed: the `Pairing` table with `services/switchboard.py`;
 `routers/switchboard.py`; the introduction itself, `src/app/switchboard/` with `peer/` and
-`signal/`, which pairs two tabs over host candidates; and `qr/qr.ts`, the encoder, drawing the
-link on the `waiting` screen. Their headers record what was decided while building them (per-side
+`signal/`, which pairs two tabs over host candidates; `qr/qr.ts`, the encoder, drawing the link
+on the `waiting` screen; and `no-route` split from `refused` by who said no (the `Stage` type's
+comment in `switchboard.ts`). Their headers record what was decided while building them (per-side
 tokens, the cursor, why `record_open` is never charged, why the rate limit is per instance, why a
 `409` on a poll or a candidate means the other device opened first and is waited out rather than
 reported, why candidates are held until the server will take them, why the encoder stops at
@@ -192,32 +193,23 @@ one line with its disclosure beside it. `traversed` is not among them. `STAGE_BY
 already maps `srflx` and `prflx` to it, and the component spec already reads it from fake stats.
 What it lacks is a candidate that only STUN can produce.
 
-1. **`no-route` as its own state, before STUN exists.** Today every stop is `refused`. Split it
-   by who said no. ICE `failed` and a browser with no `RTCPeerConnection` become `no-route`, which
-   is the browsers' report about two networks, and carries its reason. `refused` keeps what this
-   site turned down: an expired or consumed code, a network error, and the other device opening a
-   channel that never opened on this one. The `no-route` line says why, that the same Wi-Fi gives
-   a host pair, and that this site runs no relay. **Start again** shows under both states. Spec it
-   with the fake connection's `setIceState('failed')`, never against a real network, and move the
-   two no-`RTCPeerConnection` specs across. This step is worth landing without STUN: two devices
-   on different networks fail today and are told nothing useful.
-2. **The ICE servers as one constant, still empty.** `ICE_SERVERS` in
+1. **The ICE servers as one constant, still empty.** `ICE_SERVERS` in
    `switchboard-calibration.ts`, read only by `SWITCHBOARD_PEER_CONNECTION`'s factory, so the third
    party lives in one place that `check:docs` can read later. `begin()` logs which servers the
    factory was given, right after calling it. With none, the line says that only this network's
    own addresses can pair. Both taps start the introduction, **Get a code** on the offering device
    and **Connect** on the joining one, and the factory is first called inside them. The spec
    holds that rendering the page calls it zero times and logs nothing.
-3. **The owner settles the STUN server.** `stun.cloudflare.com:3478` is the proposal
+2. **The owner settles the STUN server.** `stun.cloudflare.com:3478` is the proposal
    (§Decisions). Nothing below starts without a yes.
-4. **Cloudflare STUN, and its disclosure in the same change.** `ICE_SERVERS` gains the one URL
+3. **Cloudflare STUN, and its disclosure in the same change.** `ICE_SERVERS` gains the one URL
    and the tokens spec's expectation follows it. `docs/analytics.md` gains the paragraph: which
    host, what it learns (the visitor's public address and port), when (after either tap, never on
-   opening the page), and that no account or key stands behind it. The log line from step 2 now
+   opening the page), and that no account or key stands behind it. The log line from step 1 now
    names the server. No state logic changes. Check by hand that two tabs on one machine still
    reach `direct`: the log should now show a `srflx` candidate, and the browsers should still
    choose the host pair.
-5. The selected pair's raw stats printed under the state line.
+4. The selected pair's raw stats printed under the state line.
 
 **DoD.** A phone on mobile data pairs with the laptop on Wi-Fi and shows `traversed`, or shows
 `no-route` with the correct reason. Both outcomes are recorded in this file, with the carrier

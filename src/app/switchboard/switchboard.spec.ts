@@ -159,15 +159,73 @@ describe('Switchboard', () => {
     expect(host.querySelector('input')?.value).toBe('ABC234');
   });
 
-  it('says so when the browser has no RTCPeerConnection, and asks the server nothing', async () => {
-    render({ webrtc: false });
-    click('Get a code');
-    await settle();
-    expect(state()).toContain('no RTCPeerConnection');
-    expect(signals).toHaveLength(0);
-    click('Start again');
-    await settle();
-    expect(state()).toContain('Nothing has been sent');
+  describe('no route: the browsers found no path', () => {
+    const NO_RELAY = 'This site runs no relay, so it cannot carry the call instead.';
+
+    it('says so when the browser has no RTCPeerConnection, and asks the server nothing', async () => {
+      render({ webrtc: false });
+      click('Get a code');
+      await settle();
+      expect(component.stage()).toBe('no-route');
+      expect(state()).toContain('no RTCPeerConnection');
+      expect(state()).toContain('on the same Wi-Fi it would pair over a host pair');
+      expect(state()).toContain(NO_RELAY);
+      expect(signals).toHaveLength(0);
+      click('Start again');
+      await settle();
+      expect(state()).toContain('Nothing has been sent');
+    });
+
+    it('says so on the joining device too', async () => {
+      render({ search: '?code=ABC234', webrtc: false });
+      click('Connect');
+      await settle();
+      expect(component.stage()).toBe('no-route');
+      expect(state()).toContain('no RTCPeerConnection');
+      expect(signals).toHaveLength(0);
+    });
+
+    it('says why ICE failed, what would fix it, and that no relay runs', async () => {
+      render();
+      await offerUntilWaiting();
+      connection().setIceState('failed');
+      await settle();
+      expect(component.stage()).toBe('no-route');
+      expect(state()).toBe(
+        'No direct path exists between these two networks: the browsers tried every pair of ' +
+          'candidates and none of them worked. On the same Wi-Fi the two devices would pair ' +
+          `over their own addresses, a host pair. ${NO_RELAY}`
+      );
+      expect(host.querySelector('.switchboard-code')).toBeNull();
+      expect(connection().closed).toBe(true);
+
+      const reads = signal().read.mock.calls.length;
+      await settle(POLL_INTERVAL_MS * 4);
+      expect(signal().read).toHaveBeenCalledTimes(reads);
+      click('Start again');
+      await settle();
+      expect(state()).toContain('Nothing has been sent');
+    });
+
+    it('ignores ICE failing on an attempt the visitor already abandoned', async () => {
+      render();
+      await offerUntilWaiting();
+      const abandoned = connection();
+      component.reset();
+      abandoned.setIceState('failed');
+      await settle();
+      expect(state()).toContain('Nothing has been sent');
+    });
+
+    it('is not what a refusal from this site says', async () => {
+      render();
+      click('Get a code');
+      await settle();
+      signal().created.reject(new SignalError('The switchboard is unreachable.', 0));
+      await settle();
+      expect(component.stage()).toBe('refused');
+      expect(state()).not.toContain(NO_RELAY);
+    });
   });
 
   describe('the offering device', () => {
@@ -270,6 +328,7 @@ describe('Switchboard', () => {
       expect(text().match(/reports its channel open/g)).toHaveLength(1);
 
       await settle(OPEN_GRACE_MS);
+      expect(component.stage()).toBe('refused');
       expect(state()).toBe('The other device opened a channel that never opened on this one.');
       expect(connection().closed).toBe(true);
       click('Start again');
@@ -301,15 +360,6 @@ describe('Switchboard', () => {
       expect(host.querySelector('svg.switchboard-qr')).toBeNull();
       expect(text()).toContain('too long for the QR code it draws');
       expect(host.querySelector('.switchboard-code')?.textContent).toBe('ABC234');
-    });
-
-    it('says when ICE finds no working pair', async () => {
-      render();
-      await offerUntilWaiting();
-      connection().setIceState('failed');
-      await settle();
-      expect(state()).toContain('none of them worked');
-      expect(host.querySelector('.switchboard-code')).toBeNull();
     });
 
     it('says when the server cannot be reached, or refuses a candidate', async () => {
@@ -563,13 +613,6 @@ describe('Switchboard', () => {
     expect(text()).toContain(
       'The browsers chose host port 57226 here and host 192.168.1.20:50001 there.'
     );
-  });
-
-  it('refuses to join without WebRTC too', async () => {
-    render({ search: '?code=ABC234', webrtc: false });
-    click('Connect');
-    await settle();
-    expect(state()).toContain('no RTCPeerConnection');
   });
 
   it('closes the connection and stops polling when the route is left', async () => {

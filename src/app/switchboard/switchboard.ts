@@ -32,6 +32,12 @@ export interface IQrDrawing {
  * Where the introduction is. `direct` and `traversed` are the browser's own
  * report of the selected pair; `unreported` is an open channel whose browser
  * named no pair, said as such rather than guessed.
+ *
+ * An attempt stops in one of two states, split by who said no. `no-route` is
+ * the browsers' report about two networks: ICE tried every pair and none
+ * worked, or there is no `RTCPeerConnection` to try with. `refused` is this
+ * site turning the attempt down: a spent code, a failed request, or the other
+ * device opening a channel that never opened here.
  */
 export type Stage =
   | 'idle'
@@ -41,7 +47,11 @@ export type Stage =
   | 'direct'
   | 'traversed'
   | 'unreported'
+  | 'no-route'
   | 'refused';
+
+/** The two ways an attempt stops; each carries its reason in `reason`. */
+type Stopped = Extract<Stage, 'no-route' | 'refused'>;
 
 /** One line of the introduction log, with an optional explanation beside it. */
 export interface ILogLine {
@@ -50,7 +60,7 @@ export interface ILogLine {
   note: string | null;
 }
 
-const STAGE_LINES: Readonly<Record<Exclude<Stage, 'refused'>, string>> = {
+const STAGE_LINES: Readonly<Record<Exclude<Stage, Stopped>, string>> = {
   idle: 'Nothing has been sent. Get a code on this device, or enter the code from the other one.',
   starting: 'Making an offer and asking the server to introduce this device.',
   waiting:
@@ -60,6 +70,23 @@ const STAGE_LINES: Readonly<Record<Exclude<Stage, 'refused'>, string>> = {
   traversed: 'Connected across the internet through a NAT, without a relay.',
   unreported: 'Connected, but this browser has not reported which pair of candidates it chose.',
 };
+
+/**
+ * Why the browsers found no route, each with what would give them one. The
+ * remedy lives in the reason rather than in a shared tail because it differs:
+ * the same Wi-Fi fixes two networks, but not a browser with no WebRTC.
+ */
+const NO_ROUTE_ICE =
+  'No direct path exists between these two networks: the browsers tried every pair of candidates and none of them worked. On the same Wi-Fi the two devices would pair over their own addresses, a host pair.';
+const NO_ROUTE_WEBRTC =
+  'This browser has no RTCPeerConnection, so it cannot open a direct channel to another device. A browser that has one would, and on the same Wi-Fi it would pair over a host pair.';
+
+/**
+ * Said under every `no-route`. The usual fix for two networks with no direct
+ * path is a TURN relay, and this site will not run one (SWITCHBOARD.md
+ * §Decisions), so the page says that rather than quietly relaying instead.
+ */
+const NO_RELAY = 'This site runs no relay, so it cannot carry the call instead.';
 
 /**
  * The local end of the selected pair decides the state. `host` is this
@@ -129,17 +156,26 @@ export class Switchboard {
   public readonly expiresIn = signal<number | null>(null);
   public readonly relayedBytes = signal<number | null>(null);
   public readonly log = signal<readonly ILogLine[]>([]);
-  /** Why the attempt stopped; read only in the `refused` stage. */
-  public readonly refusal = signal('');
+  /** Why the attempt stopped; read only in the `no-route` and `refused` stages. */
+  public readonly reason = signal('');
   public readonly codeInput = signal('');
   public readonly codeError = signal<string | null>(null);
 
   public readonly connected: Signal<boolean> = computed(() =>
     ['direct', 'traversed', 'unreported'].includes(this.stage())
   );
+  public readonly stopped: Signal<boolean> = computed(() =>
+    ['no-route', 'refused'].includes(this.stage())
+  );
   public readonly stageLine: Signal<string> = computed(() => {
     const stage = this.stage();
-    return stage === 'refused' ? this.refusal() : STAGE_LINES[stage];
+    if (stage === 'refused') {
+      return this.reason();
+    }
+    if (stage === 'no-route') {
+      return `${this.reason()} ${NO_RELAY}`;
+    }
+    return STAGE_LINES[stage];
   });
 
   /** The address the other device opens: the same route, with this code. */
@@ -259,29 +295,26 @@ export class Switchboard {
     this.expiresIn.set(null);
     this.relayedBytes.set(null);
     this.log.set([]);
-    this.refusal.set('');
+    this.reason.set('');
   }
 
-  /** A fresh peer and signaling client, or a refusal when the browser has no WebRTC. */
+  /** A fresh peer and signaling client, or `no-route` when the browser has no WebRTC. */
   private begin(): { peer: Peer; relay: ISignal } | null {
     this.reset();
     this.codeError.set(null);
     if (this.makeConnection === null) {
-      this.stage.set('refused');
-      this.refusal.set(
-        'This browser has no RTCPeerConnection, so it cannot open a direct channel to another device.'
-      );
+      this.stop('no-route', NO_ROUTE_WEBRTC);
       return null;
     }
     const relay = this.makeSignal();
     const peer: Peer = new Peer(this.makeConnection(), {
       candidate: (candidate) => this.onLocalCandidate(candidate, relay),
       open: () => void this.onOpen(peer, relay),
-      failed: () =>
-        this.refuse(
-          new Error('The browsers tried every pair of candidates and none of them worked.'),
-          relay
-        ),
+      failed: () => {
+        if (this.isCurrent(relay)) {
+          this.stop('no-route', NO_ROUTE_ICE);
+        }
+      },
     });
     this.peer = peer;
     this.relay = relay;
@@ -400,7 +433,7 @@ export class Switchboard {
    * field the server rejected.
    */
   private refuse(error: unknown, relay: ISignal): void {
-    if (this.relay !== relay || this.channelOpen) {
+    if (!this.isCurrent(relay)) {
       return;
     }
     const message = this.messageOf(error);
@@ -409,9 +442,22 @@ export class Switchboard {
       this.codeError.set(message);
       return;
     }
+    this.stop('refused', message);
+  }
+
+  /**
+   * Whether a report about `relay`'s attempt may still change the page: it is
+   * the attempt in progress, and its channel has not opened. Once open, a late
+   * `409` or ICE failing afterwards cannot undo the connection.
+   */
+  private isCurrent(relay: ISignal): boolean {
+    return this.relay === relay && !this.channelOpen;
+  }
+
+  private stop(stage: Stopped, reason: string): void {
     this.teardown();
-    this.stage.set('refused');
-    this.refusal.set(message);
+    this.stage.set(stage);
+    this.reason.set(reason);
   }
 
   private count(relayedBytes: number): void {

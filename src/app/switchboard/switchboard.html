@@ -85,7 +85,7 @@
       </p>
     }
 
-    @if (stage() === 'refused') {
+    @if (stopped()) {
       <button type="button" class="switchboard-button" (click)="reset()">Start again</button>
     }
 
