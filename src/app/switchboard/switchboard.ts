@@ -306,8 +306,10 @@ export class Switchboard {
       this.stop('no-route', NO_ROUTE_WEBRTC);
       return null;
     }
+    const connection = this.makeConnection();
+    this.noteIceServers(connection.getConfiguration().iceServers ?? []);
     const relay = this.makeSignal();
-    const peer: Peer = new Peer(this.makeConnection(), {
+    const peer: Peer = new Peer(connection, {
       candidate: (candidate) => this.onLocalCandidate(candidate, relay),
       open: () => void this.onOpen(peer, relay),
       failed: () => {
@@ -476,6 +478,24 @@ export class Switchboard {
       `${who} found a ${line.type} candidate: ${line.protocol} ${where}.`,
       line.mdns ? MDNS_NOTE : null
     );
+  }
+
+  /**
+   * Which STUN servers this connection will ask, read back from the browser's
+   * own `getConfiguration()` rather than from `ICE_SERVERS`, which only the
+   * factory reads. None means host candidates only.
+   */
+  private noteIceServers(servers: readonly RTCIceServer[]): void {
+    const urls = servers.flatMap((server) =>
+      typeof server.urls === 'string' ? [server.urls] : server.urls
+    );
+    if (urls.length === 0) {
+      this.note(
+        "This device was given no STUN server, so only this network's own addresses can pair."
+      );
+      return;
+    }
+    this.note(`This device will ask ${urls.join(', ')} for its public address.`);
   }
 
   private note(text: string, note: string | null = null): void {

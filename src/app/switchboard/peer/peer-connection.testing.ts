@@ -45,6 +45,12 @@ export class FakePeerConnection {
   /** What `setLocalDescription` produces; empty to imitate a broken browser. */
   public localSdp = 'v=0 local';
 
+  constructor(private readonly configuration: RTCConfiguration = { iceServers: [] }) {}
+
+  public getConfiguration(): RTCConfiguration {
+    return this.configuration;
+  }
+
   public createDataChannel(label: string): FakeDataChannel {
     this.channel = new FakeDataChannel(label);
     return this.channel;

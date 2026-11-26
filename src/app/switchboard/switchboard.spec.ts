@@ -78,7 +78,14 @@ describe('Switchboard', () => {
     fixture.detectChanges();
   }
 
-  function render(options: { search?: string; webrtc?: boolean; origin?: string } = {}): void {
+  function render(
+    options: {
+      search?: string;
+      webrtc?: boolean;
+      origin?: string;
+      iceServers?: RTCIceServer[];
+    } = {}
+  ): void {
     TestBed.configureTestingModule({
       providers: [
         {
@@ -87,7 +94,9 @@ describe('Switchboard', () => {
             options.webrtc === false
               ? null
               : (): RTCPeerConnection => {
-                  connections.push(new FakePeerConnection());
+                  connections.push(
+                    new FakePeerConnection({ iceServers: options.iceServers ?? [] })
+                  );
                   return connection().asConnection();
                 },
         },
@@ -152,6 +161,69 @@ describe('Switchboard', () => {
     expect(host.querySelector('input')?.value).toBe('');
     expect(host.querySelector('.switchboard-log')).toBeNull();
     expect(signals).toHaveLength(0);
+  });
+
+  describe('the STUN servers', () => {
+    const NONE =
+      "This device was given no STUN server, so only this network's own addresses can pair.";
+    const firstLine = (): string | undefined => component.log()[0]?.text;
+
+    it('are not asked for by rendering the page, nor by a Connect with no code', async () => {
+      render({ search: '?code=abc234' });
+      expect(connections).toHaveLength(0);
+      expect(component.log()).toEqual([]);
+
+      const input = host.querySelector('input') as HTMLInputElement;
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      click('Connect');
+      await settle();
+      expect(connections).toHaveLength(0);
+      expect(component.log()).toEqual([]);
+    });
+
+    it('are named first in the log once Get a code is pressed: none, so host candidates only', async () => {
+      render();
+      click('Get a code');
+      await settle();
+      expect(connections).toHaveLength(1);
+      expect(firstLine()).toBe(NONE);
+    });
+
+    it('are named first in the log once Connect is pressed', async () => {
+      render({ search: '?code=ABC234' });
+      click('Connect');
+      await settle();
+      expect(connections).toHaveLength(1);
+      expect(firstLine()).toBe(NONE);
+    });
+
+    it("are read from the connection's own configuration, whatever shape its urls take", async () => {
+      render({
+        iceServers: [
+          { urls: 'stun:one.example:3478' },
+          { urls: ['stun:two.example:3478', 'stun:three.example:3478'] },
+        ],
+      });
+      click('Get a code');
+      await settle();
+      expect(firstLine()).toBe(
+        'This device will ask stun:one.example:3478, stun:two.example:3478, ' +
+          'stun:three.example:3478 for its public address.'
+      );
+    });
+
+    it('are logged afresh for each attempt, not carried over from the last one', async () => {
+      render();
+      click('Get a code');
+      await settle();
+      component.reset();
+      await settle();
+      click('Get a code');
+      await settle();
+      expect(connections).toHaveLength(2);
+      expect(component.log().filter((line) => line.text === NONE)).toHaveLength(1);
+    });
   });
 
   it('takes the code from the address, ready for Connect', () => {
