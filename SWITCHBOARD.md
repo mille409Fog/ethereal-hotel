@@ -89,8 +89,10 @@ so the route prints the selected pair's raw stats under the state line.
   the poll is how real clients do it, and it puts each candidate on screen as it is found.
 - **One STUN server, named on screen.** Without STUN only host candidates exist and `traversed`
   is impossible. STUN learns the visitor's public address, so the route says which server it
-  asked. `stun.cloudflare.com:3478` is the proposed choice: free, no account. Settle it with
-  the owner in Phase 0, because it adds a third party. `docs/analytics.md` gains a paragraph,
+  asked. It is `stun.cloudflare.com:3478`: free, no account. The owner settled it on
+  2026-11-27, over `stun.l.google.com:19302` (free too, but not documented by Google for other
+  sites to use, so harder to disclose honestly) and over none at all (which would make
+  `traversed` impossible). It adds a third party, so `docs/analytics.md` gains a paragraph,
   because a third party now learns a visitor's IP when they use this route. The STUN request is
   not sent until the visitor presses **Get a code** or **Connect**, so merely opening the page
   tells Cloudflare nothing.
@@ -193,16 +195,14 @@ one line with its disclosure beside it. `traversed` is not among them. `STAGE_BY
 already maps `srflx` and `prflx` to it, and the component spec already reads it from fake stats.
 What it lacks is a candidate that only STUN can produce.
 
-1. **The owner settles the STUN server.** `stun.cloudflare.com:3478` is the proposal
-   (§Decisions). Nothing below starts without a yes.
-2. **Cloudflare STUN, and its disclosure in the same change.** `ICE_SERVERS` gains the one URL
+1. **Cloudflare STUN, and its disclosure in the same change.** `ICE_SERVERS` gains the one URL
    and the tokens spec's expectation follows it. `docs/analytics.md` gains the paragraph: which
    host, what it learns (the visitor's public address and port), when (after either tap, never on
    opening the page), and that no account or key stands behind it. The first log line, which
    `begin()` reads from the connection's `getConfiguration()`, now names the server. No state logic changes. Check by hand that two tabs on one machine still
    reach `direct`: the log should now show a `srflx` candidate, and the browsers should still
    choose the host pair.
-3. The selected pair's raw stats printed under the state line.
+2. The selected pair's raw stats printed under the state line.
 
 **DoD.** A phone on mobile data pairs with the laptop on Wi-Fi and shows `traversed`, or shows
 `no-route` with the correct reason. Both outcomes are recorded in this file, with the carrier
