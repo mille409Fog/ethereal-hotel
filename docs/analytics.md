@@ -74,6 +74,24 @@ control (or clearing site data) removes it. Where the browser refuses storage, t
 and says the marks will not be kept. See
 [`guest-progress.ts`](../src/app/wanderquest/guest-progress.ts).
 
+## What a third party learns
+
+`/switchboard` introduces two of a visitor's own devices so they can talk directly. To find a path
+between two networks, each device asks a STUN server what its public address is. This site uses
+one: `stun.cloudflare.com:3478`, Cloudflare's free public STUN service.
+
+- **What it learns:** the device's public IP address and port, as its network presents them to the
+  internet. That is what a STUN request is for.
+- **When:** only after the visitor presses **Get a code** or **Connect**. Opening `/switchboard`
+  sends Cloudflare nothing, and no other page ever contacts it.
+- **What stands behind it:** no account and no key. This site has no arrangement with Cloudflare
+  for it, and sends it nothing but the request itself. The route's introduction log names the
+  server it asked, so the visitor can see this for themselves.
+
+The introduction also passes through this site's own server, which holds the two devices' offers
+and candidates (which carry their addresses) until the channel opens, and deletes them within a
+minute after it does. Analytics never reads them. See `SWITCHBOARD.md` for why that minute exists.
+
 ## Turning it off
 
 Blocking the script disables all of it, and the site does not notice: every call goes through one

@@ -19,7 +19,7 @@ describe('switchboard tokens', () => {
     expect(TestBed.inject(SWITCHBOARD_PEER_CONNECTION)).toBeNull();
   });
 
-  it('makes a peer connection with no ICE servers, so nothing is asked of STUN', () => {
+  it("makes a peer connection that asks Cloudflare's STUN server and nothing else", () => {
     const made: RTCConfiguration[] = [];
     vi.stubGlobal(
       'RTCPeerConnection',
@@ -32,7 +32,9 @@ describe('switchboard tokens', () => {
     const factory = TestBed.inject(SWITCHBOARD_PEER_CONNECTION);
     expect(factory).not.toBeNull();
     factory?.();
-    expect(made).toEqual([{ iceServers: [] }]);
+    // Written out rather than read from ICE_SERVERS, so a change to the third
+    // party has to change this line too.
+    expect(made).toEqual([{ iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }] }]);
   });
 
   it('signals through window.fetch against the API base', async () => {

@@ -82,7 +82,8 @@
       "Bash(grep -n \"SWITCHBOARD\\\\|PORTER\\\\|docMap\\\\|Size\\\\b\\\\|sizeKb\\\\|\\\\| \\\\`\" scripts/check-docs.mjs)",
       "Bash(grep -n \"| \\\\`WATERSHED.md\\\\`\\\\|| \\\\`CONTRIBUTING.md\\\\`\" CLAUDE.md)",
       "PowerShell(npx prettier --check SWITCHBOARD.md)",
-      "PowerShell(npx prettier --check CLAUDE.md SWITCHBOARD.md)"
+      "PowerShell(npx prettier --check CLAUDE.md SWITCHBOARD.md)",
+      "PowerShell(npx prettier --check docs/analytics.md SWITCHBOARD.md 2>&1)"
     ]
   }
 }

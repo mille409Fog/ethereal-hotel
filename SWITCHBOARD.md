@@ -11,7 +11,8 @@ Six items have landed: the `Pairing` table with `services/switchboard.py`;
 `routers/switchboard.py`; the introduction itself, `src/app/switchboard/` with `peer/` and
 `signal/`, which pairs two tabs over host candidates; `qr/qr.ts`, the encoder, drawing the link
 on the `waiting` screen; `no-route` split from `refused` by who said no (the `Stage` type's
-comment in `switchboard.ts`); and `ICE_SERVERS`, still empty, in `switchboard-calibration.ts`. Their headers record what was decided while building them (per-side
+comment in `switchboard.ts`); and `ICE_SERVERS` in `switchboard-calibration.ts`, naming
+Cloudflare's STUN server, with its disclosure in `docs/analytics.md` §What a third party learns. Their headers record what was decided while building them (per-side
 tokens, the cursor, why `record_open` is never charged, why the rate limit is per instance, why a
 `409` on a poll or a candidate means the other device opened first and is waited out rather than
 reported, why candidates are held until the server will take them, why the encoder stops at
@@ -189,20 +190,11 @@ e2e/switchboard.spec.ts       two contexts, one pairing, `direct`
 
 ### Phase 0 — two devices
 
-Four changes used to share one step: a new state, a seam, a third party and its disclosure. They
-land in this order, each green on its own, so that the change which tells Cloudflare something is
-one line with its disclosure beside it. `traversed` is not among them. `STAGE_BY_CANDIDATE`
-already maps `srflx` and `prflx` to it, and the component spec already reads it from fake stats.
-What it lacks is a candidate that only STUN can produce.
+The state, the seam, the STUN server and its disclosure have landed. `traversed` needed no step of
+its own: `STAGE_BY_CANDIDATE` already maps `srflx` and `prflx` to it, and the component spec reads
+it from fake stats. A real one needs the field measurement below.
 
-1. **Cloudflare STUN, and its disclosure in the same change.** `ICE_SERVERS` gains the one URL
-   and the tokens spec's expectation follows it. `docs/analytics.md` gains the paragraph: which
-   host, what it learns (the visitor's public address and port), when (after either tap, never on
-   opening the page), and that no account or key stands behind it. The first log line, which
-   `begin()` reads from the connection's `getConfiguration()`, now names the server. No state logic changes. Check by hand that two tabs on one machine still
-   reach `direct`: the log should now show a `srflx` candidate, and the browsers should still
-   choose the host pair.
-2. The selected pair's raw stats printed under the state line.
+1. The selected pair's raw stats printed under the state line.
 
 **DoD.** A phone on mobile data pairs with the laptop on Wi-Fi and shows `traversed`, or shows
 `no-route` with the correct reason. Both outcomes are recorded in this file, with the carrier

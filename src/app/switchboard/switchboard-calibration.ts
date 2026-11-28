@@ -29,17 +29,23 @@ export const POLL_INTERVAL_MS = 500;
 export const OPEN_GRACE_MS = 5000;
 
 /**
- * The STUN servers each `RTCPeerConnection` is made with: none yet.
+ * The STUN servers each `RTCPeerConnection` is made with: Cloudflare's one.
  *
- * A STUN server learns the visitor's public address, so this list is the
- * route's one third party, and it lives here and nowhere else. Only
- * `SWITCHBOARD_PEER_CONNECTION`'s factory reads it. The page logs what the
- * connection reports in `getConfiguration()` instead, so what it says is the
- * browser's account and not this constant's. Empty, the browser gathers host
- * candidates only: enough for two devices on one network, and `traversed` is
- * impossible. Never a `turn:` URL (SWITCHBOARD.md §Decisions).
+ * A STUN server learns the visitor's public address and port, so this list is
+ * the route's one third party, and it lives here and nowhere else. Only
+ * `SWITCHBOARD_PEER_CONNECTION`'s factory reads it, and `docs/analytics.md`
+ * names the same host. The page logs what the connection reports in
+ * `getConfiguration()` instead, so what it says is the browser's account and
+ * not this constant's.
+ *
+ * Cloudflare over Google's `stun.l.google.com:19302`: both are free and need no
+ * account, but only Cloudflare documents its server for other sites to use, so
+ * only it can be disclosed without guessing. Without any server the browser
+ * gathers host candidates only and `traversed` is impossible.
+ *
+ * Never a `turn:` URL (SWITCHBOARD.md §Decisions).
  */
-export const ICE_SERVERS: readonly RTCIceServer[] = [];
+export const ICE_SERVERS: readonly RTCIceServer[] = [{ urls: 'stun:stun.cloudflare.com:3478' }];
 
 /** The label of the ordered, reliable data channel, the only one opened so far. */
 export const RELIABLE_CHANNEL = 'reliable';
